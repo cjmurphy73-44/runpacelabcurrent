@@ -1,0 +1,124 @@
+{
+  "name": "AthleteProfile",
+  "type": "object",
+  "properties": {
+    "first_name": {
+      "type": "string",
+      "description": "Athlete's first name"
+    },
+    "last_name": {
+      "type": "string",
+      "description": "Athlete's last name"
+    },
+    "country": {
+      "type": "string",
+      "description": "Athlete's country"
+    },
+    "height_cm": {
+      "type": "number",
+      "minimum": 0,
+      "description": "Height in centimeters, must be positive"
+    },
+    "weight_kg": {
+      "type": "number",
+      "minimum": 0,
+      "description": "Weight in kilograms, must be positive"
+    },
+    "age": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Age in years"
+    },
+    "sex": {
+      "type": "string",
+      "enum": [
+        "male",
+        "female",
+        "other"
+      ],
+      "description": "Biological sex for physiological model adjustments"
+    },
+    "training_tier_preference": {
+      "type": "string",
+      "enum": [
+        "conservative",
+        "moderate",
+        "aggressive"
+      ],
+      "default": "conservative",
+      "description": "Athlete's chosen training philosophy"
+    },
+    "max_heart_rate": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Maximum heart rate (user-defined or estimated)"
+    },
+    "resting_hr": {
+      "type": "integer",
+      "minimum": 0,
+      "default": 60,
+      "description": "Resting heart rate used as the baseline for TRIMP calculation"
+    },
+    "lactate_threshold_hr": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Lactate Threshold Heart Rate"
+    },
+    "ftp_watts": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Functional Threshold Power in watts (cycling)"
+    },
+    "functional_threshold_pace_ms": {
+      "type": "number",
+      "minimum": 0,
+      "description": "Functional Threshold Pace in meters/second (running), used as the denominator for rTSS"
+    },
+    "vdot_estimate": {
+      "type": "number",
+      "minimum": 0,
+      "description": "Jack Daniel's VDOT equivalent for running, calculated by EarlyversionAIcoach"
+    },
+    "ctl_time_constant_days": {
+      "type": "integer",
+      "minimum": 1,
+      "default": 42,
+      "description": "Time constant (tau) in days for the CTL (Fitness) EWMA"
+    },
+    "atl_time_constant_days": {
+      "type": "integer",
+      "minimum": 1,
+      "default": 7,
+      "description": "Time constant (tau) in days for the ATL (Fatigue) EWMA"
+    },
+    "current_ctl": {
+      "type": "number",
+      "default": 0,
+      "description": "Chronic Training Load (Fitness) - EWMA over ctl_time_constant_days"
+    },
+    "current_atl": {
+      "type": "number",
+      "default": 0,
+      "description": "Acute Training Load (Fatigue) - EWMA over atl_time_constant_days"
+    },
+    "current_tsb": {
+      "type": "number",
+      "default": 0,
+      "description": "Training Stress Balance (Form) = current_ctl - current_atl"
+    },
+    "last_data_sync": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Timestamp of last successful wearable data sync"
+    },
+    "injury_history": {
+      "type": "string",
+      "description": "Freeform notes on past injuries (e.g. 'ITB + Achilles + shin splints, Oct/Nov 2025') used to tailor prehab routines and load caps"
+    }
+  },
+  "required": [
+    "first_name",
+    "last_name",
+    "training_tier_preference"
+  ]
+}

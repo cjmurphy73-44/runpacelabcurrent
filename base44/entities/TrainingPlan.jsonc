@@ -1,0 +1,285 @@
+{
+  "name": "TrainingPlan",
+  "type": "object",
+  "properties": {
+    "athlete_id": {
+      "type": "string",
+      "description": "References AthleteProfile.id"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "draft",
+        "active",
+        "completed",
+        "archived"
+      ],
+      "default": "draft"
+    },
+    "start_date": {
+      "type": "string",
+      "format": "date"
+    },
+    "end_date": {
+      "type": "string",
+      "format": "date"
+    },
+    "plan_title": {
+      "type": "string",
+      "description": "Human-readable plan title, e.g. 'Sub-17 5K Training Plan \u2014 Race-Anchored 13-Week Block'"
+    },
+    "tier": {
+      "type": "string",
+      "enum": [
+        "conservative",
+        "intermediate",
+        "aggressive"
+      ],
+      "description": "The single training tier this plan was generated for, based on the athlete's training_tier_preference"
+    },
+    "athlete_summary": {
+      "type": "string",
+      "description": "Narrative synthesis of the athlete's current physiological state (VDOT, HR zones, CTL/ATL/TSB, injury context) that grounds the plan"
+    },
+    "race_goals": {
+      "type": "array",
+      "description": "Anchor races the plan is built around",
+      "items": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "date": {
+            "type": "string",
+            "format": "date"
+          },
+          "distance": {
+            "type": "string"
+          },
+          "target_time": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "goal_architecture": {
+      "type": "array",
+      "description": "Metric-by-metric progression targets across race anchors",
+      "items": {
+        "type": "object",
+        "properties": {
+          "metric": {
+            "type": "string"
+          },
+          "current_value": {
+            "type": "string"
+          },
+          "milestones": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "label": {
+                  "type": "string"
+                },
+                "target": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "pace_zones": {
+      "type": "array",
+      "description": "Training zone reference table",
+      "items": {
+        "type": "object",
+        "properties": {
+          "zone": {
+            "type": "string"
+          },
+          "pace_range": {
+            "type": "string"
+          },
+          "hr_range": {
+            "type": "string"
+          },
+          "purpose": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "prehab_routine": {
+      "type": "array",
+      "description": "Daily injury-prevention routine tailored to the athlete's injury history",
+      "items": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "macrocycle": {
+      "type": "array",
+      "description": "Week-by-week phase overview",
+      "items": {
+        "type": "object",
+        "properties": {
+          "week_number": {
+            "type": "integer"
+          },
+          "start_date": {
+            "type": "string",
+            "format": "date"
+          },
+          "end_date": {
+            "type": "string",
+            "format": "date"
+          },
+          "phase": {
+            "type": "string"
+          },
+          "key_session": {
+            "type": "string"
+          },
+          "deload": {
+            "type": "boolean"
+          }
+        }
+      }
+    },
+    "weekly_plans": {
+      "type": "array",
+      "description": "Full day-by-day prescriptions for every week, for the athlete's chosen tier",
+      "items": {
+        "type": "object",
+        "properties": {
+          "week_number": {
+            "type": "integer"
+          },
+          "start_date": {
+            "type": "string",
+            "format": "date"
+          },
+          "theme": {
+            "type": "string"
+          },
+          "totals": {
+            "type": "string"
+          },
+          "days": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "date": {
+                  "type": "string",
+                  "format": "date"
+                },
+                "day_name": {
+                  "type": "string"
+                },
+                "session_type": {
+                  "type": "string",
+                  "enum": [
+                    "rest",
+                    "easy",
+                    "recovery",
+                    "quality",
+                    "long",
+                    "race"
+                  ]
+                },
+                "sport": {
+                  "type": "string",
+                  "enum": [
+                    "running",
+                    "cycling",
+                    "swimming",
+                    "strength",
+                    "triathlon",
+                    "other"
+                  ]
+                },
+                "title": {
+                  "type": "string"
+                },
+                "prescribed_duration_minutes": {
+                  "type": "number"
+                },
+                "prescribed_intensity_zone": {
+                  "type": "string"
+                },
+                "description": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "nutrition_system": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "session_type": {
+            "type": "string"
+          },
+          "before": {
+            "type": "string"
+          },
+          "during": {
+            "type": "string"
+          },
+          "after": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "hrv_framework": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "condition": {
+            "type": "string"
+          },
+          "action": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "injury_audit_questions": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "injury_red_flags": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "phase2_note": {
+      "type": "string",
+      "description": "Narrative preview for goals beyond the currently generated weeks, to be recalibrated after the next race result"
+    }
+  },
+  "required": [
+    "athlete_id"
+  ]
+}

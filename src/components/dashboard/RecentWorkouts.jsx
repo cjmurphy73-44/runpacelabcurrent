@@ -1,0 +1,28 @@
+import React from "react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+
+export default function RecentWorkouts({ workouts }) {
+  return (
+    <Card>
+      <CardHeader><CardTitle className="text-sm font-heading">Recent workouts</CardTitle></CardHeader>
+      <CardContent className="space-y-2">
+        {workouts.length === 0 ? (
+          <p className="text-sm text-muted-foreground">No workouts logged yet.</p>
+        ) : (
+          workouts.map((w) => (
+            <div key={w.id} className="flex items-center justify-between border-b border-border py-2 last:border-0">
+              <div>
+                <p className="text-sm font-medium">{w.date} · <Badge variant="secondary" className="capitalize">{w.sport}</Badge></p>
+                <p className="text-xs text-muted-foreground">
+                  {w.duration_minutes ? `${w.duration_minutes} min` : ""} {w.distance_km ? `· ${w.distance_km} km` : ""} {w.avg_hr ? `· ${w.avg_hr} bpm avg` : ""}
+                </p>
+              </div>
+              <p className="text-sm font-heading font-semibold">{Math.round(w.session_trimp || 0)} TRIMP</p>
+            </div>
+          ))
+        )}
+      </CardContent>
+    </Card>
+  );
+}

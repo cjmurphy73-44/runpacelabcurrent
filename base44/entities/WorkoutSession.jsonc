@@ -1,0 +1,134 @@
+{
+  "name": "WorkoutSession",
+  "type": "object",
+  "properties": {
+    "athlete_id": {
+      "type": "string",
+      "description": "References AthleteProfile.id"
+    },
+    "date": {
+      "type": "string",
+      "format": "date",
+      "description": "Date the workout took place"
+    },
+    "sport": {
+      "type": "string",
+      "enum": [
+        "running",
+        "cycling",
+        "swimming",
+        "strength",
+        "triathlon",
+        "other"
+      ],
+      "default": "running"
+    },
+    "duration_minutes": {
+      "type": "number",
+      "minimum": 0,
+      "description": "Total session duration in minutes"
+    },
+    "duration_seconds": {
+      "type": "number",
+      "minimum": 0,
+      "description": "Total session duration in seconds (precise value used by the parser)"
+    },
+    "distance_km": {
+      "type": "number",
+      "minimum": 0,
+      "description": "Total distance in kilometers"
+    },
+    "avg_hr": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Average heart rate"
+    },
+    "max_hr": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Max heart rate reached in session"
+    },
+    "avg_power": {
+      "type": "number",
+      "minimum": 0,
+      "description": "Average power in watts (cycling)"
+    },
+    "avg_cadence": {
+      "type": "number",
+      "minimum": 0,
+      "description": "Average cadence"
+    },
+    "source_format": {
+      "type": "string",
+      "enum": [
+        "fit",
+        "csv",
+        "webhook"
+      ],
+      "description": "Original file/ingestion format"
+    },
+    "raw_file_url": {
+      "type": "string",
+      "description": "URL of the originally uploaded raw file"
+    },
+    "session_trimp": {
+      "type": "number",
+      "default": 0,
+      "minimum": 0,
+      "description": "Banister's HR-based TRIMP computed for this session"
+    },
+    "session_tss": {
+      "type": "number",
+      "default": 0,
+      "minimum": 0,
+      "description": "rTSS (Running Training Stress Score) fallback computed from Normalized Graded Pace when heart rate is unavailable"
+    },
+    "efficiency_factor": {
+      "type": "number",
+      "minimum": 0,
+      "description": "Efficiency Factor: average Normalized Graded Pace (or power) divided by average heart rate"
+    },
+    "aerobic_decoupling": {
+      "type": "number",
+      "description": "Aerobic decoupling (Pa:HR) percentage between the first and second half of aerobic runs longer than 45 minutes"
+    },
+    "streams": {
+      "type": "array",
+      "description": "Second-by-second normalized telemetry stream (only stored for shorter sessions to avoid oversized records)",
+      "items": {
+        "type": "object",
+        "properties": {
+          "time": {
+            "type": "number",
+            "description": "Seconds elapsed from the start of the session"
+          },
+          "heart_rate": {
+            "type": "number"
+          },
+          "altitude": {
+            "type": "number"
+          },
+          "distance": {
+            "type": "number"
+          },
+          "cadence": {
+            "type": "number"
+          },
+          "speed": {
+            "type": "number",
+            "description": "Speed in meters/second"
+          }
+        }
+      }
+    },
+    "training_plan_session_id": {
+      "type": "string",
+      "description": "References TrainingPlanSession.id this workout was prescribed against, if any"
+    }
+  },
+  "required": [
+    "athlete_id",
+    "date",
+    "sport"
+  ]
+}

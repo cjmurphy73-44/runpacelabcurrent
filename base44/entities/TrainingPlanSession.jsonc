@@ -1,0 +1,69 @@
+{
+  "name": "TrainingPlanSession",
+  "type": "object",
+  "properties": {
+    "training_plan_id": {
+      "type": "string",
+      "description": "References TrainingPlan.id"
+    },
+    "athlete_id": {
+      "type": "string",
+      "description": "References AthleteProfile.id"
+    },
+    "date": {
+      "type": "string",
+      "format": "date"
+    },
+    "sport": {
+      "type": "string",
+      "enum": [
+        "running",
+        "cycling",
+        "swimming",
+        "strength",
+        "triathlon",
+        "other"
+      ]
+    },
+    "prescribed_duration_minutes": {
+      "type": "number",
+      "minimum": 0
+    },
+    "prescribed_intensity_zone": {
+      "type": "string"
+    },
+    "target_hr_low": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "target_hr_high": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "target_power": {
+      "type": "number",
+      "minimum": 0
+    },
+    "target_pace": {
+      "type": "string"
+    },
+    "rationale_text": {
+      "type": "string"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "pending",
+        "completed",
+        "modified",
+        "skipped"
+      ],
+      "default": "pending"
+    }
+  },
+  "required": [
+    "training_plan_id",
+    "athlete_id",
+    "date"
+  ]
+}

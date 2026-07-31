@@ -1,0 +1,90 @@
+{
+  "name": "DailyMetrics",
+  "type": "object",
+  "properties": {
+    "athlete_id": {
+      "type": "string",
+      "description": "References AthleteProfile.id"
+    },
+    "date": {
+      "type": "string",
+      "format": "date",
+      "description": "Calendar date these metrics apply to"
+    },
+    "total_trimp": {
+      "type": "number",
+      "default": 0,
+      "minimum": 0,
+      "description": "Aggregate daily training stress (sum of session TRIMP, or rTSS fallback when HR is unavailable)"
+    },
+    "calculated_ctl": {
+      "type": "number",
+      "default": 0,
+      "description": "Chronic Training Load (Fitness) calculated for end of this day"
+    },
+    "calculated_atl": {
+      "type": "number",
+      "default": 0,
+      "description": "Acute Training Load (Fatigue) calculated for end of this day"
+    },
+    "calculated_tsb": {
+      "type": "number",
+      "default": 0,
+      "description": "Training Stress Balance (Form) calculated for end of this day"
+    },
+    "sleep_score": {
+      "type": "integer",
+      "description": "Sleep quality score for the preceding night"
+    },
+    "hrv_score": {
+      "type": "integer",
+      "description": "Heart Rate Variability score for this day"
+    },
+    "hrv": {
+      "type": "number",
+      "description": "Raw Heart Rate Variability reading (ms) for this day, if provided by a wearable"
+    },
+    "resting_hr": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Measured resting heart rate for this day, if provided by a wearable"
+    },
+    "readiness_score": {
+      "type": "integer",
+      "description": "Aggregate readiness score for this day"
+    },
+    "notes": {
+      "type": "string",
+      "description": "Manual subjective notes from the athlete"
+    },
+    "holistic_factors": {
+      "type": "object",
+      "description": "Quick-logged lifestyle/holistic context for this day",
+      "properties": {
+        "nutrition_status": {
+          "type": "string",
+          "enum": [
+            "under_fueled",
+            "fueled"
+          ]
+        },
+        "muscle_soreness": {
+          "type": "string",
+          "enum": [
+            "low",
+            "medium",
+            "high"
+          ]
+        },
+        "travel_jet_lag": {
+          "type": "boolean",
+          "default": false
+        }
+      }
+    }
+  },
+  "required": [
+    "athlete_id",
+    "date"
+  ]
+}
