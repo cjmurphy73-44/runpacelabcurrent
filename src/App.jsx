@@ -16,6 +16,8 @@ import AppLayout from '@/components/layout/AppLayout';
 import Home from '@/pages/Home';
 import CoachChat from '@/pages/CoachChat';
 import TrainingPlan from '@/pages/TrainingPlan';
+import DevTracker from '@/pages/DevTracker';
+import DeveloperGuard from '@/components/auth/DeveloperGuard';
 // Add page imports here
 
 const AuthenticatedApp = () => {
@@ -54,6 +56,7 @@ const AuthenticatedApp = () => {
           <Route path="/" element={<Home />} />
           <Route path="/coach" element={<CoachChat />} />
           <Route path="/plan" element={<TrainingPlan />} />
+          <Route path="/dev-tracker" element={<DeveloperGuard><DevTracker /></DeveloperGuard>} />
         </Route>
       </Route>
       <Route path="*" element={<PageNotFound />} />
