@@ -357,9 +357,11 @@ Deno.serve(async (req) => {
     const user = await base44.auth.me();
     if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
 
-    const { athlete_id, files, default_date } = await req.json();
-    if (!athlete_id || !Array.isArray(files) || files.length === 0) {
-      return Response.json({ error: 'athlete_id and a non-empty files array are required' }, { status: 400 });
+    const { athlete_id, files, summaries, default_date } = await req.json();
+    const hasFiles = Array.isArray(files) && files.length > 0;
+    const hasSummaries = Array.isArray(summaries) && summaries.length > 0;
+    if (!athlete_id || (!hasFiles && !hasSummaries)) {
+      return Response.json({ error: 'athlete_id and a non-empty files or summaries array are required' }, { status: 400 });
     }
 
     const athlete = await base44.entities.AthleteProfile.get(athlete_id);
@@ -383,7 +385,42 @@ Deno.serve(async (req) => {
     const sessionsToCreate = [];
     const errors = [];
 
-    for (const f of files) {
+    // Pre-compiled summary rows (extracted client-side in the browser from .fit/.csv files),
+    // sent directly instead of raw file_urls — skips server-side fetch/parse entirely.
+    if (hasSummaries) {
+      for (const row of summaries) {
+        const rowDate = row.date;
+        const sessionSport = row.sport || 'running';
+        const durationMinutes = row.duration_seconds ? row.duration_seconds / 60 : (row.duration_minutes || 0);
+        const distanceKm = row.distance_km || 0;
+        if (!rowDate || durationMinutes < 1) {
+          errors.push({ file_name: row.file_name || 'unknown', error: 'Missing date or invalid duration' });
+          continue;
+        }
+        if (isDuplicateSession(rowDate, sessionSport, durationMinutes, distanceKm)) {
+          errors.push({ file_name: row.file_name || 'unknown', error: `Skipped duplicate workout on ${rowDate}` });
+          continue;
+        }
+        const maxHrForRow = maxHr || row.max_hr || 190;
+        const sessionTrimp = row.avg_hr ? calcTrimp(durationMinutes, row.avg_hr, restHr, maxHrForRow, athlete.sex) : 0;
+        const newSession = {
+          athlete_id,
+          date: rowDate,
+          sport: sessionSport,
+          duration_minutes: Math.round(durationMinutes * 100) / 100,
+          duration_seconds: row.duration_seconds || Math.round(durationMinutes * 60),
+          distance_km: Math.round(distanceKm * 100) / 100,
+          avg_hr: row.avg_hr || undefined,
+          max_hr: row.max_hr || undefined,
+          source_format: row.source_format || 'csv',
+          session_trimp: sessionTrimp,
+        };
+        sessionsToCreate.push(newSession);
+        (sessionsByDateAll[rowDate] ||= []).push(newSession);
+      }
+    }
+
+    for (const f of (files || [])) {
       try {
         const { file_url, file_name, sport } = f;
         if (!file_url || !file_name) {
