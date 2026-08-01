@@ -46,6 +46,22 @@ function average(values) {
   return Math.round(valid.reduce((a, b) => a + b, 0) / valid.length);
 }
 
+// A FIT timestamp encoded as a Unix epoch (rather than the Garmin/FIT epoch, 1989-12-31) shows up
+// occasionally from third-party exporters. Any raw value already past ~2001 (1e9) is unambiguously
+// Unix-epoch seconds and must NOT get the Garmin offset added on top, or the date lands decades in the future.
+function fitTimestampToISOString(rawTimestamp) {
+  const unixSeconds = rawTimestamp < 1000000000 ? rawTimestamp + GARMIN_EPOCH_OFFSET_SEC : rawTimestamp;
+  return new Date(unixSeconds * 1000).toISOString();
+}
+
+// Throws when a read of `size` bytes starting at `offset` would run past the buffer —
+// callers catch this to stop parsing safely and keep whatever was decoded so far.
+function assertBounds(offset, size, byteLength) {
+  if (offset < 0 || size < 0 || offset + size > byteLength) {
+    throw new RangeError("FIT parse: read beyond buffer bounds");
+  }
+}
+
 // Decodes the FIT "session" message (global mesg num 18) when present. Some files (notably
 // certain third-party exports) omit it entirely — in that case we fall back to aggregating
 // "lap" (19) or "record" (20) messages, which are captured during the same single pass.
@@ -60,34 +76,44 @@ export function parseFitSummary(arrayBuffer) {
   const records = [];
 
   while (offset < bytes.byteLength - 2) {
-    const recordHeader = view.getUint8(offset);
-    offset += 1;
-    const isDefinition = (recordHeader & 0x40) !== 0;
-    const localMesgType = (recordHeader & 0x80) !== 0 ? (recordHeader >> 5) & 0x3 : recordHeader & 0xf;
-
-    if (isDefinition) {
+    try {
+      assertBounds(offset, 1, bytes.byteLength);
+      const recordHeader = view.getUint8(offset);
       offset += 1;
-      const arch = view.getUint8(offset); offset += 1;
-      const littleEndian = arch === 0;
-      const globalMesgNum = view.getUint16(offset, littleEndian); offset += 2;
-      const numFields = view.getUint8(offset); offset += 1;
-      const fields = [];
-      for (let i = 0; i < numFields; i++) {
-        fields.push({ fieldNum: view.getUint8(offset), size: view.getUint8(offset + 1), baseType: view.getUint8(offset + 2) });
-        offset += 3;
+      const isDefinition = (recordHeader & 0x40) !== 0;
+      const localMesgType = (recordHeader & 0x80) !== 0 ? (recordHeader >> 5) & 0x3 : recordHeader & 0xf;
+
+      if (isDefinition) {
+        assertBounds(offset, 4, bytes.byteLength); // reserved(1) + arch(1) + globalMesgNum(2)
+        offset += 1;
+        const arch = view.getUint8(offset); offset += 1;
+        const littleEndian = arch === 0;
+        const globalMesgNum = view.getUint16(offset, littleEndian); offset += 2;
+        assertBounds(offset, 1, bytes.byteLength);
+        const numFields = view.getUint8(offset); offset += 1;
+        const fields = [];
+        for (let i = 0; i < numFields; i++) {
+          assertBounds(offset, 3, bytes.byteLength);
+          fields.push({ fieldNum: view.getUint8(offset), size: view.getUint8(offset + 1), baseType: view.getUint8(offset + 2) });
+          offset += 3;
+        }
+        if (recordHeader & 0x20) {
+          assertBounds(offset, 1, bytes.byteLength);
+          const numDevFields = view.getUint8(offset); offset += 1;
+          assertBounds(offset, numDevFields * 3, bytes.byteLength);
+          offset += numDevFields * 3;
+        }
+        localDefs[localMesgType] = { globalMesgNum, fields, littleEndian };
+        continue;
       }
-      if (recordHeader & 0x20) {
-        const numDevFields = view.getUint8(offset); offset += 1;
-        offset += numDevFields * 3;
-      }
-      localDefs[localMesgType] = { globalMesgNum, fields, littleEndian };
-    } else {
+
       const def = localDefs[localMesgType];
       if (!def) break;
       const rec = {};
       for (const f of def.fields) {
         const t = f.baseType & 0x1f;
         let value = null;
+        assertBounds(offset, f.size, bytes.byteLength);
         if (t !== 7 && f.size === baseTypeSize(f.baseType)) {
           if (t === 2 || t === 10) value = view.getUint8(offset);
           else if (t === 1) value = view.getInt8(offset);
@@ -131,6 +157,9 @@ export function parseFitSummary(arrayBuffer) {
       if (def.globalMesgNum === 20 && rec.timestamp !== undefined) {
         records.push(rec);
       }
+    } catch (err) {
+      if (err instanceof RangeError) break; // truncated/corrupt record — stop parsing, keep what we have
+      throw err;
     }
   }
 
@@ -174,7 +203,7 @@ export function parseFitSummary(arrayBuffer) {
   }
 
   return {
-    timestamp: new Date((session.timestamp + GARMIN_EPOCH_OFFSET_SEC) * 1000).toISOString(),
+    timestamp: fitTimestampToISOString(session.timestamp),
     total_distance_meters: session.total_distance_meters || 0,
     total_elapsed_time: elapsedSeconds,
     avg_heart_rate: session.avg_heart_rate || null,

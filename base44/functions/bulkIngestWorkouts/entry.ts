@@ -1,6 +1,7 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
 
 const GARMIN_EPOCH_OFFSET_SEC = 631065600; // seconds between Unix epoch and FIT/Garmin epoch (1989-12-31)
+const VALID_SPORTS = ['running', 'cycling', 'swimming', 'strength', 'triathlon', 'other'];
 const MAX_STREAM_SAMPLES = 3600;
 const WARMUP_SECONDS = 300;
 const MIN_DECOUPLING_DURATION_MIN = 45;
@@ -358,10 +359,15 @@ Deno.serve(async (req) => {
     if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
 
     const { athlete_id, files, summaries, default_date } = await req.json();
+    if (!athlete_id) {
+      return Response.json({ error: 'athlete_id is required' }, { status: 400 });
+    }
     const hasFiles = Array.isArray(files) && files.length > 0;
     const hasSummaries = Array.isArray(summaries) && summaries.length > 0;
-    if (!athlete_id || (!hasFiles && !hasSummaries)) {
-      return Response.json({ error: 'athlete_id and a non-empty files or summaries array are required' }, { status: 400 });
+    // An empty (or omitted) batch is a valid no-op, not a client error — avoids a spurious 400
+    // when a caller submits [] after client-side filtering removed every row.
+    if (!hasFiles && !hasSummaries) {
+      return Response.json({ success: true, created_count: 0, errors: [] });
     }
 
     const athlete = await base44.entities.AthleteProfile.get(athlete_id);
@@ -389,34 +395,38 @@ Deno.serve(async (req) => {
     // sent directly instead of raw file_urls — skips server-side fetch/parse entirely.
     if (hasSummaries) {
       for (const row of summaries) {
-        const rowDate = row.date;
-        const sessionSport = row.sport || 'running';
-        const durationMinutes = row.duration_seconds ? row.duration_seconds / 60 : (row.duration_minutes || 0);
-        const distanceKm = row.distance_km || 0;
-        if (!rowDate || durationMinutes < 1) {
-          errors.push({ file_name: row.file_name || 'unknown', error: 'Missing date or invalid duration' });
-          continue;
+        try {
+          const rowDate = row?.date;
+          const sessionSport = VALID_SPORTS.includes(row?.sport) ? row.sport : 'running';
+          const durationMinutes = row?.duration_seconds ? row.duration_seconds / 60 : (row?.duration_minutes || 0);
+          const distanceKm = row?.distance_km || 0;
+          if (!rowDate || isNaN(Date.parse(rowDate)) || !durationMinutes || durationMinutes < 1) {
+            errors.push({ file_name: row?.file_name || 'unknown', error: 'Missing date or invalid duration' });
+            continue;
+          }
+          if (isDuplicateSession(rowDate, sessionSport, durationMinutes, distanceKm)) {
+            errors.push({ file_name: row?.file_name || 'unknown', error: `Skipped duplicate workout on ${rowDate}` });
+            continue;
+          }
+          const maxHrForRow = maxHr || row.max_hr || 190;
+          const sessionTrimp = row.avg_hr ? calcTrimp(durationMinutes, row.avg_hr, restHr, maxHrForRow, athlete.sex) : 0;
+          const newSession = {
+            athlete_id,
+            date: rowDate,
+            sport: sessionSport,
+            duration_minutes: Math.round(durationMinutes * 100) / 100,
+            duration_seconds: row.duration_seconds || Math.round(durationMinutes * 60),
+            distance_km: Math.round(distanceKm * 100) / 100,
+            avg_hr: row.avg_hr || undefined,
+            max_hr: row.max_hr || undefined,
+            source_format: row.source_format || 'csv',
+            session_trimp: sessionTrimp,
+          };
+          sessionsToCreate.push(newSession);
+          (sessionsByDateAll[rowDate] ||= []).push(newSession);
+        } catch (rowError) {
+          errors.push({ file_name: row?.file_name || 'unknown', error: rowError.message });
         }
-        if (isDuplicateSession(rowDate, sessionSport, durationMinutes, distanceKm)) {
-          errors.push({ file_name: row.file_name || 'unknown', error: `Skipped duplicate workout on ${rowDate}` });
-          continue;
-        }
-        const maxHrForRow = maxHr || row.max_hr || 190;
-        const sessionTrimp = row.avg_hr ? calcTrimp(durationMinutes, row.avg_hr, restHr, maxHrForRow, athlete.sex) : 0;
-        const newSession = {
-          athlete_id,
-          date: rowDate,
-          sport: sessionSport,
-          duration_minutes: Math.round(durationMinutes * 100) / 100,
-          duration_seconds: row.duration_seconds || Math.round(durationMinutes * 60),
-          distance_km: Math.round(distanceKm * 100) / 100,
-          avg_hr: row.avg_hr || undefined,
-          max_hr: row.max_hr || undefined,
-          source_format: row.source_format || 'csv',
-          session_trimp: sessionTrimp,
-        };
-        sessionsToCreate.push(newSession);
-        (sessionsByDateAll[rowDate] ||= []).push(newSession);
       }
     }
 
@@ -561,14 +571,26 @@ Deno.serve(async (req) => {
     }
 
     if (sessionsToCreate.length === 0) {
-      return Response.json({ success: false, created_count: 0, errors }, { status: 400 });
+      // Every row was invalid/duplicate/unparseable — a normal outcome of a batch import, not a bad request.
+      return Response.json({ success: true, created_count: 0, errors });
     }
 
     const createdSessions = [];
     for (let i = 0; i < sessionsToCreate.length; i += 500) {
       const batch = sessionsToCreate.slice(i, i + 500);
-      const created = await base44.entities.WorkoutSession.bulkCreate(batch);
-      createdSessions.push(...created);
+      try {
+        const created = await base44.entities.WorkoutSession.bulkCreate(batch);
+        createdSessions.push(...created);
+      } catch (batchError) {
+        // Don't let one bad sub-batch fail the whole request — report it and keep going.
+        for (const item of batch) {
+          errors.push({ file_name: item.raw_file_url || item.date || 'unknown', error: `Insert failed: ${batchError.message}` });
+        }
+      }
+    }
+
+    if (createdSessions.length === 0) {
+      return Response.json({ success: true, created_count: 0, errors });
     }
 
     const affectedDates = [...new Set(createdSessions.map((s) => s.date))];
