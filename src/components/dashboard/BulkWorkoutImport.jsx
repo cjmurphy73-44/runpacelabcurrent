@@ -61,7 +61,7 @@ export default function BulkWorkoutImport({ athleteId, onUploaded }) {
             <p className="text-xs text-muted-foreground mt-1">Dates are read automatically from each file's recorded timestamps.</p>
           </div>
           <div>
-            <Label>Sport (applied to all files)</Label>
+            <Label>Fallback sport</Label>
             <Select value={sport} onValueChange={setSport}>
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
@@ -73,6 +73,9 @@ export default function BulkWorkoutImport({ athleteId, onUploaded }) {
                 <SelectItem value="other">Other</SelectItem>
               </SelectContent>
             </Select>
+            <p className="text-xs text-muted-foreground mt-1">
+              Multi-activity exports (e.g. Coros, Garmin) have their sport detected automatically per activity — running, cycling, swimming, strength, and more. This is only used when a file doesn't include an activity type.
+            </p>
           </div>
           <Button type="submit" disabled={uploading || fileList.length === 0} className="w-full">
             {uploading ? `Importing ${fileList.length} file(s)...` : `Import ${fileList.length || ""} file(s)`}

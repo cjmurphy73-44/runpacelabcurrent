@@ -14,6 +14,21 @@ function calcTrimp(durationMin, avgHr, restHr, maxHr, sex) {
   return Math.round(durationMin * hrr * a * Math.exp(b * hrr) * 100) / 100;
 }
 
+// Maps a raw activity-type value from a wearable export (Coros, Garmin, etc.) to our sport enum.
+// Returns null when the column is missing/unrecognized so callers can fall back to the user-selected sport.
+function normalizeSportValue(raw) {
+  if (!raw) return null;
+  const s = String(raw).trim().toLowerCase();
+  if (!s) return null;
+  if (/run/.test(s)) return 'running';
+  if (/(bike|cycl|ride|mtb)/.test(s)) return 'cycling';
+  if (/swim/.test(s)) return 'swimming';
+  if (/tri(athlon)?/.test(s)) return 'triathlon';
+  if (/(strength|gym|weight|workout|hiit|core)/.test(s)) return 'strength';
+  if (/(walk|hike|row|ski|elliptical|yoga|other)/.test(s)) return 'other';
+  return 'other';
+}
+
 function gradeCostFactor(grade) {
   const s = Math.max(-0.45, Math.min(0.45, grade));
   const cf = 1 + 19 * s + 50.4 * s * s - 128.2 * s * s * s;
@@ -97,6 +112,7 @@ function tryParseSummaryCsv(text) {
   const distKmIdx = idx(['distance_km']);
   const distMIdx = idx(['total_distance_meters']);
   const tsIdx = idx(['timestamp', 'date', 'start_time']);
+  const sportIdx = idx(['sport', 'activity_type', 'type', 'activity', 'workout_type']);
   if (durIdx === -1 || (hrIdx === -1 && distKmIdx === -1 && distMIdx === -1)) return null;
 
   const rows = [];
@@ -120,6 +136,8 @@ function tryParseSummaryCsv(text) {
       if (!isNaN(t)) rowDate = new Date(t).toISOString().slice(0, 10);
     }
 
+    const rowSport = sportIdx !== -1 ? normalizeSportValue(cols[sportIdx]) : null;
+
     rows.push({
       date: rowDate,
       duration_seconds: Math.round(durationSeconds),
@@ -127,6 +145,7 @@ function tryParseSummaryCsv(text) {
       distance_km: distanceKm !== null ? Math.round(distanceKm * 100) / 100 : null,
       avg_hr: avgHr,
       max_hr: maxHrVal,
+      sport: rowSport,
     });
   }
   return rows.length > 0 ? rows : null;
@@ -396,9 +415,10 @@ Deno.serve(async (req) => {
         }
 
         if (summaryRows) {
-          const sessionSport = sport || 'running';
+          const fallbackSport = sport || 'running';
           for (const row of summaryRows) {
             const rowDate = row.date || default_date || f.date;
+            const sessionSport = row.sport || fallbackSport;
             if (isDuplicateSession(rowDate, sessionSport, row.duration_minutes, row.distance_km)) {
               errors.push({ file_name, error: `Skipped duplicate workout on ${rowDate}` });
               continue;
