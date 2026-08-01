@@ -20,6 +20,7 @@ import SleepEnergyCard from "@/components/dashboard/SleepEnergyCard";
 import HolisticFactorsLog from "@/components/dashboard/HolisticFactorsLog";
 import TodaySessionCard from "@/components/dashboard/TodaySessionCard";
 import StatusGauges from "@/components/dashboard/StatusGauges";
+import LoadStatusCards from "@/components/dashboard/LoadStatusCards";
 import HorizonStrip from "@/components/dashboard/HorizonStrip";
 import { FitnessProvider } from "@/context/FitnessContext";
 import { useUIPreferences } from "@/context/UIPreferencesContext";
@@ -85,6 +86,7 @@ export default function Home() {
               <TodaySessionCard athleteId={athlete.id} />
             </div>
             <StatusGauges athlete={athlete} />
+            <LoadStatusCards workouts={workouts} />
           </div>
 
           {/* Tier 2 — Horizon */}
