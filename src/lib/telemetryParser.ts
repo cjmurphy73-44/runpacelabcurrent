@@ -67,23 +67,43 @@ export function parseCSV(text: string): ParsedTelemetry {
   const cadIdx = col("cadence");
   const speedIdx = col("speed");
 
+  // Supports both numeric (elapsed seconds / epoch) and ISO-8601 timestamp columns —
+  // a plain Number() on an ISO string is NaN, which previously collapsed durations to ~row index.
+  let firstTimestampMs: number | null = null;
+
   const streams: TelemetryPoint[] = rows
     .filter((r) => r.length >= header.length)
-    .map((r, i) => ({
-      time: timeIdx !== -1 ? Number(r[timeIdx]) || i : i,
-      heart_rate: hrIdx !== -1 ? Number(r[hrIdx]) || undefined : undefined,
-      distance: distIdx !== -1 ? Number(r[distIdx]) || undefined : undefined,
-      altitude: altIdx !== -1 ? Number(r[altIdx]) || undefined : undefined,
-      cadence: cadIdx !== -1 ? Number(r[cadIdx]) || undefined : undefined,
-      speed: speedIdx !== -1 ? Number(r[speedIdx]) || undefined : undefined,
-    }));
+    .map((r, i) => {
+      let time = i;
+      if (timeIdx !== -1) {
+        const raw = (r[timeIdx] || "").trim();
+        const numeric = Number(raw);
+        if (raw !== "" && !isNaN(numeric)) {
+          time = numeric;
+        } else {
+          const parsedMs = Date.parse(raw);
+          if (!isNaN(parsedMs)) {
+            if (firstTimestampMs === null) firstTimestampMs = parsedMs;
+            time = (parsedMs - firstTimestampMs) / 1000;
+          }
+        }
+      }
+      return {
+        time,
+        heart_rate: hrIdx !== -1 ? Number(r[hrIdx]) || undefined : undefined,
+        distance: distIdx !== -1 ? Number(r[distIdx]) || undefined : undefined,
+        altitude: altIdx !== -1 ? Number(r[altIdx]) || undefined : undefined,
+        cadence: cadIdx !== -1 ? Number(r[cadIdx]) || undefined : undefined,
+        speed: speedIdx !== -1 ? Number(r[speedIdx]) || undefined : undefined,
+      };
+    });
 
   const lastDistance = [...streams].reverse().find((s) => typeof s.distance === "number")?.distance || 0;
   const duration_seconds = streams.length > 0 ? streams[streams.length - 1].time : 0;
 
   return {
     sport: "running",
-    date: new Date().toISOString().split("T")[0],
+    date: firstTimestampMs !== null ? new Date(firstTimestampMs).toISOString().split("T")[0] : new Date().toISOString().split("T")[0],
     duration_seconds,
     distance_km: lastDistance / 1000,
     streams,
