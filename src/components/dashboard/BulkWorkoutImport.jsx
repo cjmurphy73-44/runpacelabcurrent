@@ -10,10 +10,20 @@ import { parseFitSummary } from "@/lib/fitSummaryParser";
 import { parseCSV } from "@/lib/telemetryParser";
 
 const CHUNK_SIZE = 100;
+const VALID_SPORTS = ["running", "cycling", "swimming", "strength", "triathlon", "other"];
 
 function isSupportedFile(name) {
   const lower = name.toLowerCase();
   return lower.endsWith(".fit") || lower.endsWith(".csv");
+}
+
+// Guards against sending malformed rows that the backend would reject with a 400 —
+// every summary must have a real ISO date, a positive duration, and a recognized sport.
+function summaryValidationError(summary) {
+  if (!summary.date || isNaN(Date.parse(summary.date))) return "Missing or invalid date";
+  if (!summary.duration_seconds || summary.duration_seconds <= 0) return "Duration must be greater than 0";
+  if (!summary.sport || !VALID_SPORTS.includes(summary.sport)) return "Invalid or unrecognized sport";
+  return null;
 }
 
 export default function BulkWorkoutImport({ athleteId, onUploaded }) {
@@ -83,9 +93,18 @@ export default function BulkWorkoutImport({ athleteId, onUploaded }) {
       }
     }
 
+    // Sanitize: drop any summary missing a valid date/duration/sport so the batch payload
+    // sent to the backend never contains a row that would trigger a 400 Bad Request.
+    const validSummaries = [];
+    for (const summary of summaries) {
+      const error = summaryValidationError(summary);
+      if (error) parseErrors.push({ file_name: summary.file_name, error });
+      else validSummaries.push(summary);
+    }
+
     if (parseErrors.length > 0) setFailedFiles(parseErrors);
 
-    if (summaries.length === 0) {
+    if (validSummaries.length === 0) {
       setStatus({ type: "error", message: "No files could be compiled into workout summaries." });
       setUploading(false);
       setProgress(null);
@@ -96,10 +115,10 @@ export default function BulkWorkoutImport({ athleteId, onUploaded }) {
     try {
       let createdCount = 0;
       const serverErrors = [];
-      const totalBatches = Math.ceil(summaries.length / CHUNK_SIZE);
+      const totalBatches = Math.ceil(validSummaries.length / CHUNK_SIZE);
       for (let b = 0; b < totalBatches; b++) {
         setProgress({ phase: "sending", current: b + 1, total: totalBatches });
-        const chunk = summaries.slice(b * CHUNK_SIZE, (b + 1) * CHUNK_SIZE);
+        const chunk = validSummaries.slice(b * CHUNK_SIZE, (b + 1) * CHUNK_SIZE);
         const res = await base44.functions.invoke("bulkIngestWorkouts", { athlete_id: athleteId, summaries: chunk });
         const data = res.data;
         if (data.success) {
@@ -114,7 +133,7 @@ export default function BulkWorkoutImport({ athleteId, onUploaded }) {
       const failCount = parseErrors.length + serverErrors.length;
       setStatus({
         type: failCount > 0 ? "warning" : "success",
-        message: `Imported ${createdCount} workout(s) from ${summaries.length} compiled file(s).${failCount ? ` ${failCount} file(s) failed.` : ""}`,
+        message: `Imported ${createdCount} workout(s) from ${validSummaries.length} compiled file(s).${failCount ? ` ${failCount} file(s) failed.` : ""}`,
       });
       setFileList([]);
       onUploaded();

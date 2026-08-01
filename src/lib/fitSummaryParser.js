@@ -40,8 +40,15 @@ function baseTypeSize(baseType) {
   return 1;
 }
 
-// Decodes only the FIT "session" message (global mesg num 18), which holds
-// per-activity summary fields: start time, total distance/time, avg/max HR, sport.
+function average(values) {
+  const valid = values.filter((v) => typeof v === "number" && !isNaN(v) && v > 0);
+  if (valid.length === 0) return null;
+  return Math.round(valid.reduce((a, b) => a + b, 0) / valid.length);
+}
+
+// Decodes the FIT "session" message (global mesg num 18) when present. Some files (notably
+// certain third-party exports) omit it entirely — in that case we fall back to aggregating
+// "lap" (19) or "record" (20) messages, which are captured during the same single pass.
 export function parseFitSummary(arrayBuffer) {
   const bytes = new Uint8Array(arrayBuffer);
   const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
@@ -49,6 +56,8 @@ export function parseFitSummary(arrayBuffer) {
   let offset = headerSize;
   const localDefs = {};
   let session = null;
+  const laps = [];
+  const records = [];
 
   while (offset < bytes.byteLength - 2) {
     const recordHeader = view.getUint8(offset);
@@ -98,16 +107,65 @@ export function parseFitSummary(arrayBuffer) {
           if (f.fieldNum === 5 && value !== 0xff) rec.sport = value;
           if (f.fieldNum === 6 && value !== 0xff) rec.sub_sport = value;
         }
+        if (def.globalMesgNum === 19 && value !== null) {
+          if (f.fieldNum === 253 && value !== 0xffffffff) rec.timestamp = value;
+          if (f.fieldNum === 7 && value !== 0xffffffff) rec.total_elapsed_time = value / 1000;
+          if (f.fieldNum === 9 && value !== 0xffffffff) rec.total_distance_meters = value / 100;
+          if (f.fieldNum === 16 && value !== 0xff) rec.avg_heart_rate = value;
+          if (f.fieldNum === 17 && value !== 0xff) rec.max_heart_rate = value;
+          if (f.fieldNum === 6 && value !== 0xff) rec.sub_sport = value;
+        }
+        if (def.globalMesgNum === 20 && value !== null) {
+          if (f.fieldNum === 253 && value !== 0xffffffff) rec.timestamp = value;
+          if (f.fieldNum === 3 && value !== 0xff) rec.heart_rate = value;
+          if (f.fieldNum === 5 && value !== 0xffffffff) rec.distance = value / 100;
+        }
         offset += f.size;
       }
       if (def.globalMesgNum === 18 && Object.keys(rec).length > 0) {
         session = { ...(session || {}), ...rec };
       }
+      if (def.globalMesgNum === 19 && rec.timestamp !== undefined) {
+        laps.push(rec);
+      }
+      if (def.globalMesgNum === 20 && rec.timestamp !== undefined) {
+        records.push(rec);
+      }
+    }
+  }
+
+  // Fallback: no session message, so derive the same summary fields from laps or records.
+  if (!session || !session.timestamp) {
+    if (laps.length > 0) {
+      const timestamps = laps.map((l) => l.timestamp).filter((t) => typeof t === "number");
+      const earliestTimestamp = Math.min(...timestamps);
+      const summedElapsed = laps.reduce((sum, l) => sum + (l.total_elapsed_time || 0), 0);
+      const summedDistance = laps.reduce((sum, l) => sum + (l.total_distance_meters || 0), 0);
+      session = {
+        timestamp: earliestTimestamp,
+        total_elapsed_time: summedElapsed || (timestamps.length > 1 ? Math.max(...timestamps) - earliestTimestamp : 0),
+        total_distance_meters: summedDistance,
+        avg_heart_rate: average(laps.map((l) => l.avg_heart_rate)),
+        max_heart_rate: laps.some((l) => l.max_heart_rate > 0) ? Math.max(...laps.map((l) => l.max_heart_rate || 0)) : null,
+        sub_sport: laps.find((l) => l.sub_sport !== undefined)?.sub_sport,
+      };
+    } else if (records.length > 0) {
+      const timestamps = records.map((r) => r.timestamp).filter((t) => typeof t === "number");
+      const earliestTimestamp = Math.min(...timestamps);
+      const latestTimestamp = Math.max(...timestamps);
+      const distances = records.map((r) => r.distance).filter((d) => typeof d === "number");
+      session = {
+        timestamp: earliestTimestamp,
+        total_elapsed_time: latestTimestamp - earliestTimestamp,
+        total_distance_meters: distances.length > 0 ? Math.max(...distances) : 0,
+        avg_heart_rate: average(records.map((r) => r.heart_rate)),
+        max_heart_rate: records.some((r) => r.heart_rate > 0) ? Math.max(...records.map((r) => r.heart_rate || 0)) : null,
+      };
     }
   }
 
   if (!session || !session.timestamp) {
-    throw new Error("No valid session message found in FIT file");
+    throw new Error("No session, lap, or record data found in FIT file");
   }
 
   const elapsedSeconds = session.total_elapsed_time || 0;
