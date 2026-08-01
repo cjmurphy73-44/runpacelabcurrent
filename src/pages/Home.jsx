@@ -23,6 +23,7 @@ import StatusGauges from "@/components/dashboard/StatusGauges";
 import LoadStatusCards from "@/components/dashboard/LoadStatusCards";
 import PerformanceChart from "@/components/dashboard/PerformanceChart";
 import HorizonStrip from "@/components/dashboard/HorizonStrip";
+import LoadFatigueChart from "@/components/dashboard/LoadFatigueChart";
 import { FitnessProvider } from "@/context/FitnessContext";
 import { useUIPreferences } from "@/context/UIPreferencesContext";
 import DashboardRangeControls from "@/components/dashboard/DashboardRangeControls";
@@ -34,17 +35,27 @@ export default function Home() {
   const [activeTab, setActiveTab] = useState("dashboard");
   const [workouts, setWorkouts] = useState([]);
   const [messages, setMessages] = useState([]);
+  const [loadTimelineWorkouts, setLoadTimelineWorkouts] = useState([]);
+  const [plannedWorkouts, setPlannedWorkouts] = useState([]);
   const { showDeepMetrics } = useUIPreferences();
 
   const loadAthleteData = useCallback(async (athleteId) => {
-    const [freshAthlete, workoutRows, messageRows] = await Promise.all([
+    const [freshAthlete, workoutRows, messageRows, recentWorkouts, planSessions] = await Promise.all([
       base44.entities.AthleteProfile.get(athleteId),
       base44.entities.WorkoutSession.filter({ athlete_id: athleteId }, "-date", 10),
       base44.entities.CoachMessage.filter({ athlete_id: athleteId }, "-created_date", 10),
+      base44.entities.WorkoutSession.filter({ athlete_id: athleteId }, "-date", 60),
+      base44.entities.TrainingPlanSession.filter({ athlete_id: athleteId }, "-date", 60),
     ]);
     setAthlete(freshAthlete);
     setWorkouts(workoutRows);
     setMessages(messageRows);
+    setLoadTimelineWorkouts(recentWorkouts);
+    const todayKey = new Date().toISOString().split("T")[0];
+    const in7Days = new Date();
+    in7Days.setDate(in7Days.getDate() + 7);
+    const in7DaysKey = in7Days.toISOString().split("T")[0];
+    setPlannedWorkouts(planSessions.filter((p) => p.date >= todayKey && p.date <= in7DaysKey));
   }, []);
 
   useEffect(() => {
@@ -122,6 +133,7 @@ export default function Home() {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             <div className="md:col-span-2 space-y-6">
               <WeeklySummary />
+              <LoadFatigueChart completedSessions={loadTimelineWorkouts} plannedWorkouts={plannedWorkouts} />
               <RecentWorkouts workouts={workouts} athlete={athlete} />
             </div>
             <div className="space-y-6">
