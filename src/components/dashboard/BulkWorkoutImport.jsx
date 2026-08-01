@@ -22,6 +22,7 @@ export default function BulkWorkoutImport({ athleteId, onUploaded }) {
   const [status, setStatus] = useState(null);
   const [uploading, setUploading] = useState(false);
   const [progress, setProgress] = useState(null); // { phase: 'compiling'|'sending', current, total }
+  const [failedFiles, setFailedFiles] = useState([]);
   const folderInputRef = useRef(null);
 
   const addFiles = (fileArray) => setFileList(fileArray.filter((f) => isSupportedFile(f.name)));
@@ -50,7 +51,7 @@ export default function BulkWorkoutImport({ athleteId, onUploaded }) {
     return {
       file_name: file.name,
       date: parsed.date,
-      sport,
+      sport: parsed.sport || sport,
       duration_seconds: Math.round(parsed.duration_seconds),
       distance_km: Math.round((parsed.distance_km || 0) * 100) / 100,
       avg_hr: parsed.avg_hr || undefined,
@@ -64,8 +65,10 @@ export default function BulkWorkoutImport({ athleteId, onUploaded }) {
     if (fileList.length === 0) return;
     setUploading(true);
     setStatus(null);
+    setFailedFiles([]);
 
     // Phase 1: compile every file into a summary row entirely in the browser.
+    // Each file is parsed independently so one corrupt/unreadable file never aborts the rest of the batch.
     const summaries = [];
     const parseErrors = [];
     for (let i = 0; i < fileList.length; i++) {
@@ -75,9 +78,12 @@ export default function BulkWorkoutImport({ athleteId, onUploaded }) {
         if (summary) summaries.push(summary);
         else parseErrors.push({ file_name: fileList[i].name, error: "Could not extract a summary" });
       } catch (err) {
+        console.error(`Bulk import: failed to parse ${fileList[i].name}:`, err.message);
         parseErrors.push({ file_name: fileList[i].name, error: err.message });
       }
     }
+
+    if (parseErrors.length > 0) setFailedFiles(parseErrors);
 
     if (summaries.length === 0) {
       setStatus({ type: "error", message: "No files could be compiled into workout summaries." });
@@ -103,6 +109,7 @@ export default function BulkWorkoutImport({ athleteId, onUploaded }) {
           serverErrors.push({ file_name: "batch", error: data.error || "Batch failed" });
         }
       }
+      if (serverErrors.length > 0) setFailedFiles((prev) => [...prev, ...serverErrors]);
 
       const failCount = parseErrors.length + serverErrors.length;
       setStatus({
@@ -182,6 +189,13 @@ export default function BulkWorkoutImport({ athleteId, onUploaded }) {
             <p className={`text-sm ${status.type === "error" ? "text-destructive" : status.type === "warning" ? "text-amber-500" : "text-primary"}`}>
               {status.message}
             </p>
+          )}
+          {failedFiles.length > 0 && (
+            <ul className="text-xs text-muted-foreground space-y-0.5 max-h-28 overflow-y-auto border border-border rounded-md p-2">
+              {failedFiles.map((f, i) => (
+                <li key={i}><span className="font-medium">{f.file_name}:</span> {f.error}</li>
+              ))}
+            </ul>
           )}
         </form>
       </CardContent>

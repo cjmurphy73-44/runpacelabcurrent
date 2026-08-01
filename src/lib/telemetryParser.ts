@@ -13,7 +13,7 @@ export interface TelemetryPoint {
 }
 
 export interface ParsedTelemetry {
-  sport: string;
+  sport?: string;
   date: string; // ISO date (YYYY-MM-DD)
   duration_seconds: number;
   distance_km: number;
@@ -24,6 +24,28 @@ export interface ParsedTelemetry {
 }
 
 export type SupportedFileType = "csv" | "gpx" | "tcx" | "fit" | "unknown";
+
+const MAX_DURATION_SECONDS = 24 * 60 * 60; // reject sessions longer than 24h — sign of corrupted/misread timestamp data
+
+// Normalizes a raw activity-type string (from a CSV sport/activity_type column) to our sport enum.
+// Returns null when unrecognized so callers can fall back to a user-selected sport.
+export function normalizeSportName(raw?: string): string | null {
+  if (!raw) return null;
+  const s = String(raw).trim().toLowerCase();
+  if (!s) return null;
+  if (/run/.test(s)) return "running";
+  if (/(bike|cycl|ride|biking|mtb)/.test(s)) return "cycling";
+  if (/swim/.test(s)) return "swimming";
+  if (/tri(athlon)?/.test(s)) return "triathlon";
+  if (/(strength|gym|weight|hiit|core)/.test(s)) return "strength";
+  return null;
+}
+
+function assertSaneDuration(duration_seconds: number) {
+  if (duration_seconds > MAX_DURATION_SECONDS) {
+    throw new Error(`Duration exceeds 24 hours (${Math.round(duration_seconds / 3600)}h) — likely corrupted timestamp data`);
+  }
+}
 
 export function detectFileType(filename: string): SupportedFileType {
   const ext = filename.split(".").pop()?.toLowerCase();
@@ -66,6 +88,7 @@ export function parseCSV(text: string): ParsedTelemetry {
   const altIdx = col("altitude") !== -1 ? col("altitude") : col("elevation");
   const cadIdx = col("cadence");
   const speedIdx = col("speed");
+  const sportIdx = col("sport") !== -1 ? col("sport") : col("activity");
 
   // Supports both numeric (elapsed seconds / epoch) and ISO-8601 timestamp columns —
   // a plain Number() on an ISO string is NaN, which previously collapsed durations to ~row index.
@@ -100,9 +123,12 @@ export function parseCSV(text: string): ParsedTelemetry {
 
   const lastDistance = [...streams].reverse().find((s) => typeof s.distance === "number")?.distance || 0;
   const duration_seconds = streams.length > 0 ? streams[streams.length - 1].time : 0;
+  assertSaneDuration(duration_seconds);
+
+  const detectedSport = sportIdx !== -1 ? normalizeSportName(rows[0]?.[sportIdx]) : null;
 
   return {
-    sport: "running",
+    sport: detectedSport || undefined,
     date: firstTimestampMs !== null ? new Date(firstTimestampMs).toISOString().split("T")[0] : new Date().toISOString().split("T")[0],
     duration_seconds,
     distance_km: lastDistance / 1000,
@@ -149,6 +175,7 @@ export function parseGPX(text: string): ParsedTelemetry {
 
   const firstTimeEl = trkpts[0]?.getElementsByTagName("time")[0]?.textContent;
   const duration_seconds = streams.length > 0 ? streams[streams.length - 1].time : 0;
+  assertSaneDuration(duration_seconds);
 
   return {
     sport: "running",
@@ -191,6 +218,7 @@ export function parseTCX(text: string): ParsedTelemetry {
   const firstTimeEl = trackpoints[0]?.getElementsByTagName("Time")[0]?.textContent;
   const lastDistance = [...streams].reverse().find((s) => typeof s.distance === "number")?.distance || 0;
   const duration_seconds = streams.length > 0 ? streams[streams.length - 1].time : 0;
+  assertSaneDuration(duration_seconds);
 
   return {
     sport: "running",

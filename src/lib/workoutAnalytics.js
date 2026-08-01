@@ -55,12 +55,18 @@ export function estimateCalories(workout, athlete) {
 
 export function normalizedPacePower(workout) {
   if (workout.avg_power) return `${Math.round(workout.avg_power)} W`;
-  if (workout.distance_km && (workout.duration_minutes || workout.duration_seconds)) {
-    const durationMin = workout.duration_minutes || workout.duration_seconds / 60;
-    const paceMinPerKm = durationMin / workout.distance_km;
-    const min = Math.floor(paceMinPerKm);
-    const sec = Math.round((paceMinPerKm - min) * 60);
-    return `${min}:${sec.toString().padStart(2, "0")} /km`;
+  if (!workout.distance_km || !(workout.duration_minutes || workout.duration_seconds)) return "—";
+
+  const durationMin = workout.duration_minutes || workout.duration_seconds / 60;
+
+  // Cycling has no meaningful running "pace" — show speed (km/h) instead, never min/km.
+  if (workout.sport === "cycling") {
+    const kmh = workout.distance_km / (durationMin / 60);
+    return `${kmh.toFixed(1)} km/h`;
   }
-  return "—";
+
+  const paceMinPerKm = durationMin / workout.distance_km;
+  const min = Math.floor(paceMinPerKm);
+  const sec = Math.round((paceMinPerKm - min) * 60);
+  return `${min}:${sec.toString().padStart(2, "0")} /km`;
 }
