@@ -1,4 +1,5 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
+import fitParser from 'npm:fit-file-parser';
 
 const GARMIN_EPOCH_OFFSET_SEC = 631065600; // seconds between Unix epoch and FIT/Garmin epoch (1989-12-31)
 const VALID_SPORTS = ['running', 'cycling', 'swimming', 'strength', 'triathlon', 'other'];
@@ -303,53 +304,50 @@ function decodeFitRecords(bytes) {
   return records;
 }
 
-function parseFit(bytes) {
-  const records = decodeFitRecords(bytes);
-  if (!records || records.length === 0) return null;
+function parseFit(buffer) {
+  const parser = new fitParser({
+    force: true,
+    speedUnit: 'm/s',
+    lengthUnit: 'm',
+    temperatureUnit: 'c',
+    elapsedRecordField: true,
+    mode: 'both',
+  });
 
-  const withTimestamps = records.filter((r) => typeof r.timestamp === 'number');
-  if (withTimestamps.length === 0) return null;
-  const firstTs = Math.min(...withTimestamps.map((r) => r.timestamp));
+  let parsed = null;
+  parser.parse(buffer, (error, data) => {
+    if (error) {
+      console.error('FIT Parsing Error:', error);
+      return;
+    }
+    parsed = data;
+  });
 
-  const stream = records
-    .filter((r) => typeof r.timestamp === 'number')
-    .map((r) => ({
-      time: r.timestamp - firstTs,
-      heart_rate: typeof r.heart_rate === 'number' ? r.heart_rate : null,
-      altitude: typeof r.altitude === 'number' ? r.altitude : null,
-      distance: typeof r.distance === 'number' ? r.distance : null,
-      cadence: typeof r.cadence === 'number' ? r.cadence : null,
-      speed: typeof r.speed === 'number' ? r.speed : null,
-      power: typeof r.power === 'number' ? r.power : null,
-    }))
-    .sort((a, b) => a.time - b.time);
+  if (!parsed) return null;
 
-  let hrSum = 0, hrCount = 0, hrMax = 0;
-  let powerSum = 0, powerCount = 0;
-  let cadenceSum = 0, cadenceCount = 0;
-  let maxDistance = 0;
-  for (const p of stream) {
-    if (typeof p.heart_rate === 'number') { hrSum += p.heart_rate; hrCount++; hrMax = Math.max(hrMax, p.heart_rate); }
-    if (typeof p.power === 'number') { powerSum += p.power; powerCount++; }
-    if (typeof p.cadence === 'number') { cadenceSum += p.cadence; cadenceCount++; }
-    if (typeof p.distance === 'number') maxDistance = Math.max(maxDistance, p.distance);
-  }
-  const durationSeconds = stream.length > 1 ? stream[stream.length - 1].time - stream[0].time : 0;
+  // Prioritize session data (summary) if available
+  const session = parsed.sessions && parsed.sessions.length > 0 ? parsed.sessions[0] : null;
+  const records = parsed.records || [];
 
-  const derivedDate = new Date((firstTs + GARMIN_EPOCH_OFFSET_SEC) * 1000).toISOString().slice(0, 10);
+  const durationSeconds = session?.total_timer_time || (records.length > 0 ? records[records.length - 1].timestamp - records[0].timestamp : 0);
+  const distanceKm = (session?.total_distance || 0) / 1000;
+  
+  // Ensure valid heart rate
+  const avgHr = session?.avg_heart_rate || (records.length > 0 ? Math.round(records.filter(r => r.heart_rate).reduce((acc, r) => acc + r.heart_rate, 0) / records.filter(r => r.heart_rate).length) : null);
+  const maxHr = session?.max_heart_rate || (records.length > 0 ? Math.max(...records.map(r => r.heart_rate || 0)) : null);
+
+  const derivedDate = new Date(session?.start_time || new Date()).toISOString().slice(0, 10);
 
   const summary = {
-    avg_hr: hrCount ? Math.round(hrSum / hrCount) : null,
-    max_hr: hrMax || null,
-    avg_power: powerCount ? Math.round(powerSum / powerCount) : null,
-    avg_cadence: cadenceCount ? Math.round(cadenceSum / cadenceCount) : null,
-    distance_km: maxDistance ? Math.round((maxDistance / 1000) * 100) / 100 : null,
-    duration_minutes: durationSeconds ? Math.round((durationSeconds / 60) * 100) / 100 : null,
-    duration_seconds: durationSeconds ? Math.round(durationSeconds) : 0,
+    avg_hr: avgHr,
+    max_hr: maxHr,
+    distance_km: Math.round(distanceKm * 100) / 100,
+    duration_minutes: Math.round((durationSeconds / 60) * 100) / 100,
+    duration_seconds: Math.round(durationSeconds),
     derived_date: derivedDate,
   };
 
-  return { summary, stream };
+  return { summary, stream: records };
 }
 
 Deno.serve(async (req) => {
