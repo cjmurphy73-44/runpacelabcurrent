@@ -398,9 +398,9 @@ Deno.serve(async (req) => {
         try {
           const rowDate = row?.date;
           const sessionSport = VALID_SPORTS.includes(row?.sport) ? row.sport : 'running';
-          const durationMinutes = row?.duration_seconds ? row.duration_seconds / 60 : (row?.duration_minutes || 0);
+          const durationMinutes = Math.min(Math.max(row?.duration_seconds ? row.duration_seconds / 60 : (row?.duration_minutes || 0), 0), 1440);
           const distanceKm = row?.distance_km || 0;
-          if (!rowDate || isNaN(Date.parse(rowDate)) || !durationMinutes || durationMinutes < 1) {
+          if (!rowDate || isNaN(Date.parse(rowDate)) || durationMinutes <= 0 || durationMinutes > 1440) {
             errors.push({ file_name: row?.file_name || 'unknown', error: 'Missing date or invalid duration' });
             continue;
           }
