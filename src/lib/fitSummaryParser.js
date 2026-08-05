@@ -54,6 +54,14 @@ function fitTimestampToISOString(rawTimestamp) {
   return new Date(unixSeconds * 1000).toISOString();
 }
 
+// A RAW timestamp minus another can yield billions of seconds when the earliest record's timestamp
+// is missing/corrupt — a real workout never spans more than 24h, so treat any larger span as invalid
+// (returns 0) and let the caller fall back to a record-count-based elapsed estimate.
+function sanitizeSpan(span) {
+  if (typeof span !== "number" || !isFinite(span) || span <= 0 || span > 86400) return 0;
+  return span;
+}
+
 // Throws when a read of `size` bytes starting at `offset` would run past the buffer —
 // callers catch this to stop parsing safely and keep whatever was decoded so far.
 function assertBounds(offset, size, byteLength) {
@@ -127,6 +135,7 @@ export function parseFitSummary(arrayBuffer) {
         if (def.globalMesgNum === 18 && value !== null) {
           if (f.fieldNum === 253 && value !== 0xffffffff) rec.timestamp = value;
           if (f.fieldNum === 7 && value !== 0xffffffff) rec.total_elapsed_time = value / 1000;
+          if (f.fieldNum === 8 && value !== 0xffffffff) rec.total_timer_time = value / 1000;
           if (f.fieldNum === 9 && value !== 0xffffffff) rec.total_distance_meters = value / 100;
           if (f.fieldNum === 16 && value !== 0xff) rec.avg_heart_rate = value;
           if (f.fieldNum === 17 && value !== 0xff) rec.max_heart_rate = value;
@@ -136,6 +145,7 @@ export function parseFitSummary(arrayBuffer) {
         if (def.globalMesgNum === 19 && value !== null) {
           if (f.fieldNum === 253 && value !== 0xffffffff) rec.timestamp = value;
           if (f.fieldNum === 7 && value !== 0xffffffff) rec.total_elapsed_time = value / 1000;
+          if (f.fieldNum === 8 && value !== 0xffffffff) rec.total_timer_time = value / 1000;
           if (f.fieldNum === 9 && value !== 0xffffffff) rec.total_distance_meters = value / 100;
           if (f.fieldNum === 16 && value !== 0xff) rec.avg_heart_rate = value;
           if (f.fieldNum === 17 && value !== 0xff) rec.max_heart_rate = value;
@@ -168,11 +178,11 @@ export function parseFitSummary(arrayBuffer) {
     if (laps.length > 0) {
       const timestamps = laps.map((l) => l.timestamp).filter((t) => typeof t === "number");
       const earliestTimestamp = Math.min(...timestamps);
-      const summedElapsed = laps.reduce((sum, l) => sum + (l.total_elapsed_time || 0), 0);
+      const summedElapsed = laps.reduce((sum, l) => sum + (l.total_timer_time || l.total_elapsed_time || 0), 0);
       const summedDistance = laps.reduce((sum, l) => sum + (l.total_distance_meters || 0), 0);
       session = {
         timestamp: earliestTimestamp,
-        total_elapsed_time: summedElapsed || (timestamps.length > 1 ? Math.max(...timestamps) - earliestTimestamp : 0),
+        total_elapsed_time: summedElapsed || sanitizeSpan(timestamps.length > 1 ? Math.max(...timestamps) - earliestTimestamp : 0),
         total_distance_meters: summedDistance,
         avg_heart_rate: average(laps.map((l) => l.avg_heart_rate)),
         max_heart_rate: laps.some((l) => l.max_heart_rate > 0) ? Math.max(...laps.map((l) => l.max_heart_rate || 0)) : null,
@@ -185,7 +195,10 @@ export function parseFitSummary(arrayBuffer) {
       const distances = records.map((r) => r.distance).filter((d) => typeof d === "number");
       session = {
         timestamp: earliestTimestamp,
-        total_elapsed_time: latestTimestamp - earliestTimestamp,
+        // Records are logged ~1/sec; when the timestamp span is implausibly large (corrupt/missing
+        // earliest record), the span is pure noise (~years), so fall back to the record count as a
+        // best-effort elapsed-second estimate rather than throwing away the whole file.
+        total_elapsed_time: sanitizeSpan(latestTimestamp - earliestTimestamp) || Math.min(records.length, MAX_DURATION_SECONDS),
         total_distance_meters: distances.length > 0 ? Math.max(...distances) : 0,
         avg_heart_rate: average(records.map((r) => r.heart_rate)),
         max_heart_rate: records.some((r) => r.heart_rate > 0) ? Math.max(...records.map((r) => r.heart_rate || 0)) : null,
@@ -197,7 +210,8 @@ export function parseFitSummary(arrayBuffer) {
     throw new Error("No session, lap, or record data found in FIT file");
   }
 
-  const elapsedSeconds = session.total_elapsed_time || 0;
+  // Prefer total_timer_time (active time) over total_elapsed_time (includes pauses) when present.
+  const elapsedSeconds = session.total_timer_time || session.total_elapsed_time || 0;
   if (elapsedSeconds > MAX_DURATION_SECONDS) {
     throw new Error(`Duration exceeds 24 hours (${Math.round(elapsedSeconds / 3600)}h) — likely corrupted timestamp data`);
   }
