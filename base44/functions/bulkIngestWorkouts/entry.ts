@@ -261,11 +261,27 @@ function parseFit(buffer) {
   const session = parsed.sessions && parsed.sessions.length > 0 ? parsed.sessions[0] : null;
   const records = parsed.records || [];
 
-  // Robust parsing: use fit-file-parser, clamp duration to 24 hours (86400 seconds)
-  const durationSeconds = Math.min(
-    Math.max(session?.total_timer_time || (records.length > 0 ? records[records.length - 1].timestamp - records[0].timestamp : 0) || 0, 0),
-    86400
-  );
+  // Duration: prefer the session's total_timer_time (seconds). Fall back to the spread between the
+  // first and last record timestamps — but fit-file-parser returns record.timestamp as a Date, so the
+  // raw difference is in MILLISECONDS and must be divided by 1000 to get seconds. (Treating ms as s and
+  // then clamping the impossible result to 24h is what previously turned every fallback into a 24h run.)
+  let durationSeconds = 0;
+  if (typeof session?.total_timer_time === 'number' && session.total_timer_time > 0) {
+    durationSeconds = session.total_timer_time;
+  } else if (records.length > 1) {
+    const firstTs = records[0].timestamp;
+    const lastTs = records[records.length - 1].timestamp;
+    const firstMs = firstTs instanceof Date ? firstTs.getTime() : Number(firstTs);
+    const lastMs = lastTs instanceof Date ? lastTs.getTime() : Number(lastTs);
+    const diffMs = lastMs - firstMs;
+    if (diffMs > 0) durationSeconds = diffMs / 1000;
+  }
+
+  // No real workout exceeds 24 hours: an impossible duration means the file is corrupt or the
+  // timestamps were misread, so reject it at the source instead of clamping and recording garbage.
+  if (durationSeconds > 86400) return null;
+  if (!Number.isFinite(durationSeconds) || durationSeconds < 0) durationSeconds = 0;
+
   const distanceKm = (session?.total_distance || 0) / 1000;
   
   // Ensure valid heart rate
@@ -284,7 +300,20 @@ function parseFit(buffer) {
                        return hrSamples.length > 0 ? Math.max(...hrSamples) : null;
                     })() : null);
 
-  const derivedDate = new Date(session?.start_time || new Date()).toISOString().slice(0, 10);
+  // Derive the device's timezone offset from the first record carrying both a UTC timestamp and a
+  // local_timestamp, so the calendar date reflects the athlete's local day rather than the FIT file's
+  // raw UTC stamps (a 6am Brisbane run otherwise lands on the previous calendar day).
+  let tzOffsetMs = 0;
+  for (const r of records) {
+    if (r?.local_timestamp instanceof Date && r?.timestamp instanceof Date) {
+      tzOffsetMs = r.local_timestamp.getTime() - r.timestamp.getTime();
+      break;
+    }
+  }
+  const startInstant = session?.start_time instanceof Date ? session.start_time
+    : (records[0]?.timestamp instanceof Date ? records[0].timestamp : new Date());
+  const localStart = new Date(startInstant.getTime() + tzOffsetMs);
+  const derivedDate = localStart.toISOString().slice(0, 10);
 
   const summary = {
     avg_hr: avgHr,
@@ -344,10 +373,12 @@ Deno.serve(async (req) => {
         try {
           const rowDate = row?.date;
           const sessionSport = VALID_SPORTS.includes(row?.sport) ? row.sport : 'running';
-          const durationMinutes = Math.min(Math.max(row?.duration_seconds ? row.duration_seconds / 60 : (row?.duration_minutes || 0), 0), 1440);
+          // No clamp: a duration over 24h is impossible in reality, so treat it as a parse error and
+          // reject the row outright rather than silently capping it to a 24h workout.
+          const durationMinutes = row?.duration_seconds ? row.duration_seconds / 60 : (row?.duration_minutes || 0);
           const distanceKm = row?.distance_km || 0;
-          if (!rowDate || isNaN(Date.parse(rowDate)) || durationMinutes <= 0 || durationMinutes > 1440) {
-            errors.push({ file_name: row?.file_name || 'unknown', error: 'Missing date or invalid duration' });
+          if (!rowDate || isNaN(Date.parse(rowDate)) || durationMinutes <= 0 || durationMinutes > 1440 || !Number.isFinite(durationMinutes)) {
+            errors.push({ file_name: row?.file_name || 'unknown', error: 'Missing date or invalid duration (>24h or non-positive)' });
             continue;
           }
           if (isDuplicateSession(rowDate, sessionSport, durationMinutes, distanceKm)) {
@@ -455,7 +486,10 @@ Deno.serve(async (req) => {
           errors.push({ file_name, error: 'Could not derive a date from file content and none was provided' });
           continue;
         }
-        if (new Date(date) > new Date()) {
+        // Allow for the athlete's local day being up to ~14h ahead of UTC, so a same-day local workout
+        // is not falsely rejected as future-dated.
+        const maxAllowedDate = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+        if (date > maxAllowedDate) {
           errors.push({ file_name, error: 'date cannot be in the future' });
           continue;
         }
@@ -539,39 +573,17 @@ Deno.serve(async (req) => {
       return Response.json({ success: true, created_count: 0, errors });
     }
 
-    const affectedDates = [...new Set(createdSessions.map((s) => s.date))];
-
-    // Recompute total_trimp per affected day in-memory (single read of all sessions/metrics) to avoid
-    // one DB round-trip per date, which rate-limits/times out on large multi-file/multi-row imports.
-    const allSessions = await base44.entities.WorkoutSession.filter({ athlete_id });
-    const trimpByDate = {};
-    for (const s of allSessions) {
-      if (!affectedDates.includes(s.date)) continue;
-      trimpByDate[s.date] = (trimpByDate[s.date] || 0) + (s.session_trimp || s.session_tss || 0);
-    }
-    const allMetrics = await base44.entities.DailyMetrics.filter({ athlete_id });
-    const metricsByDate = {};
-    for (const m of allMetrics) metricsByDate[m.date] = m;
-
-    const metricsToUpdate = [];
-    const metricsToCreate = [];
-    for (const date of affectedDates) {
-      const totalTrimp = Math.round((trimpByDate[date] || 0) * 100) / 100;
-      if (metricsByDate[date]) {
-        metricsToUpdate.push({ id: metricsByDate[date].id, total_trimp: totalTrimp });
-      } else {
-        metricsToCreate.push({ athlete_id, date, total_trimp: totalTrimp, calculated_ctl: 0, calculated_atl: 0, calculated_tsb: 0 });
-      }
-    }
-    if (metricsToUpdate.length > 0) await base44.entities.DailyMetrics.bulkUpdate(metricsToUpdate);
-    if (metricsToCreate.length > 0) await base44.entities.DailyMetrics.bulkCreate(metricsToCreate);
-
-    await base44.functions.invoke('recalculateCTLATLTSB', { athlete_id });
-
+    // New ingestion model: raw files are simply appended to the master WorkoutSession log.
+    // Downstream analysis — EarlyversionAIcoach evaluation and the CTL/ATL/TSB + daily-TRIMP
+    // calculations — is run separately/on-demand against this log, not inline during the bulk
+    // import. This keeps the batch resilient and free of the timeout/sequencing complications
+    // that arose when coupling ingest to the recompute pipeline.
     return Response.json({
       success: true,
+      successCount: createdSessions.length,
+      errorCount: errors.length,
       created_count: createdSessions.length,
-      affected_dates: affectedDates,
+      affected_dates: [...new Set(createdSessions.map((s) => s.date))],
       errors,
     });
   } catch (error) {
