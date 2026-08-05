@@ -46,11 +46,11 @@ function average(values) {
   return Math.round(valid.reduce((a, b) => a + b, 0) / valid.length);
 }
 
-// A FIT timestamp encoded as a Unix epoch (rather than the Garmin/FIT epoch, 1989-12-31) shows up
-// occasionally from third-party exporters. Any raw value already past ~2001 (1e9) is unambiguously
-// Unix-epoch seconds and must NOT get the Garmin offset added on top, or the date lands decades in the future.
+// FIT timestamps are seconds since the FIT/Garmin epoch (1989-12-31) per the spec. Modern
+// workouts have raw values well past 1e9, so the previous `< 1e9` heuristic skipped the offset for
+// current files and decoded 2025/2026 workouts as 2005/2006 — always add the epoch offset.
 function fitTimestampToISOString(rawTimestamp) {
-  const unixSeconds = rawTimestamp < 1000000000 ? rawTimestamp + GARMIN_EPOCH_OFFSET_SEC : rawTimestamp;
+  const unixSeconds = rawTimestamp + GARMIN_EPOCH_OFFSET_SEC;
   return new Date(unixSeconds * 1000).toISOString();
 }
 
