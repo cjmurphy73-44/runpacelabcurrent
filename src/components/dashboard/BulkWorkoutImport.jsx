@@ -73,6 +73,12 @@ export default function BulkWorkoutImport({ athleteId, onUploaded }) {
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (fileList.length === 0) return;
+    // Payload guardrail: block submit early when there is no athlete profile to attach the
+    // workouts to — sending without athlete_id only round-trips to a 400 from the backend.
+    if (!athleteId) {
+      setStatus({ type: "error", message: "No athlete profile found. Create your athlete profile before importing workouts." });
+      return;
+    }
     setUploading(true);
     setStatus(null);
     setFailedFiles([]);

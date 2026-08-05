@@ -333,10 +333,32 @@ Deno.serve(async (req) => {
     const user = await base44.auth.me();
     if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
 
-    const { athlete_id, files, summaries, default_date } = await req.json();
-    if (!athlete_id) {
-      return Response.json({ error: 'athlete_id is required' }, { status: 400 });
+    const body = await req.json().catch(() => ({}));
+    const { athlete_id, files, summaries, default_date } = body;
+
+    // Explicit parameter validation — return a structured 400 naming the exact missing/malformed
+    // field instead of a generic rejection, and log it server-side so the failure is traceable.
+    if (!athlete_id || typeof athlete_id !== 'string') {
+      const details = { athlete_id: athlete_id == null ? 'missing' : `expected string, got ${typeof athlete_id}` };
+      console.warn('bulkIngestWorkouts: invalid parameters', details);
+      return Response.json({ error: 'Invalid parameters', details }, { status: 400 });
     }
+    if (!Array.isArray(files) && !Array.isArray(summaries)) {
+      const details = { payload: 'either `files` (array of { file_url, file_name, sport? }) or `summaries` (array of { date, sport, duration_seconds, distance_km?, avg_hr?, max_hr? }) is required' };
+      console.warn('bulkIngestWorkouts: invalid parameters', details);
+      return Response.json({ error: 'Invalid parameters', details }, { status: 400 });
+    }
+    // Validate every raw-file entry's shape up front (the summaries path is validated per-row below).
+    if (Array.isArray(files)) {
+      for (const f of files) {
+        if (!f || typeof f.file_url !== 'string' || typeof f.file_name !== 'string') {
+          const details = { files: 'each file requires string `file_url` and string `file_name` (optional `sport`)', received: f ?? null };
+          console.warn('bulkIngestWorkouts: invalid file entry', details);
+          return Response.json({ error: 'Invalid parameters', details }, { status: 400 });
+        }
+      }
+    }
+
     const hasFiles = Array.isArray(files) && files.length > 0;
     const hasSummaries = Array.isArray(summaries) && summaries.length > 0;
     // An empty (or omitted) batch is a valid no-op, not a client error — avoids a spurious 400
