@@ -233,76 +233,8 @@ function parseCsv(text) {
   return { summary, stream };
 }
 
-function baseTypeSize(baseType) {
-  const t = baseType & 0x1F;
-  if (t === 3 || t === 4 || t === 11) return 2;
-  if (t === 5 || t === 6 || t === 8 || t === 12) return 4;
-  if (t === 9 || t === 14 || t === 15 || t === 16) return 8;
-  return 1;
-}
-
-function decodeFitRecords(bytes) {
-  const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
-  const headerSize = view.getUint8(0);
-  let offset = headerSize;
-  const localDefs = {};
-  const records = [];
-
-  while (offset < bytes.byteLength - 2) {
-    const recordHeader = view.getUint8(offset);
-    offset += 1;
-    const isDefinition = (recordHeader & 0x40) !== 0;
-    const localMesgType = (recordHeader & 0x80) !== 0 ? (recordHeader >> 5) & 0x3 : recordHeader & 0xF;
-
-    if (isDefinition) {
-      offset += 1;
-      const arch = view.getUint8(offset); offset += 1;
-      const littleEndian = arch === 0;
-      const globalMesgNum = view.getUint16(offset, littleEndian); offset += 2;
-      const numFields = view.getUint8(offset); offset += 1;
-      const fields = [];
-      for (let i = 0; i < numFields; i++) {
-        fields.push({ fieldNum: view.getUint8(offset), size: view.getUint8(offset + 1), baseType: view.getUint8(offset + 2) });
-        offset += 3;
-      }
-      if (recordHeader & 0x20) {
-        const numDevFields = view.getUint8(offset); offset += 1;
-        offset += numDevFields * 3;
-      }
-      localDefs[localMesgType] = { globalMesgNum, fields, littleEndian };
-    } else {
-      const def = localDefs[localMesgType];
-      if (!def) break;
-      const rec = {};
-      for (const f of def.fields) {
-        const t = f.baseType & 0x1F;
-        let value = null;
-        if (t !== 7 && f.size === baseTypeSize(f.baseType)) {
-          if (t === 2 || t === 10) value = view.getUint8(offset);
-          else if (t === 1) value = view.getInt8(offset);
-          else if (t === 4 || t === 11) value = view.getUint16(offset, def.littleEndian);
-          else if (t === 3) value = view.getInt16(offset, def.littleEndian);
-          else if (t === 6 || t === 12) value = view.getUint32(offset, def.littleEndian);
-          else if (t === 5) value = view.getInt32(offset, def.littleEndian);
-          else if (t === 8) value = view.getFloat32(offset, def.littleEndian);
-          else if (t === 9) value = view.getFloat64(offset, def.littleEndian);
-        }
-        if (def.globalMesgNum === 20 && value !== null) {
-          if (f.fieldNum === 253) rec.timestamp = value;
-          if (f.fieldNum === 3 && value !== 0xFF) rec.heart_rate = value;
-          if (f.fieldNum === 4 && value !== 0xFF) rec.cadence = value;
-          if (f.fieldNum === 5 && value !== 0xFFFFFFFF) rec.distance = value / 100;
-          if (f.fieldNum === 7 && value !== 0xFFFF) rec.power = value;
-          if (f.fieldNum === 2 && value !== 0xFFFF) rec.altitude = value / 5 - 500;
-          if (f.fieldNum === 6 && value !== 0xFFFF) rec.speed = value / 1000;
-        }
-        offset += f.size;
-      }
-      if (def.globalMesgNum === 20 && Object.keys(rec).length > 0) records.push(rec);
-    }
-  }
-  return records;
-}
+// Helper to parse FIT file via fit-file-parser (already initialized)
+// Hand-rolled decoder decodeFitRecords is deprecated and not called.
 
 function parseFit(buffer) {
   const parser = new fitParser({
@@ -329,12 +261,28 @@ function parseFit(buffer) {
   const session = parsed.sessions && parsed.sessions.length > 0 ? parsed.sessions[0] : null;
   const records = parsed.records || [];
 
-  const durationSeconds = session?.total_timer_time || (records.length > 0 ? records[records.length - 1].timestamp - records[0].timestamp : 0);
+  // Robust parsing: use fit-file-parser, clamp duration to 24 hours (86400 seconds)
+  const durationSeconds = Math.min(
+    Math.max(session?.total_timer_time || (records.length > 0 ? records[records.length - 1].timestamp - records[0].timestamp : 0) || 0, 0),
+    86400
+  );
   const distanceKm = (session?.total_distance || 0) / 1000;
   
   // Ensure valid heart rate
-  const avgHr = session?.avg_heart_rate || (records.length > 0 ? Math.round(records.filter(r => r.heart_rate).reduce((acc, r) => acc + r.heart_rate, 0) / records.filter(r => r.heart_rate).length) : null);
-  const maxHr = session?.max_heart_rate || (records.length > 0 ? Math.max(...records.map(r => r.heart_rate || 0)) : null);
+  // GUARDRAIL: Only use heart rate > 0
+  const avgHr = (session?.avg_heart_rate && session.avg_heart_rate > 0) ? session.avg_heart_rate : 
+                 (records.length > 0 ? 
+                    (() => {
+                       const hrSamples = records.map(r => r.heart_rate).filter(hr => hr && hr > 0);
+                       return hrSamples.length > 0 ? Math.round(hrSamples.reduce((acc, hr) => acc + hr, 0) / hrSamples.length) : null;
+                    })() : null);
+  
+  const maxHr = (session?.max_heart_rate && session.max_heart_rate > 0) ? session.max_heart_rate : 
+                 (records.length > 0 ? 
+                    (() => {
+                       const hrSamples = records.map(r => r.heart_rate).filter(hr => hr && hr > 0);
+                       return hrSamples.length > 0 ? Math.max(...hrSamples) : null;
+                    })() : null);
 
   const derivedDate = new Date(session?.start_time || new Date()).toISOString().slice(0, 10);
 
