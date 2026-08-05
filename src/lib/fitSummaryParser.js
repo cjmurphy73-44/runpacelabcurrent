@@ -215,6 +215,12 @@ export function parseFitSummary(arrayBuffer) {
   if (elapsedSeconds > MAX_DURATION_SECONDS) {
     throw new Error(`Duration exceeds 24 hours (${Math.round(elapsedSeconds / 3600)}h) — likely corrupted timestamp data`);
   }
+  // A real workout is never under ~1 minute; durations of a few seconds mean the session frame had
+  // no elapsed/timer field and the parser fell back to a tiny record count — drop these as unusable
+  // so they don't pollute the log as 0.05-min "workouts".
+  if (elapsedSeconds < 60) {
+    throw new Error(`Duration ${Math.round(elapsedSeconds)}s is below the 60s minimum — not a usable workout`);
+  }
 
   return {
     timestamp: fitTimestampToISOString(session.timestamp),

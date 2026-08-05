@@ -399,8 +399,10 @@ Deno.serve(async (req) => {
           // reject the row outright rather than silently capping it to a 24h workout.
           const durationMinutes = row?.duration_seconds ? row.duration_seconds / 60 : (row?.duration_minutes || 0);
           const distanceKm = row?.distance_km || 0;
-          if (!rowDate || isNaN(Date.parse(rowDate)) || durationMinutes <= 0 || durationMinutes > 1440 || !Number.isFinite(durationMinutes)) {
-            errors.push({ file_name: row?.file_name || 'unknown', error: 'Missing date or invalid duration (>24h or non-positive)' });
+          // Reject anything under 1 minute as a bogus/empty session (matches the client parser's
+          // 60s floor) — a real workout never this short, and these were polluting the log.
+          if (!rowDate || isNaN(Date.parse(rowDate)) || durationMinutes < 1 || durationMinutes > 1440 || !Number.isFinite(durationMinutes)) {
+            errors.push({ file_name: row?.file_name || 'unknown', error: 'Missing date or invalid duration (under 1 min or over 24h)' });
             continue;
           }
           if (isDuplicateSession(rowDate, sessionSport, durationMinutes, distanceKm)) {
