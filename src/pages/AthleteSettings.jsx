@@ -279,6 +279,41 @@ export default function AthleteSettings() {
         </CardContent>
       </Card>
 
+      <Card>
+        <CardHeader>
+          <CardTitle className="font-heading flex items-center gap-2">
+            <Zap className="w-4 h-4 text-primary" /> Connected Apps
+          </CardTitle>
+          <CardDescription>Link wearables to automate workout syncing and health data.</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="flex items-center justify-between p-3 border border-border rounded-md">
+            <div className="flex items-center gap-3">
+              <div className="bg-muted p-2 rounded text-muted-foreground">
+                <Link2 className="w-5 h-5" />
+              </div>
+              <div>
+                <p className="text-sm font-medium">Garmin Connect</p>
+                <p className="text-xs text-muted-foreground">Not connected</p>
+              </div>
+            </div>
+            <Button variant="outline" size="sm">Connect</Button>
+          </div>
+          <div className="flex items-center justify-between p-3 border border-border rounded-md">
+            <div className="flex items-center gap-3">
+              <div className="bg-muted p-2 rounded text-muted-foreground">
+                <Link2 className="w-5 h-5" />
+              </div>
+              <div>
+                <p className="text-sm font-medium">Coros</p>
+                <p className="text-xs text-muted-foreground">Not connected</p>
+              </div>
+            </div>
+            <Button variant="outline" size="sm">Connect</Button>
+          </div>
+        </CardContent>
+      </Card>
+
       <Card className="border-destructive/30">
         <CardHeader>
           <CardTitle className="font-heading text-destructive flex items-center gap-2">
