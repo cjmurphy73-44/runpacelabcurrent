@@ -20,15 +20,16 @@ export default function LifestyleFactorForm({ athleteId }) {
 
   useEffect(() => {
     (async () => {
-      const rows = await base44.entities.LifestyleFactor.filter({ athlete_id: athleteId, date: today });
+      const rows = await base44.entities.DailyMetrics.filter({ athlete_id: athleteId, date: today });
       const row = rows[0] || null;
       setExisting(row);
+      const hf = row?.holistic_factors || {};
       if (row) {
         setForm({
-          high_work_stress: !!row.high_work_stress,
-          travel_jet_lag: !!row.travel_jet_lag,
-          muscle_soreness: !!row.muscle_soreness,
-          nutrition_quality: row.nutrition_quality || "",
+          high_work_stress: /high work stress/i.test(row.notes || ""),
+          travel_jet_lag: !!hf.travel_jet_lag,
+          muscle_soreness: hf.muscle_soreness === "high",
+          nutrition_quality: hf.nutrition_status === "fueled" ? "good" : (hf.nutrition_status === "under_fueled" ? "poor" : ""),
         });
       }
     })();
@@ -36,11 +37,25 @@ export default function LifestyleFactorForm({ athleteId }) {
 
   const handleSave = async () => {
     setSaving(true);
-    const payload = { athlete_id: athleteId, date: today, ...form };
+    const nutritionStatus = form.nutrition_quality === "good" || form.nutrition_quality === "excellent"
+      ? "fueled"
+      : form.nutrition_quality
+        ? "under_fueled"
+        : undefined;
+    const payload = {
+      athlete_id: athleteId,
+      date: today,
+      holistic_factors: {
+        travel_jet_lag: form.travel_jet_lag,
+        muscle_soreness: form.muscle_soreness ? "high" : "low",
+        ...(nutritionStatus ? { nutrition_status: nutritionStatus } : {}),
+      },
+      notes: form.high_work_stress ? "High work stress" : "",
+    };
     if (existing) {
-      await base44.entities.LifestyleFactor.update(existing.id, payload);
+      await base44.entities.DailyMetrics.update(existing.id, payload);
     } else {
-      const created = await base44.entities.LifestyleFactor.create(payload);
+      const created = await base44.entities.DailyMetrics.create(payload);
       setExisting(created);
     }
     setSaving(false);
