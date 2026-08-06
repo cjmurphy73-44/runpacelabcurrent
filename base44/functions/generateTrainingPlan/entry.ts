@@ -12,11 +12,16 @@ Deno.serve(async (req) => {
     const athlete = await base44.entities.AthleteProfile.get(athlete_id);
     if (!athlete) return Response.json({ error: 'Athlete profile not found' }, { status: 404 });
 
-    const [baselines, recentSessions] = await Promise.all([
-      base44.entities.PhysiologicalBaselines.filter({ athlete_id }, '-recorded_date', 1),
-      base44.entities.WorkoutSession.filter({ athlete_id }, '-date', 500),
-    ]);
-    const latestBaseline = baselines[0] || null;
+    const recentSessions = await base44.entities.WorkoutSession.filter({ athlete_id }, '-date', 500);
+    // Baseline-test enrichment is optional — the PhysiologicalBaselines entity may not be configured
+    // for this app, so a missing schema shouldn't fail the whole plan generation.
+    let latestBaseline = null;
+    try {
+      const baselines = await base44.entities.PhysiologicalBaselines.filter({ athlete_id }, '-recorded_date', 1);
+      latestBaseline = baselines[0] || null;
+    } catch (_e) {
+      latestBaseline = null;
+    }
 
     const totalSessions = recentSessions.length;
     const totalKm = recentSessions.reduce((sum, s) => sum + (s.distance_km || 0), 0);
