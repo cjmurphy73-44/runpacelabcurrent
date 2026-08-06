@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Loader2, Save, Trash2, ShieldAlert } from "lucide-react";
+import { Loader2, Save, Trash2, ShieldAlert, Zap, Link2 } from "lucide-react";
 
 // TIER_CONSTANTS mirrors ProfileSetupForm + updateAthleteProfile so editing the tier in Settings
 // keeps the CTL/ATL time constants consistent with the chosen philosophy.
