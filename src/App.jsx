@@ -18,6 +18,7 @@ import CoachChat from '@/pages/CoachChat';
 import TrainingPlan from '@/pages/TrainingPlan';
 import DevTracker from '@/pages/DevTracker';
 import DeveloperGuard from '@/components/auth/DeveloperGuard';
+import AthleteSettings from '@/pages/AthleteSettings';
 // Add page imports here
 
 const AuthenticatedApp = () => {
@@ -57,6 +58,7 @@ const AuthenticatedApp = () => {
           <Route path="/coach" element={<CoachChat />} />
           <Route path="/plan" element={<TrainingPlan />} />
           <Route path="/dev-tracker" element={<DeveloperGuard><DevTracker /></DeveloperGuard>} />
+          <Route path="/settings" element={<AthleteSettings />} />
         </Route>
       </Route>
       <Route path="*" element={<PageNotFound />} />
