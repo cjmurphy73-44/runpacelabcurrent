@@ -6,154 +6,79 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { History, FolderOpen } from "lucide-react";
-import { parseFitSummary } from "@/lib/fitSummaryParser";
-import { parseCSV } from "@/lib/telemetryParser";
 
-const CHUNK_SIZE = 100;
-const VALID_SPORTS = ["running", "cycling", "swimming", "strength", "triathlon", "other"];
+// Files are parsed on the backend by the fit-file-parser library (not hand-rolled in the browser),
+// which reliably extracts session-level summaries. Backend rejects any session under 60s or over
+// 24h and dedups against the existing master log (WorkoutSession), so every accepted row is real.
+const BATCH_SIZE = 5;
 
 function isSupportedFile(name) {
   const lower = name.toLowerCase();
   return lower.endsWith(".fit") || lower.endsWith(".csv");
 }
 
-// Guards against sending malformed rows that the backend would reject with a 400 —
-// every summary must have a real ISO date, a positive duration, and a recognized sport.
-function summaryValidationError(summary) {
-  if (!summary.date || isNaN(Date.parse(summary.date))) return "Missing or invalid date";
-  if (!summary.duration_seconds || summary.duration_seconds <= 0) return "Duration must be greater than 0";
-  if (!summary.sport || !VALID_SPORTS.includes(summary.sport)) return "Invalid or unrecognized sport";
-  return null;
-}
-
 export default function BulkWorkoutImport({ athleteId, onUploaded }) {
   const [fileList, setFileList] = useState([]);
   const [sport, setSport] = useState("running");
   const [status, setStatus] = useState(null);
-  const [uploading, setUploading] = useState(false);
-  const [progress, setProgress] = useState(null); // { phase: 'compiling'|'sending', current, total }
+  const [busy, setBusy] = useState(false);
+  const [progress, setProgress] = useState(null); // { phase, current, total }
   const [failedFiles, setFailedFiles] = useState([]);
   const folderInputRef = useRef(null);
 
   const addFiles = (fileArray) => setFileList(fileArray.filter((f) => isSupportedFile(f.name)));
 
-  // Parses a single file locally in the browser into a compact session-summary row.
-  const parseFileToSummary = async (file) => {
-    const lower = file.name.toLowerCase();
-    if (lower.endsWith(".fit")) {
-      const buffer = await file.arrayBuffer();
-      const parsed = parseFitSummary(buffer);
-      if (!parsed) return null;
-      return {
-        file_name: file.name,
-        date: parsed.timestamp.split("T")[0],
-        sport: parsed.sport && parsed.sport !== "other" ? parsed.sport : sport,
-        duration_seconds: Math.round(parsed.total_elapsed_time),
-        distance_km: Math.round((parsed.total_distance_meters / 1000) * 100) / 100,
-        avg_hr: parsed.avg_heart_rate || undefined,
-        max_hr: parsed.max_heart_rate || undefined,
-        source_format: "fit",
-      };
-    }
-    const text = await file.text();
-    const parsed = parseCSV(text);
-    if (!parsed || !parsed.duration_seconds) return null;
-    return {
-      file_name: file.name,
-      date: parsed.date,
-      sport: parsed.sport || sport,
-      duration_seconds: Math.round(parsed.duration_seconds),
-      distance_km: Math.round((parsed.distance_km || 0) * 100) / 100,
-      avg_hr: parsed.avg_hr || undefined,
-      max_hr: parsed.max_hr || undefined,
-      source_format: "csv",
-    };
-  };
-
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (fileList.length === 0) return;
-    // Payload guardrail: block submit early when there is no athlete profile to attach the
-    // workouts to — sending without athlete_id only round-trips to a 400 from the backend.
     if (!athleteId) {
       setStatus({ type: "error", message: "No athlete profile found. Create your athlete profile before importing workouts." });
       return;
     }
-    setUploading(true);
+    setBusy(true);
     setStatus(null);
     setFailedFiles([]);
 
-    // Phase 1: compile every file into a summary row entirely in the browser.
-    // Each file is parsed independently so one corrupt/unreadable file never aborts the rest of the batch.
-    const summaries = [];
-    const parseErrors = [];
-    for (let i = 0; i < fileList.length; i++) {
-      setProgress({ phase: "compiling", current: i + 1, total: fileList.length });
+    let createdCount = 0;
+    const allErrors = [];
+    const totalBatches = Math.ceil(fileList.length / BATCH_SIZE);
+
+    for (let b = 0; b < totalBatches; b++) {
+      setProgress({ phase: "importing", current: b + 1, total: totalBatches });
+      const batch = fileList.slice(b * BATCH_SIZE, (b + 1) * BATCH_SIZE);
       try {
-        const summary = await parseFileToSummary(fileList[i]);
-        if (summary) summaries.push(summary);
-        else parseErrors.push({ file_name: fileList[i].name, error: "Could not extract a summary" });
-      } catch (err) {
-        console.error(`Bulk import: failed to parse ${fileList[i].name}:`, err.message);
-        parseErrors.push({ file_name: fileList[i].name, error: err.message });
-      }
-    }
-
-    // Sanitize: drop any summary missing a valid date/duration/sport so the batch payload
-    // sent to the backend never contains a row that would trigger a 400 Bad Request.
-    const validSummaries = [];
-    for (const summary of summaries) {
-      const error = summaryValidationError(summary);
-      if (error) parseErrors.push({ file_name: summary.file_name, error });
-      else validSummaries.push(summary);
-    }
-
-    if (parseErrors.length > 0) setFailedFiles(parseErrors);
-
-    if (validSummaries.length === 0) {
-      setStatus({ type: "error", message: "No files could be compiled into workout summaries." });
-      setUploading(false);
-      setProgress(null);
-      return;
-    }
-
-    // Phase 2: send the compiled master log to the backend in chunks.
-    try {
-      let createdCount = 0;
-      const serverErrors = [];
-      const totalBatches = Math.ceil(validSummaries.length / CHUNK_SIZE);
-      for (let b = 0; b < totalBatches; b++) {
-        setProgress({ phase: "sending", current: b + 1, total: totalBatches });
-        const chunk = validSummaries.slice(b * CHUNK_SIZE, (b + 1) * CHUNK_SIZE);
-        const res = await base44.functions.invoke("bulkIngestWorkouts", { athlete_id: athleteId, summaries: chunk });
-        const data = res.data;
-        if (data.success) {
-          createdCount += data.created_count || 0;
-          serverErrors.push(...(data.errors || []));
-        } else {
-          serverErrors.push({ file_name: "batch", error: data.error || "Batch failed" });
+        // Upload each file, then let the backend parse it with fit-file-parser.
+        const fileEntries = [];
+        for (const f of batch) {
+          const { file_url } = await base44.integrations.Core.UploadFile({ file: f });
+          fileEntries.push({ file_url, file_name: f.name, sport });
         }
+        const res = await base44.functions.invoke("bulkIngestWorkouts", { athlete_id: athleteId, files: fileEntries });
+        const data = res.data;
+        if (data?.success) {
+          createdCount += data.created_count || 0;
+          if (data.errors) allErrors.push(...data.errors);
+        } else {
+          allErrors.push({ file_name: `batch ${b + 1}`, error: data?.error || "Batch failed" });
+        }
+      } catch (err) {
+        allErrors.push({ file_name: `batch ${b + 1}`, error: err.message });
       }
-      if (serverErrors.length > 0) setFailedFiles((prev) => [...prev, ...serverErrors]);
-
-      const failCount = parseErrors.length + serverErrors.length;
-      setStatus({
-        type: failCount > 0 ? "warning" : "success",
-        message: `Imported ${createdCount} workout(s) from ${validSummaries.length} compiled file(s).${failCount ? ` ${failCount} file(s) failed.` : ""}`,
-      });
-      setFileList([]);
-      onUploaded();
-    } catch (err) {
-      setStatus({ type: "error", message: err.message });
     }
-    setUploading(false);
+
+    if (allErrors.length > 0) setFailedFiles(allErrors);
+    setStatus({
+      type: allErrors.length > 0 ? "warning" : "success",
+      message: `Imported ${createdCount} workout(s) from ${fileList.length} file(s).${allErrors.length ? ` ${allErrors.length} error(s).` : ""}`,
+    });
+    setFileList([]);
+    onUploaded();
+    setBusy(false);
     setProgress(null);
   };
 
   const buttonLabel = progress
-    ? progress.phase === "compiling"
-      ? `Compiling ${progress.total} files locally in browser... [${progress.current}/${progress.total}]`
-      : `Uploading batch ${progress.current}/${progress.total}...`
+    ? `Importing batch ${progress.current}/${progress.total}...`
     : `Import ${fileList.length || ""} file(s)`;
 
   return (
@@ -187,7 +112,7 @@ export default function BulkWorkoutImport({ athleteId, onUploaded }) {
             </button>
             <p className="text-xs text-muted-foreground mt-1">
               {fileList.length > 0 ? `${fileList.length} file(s) selected. ` : ""}
-              Files are compiled locally in your browser before uploading — nothing is sent until import.
+              Files are parsed on the server with a dedicated FIT parser, then saved to your master workout log.
             </p>
           </div>
           <div>
@@ -207,7 +132,7 @@ export default function BulkWorkoutImport({ athleteId, onUploaded }) {
               Used when a file's sport can't be detected automatically (mainly .csv files).
             </p>
           </div>
-          <Button type="submit" disabled={uploading || fileList.length === 0} className="w-full">
+          <Button type="submit" disabled={busy || fileList.length === 0} className="w-full">
             {buttonLabel}
           </Button>
           {status && (
