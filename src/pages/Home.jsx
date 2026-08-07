@@ -20,7 +20,6 @@ import SleepEnergyCard from "@/components/dashboard/SleepEnergyCard";
 import HolisticFactorsLog from "@/components/dashboard/HolisticFactorsLog";
 import TodaySessionCard from "@/components/dashboard/TodaySessionCard";
 import StatusGauges from "@/components/dashboard/StatusGauges";
-import PerformanceChart from "@/components/dashboard/PerformanceChart";
 import HorizonStrip from "@/components/dashboard/HorizonStrip";
 import LoadFatigueChart from "@/components/dashboard/LoadFatigueChart";
 import DashboardMetricBanner from "@/components/dashboard/DashboardMetricBanner";
@@ -88,7 +87,7 @@ export default function Home() {
     <FitnessProvider athleteId={athlete.id}>
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
         <TabsList>
-          <TabsTrigger value="dashboard">Dashboard</TabsTrigger>
+          <TabsTrigger value="dashboard">Overview</TabsTrigger>
           <TabsTrigger value="calendar">Training Calendar</TabsTrigger>
           <TabsTrigger value="physiology">Physiology Lab</TabsTrigger>
           <TabsTrigger value="bests">Personal Bests</TabsTrigger>
@@ -96,7 +95,7 @@ export default function Home() {
 
         <TabsContent value="dashboard" className="space-y-6">
           {/* Pro-Athlete Obsidian — top metric banner */}
-          <DashboardMetricBanner athlete={athlete} workouts={workouts} />
+          <DashboardMetricBanner athlete={athlete} workouts={loadTimelineWorkouts} />
 
           {/* Hero — Performance Management Chart (synced obsidian PMC) */}
           <LoadFatigueChart completedSessions={loadTimelineWorkouts} plannedWorkouts={plannedWorkouts} />
@@ -117,8 +116,6 @@ export default function Home() {
             </div>
             <StatusGauges athlete={athlete} />
           </div>
-
-          <PerformanceChart />
 
           {/* Tier 2 — Horizon */}
           <HorizonStrip athleteId={athlete.id} />
