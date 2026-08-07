@@ -8,6 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Loader2, Save, Trash2, ShieldAlert, Zap, Link2 } from "lucide-react";
+import CorosIntegration from "@/components/settings/CorosIntegration";
 
 // TIER_CONSTANTS mirrors ProfileSetupForm + updateAthleteProfile so editing the tier in Settings
 // keeps the CTL/ATL time constants consistent with the chosen philosophy.
@@ -299,18 +300,7 @@ export default function AthleteSettings() {
             </div>
             <Button variant="outline" size="sm">Connect</Button>
           </div>
-          <div className="flex items-center justify-between p-3 border border-border rounded-md">
-            <div className="flex items-center gap-3">
-              <div className="bg-muted p-2 rounded text-muted-foreground">
-                <Link2 className="w-5 h-5" />
-              </div>
-              <div>
-                <p className="text-sm font-medium">Coros</p>
-                <p className="text-xs text-muted-foreground">Not connected</p>
-              </div>
-            </div>
-            <Button variant="outline" size="sm">Connect</Button>
-          </div>
+          <CorosIntegration athleteId={athlete.id} />
         </CardContent>
       </Card>
 
