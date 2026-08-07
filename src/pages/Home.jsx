@@ -20,10 +20,13 @@ import SleepEnergyCard from "@/components/dashboard/SleepEnergyCard";
 import HolisticFactorsLog from "@/components/dashboard/HolisticFactorsLog";
 import TodaySessionCard from "@/components/dashboard/TodaySessionCard";
 import StatusGauges from "@/components/dashboard/StatusGauges";
-import LoadStatusCards from "@/components/dashboard/LoadStatusCards";
 import PerformanceChart from "@/components/dashboard/PerformanceChart";
 import HorizonStrip from "@/components/dashboard/HorizonStrip";
 import LoadFatigueChart from "@/components/dashboard/LoadFatigueChart";
+import DashboardMetricBanner from "@/components/dashboard/DashboardMetricBanner";
+import OcrDropzone from "@/components/imports/OcrDropzone";
+import RaceStrategyPlanner from "@/components/dashboard/RaceStrategyPlanner";
+import WipWrapper from "@/components/common/WipWrapper";
 import { FitnessProvider } from "@/context/FitnessContext";
 import { useUIPreferences } from "@/context/UIPreferencesContext";
 import DashboardRangeControls from "@/components/dashboard/DashboardRangeControls";
@@ -92,13 +95,27 @@ export default function Home() {
         </TabsList>
 
         <TabsContent value="dashboard" className="space-y-6">
-          {/* Tier 1 — Execute + Status */}
+          {/* Pro-Athlete Obsidian — top metric banner */}
+          <DashboardMetricBanner athlete={athlete} workouts={workouts} />
+
+          {/* Hero — Performance Management Chart (synced obsidian PMC) */}
+          <LoadFatigueChart completedSessions={loadTimelineWorkouts} plannedWorkouts={plannedWorkouts} />
+
+          {/* Action grid — OCR import, recent sessions, race strategy lab preview */}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <OcrDropzone athleteId={athlete.id} onSaved={() => loadAthleteData(athlete.id)} />
+            <RecentWorkouts workouts={workouts} athlete={athlete} />
+            <WipWrapper isWip featureName="AI Race Pacing Strategy — Coming Soon">
+              <RaceStrategyPlanner athleteId={athlete.id} />
+            </WipWrapper>
+          </div>
+
+          {/* Execute + status */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             <div className="lg:col-span-2">
               <TodaySessionCard athleteId={athlete.id} />
             </div>
             <StatusGauges athlete={athlete} />
-            <LoadStatusCards workouts={workouts} />
           </div>
 
           <PerformanceChart />
@@ -133,14 +150,12 @@ export default function Home() {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             <div className="md:col-span-2 space-y-6">
               <WeeklySummary />
-              <LoadFatigueChart completedSessions={loadTimelineWorkouts} plannedWorkouts={plannedWorkouts} />
-              <RecentWorkouts workouts={workouts} athlete={athlete} />
+              <RecoveryLab athleteId={athlete.id} />
+              <DataCommandCenter athleteId={athlete.id} />
             </div>
             <div className="space-y-6">
               <WorkoutUpload athleteId={athlete.id} onUploaded={() => loadAthleteData(athlete.id)} />
               <BulkWorkoutImport athleteId={athlete.id} onUploaded={() => loadAthleteData(athlete.id)} />
-              <RecoveryLab athleteId={athlete.id} />
-              <DataCommandCenter athleteId={athlete.id} />
               <CoachMessageFeed messages={messages} />
             </div>
           </div>

@@ -34,6 +34,13 @@
     --zone-4: 0 72% 51%;
     --zone-5: 330 76% 45%;
     --radius: 0.625rem;
+    --obsidian-base: #0B0D0E;
+    --obsidian-surface: #121518;
+    --obsidian-border: #1E2328;
+    --accent-emerald: #10B981;
+    --accent-blue: #3B82F6;
+    --accent-pink: #EC4899;
+    --accent-amber: #F59E0B;
     --font-heading: ui-sans-serif, system-ui, sans-serif;
     --font-body: ui-sans-serif, system-ui, sans-serif;
     --font-display: ui-sans-serif, system-ui, sans-serif;

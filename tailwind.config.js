@@ -33,9 +33,18 @@ module.exports = {
   				foreground: 'hsl(var(--muted-foreground))'
   			},
   			accent: {
-  				DEFAULT: 'hsl(var(--accent))',
-  				foreground: 'hsl(var(--accent-foreground))'
-  			},
+  					DEFAULT: 'hsl(var(--accent))',
+  					foreground: 'hsl(var(--accent-foreground))',
+  					emerald: '#10B981',
+  					blue: '#3B82F6',
+  					pink: '#EC4899',
+  					amber: '#F59E0B'
+  				},
+  				obsidian: {
+  					base: '#0B0D0E',
+  					surface: '#121518',
+  					border: '#1E2328'
+  				},
   			destructive: {
   				DEFAULT: 'hsl(var(--destructive))',
   				foreground: 'hsl(var(--destructive-foreground))'
