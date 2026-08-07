@@ -1,5 +1,6 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
 import fitParser from 'npm:fit-file-parser';
+import { TelemetryParser } from '../../shared/telemetryParser.ts';
 
 const GARMIN_EPOCH_OFFSET_SEC = 631065600; // seconds between Unix epoch and FIT/Garmin epoch (1989-12-31)
 const VALID_SPORTS = ['running', 'cycling', 'swimming', 'strength', 'triathlon', 'other'];
@@ -373,17 +374,12 @@ Deno.serve(async (req) => {
     const restHr = athlete.resting_hr || 60;
     const maxHr = athlete.max_heart_rate || 190;
 
-    // Dedup safeguard: skip any session matching an existing one (or one already staged in this batch)
-    // on the same date/sport/duration/distance, preventing repeated-import inflation.
+    // Dedup safeguard (TelemetryParser.isDuplicate in base44/shared/telemetryParser.ts):
+    // skip any session matching an existing one (or one already staged in this batch) on the
+    // same date/sport/duration/distance, preventing repeated-import inflation.
     const existingSessions = await base44.entities.WorkoutSession.filter({ athlete_id });
     const sessionsByDateAll = {};
     for (const s of existingSessions) (sessionsByDateAll[s.date] ||= []).push(s);
-    const isDuplicateSession = (date, sport, durationMinutes, distanceKm) =>
-      (sessionsByDateAll[date] || []).some((s) =>
-        s.sport === sport &&
-        Math.abs((s.duration_minutes || 0) - durationMinutes) < 1 &&
-        Math.abs((s.distance_km || 0) - (distanceKm || 0)) < 0.1
-      );
 
     const sessionsToCreate = [];
     const errors = [];
@@ -405,7 +401,7 @@ Deno.serve(async (req) => {
             errors.push({ file_name: row?.file_name || 'unknown', error: 'Missing date or invalid duration (under 1 min or over 24h)' });
             continue;
           }
-          if (isDuplicateSession(rowDate, sessionSport, durationMinutes, distanceKm)) {
+          if (TelemetryParser.isDuplicate(sessionsByDateAll, rowDate, sessionSport, durationMinutes, distanceKm)) {
             errors.push({ file_name: row?.file_name || 'unknown', error: `Skipped duplicate workout on ${rowDate}` });
             continue;
           }
@@ -423,8 +419,10 @@ Deno.serve(async (req) => {
             source_format: row.source_format || 'csv',
             session_trimp: sessionTrimp,
           };
-          sessionsToCreate.push(newSession);
-          (sessionsByDateAll[rowDate] ||= []).push(newSession);
+          const sanitizedSession = TelemetryParser.sanitize(newSession);
+          if (!sanitizedSession) { errors.push({ file_name: row?.file_name || 'unknown', error: 'Sanitization rejected invalid session (date/duration out of range)' }); continue; }
+          sessionsToCreate.push(sanitizedSession);
+          (sessionsByDateAll[rowDate] ||= []).push(sanitizedSession);
         } catch (rowError) {
           errors.push({ file_name: row?.file_name || 'unknown', error: rowError.message });
         }
@@ -467,7 +465,7 @@ Deno.serve(async (req) => {
           for (const row of summaryRows) {
             const rowDate = row.date || default_date || f.date;
             const sessionSport = row.sport || fallbackSport;
-            if (isDuplicateSession(rowDate, sessionSport, row.duration_minutes, row.distance_km)) {
+            if (TelemetryParser.isDuplicate(sessionsByDateAll, rowDate, sessionSport, row.duration_minutes, row.distance_km)) {
               errors.push({ file_name, error: `Skipped duplicate workout on ${rowDate}` });
               continue;
             }
@@ -486,8 +484,10 @@ Deno.serve(async (req) => {
               raw_file_url: file_url,
               session_trimp: sessionTrimp,
             };
-            sessionsToCreate.push(newSession);
-            (sessionsByDateAll[rowDate] ||= []).push(newSession);
+            const sanitizedSession = TelemetryParser.sanitize(newSession);
+            if (!sanitizedSession) { errors.push({ file_name, error: 'Sanitization rejected invalid session (date/duration out of range)' }); continue; }
+            sessionsToCreate.push(sanitizedSession);
+            (sessionsByDateAll[rowDate] ||= []).push(sanitizedSession);
           }
           continue;
         }
@@ -519,7 +519,7 @@ Deno.serve(async (req) => {
         }
 
         const sessionSport = sport || 'running';
-        if (isDuplicateSession(date, sessionSport, durationMinutes, distanceKm)) {
+        if (TelemetryParser.isDuplicate(sessionsByDateAll, date, sessionSport, durationMinutes, distanceKm)) {
           errors.push({ file_name, error: `Skipped duplicate workout on ${date}` });
           continue;
         }
@@ -567,8 +567,10 @@ Deno.serve(async (req) => {
             time: p.time, heart_rate: p.heart_rate, altitude: p.altitude, distance: p.distance, cadence: p.cadence, speed: p.speed,
           })) : undefined,
         };
-        sessionsToCreate.push(newSession);
-        (sessionsByDateAll[date] ||= []).push(newSession);
+        const sanitizedSession = TelemetryParser.sanitize(newSession);
+        if (!sanitizedSession) { errors.push({ file_name, error: 'Sanitization rejected invalid session (date/duration out of range)' }); continue; }
+        sessionsToCreate.push(sanitizedSession);
+        (sessionsByDateAll[date] ||= []).push(sanitizedSession);
       } catch (fileError) {
         errors.push({ file_name: f.file_name || 'unknown', error: fileError.message });
       }

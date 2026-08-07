@@ -2,6 +2,7 @@ import React from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 import RaceStrategyPlanner from "@/components/dashboard/RaceStrategyPlanner";
+import WipWrapper from "@/components/common/WipWrapper";
 import ThresholdTrendChart from "@/components/dashboard/ThresholdTrendChart";
 import AutonomicStressCard from "@/components/dashboard/AutonomicStressCard";
 import BaselineHistoryMatrix from "@/components/dashboard/BaselineHistoryMatrix";
@@ -60,7 +61,9 @@ export default function PhysiologyLab({ athlete }) {
 
       <BaselineHistoryMatrix athleteId={athlete.id} />
 
-      <RaceStrategyPlanner athleteId={athlete.id} />
+      <WipWrapper isWip={true} featureName="AI Race Pacing Strategy — Coming Soon">
+        <RaceStrategyPlanner athleteId={athlete.id} />
+      </WipWrapper>
     </div>
   );
 }
