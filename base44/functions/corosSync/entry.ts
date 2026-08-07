@@ -1,29 +1,5 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
-import fitParser from 'npm:fit-file-parser';
-
-const VALID_SPORTS = ['running', 'cycling', 'swimming', 'strength', 'triathlon', 'other'];
-
-// ----- shared helpers (mirrors webhookWearableSync/bulkIngestWorkouts so webhook ingest stays consistent) -----
-
-function calcTrimp(durationMin, avgHr, restHr, maxHr, sex) {
-  if (!durationMin || !avgHr || !maxHr || maxHr <= restHr) return 0;
-  const hrr = Math.max(0, Math.min(1, (avgHr - restHr) / (maxHr - restHr)));
-  const isFemale = sex === 'female';
-  const a = isFemale ? 0.86 : 0.64;
-  const b = isFemale ? 1.67 : 1.92;
-  return Math.round(durationMin * hrr * a * Math.exp(b * hrr) * 100) / 100;
-}
-
-function normalizeSport(raw) {
-  if (!raw) return 'running';
-  const s = String(raw).trim().toLowerCase();
-  if (/run/.test(s)) return 'running';
-  if (/(bike|cycl|ride|mtb)/.test(s)) return 'cycling';
-  if (/swim/.test(s)) return 'swimming';
-  if (/tri(athlon)?/.test(s)) return 'triathlon';
-  if (/(strength|gym|weight|hiit|core)/.test(s)) return 'strength';
-  return 'other';
-}
+import { VALID_SPORTS, calcTrimp, normalizeSport, getOwnedAthlete, selfUrl, parseFitSummary } from '../../shared/workoutIngest.ts';
 
 function env(name) {
   try { return Deno.env.get(name) || ''; } catch { return ''; }
@@ -43,51 +19,7 @@ async function hmacBase64Url(message, secret) {
   return btoa(String.fromCharCode(...new Uint8Array(sig))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
 }
 
-function selfUrl(req) {
-  const u = new URL(req.url);
-  return u.origin + u.pathname;
-}
-
-async function getOwnedAthlete(base44, userId) {
-  const athletes = await base44.asServiceRole.entities.AthleteProfile.filter({});
-  return athletes.find((a) => a.created_by_id === userId) || null;
-}
-
-// Compact FIT summary parser (trimmed from bulkIngestWorkouts) — enough to ingest a webhook-delivered .fit file.
-function parseFitSummary(buffer) {
-  const parser = new fitParser({ force: true, speedUnit: 'm/s', lengthUnit: 'm', mode: 'list' });
-  let parsed = null;
-  parser.parse(buffer, (err, data) => { if (!err) parsed = data; });
-  if (!parsed) return null;
-  const session = parsed.sessions?.[0] || null;
-  const records = parsed.records || [];
-  let durationSeconds = 0;
-  if (typeof session?.total_timer_time === 'number' && session.total_timer_time > 0) durationSeconds = session.total_timer_time;
-  else if (records.length > 1) {
-    const f = records[0].timestamp, l = records[records.length - 1].timestamp;
-    if (f instanceof Date && l instanceof Date) durationSeconds = (l.getTime() - f.getTime()) / 1000;
-  }
-  if (!Number.isFinite(durationSeconds) || durationSeconds < 0 || durationSeconds > 86400) return null;
-  const distanceKm = (session?.total_distance || 0) / 1000;
-  let avgHr = session?.avg_heart_rate || null;
-  let maxHr = session?.max_heart_rate || null;
-  if (!avgHr && records.length) {
-    const hrs = records.map((r) => r.heart_rate).filter((h) => h > 0);
-    if (hrs.length) { avgHr = Math.round(hrs.reduce((s, h) => s + h, 0) / hrs.length); maxHr = Math.max(...hrs); }
-  }
-  const start = session?.start_time instanceof Date ? session.start_time : (records[0]?.timestamp instanceof Date ? records[0].timestamp : new Date());
-  let tz = 0;
-  for (const r of records) {
-    if (r?.local_timestamp instanceof Date && r?.timestamp instanceof Date) { tz = r.local_timestamp.getTime() - r.timestamp.getTime(); break; }
-  }
-  return {
-    avg_hr: avgHr || null,
-    max_hr: maxHr || null,
-    distance_km: Math.round(distanceKm * 100) / 100,
-    duration_seconds: Math.round(durationSeconds),
-    derived_date: new Date(start.getTime() + tz).toISOString().slice(0, 10),
-  };
-}
+// selfUrl, getOwnedAthlete and parseFitSummary are imported from ../../shared/workoutIngest.ts.
 
 // ----- action handlers -----
 
