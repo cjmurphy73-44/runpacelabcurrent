@@ -86,7 +86,7 @@ export default function Home() {
   return (
     <FitnessProvider athleteId={athlete.id}>
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-        <TabsList>
+        <TabsList className="max-w-full overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
           <TabsTrigger value="dashboard">Overview</TabsTrigger>
           <TabsTrigger value="calendar">Training Calendar</TabsTrigger>
           <TabsTrigger value="physiology">Physiology Lab</TabsTrigger>

@@ -56,6 +56,9 @@ export default async function(req: Request) {
           ids.slice(i, i + 500).map((id) => ({ id, calculated_ctl: 0, calculated_atl: 0, calculated_tsb: 0 }))
         );
       }
+      await base44.asServiceRole.entities.AthleteProfile.update(athlete_id, {
+        current_ctl: 0, current_atl: 0, current_tsb: 0, last_data_sync: new Date().toISOString(),
+      }).catch((e) => console.warn('recalc: failed to zero profile', e?.message));
       return Response.json({ success: true, ctl: 0, atl: 0, tsb: 0 });
     }
 
@@ -102,13 +105,22 @@ export default async function(req: Request) {
       await base44.asServiceRole.entities.DailyMetrics.bulkCreate(creates.slice(i, i + 500));
     }
 
-    return Response.json({
-      success: true,
-      ctl: Math.round(ctl * 10) / 10,
-      atl: Math.round(currentATL * 10) / 10,
-      tsb: Math.round((ctl - currentATL) * 10) / 10,
-    });
+    const finalCtl = Math.round(ctl * 10) / 10;
+    const finalAtl = Math.round(currentATL * 10) / 10;
+    const finalTsb = Math.round((ctl - currentATL) * 10) / 10;
+
+    // Persist the latest day's values back to the athlete profile so snapshot readers
+    // (FitnessStats, StatusGauges, PhysiologyLab) stay in sync with the recomputed model
+    // instead of drifting to stale/garbage stored values.
+    await base44.asServiceRole.entities.AthleteProfile.update(athlete_id, {
+      current_ctl: finalCtl,
+      current_atl: finalAtl,
+      current_tsb: finalTsb,
+      last_data_sync: new Date().toISOString(),
+    }).catch((e) => console.warn('recalc: failed to sync profile snapshot', e?.message));
+
+    return Response.json({ success: true, ctl: finalCtl, atl: finalAtl, tsb: finalTsb });
   } catch (error) {
     return Response.json({ error: error.message }, { status: 500 });
   }
-});
+}

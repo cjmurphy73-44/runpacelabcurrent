@@ -13,12 +13,13 @@ export default function AppLayout() {
   const navLink = (to, label, Icon) => (
     <Link
       to={to}
-      className={`flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium ${
+      title={label}
+      className={`flex items-center gap-2 px-2 sm:px-3 py-2 rounded-md text-sm font-medium whitespace-nowrap ${
         location.pathname === to ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-accent"
       }`}
     >
       <Icon className="w-4 h-4" />
-      {label}
+      <span className="hidden sm:inline">{label}</span>
     </Link>
   );
 
@@ -30,7 +31,7 @@ export default function AppLayout() {
             <Activity className="w-5 h-5" />
             Runpacelab
           </div>
-          <nav className="flex items-center gap-2">
+          <nav className="flex items-center gap-1 sm:gap-2 overflow-x-auto sm:overflow-visible [scrollbar-width:none] [&::-webkit-scrollbar]:hidden min-w-0">
             {navLink("/", "Dashboard", Activity)}
             {navLink("/plan", "Training Plan", CalendarRange)}
             {navLink("/coach", "Coach", MessageCircle)}
@@ -42,10 +43,10 @@ export default function AppLayout() {
               onClick={toggleDeepMetrics}
               title="Toggle scientific metrics (CTL/ATL/TSB, VDOT)"
             >
-              <FlaskConical className="w-4 h-4 mr-1" /> Geek Mode
+              <FlaskConical className="w-4 h-4" /><span className="hidden sm:inline ml-1">Geek Mode</span>
             </Button>
-            <Button variant="ghost" size="sm" onClick={() => logout()}>
-              <LogOut className="w-4 h-4 mr-1" /> Logout
+            <Button variant="ghost" size="sm" onClick={() => logout()} title="Logout">
+              <LogOut className="w-4 h-4" /><span className="hidden sm:inline ml-1">Logout</span>
             </Button>
           </nav>
         </div>

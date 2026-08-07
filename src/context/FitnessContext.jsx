@@ -5,17 +5,18 @@ import { base44 } from "@/api/base44Client";
 const FitnessContext = createContext(null);
 
 async function fetchFitnessData(athleteId) {
-  const [metrics, sessions, biometrics, baselines] = await Promise.all([
+  // BiometricTelemetry / PhysiologicalBaselines were superseded by DailyMetrics (which now carries
+  // hrv / sleep_score / resting_hr / readiness_score). Those entity reads 404'd on every dashboard
+  // mount and — because Promise.all rejects on any failure — also blocked dailyMetrics/workoutSessions.
+  const [metrics, sessions] = await Promise.all([
     base44.entities.DailyMetrics.filter({ athlete_id: athleteId }, "-date", 180),
     base44.entities.WorkoutSession.filter({ athlete_id: athleteId }, "-date", 180),
-    base44.entities.BiometricTelemetry.filter({ athlete_id: athleteId }, "-date", 180),
-    base44.entities.PhysiologicalBaselines.filter({ athlete_id: athleteId }, "-recorded_date", 100),
   ]);
   return {
     dailyMetrics: [...metrics].reverse(),
     workoutSessions: sessions,
-    biometricTelemetry: biometrics,
-    physiologicalBaselines: baselines,
+    biometricTelemetry: [],
+    physiologicalBaselines: [],
   };
 }
 
