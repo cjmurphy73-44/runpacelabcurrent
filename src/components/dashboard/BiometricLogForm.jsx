@@ -7,35 +7,32 @@ import { useFitness } from "@/context/FitnessContext";
 import moment from "moment";
 
 export default function BiometricLogForm({ athleteId }) {
-  const { biometricTelemetry, reload } = useFitness();
+  const { dailyMetrics, reload } = useFitness();
   const today = moment().format("YYYY-MM-DD");
-  const existing = biometricTelemetry.find((b) => b.date === today);
+  const existing = dailyMetrics.find((b) => b.date === today);
 
   const [form, setForm] = useState({
-    hrv_ms: existing?.hrv_ms ?? "",
+    hrv: existing?.hrv ?? "",
     sleep_score: existing?.sleep_score ?? "",
-    sleep_duration_hours: existing?.sleep_duration_hours ?? "",
-    active_calories: existing?.active_calories ?? "",
   });
   const [saving, setSaving] = useState(false);
 
   const handleSave = async () => {
     setSaving(true);
-    const payload = {
-      athlete_id: athleteId,
-      date: today,
-      hrv_ms: form.hrv_ms === "" ? undefined : Number(form.hrv_ms),
-      sleep_score: form.sleep_score === "" ? undefined : Number(form.sleep_score),
-      sleep_duration_hours: form.sleep_duration_hours === "" ? undefined : Number(form.sleep_duration_hours),
-      active_calories: form.active_calories === "" ? undefined : Number(form.active_calories),
-    };
-    if (existing) {
-      await base44.entities.BiometricTelemetry.update(existing.id, payload);
-    } else {
-      await base44.entities.BiometricTelemetry.create(payload);
+    const payload = {};
+    if (form.hrv !== "") payload.hrv = Number(form.hrv);
+    if (form.sleep_score !== "") payload.sleep_score = Number(form.sleep_score);
+    try {
+      // UPSERT today's DailyMetrics — only the recovery fields, never the computed load columns.
+      if (existing) {
+        await base44.entities.DailyMetrics.update(existing.id, payload);
+      } else {
+        await base44.entities.DailyMetrics.create({ athlete_id: athleteId, date: today, ...payload });
+      }
+      await reload();
+    } finally {
+      setSaving(false);
     }
-    await reload();
-    setSaving(false);
   };
 
   return (
@@ -44,19 +41,11 @@ export default function BiometricLogForm({ athleteId }) {
       <div className="grid grid-cols-2 gap-3">
         <div>
           <Label className="text-xs">HRV (ms)</Label>
-          <Input type="number" value={form.hrv_ms} onChange={(e) => setForm({ ...form, hrv_ms: e.target.value })} />
+          <Input type="number" value={form.hrv} onChange={(e) => setForm({ ...form, hrv: e.target.value })} />
         </div>
         <div>
           <Label className="text-xs">Sleep Score</Label>
           <Input type="number" value={form.sleep_score} onChange={(e) => setForm({ ...form, sleep_score: e.target.value })} />
-        </div>
-        <div>
-          <Label className="text-xs">Sleep (hrs)</Label>
-          <Input type="number" value={form.sleep_duration_hours} onChange={(e) => setForm({ ...form, sleep_duration_hours: e.target.value })} />
-        </div>
-        <div>
-          <Label className="text-xs">Active Calories</Label>
-          <Input type="number" value={form.active_calories} onChange={(e) => setForm({ ...form, active_calories: e.target.value })} />
         </div>
       </div>
       <Button size="sm" onClick={handleSave} disabled={saving} className="w-full">

@@ -5,10 +5,8 @@ import { useFitness } from "@/context/FitnessContext";
 
 const HEADER_ALIASES = {
   date: ["date"],
-  hrv_ms: ["hrv", "hrv_ms", "heart rate variability"],
+  hrv: ["hrv", "hrv_ms", "heart rate variability"],
   sleep_score: ["sleep_score", "sleep score"],
-  sleep_duration_hours: ["sleep_duration_hours", "sleep hours", "sleep duration"],
-  active_calories: ["active_calories", "calories", "active calories", "active_energy"],
 };
 
 function matchHeader(header) {
@@ -62,25 +60,45 @@ export default function RecoveryCsvDropzone({ athleteId }) {
       return;
     }
 
-    const records = rows
+    const parsed = rows
       .filter((r) => r.date)
-      .map((r) => ({
-        athlete_id: athleteId,
-        date: r.date,
-        hrv_ms: r.hrv_ms !== undefined ? Number(r.hrv_ms) : undefined,
-        sleep_score: r.sleep_score !== undefined ? Number(r.sleep_score) : undefined,
-        sleep_duration_hours: r.sleep_duration_hours !== undefined ? Number(r.sleep_duration_hours) : undefined,
-        active_calories: r.active_calories !== undefined ? Number(r.active_calories) : undefined,
-      }));
+      .map((r) => {
+        const rec = { date: r.date };
+        if (r.hrv !== undefined && r.hrv !== "") rec.hrv = Number(r.hrv);
+        if (r.sleep_score !== undefined && r.sleep_score !== "") rec.sleep_score = Number(r.sleep_score);
+        return rec;
+      })
+      .filter((r) => r.hrv !== undefined || r.sleep_score !== undefined);
 
-    if (records.length === 0) {
-      setStatus({ type: "error", message: "No valid rows found (need at least a date column)." });
+    if (parsed.length === 0) {
+      setStatus({ type: "error", message: "No valid rows found (need at least a date plus HRV or sleep score)." });
       return;
     }
 
-    await base44.entities.BiometricTelemetry.bulkCreate(records);
-    await reload();
-    setStatus({ type: "success", message: `Imported ${records.length} biometric record(s).` });
+    try {
+      // UPSERT into DailyMetrics per date — never touch the computed total_trimp / ctl / atl / tsb,
+      // which recalculateCTLATLTSB owns.
+      const existing = await base44.entities.DailyMetrics.filter({ athlete_id: athleteId }, "-date", 2000);
+      const byDate = new Map(existing.map((m) => [m.date, m.id]));
+      const updates = [];
+      const creates = [];
+      for (const r of parsed) {
+        const payload = {};
+        if (r.hrv !== undefined) payload.hrv = r.hrv;
+        if (r.sleep_score !== undefined) payload.sleep_score = r.sleep_score;
+        if (byDate.has(r.date)) {
+          updates.push({ id: byDate.get(r.date), ...payload });
+        } else {
+          creates.push({ athlete_id: athleteId, date: r.date, ...payload });
+        }
+      }
+      if (updates.length) await base44.entities.DailyMetrics.bulkUpdate(updates);
+      if (creates.length) await base44.entities.DailyMetrics.bulkCreate(creates);
+      await reload();
+      setStatus({ type: "success", message: `Synced ${parsed.length} recovery record(s) — ${updates.length} updated, ${creates.length} new.` });
+    } catch (e) {
+      setStatus({ type: "error", message: "Import failed: " + e.message });
+    }
   };
 
   const handleDrop = (e) => {
@@ -99,7 +117,7 @@ export default function RecoveryCsvDropzone({ athleteId }) {
         className={`border-2 border-dashed rounded-lg p-6 text-center text-sm transition-colors ${dragging ? "border-primary bg-primary/5" : "border-border"}`}
       >
         <UploadCloud className="w-6 h-6 mx-auto mb-2 text-muted-foreground" />
-        <p className="text-muted-foreground">Drag & drop a CSV or JSON export (HRV, Sleep, Calories)</p>
+        <p className="text-muted-foreground">Drag & drop a CSV or JSON export (HRV, Sleep Score)</p>
         <label className="inline-block mt-2 text-primary text-xs cursor-pointer underline">
           or choose a file
           <input
