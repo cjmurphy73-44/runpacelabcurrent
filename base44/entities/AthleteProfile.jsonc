@@ -114,6 +114,10 @@
     "injury_history": {
       "type": "string",
       "description": "Freeform notes on past injuries (e.g. 'ITB + Achilles + shin splints, Oct/Nov 2025') used to tailor prehab routines and load caps"
+    },
+    "webhook_api_key": {
+      "type": "string",
+      "description": "Personal API key authenticating this athlete's /workoutWebhook endpoint; also used as the Strava webhook subscription verify_token. Set only by the workoutWebhook backend function."
     }
   },
   "required": [

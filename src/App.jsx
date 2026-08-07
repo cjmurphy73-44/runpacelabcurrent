@@ -19,6 +19,7 @@ import TrainingPlan from '@/pages/TrainingPlan';
 import DevTracker from '@/pages/DevTracker';
 import DeveloperGuard from '@/components/auth/DeveloperGuard';
 import AthleteSettings from '@/pages/AthleteSettings';
+import Imports from '@/pages/Imports';
 // Add page imports here
 
 const AuthenticatedApp = () => {
@@ -59,6 +60,7 @@ const AuthenticatedApp = () => {
           <Route path="/plan" element={<TrainingPlan />} />
           <Route path="/dev-tracker" element={<DeveloperGuard><DevTracker /></DeveloperGuard>} />
           <Route path="/settings" element={<AthleteSettings />} />
+          <Route path="/import" element={<Imports />} />
         </Route>
       </Route>
       <Route path="*" element={<PageNotFound />} />

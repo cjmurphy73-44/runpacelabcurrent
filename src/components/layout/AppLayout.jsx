@@ -3,7 +3,7 @@ import { Outlet, Link, useLocation } from "react-router-dom";
 import { useAuth } from "@/lib/AuthContext";
 import { useUIPreferences } from "@/context/UIPreferencesContext";
 import { Button } from "@/components/ui/button";
-import { Activity, MessageCircle, LogOut, CalendarRange, FlaskConical, Settings } from "lucide-react";
+import { Activity, MessageCircle, LogOut, CalendarRange, FlaskConical, Settings, Upload } from "lucide-react";
 
 export default function AppLayout() {
   const { logout } = useAuth();
@@ -35,6 +35,7 @@ export default function AppLayout() {
             {navLink("/plan", "Training Plan", CalendarRange)}
             {navLink("/coach", "Coach", MessageCircle)}
             {navLink("/settings", "Settings", Settings)}
+            {navLink("/import", "Imports", Upload)}
             <Button
               variant={showDeepMetrics ? "secondary" : "ghost"}
               size="sm"
