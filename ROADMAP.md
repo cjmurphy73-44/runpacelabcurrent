@@ -1,29 +1,23 @@
-# Runpacelab — Endurance App Excellence & Feature Roadmap
+# Runpacelab — Product Roadmap
 
-_Lead Product Architect Notes — targeting parity/superiority vs. Runna, TrainingPeaks, intervals.icu, and Final Surge._
+_Endurance intelligence platform — adaptive, data-driven training built on physiological modeling, AI coaching, and wearable ingestion._
 
-## 1. UI/UX & Feel Upgrades
-- **Design System:** "Pro-Athlete Obsidian" — dark-mode-default theme, high-contrast white/emerald text on deep charcoal/black, glassmorphism cards for stat panels.
-- **Micro-interactions:** Subtle hover/press states, animated number counters for metrics (CTL/ATL/TSB), smooth tab/page transitions.
-- **Charting:** Migrate legacy charts to interactive Recharts instances with zoom, crosshair sync, and zone shading (Z1–Z5).
-- **Loading States:** Skeleton loaders across all data-fetching components to eliminate empty-state flicker.
-- **Mobile-first:** Field/track view optimized for one-handed use, large tap targets, offline-friendly session cards.
+## Phase 1 — Foundation (Shipped)
+- Core athlete profile + physiology thresholds (HR zones, FTP, threshold pace, VDOT estimate).
+- Workout ingestion pipeline (`.fit`/`.csv`) via shared `telemetryParser` + `workoutIngest` with strict sanitize + dedup guards.
+- EWMA-based CTL/ATL/TSB engine (`recalculateCTLATLTSB`) with tier-adjusted time constants; results persisted to both `DailyMetrics` and `AthleteProfile`.
+- Dashboard: "Pro-Athlete Obsidian" metric banner, Load & Fatigue forecast chart, training calendar, recent workouts, coach message feed.
+- AI coach agent + backend functions: training-plan generation, micro-adjustments, post-workout evaluation, race strategy.
+- COROS OAuth connection + webhook ingestion.
+- Experimental safety pattern: `<WipWrapper>` + `ErrorBoundary` for non-breaking feature rollout.
 
-## 2. Data Integrations & Import Channels
-- **OAuth/Webhook Architecture:**
-  - Garmin Health API — webhook push for activities, sleep, HRV.
-  - Strava API — OAuth + webhook subscription for new activities.
-  - Wahoo API — OAuth token exchange, activity pull.
-  - Apple HealthKit — client-side export/import bridge (no direct server OAuth; requires companion export flow).
-- **File Parser Pipeline:**
-  - Centralize `.fit`, `.gpx`, `.tcx`, `.csv` parsing behind a shared `TelemetryParser` utility (extending `bulkIngestWorkouts` logic) so every ingestion path (webhook, upload, bulk import) uses the same normalization + dedup rules.
-  - Screenshot OCR: use `InvokeLLM` with `file_urls` + a strict `response_json_schema` to extract workout summaries (duration, distance, HR, pace) from screenshots of other apps.
+## Phase 2 — Intelligence & Ingestion (In Progress)
+- **Screenshot OCR import** — `parseWorkoutScreenshot` backend function (Core `InvokeLLM` vision pass with a strict `response_json_schema` and per-field confidence flagging) feeding `OcrVerificationModal`: a side-by-side image preview + editable pre-filled form, with `#F59E0B` amber borders on every low-confidence (`< 0.85`) field. Persists through the existing `bulkIngestWorkouts` pipeline + `recalculateCTLATLTSB` refresh.
+- **Race Pacing Engine** — `racePacingEngine.ts` pure utility: Minetti grade-adjusted pace (GAP) with a −12% downhill eccentric-braking clamp, Heat Score (Air Temp °F + Dew Point °F) pace penalties across four bands, and 15% start-distance glycogen throttling (start → steady → finish split phases). Mounted on the dashboard inside `<WipWrapper isWip featureName="Race Strategy Engine">`.
+- **Recovery data consolidation** — recovery CSV drops and the daily biometric log now UPSERT into `DailyMetrics` (HRV + sleep score), never clobbering computed CTL/ATL/TSB; aerobic baseline tests write to `AthleteProfile` thresholds (`vdot_estimate`, `ftp_watts`, `lactate_threshold_hr`, `resting_hr`).
 
-## 3. WIP / Feature Flag Architecture
-- **Pattern:** `<WipBadge />` for lightweight visual tagging; `<WipWrapper isWip>` for wrapping full experimental components — combines an error boundary (isolates crashes from the stable app) with a blurred/semi-transparent "Coming Soon" preview overlay.
-- **Safety principle:** Experimental features never touch core athlete data paths (profile, workout logs, training plan commit) directly — they read from existing data but cannot introduce new required state.
-
-## 4. Next Immediate Action Plan (Top 3)
-1. **Smart Sync Manager** — unify Garmin/Strava/Wahoo webhook ingestion + file upload behind one `TelemetryParser` service to reduce duplicate parsing logic and prepare for live vendor integrations.
-2. **Metric Visualization Overhaul** — upgrade dashboard charts to the "Pro-Athlete Obsidian" visual system with zone shading and richer TSB/CTL/ATL correlation views.
-3. **Experimental Lab Rollout** — apply `WipBadge`/`WipWrapper` to in-progress features (e.g., Race Pacing Strategy, OCR import) so they can ship to production safely without risking core workflows.
+## Phase 3 — Live Integrations & Polish (Planned)
+- Smart Sync Manager — unify Garmin Health / Strava / Wahoo webhook ingestion behind one normalized `TelemetryParser` service.
+- Metric visualization overhaul — zone shading (Z1–Z5), crosshair-synced charts, richer CTL/ATL/TSB correlation views.
+- Mobile field/track view — one-handed layout, large tap targets, offline-friendly session cards.
+- Payment/billing for premium coaching tiers.

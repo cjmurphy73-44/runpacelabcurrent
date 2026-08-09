@@ -61,7 +61,7 @@ export default function PhysiologyLab({ athlete }) {
 
       <BaselineHistoryMatrix athleteId={athlete.id} />
 
-      <WipWrapper isWip={true} featureName="AI Race Pacing Strategy — Coming Soon">
+      <WipWrapper isWip={true} featureName="Race Strategy Engine">
         <RaceStrategyPlanner athleteId={athlete.id} />
       </WipWrapper>
     </div>

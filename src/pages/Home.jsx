@@ -104,7 +104,7 @@ export default function Home() {
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             <OcrDropzone athleteId={athlete.id} onSaved={() => loadAthleteData(athlete.id)} />
             <RecentWorkouts workouts={workouts} athlete={athlete} />
-            <WipWrapper isWip featureName="AI Race Pacing Strategy — Coming Soon">
+            <WipWrapper isWip featureName="Race Strategy Engine">
               <RaceStrategyPlanner athleteId={athlete.id} />
             </WipWrapper>
           </div>
