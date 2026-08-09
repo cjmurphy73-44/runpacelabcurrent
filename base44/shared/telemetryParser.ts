@@ -39,6 +39,7 @@ export function sanitizeSession(session) {
   if (!session || typeof session !== 'object') return null;
 
   const date = typeof session.date === 'string' ? session.date : null;
+  console.log("DEBUG sanitizeSession:", { session, date, parsed: Date.parse(date || "") });
   if (!date || isNaN(Date.parse(date))) return null;
 
   const sport = VALID_SPORTS.includes(session.sport) ? session.sport : 'running';

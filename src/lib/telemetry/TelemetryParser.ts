@@ -10,4 +10,4 @@ export {
   MAX_DURATION_S,
   MIN_DURATION_S,
   TelemetryParser as default,
-} from "../../../base44/shared/telemetryParser";
+} from "../../../base44/shared/telemetryParser.ts";
