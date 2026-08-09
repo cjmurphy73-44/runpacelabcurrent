@@ -4,11 +4,11 @@ export const STANDARD_DISTANCES = [
   { key: "800m", label: "800m", km: 0.8 },
   { key: "1k", label: "1K", km: 1 },
   { key: "1mile", label: "1 Mile", km: 1.60934 },
-  { key: "5k", label: "5K", km: 5 },
-  { key: "10k", label: "10K", km: 10 },
+  { key: "5k", label: "5K", km: 5, minKm: 4.9, maxKm: 5.25 },
+  { key: "10k", label: "10K", km: 10, minKm: 9.8, maxKm: 10.3 },
   { key: "15k", label: "15K", km: 15 },
-  { key: "half", label: "Half Marathon", km: 21.0975 },
-  { key: "full", label: "Marathon", km: 42.195 },
+  { key: "half", label: "Half Marathon", km: 21.0975, minKm: 20.7, maxKm: 21.6 },
+  { key: "full", label: "Marathon", km: 42.195, minKm: 41.5, maxKm: 43.2 },
   { key: "50k", label: "50K", km: 50 },
   { key: "100k", label: "100K", km: 100 },
   { key: "100mi", label: "100 Mile", km: 160.934 },
@@ -22,6 +22,13 @@ export const PEAK_DURATIONS = [
 ];
 
 const DISTANCE_TOLERANCE = 0.05;
+
+function isValidForStandard(dist, standard) {
+  if (standard.minKm && standard.maxKm) {
+    return dist >= standard.minKm && dist <= standard.maxKm;
+  }
+  return Math.abs(dist - standard.km) / standard.km <= DISTANCE_TOLERANCE;
+}
 
 export function formatDuration(minutes) {
   const totalSeconds = Math.round(minutes * 60);
@@ -39,14 +46,14 @@ export function formatPace(minPerKm) {
   return `${mins}:${secs.toString().padStart(2, "0")} /km`;
 }
 
-// Finds the fastest recorded effort matching each standard race distance (within tolerance).
-export function findDistancePBs(sessions, filterFn = null) {
-  const runs = sessions.filter(
-    (s) => s.sport === "running" && s.distance_km > 0 && s.duration_minutes > 0 && (!filterFn || filterFn(s))
+// Finds the fastest recorded effort matching each standard race distance (with strict sport separation & validation).
+export function findDistancePBs(sessions, sport = "running", filterFn = null) {
+  const activities = sessions.filter(
+    (s) => s.sport === sport && s.distance_km > 0 && s.duration_minutes > 0 && (!filterFn || filterFn(s))
   );
   const result = {};
   for (const dist of STANDARD_DISTANCES) {
-    const matches = runs.filter((s) => Math.abs(s.distance_km - dist.km) / dist.km <= DISTANCE_TOLERANCE);
+    const matches = activities.filter((s) => isValidForStandard(s.distance_km, dist));
     if (matches.length === 0) {
       result[dist.key] = null;
       continue;
