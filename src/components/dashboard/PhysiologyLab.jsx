@@ -21,7 +21,7 @@ export default function PhysiologyLab({ athlete }) {
 
   return (
     <div className="space-y-6">
-      <Alert>
+      <Alert className="max-w-3xl">
         <AlertTitle>Current Form (TSB): {tsb.toFixed(1)} — {status.label}</AlertTitle>
         <AlertDescription>{status.detail}</AlertDescription>
       </Alert>
