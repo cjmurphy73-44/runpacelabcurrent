@@ -6,20 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Gauge, TrendingUp, TrendingDown, AlertTriangle } from "lucide-react";
 import { calculateHistoricalAndProjectedLoad, getTsbZoneInfo, toDateKey } from "@/lib/loadForecasting";
 
-// Pro-Athlete Obsidian theme — dark chart surface inside the otherwise light dashboard.
-const OBSIDIAN = {
-  bg: "#0B0D0E",
-  card: "#121518",
-  border: "#1F2937",
-  grid: "#1F2937",
-  axis: "#6B7280",
-  text: "#E5E7EB",
-  muted: "#9CA3AF",
-  ctl: "#38BDF8",
-  atl: "#FB7185",
-  tsbPos: "#34D399",
-  tsbNeg: "#F43F5E",
-};
+import { OBSIDIAN_THEME as OBSIDIAN } from "@/constants/theme";
 
 const obsidianCardClass = "bg-[#0B0D0E] border-[#1F2937] text-[#E5E7EB]";
 
