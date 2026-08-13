@@ -1,3 +1,4 @@
-export function createPageUrl(pageName: string) {
-    return '/' + pageName.replace(/ /g, '-');
-}
+export * from './physiology/minetti';
+export * from './physiology/thermalPenalty';
+export * from './physiology/subSplitParser';
+export * from './physiology/intensityDomains';
