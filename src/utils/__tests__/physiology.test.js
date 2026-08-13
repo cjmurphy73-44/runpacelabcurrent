@@ -1,3 +1,4 @@
+import { describe, test, expect } from 'vitest';
 import { calculateMinettiEnergy } from '../physiology/minetti';
 import { calculateThermalPenalty } from '../physiology/thermalPenalty';
 
