@@ -8,40 +8,65 @@ export default function Navigation() {
   const pathname = usePathname();
 
   const navItems = [
-    { label: 'VDOT Calculator', href: '/vdot' },
-    { label: 'Weather Adjuster', href: '/weather-adjust' },
-    { label: 'HR & Pace Zones', href: '/zones' },
+    { name: 'Dashboard', href: '/' },
+    { name: 'VDOT', href: '/vdot' },
+    { name: 'Weather', href: '/weather-adjust' },
+    { name: 'Zones', href: '/zones' },
+    { name: 'Plan', href: '/training-plan' },
+    { name: 'Ledger', href: '/pbs' },
+    { name: 'Geek Mode', href: '/geek-mode' },
+    { name: 'AI Coach', href: '/ai-coach' },
+    { name: 'Settings', href: '/settings' },
   ];
 
   return (
-    <header className="bg-slate-900 text-white shadow-md border-b border-slate-800">
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+    <header className="sticky top-0 z-50 bg-slate-900/95 backdrop-blur-md border-b border-slate-800 text-white shadow-md">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
-          {/* Brand / Logo */}
-          <Link href="/" className="flex items-center gap-2 font-black text-xl tracking-tight text-white hover:opacity-90 transition-opacity">
-            <span className="bg-blue-600 text-white px-2 py-0.5 rounded text-sm font-extrabold">RPL</span>
-            <span>RunPaceLogic</span>
+          
+          <Link href="/" className="flex items-center gap-2 group">
+            <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-blue-600 to-indigo-500 flex items-center justify-center font-black text-lg shadow-inner group-hover:scale-105 transition-transform">
+              ⚡
+            </div>
+            <div>
+              <span className="font-extrabold tracking-tight text-lg bg-gradient-to-r from-white via-slate-100 to-slate-400 bg-clip-text text-transparent">
+                RunPaceLogic
+              </span>
+              <span className="block text-[10px] text-blue-400 font-semibold tracking-wider uppercase">
+                Science Engine v0.9
+              </span>
+            </div>
           </Link>
 
-          {/* Navigation Links */}
-          <nav className="flex items-center gap-1 sm:gap-2">
+          <nav className="hidden md:flex items-center space-x-1">
             {navItems.map((item) => {
               const isActive = pathname === item.href;
               return (
                 <Link
                   key={item.href}
                   href={item.href}
-                  className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+                  className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
                     isActive
-                      ? 'bg-blue-600 text-white shadow-sm'
-                      : 'text-slate-300 hover:bg-slate-800 hover:text-white'
+                      ? 'bg-blue-600 text-white shadow-xs'
+                      : 'text-slate-300 hover:text-white hover:bg-slate-800/80'
                   }`}
                 >
-                  {item.label}
+                  {item.name}
                 </Link>
               );
             })}
           </nav>
+
+          <div className="flex items-center gap-3">
+            <div className="hidden sm:flex flex-col text-right">
+              <span className="text-xs font-bold text-slate-200">Athlete Profile</span>
+              <span className="text-[10px] text-emerald-400 font-medium">VDOT 52.4 • Active</span>
+            </div>
+            <div className="w-9 h-9 rounded-full bg-slate-800 border border-slate-700 flex items-center justify-center text-xs font-bold text-slate-300 shadow-inner">
+              CM
+            </div>
+          </div>
+
         </div>
       </div>
     </header>

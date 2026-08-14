@@ -4,36 +4,66 @@ generator client {
 
 datasource db {
   provider = "postgresql"
+  url      = env("DATABASE_URL")
 }
 
 model User {
-  id         String     @id @default(uuid())
-  email      String     @unique
-  name       String?
-  vdot       Float?
-  createdAt  DateTime   @default(now())
-  updatedAt  DateTime   @updatedAt
-  activities Activity[]
+  id                    String            @id @default(uuid())
+  email                 String            @unique
+  name                  String?
+  vdot                  Float?
+  maxHeartRate          Int?
+  restingHr             Int?
+  thresholdPaceSecPerKm Int?
+  createdAt             DateTime          @default(now())
+  updatedAt             DateTime          @updatedAt
+  activities            ActivityHistory[]
+  customZones           CustomZone[]
+  personalBests         PersonalBest[]
 }
 
-model Activity {
-  id                    String    @id @default(uuid())
-  userId                String
-  user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  externalActivityId    String?
-  provider              String    // 'garmin' | 'strava' | 'ocr' | 'file'
-  sportType             String    @default("running")
-  startTime             DateTime
-  distanceMeters        Float
-  durationSeconds       Int
-  avgPaceSecondsPerKm   Float?
-  avgHeartRate          Int?
-  maxHeartRate          Int?
-  totalElevationGain    Float?
-  tss                   Int?
-  intensityFactor       Float?
-  createdAt             DateTime  @default(now())
+model ActivityHistory {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type      String   
+  details   Json
+  createdAt DateTime @default(now())
 
-  @@index([userId, startTime])
-  @@index([externalActivityId])
+  @@index([userId])
+}
+
+model CustomZone {
+  id         String   @id @default(uuid())
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  zoneName   String   
+  minPaceSec Int?
+  maxPaceSec Int?
+  minBpm     Int?
+  maxBpm     Int?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([userId])
+}
+
+model PersonalBest {
+  id             String   @id @default(uuid())
+  userId         String?
+  user           User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  sportType      String   @default("RUN") // "RUN", "CYCLE", "SWIM"
+  distanceName   String   // e.g., "800m", "5K", "Marathon", "50K Ride"
+  distanceMeters Float   
+  timeSeconds    Int      
+  formattedTime  String   
+  dateAchieved   DateTime 
+  isAllTime      Boolean  @default(true)
+  segments       Json?    
+  notes          String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@index([userId])
+  @@index([sportType])
 }
