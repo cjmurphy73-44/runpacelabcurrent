@@ -20,6 +20,10 @@ import DevTracker from '@/pages/DevTracker';
 import DeveloperGuard from '@/components/auth/DeveloperGuard';
 import AthleteSettings from '@/pages/AthleteSettings';
 import Imports from '@/pages/Imports';
+import Vdot from '@/pages/Vdot';
+import WeatherAdjust from '@/pages/WeatherAdjust';
+import Zones from '@/pages/Zones';
+import Pbs from '@/pages/Pbs';
 // Add page imports here
 
 const AuthenticatedApp = () => {
@@ -61,6 +65,10 @@ const AuthenticatedApp = () => {
           <Route path="/dev-tracker" element={<DeveloperGuard><DevTracker /></DeveloperGuard>} />
           <Route path="/settings" element={<AthleteSettings />} />
           <Route path="/import" element={<Imports />} />
+          <Route path="/vdot" element={<Vdot />} />
+          <Route path="/weather" element={<WeatherAdjust />} />
+          <Route path="/zones" element={<Zones />} />
+          <Route path="/pbs" element={<Pbs />} />
         </Route>
       </Route>
       <Route path="*" element={<PageNotFound />} />

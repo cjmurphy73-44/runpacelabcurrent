@@ -3,7 +3,7 @@ import { Outlet, Link, useLocation } from "react-router-dom";
 import { useAuth } from "@/lib/AuthContext";
 import { useUIPreferences } from "@/context/UIPreferencesContext";
 import { Button } from "@/components/ui/button";
-import { Activity, MessageCircle, LogOut, CalendarRange, FlaskConical, Settings, Upload } from "lucide-react";
+import { Activity, MessageCircle, LogOut, CalendarRange, FlaskConical, Settings, Upload, Gauge, CloudSun, LayoutGrid, Trophy } from "lucide-react";
 
 export default function AppLayout() {
   const { logout } = useAuth();
@@ -26,15 +26,19 @@ export default function AppLayout() {
   return (
     <div className="min-h-screen bg-background">
       <header className="border-b border-border">
-        <div className="max-w-6xl mx-auto flex items-center justify-between px-4 py-3">
+        <div className="max-w-7xl mx-auto flex items-center justify-between px-4 py-3">
           <div className="flex items-center gap-2 font-heading font-bold text-lg">
             <Activity className="w-5 h-5" />
             Runpacelab
           </div>
-          <nav className="flex items-center gap-1 sm:gap-2 overflow-x-auto sm:overflow-visible [scrollbar-width:none] [&::-webkit-scrollbar]:hidden min-w-0">
+          <nav className="flex items-center gap-1 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden min-w-0">
             {navLink("/", "Dashboard", Activity)}
-            {navLink("/plan", "Training Plan", CalendarRange)}
-            {navLink("/coach", "Coach", MessageCircle)}
+            {navLink("/vdot", "VDOT", Gauge)}
+            {navLink("/weather", "Weather", CloudSun)}
+            {navLink("/zones", "Zones", LayoutGrid)}
+            {navLink("/plan", "Plan", CalendarRange)}
+            {navLink("/pbs", "Ledger", Trophy)}
+            {navLink("/coach", "AI Coach", MessageCircle)}
             {navLink("/settings", "Settings", Settings)}
             {navLink("/import", "Imports", Upload)}
             <Button
@@ -51,7 +55,7 @@ export default function AppLayout() {
           </nav>
         </div>
       </header>
-      <main className="max-w-6xl mx-auto px-4 py-6">
+      <main className="max-w-7xl mx-auto px-4 py-6">
         <Outlet />
       </main>
     </div>
