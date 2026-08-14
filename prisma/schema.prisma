@@ -1,0 +1,122 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+enum IntegrationProvider {
+  GARMIN
+  COROS
+  STRAVA
+  POLAR
+  SUUNTO
+  APPLE_HEALTH
+  GOOGLE_HEALTH
+}
+
+enum SyncStatus {
+  ACTIVE
+  PAUSED
+  EXPIRED
+  FAILED
+}
+
+enum StreamSource {
+  DIRECT_WEARABLE_API
+  FITNESS_HUB
+  VISION_OCR
+  FILE_UPLOAD
+}
+
+enum WorkoutType {
+  EASY
+  THRESHOLD
+  INTERVAL
+  LONG_RUN
+  RACE
+  RECOVERY
+}
+
+model User {
+  id             String        @id @default(uuid())
+  email          String        @unique
+  name           String?
+  baselineVDOT   Float         @default(45.0)
+  acuteLoad      Float         @default(0.0)
+  chronicLoad    Float         @default(0.0)
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+
+  integrations   Integration[]
+  activities     Activity[]
+  rawStreams     RawActivityStream[]
+
+  @@map("users")
+}
+
+model Integration {
+  id              String              @id @default(uuid())
+  userId          String
+  provider        IntegrationProvider
+  accessToken     String              @db.Text
+  refreshToken    String?             @db.Text
+  tokenExpiresAt  DateTime?
+  status          SyncStatus          @default(ACTIVE)
+  externalUserId  String?
+  lastSyncedAt    DateTime?
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @updatedAt
+
+  user            User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, provider])
+  @@map("integrations")
+}
+
+model Activity {
+  id                  String       @id @default(uuid())
+  userId              String
+  title               String?
+  workoutType         WorkoutType  @default(EASY)
+  
+  distanceMeters      Float
+  durationSeconds     Int
+  movingTimeSeconds   Int
+  avgHeartRate        Int?
+  maxHeartRate        Int?
+  
+  normalizedGAP       Float?
+  thermalPenalty      Float?
+  avgCadence          Int?
+  totalElevationGain  Float?
+  
+  streamSource        StreamSource
+  externalActivityId  String?
+  timestamp           DateTime
+  createdAt           DateTime     @default(now())
+  updatedAt           DateTime     @updatedAt
+
+  user                User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  rawStream           RawActivityStream?
+
+  @@index([userId, timestamp])
+  @@index([userId, externalActivityId])
+  @@map("activities")
+}
+
+model RawActivityStream {
+  id              String       @id @default(uuid())
+  userId          String
+  activityId      String?      @unique
+  streamSource    StreamSource
+  rawPayload      Json
+  createdAt       DateTime     @default(now())
+
+  user            User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  activity        Activity?    @relation(fields: [activityId], references: [id], onDelete: SetNull)
+
+  @@map("raw_activity_streams")
+}
