@@ -1,0 +1,21 @@
+{
+  "project": "RunPaceLogic",
+  "version": "1.0.0",
+  "engine": "nextjs-app-router",
+  "modules": [
+    "dashboard",
+    "vdot",
+    "weather-adjust",
+    "zones",
+    "training-plan",
+    "pbs",
+    "geek-mode",
+    "ai-coach",
+    "settings"
+  ],
+  "styling": {
+    "theme": "dark-sci-fi",
+    "accent": "blue-indigo",
+    "radius": "rounded-2xl"
+  }
+}
