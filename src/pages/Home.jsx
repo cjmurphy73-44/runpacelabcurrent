@@ -1,15 +1,12 @@
 import React, { useEffect, useState, useCallback } from "react";
+import { Link } from "react-router-dom";
 import { base44 } from "@/api/base44Client";
 import ProfileSetupForm from "@/components/dashboard/ProfileSetupForm";
 import FitnessStats from "@/components/dashboard/FitnessStats";
-import WorkoutUpload from "@/components/dashboard/WorkoutUpload";
-import BulkWorkoutImport from "@/components/dashboard/BulkWorkoutImport";
+import OcrDropzone from "@/components/imports/OcrDropzone";
 import RecentWorkouts from "@/components/dashboard/RecentWorkouts";
 import CoachMessageFeed from "@/components/dashboard/CoachMessageFeed";
 import WeeklySummary from "@/components/dashboard/WeeklySummary";
-import TrainingCalendar from "@/components/dashboard/TrainingCalendar";
-import PhysiologyLab from "@/components/dashboard/PhysiologyLab";
-import PersonalBests from "@/components/dashboard/PersonalBests";
 import RecoveryLab from "@/components/dashboard/RecoveryLab";
 import DataCommandCenter from "@/components/dashboard/DataCommandCenter";
 import CoachAdvice from "@/components/dashboard/CoachAdvice";
@@ -23,18 +20,18 @@ import StatusGauges from "@/components/dashboard/StatusGauges";
 import HorizonStrip from "@/components/dashboard/HorizonStrip";
 import LoadFatigueChart from "@/components/dashboard/LoadFatigueChart";
 import DashboardMetricBanner from "@/components/dashboard/DashboardMetricBanner";
-import OcrDropzone from "@/components/imports/OcrDropzone";
-import RaceStrategyPlanner from "@/components/dashboard/RaceStrategyPlanner";
-import WipWrapper from "@/components/common/WipWrapper";
+import DashboardRangeControls from "@/components/dashboard/DashboardRangeControls";
 import { FitnessProvider } from "@/context/FitnessContext";
 import { useUIPreferences } from "@/context/UIPreferencesContext";
-import DashboardRangeControls from "@/components/dashboard/DashboardRangeControls";
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import PageShell from "@/components/layout/PageShell";
+import SectionHeading from "@/components/layout/SectionHeading";
+import { Card, CardContent } from "@/components/ui/card";
+import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from "@/components/ui/accordion";
+import { Sun, TrendingUp, Activity, MessageCircle, HeartPulse, ArrowRight } from "lucide-react";
 
 export default function Home() {
   const [loading, setLoading] = useState(true);
   const [athlete, setAthlete] = useState(null);
-  const [activeTab, setActiveTab] = useState("dashboard");
   const [workouts, setWorkouts] = useState([]);
   const [messages, setMessages] = useState([]);
   const [loadTimelineWorkouts, setLoadTimelineWorkouts] = useState([]);
@@ -72,7 +69,7 @@ export default function Home() {
   }, [loadAthleteData]);
 
   if (loading) {
-    return <div className="text-center py-20 text-muted-foreground">Loading your dashboard...</div>;
+    return <div className="text-center py-20 text-muted-foreground">Loading your dashboard…</div>;
   }
 
   if (!athlete) {
@@ -85,91 +82,93 @@ export default function Home() {
 
   return (
     <FitnessProvider athleteId={athlete.id}>
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-        <TabsList className="max-w-full overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-          <TabsTrigger value="dashboard">Overview</TabsTrigger>
-          <TabsTrigger value="calendar">Training Calendar</TabsTrigger>
-          <TabsTrigger value="physiology">Physiology Lab</TabsTrigger>
-          <TabsTrigger value="bests">Personal Bests</TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="dashboard" className="space-y-6">
-          {/* Pro-Athlete Obsidian — top metric banner */}
+      <PageShell maxWidth="max-w-7xl">
+        {/* 1 — Today's snapshot */}
+        <section className="space-y-4">
+          <SectionHeading title="Today's snapshot" description="Your form, readiness and prescribed session for today." icon={Sun} />
           <DashboardMetricBanner athlete={athlete} workouts={loadTimelineWorkouts} />
-
-          {/* Hero — Performance Management Chart (synced obsidian PMC) */}
-          <LoadFatigueChart completedSessions={loadTimelineWorkouts} plannedWorkouts={plannedWorkouts} />
-
-          {/* Action grid — OCR import, recent sessions, race strategy lab preview */}
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <OcrDropzone athleteId={athlete.id} onSaved={() => loadAthleteData(athlete.id)} />
-            <RecentWorkouts workouts={workouts} athlete={athlete} />
-            <WipWrapper isWip featureName="Race Strategy Engine">
-              <RaceStrategyPlanner athleteId={athlete.id} />
-            </WipWrapper>
-          </div>
-
-          {/* Execute + status */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             <div className="lg:col-span-2">
               <TodaySessionCard athleteId={athlete.id} />
             </div>
             <StatusGauges athlete={athlete} />
           </div>
+        </section>
 
-          {/* Tier 2 — Horizon */}
+        {/* 2 — Load & Form */}
+        <section className="space-y-4">
+          <SectionHeading title="Load & Form" description="Fitness, fatigue and the balance between them over time." icon={TrendingUp} />
+          <LoadFatigueChart completedSessions={loadTimelineWorkouts} plannedWorkouts={plannedWorkouts} />
           <HorizonStrip athleteId={athlete.id} />
+        </section>
 
-          <HolisticFactorsLog athleteId={athlete.id} />
-
-          {showDeepMetrics && (
-            <div className="space-y-6">
-              <DashboardRangeControls />
-              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                <div className="lg:col-span-2">
-                  <FitnessStats athlete={athlete} />
-                </div>
-                <CoachAdvice />
-              </div>
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                  <AutonomicStressCard />
-                  <SleepEnergyCard />
-                </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                  <ReadinessScoreCard />
-                </div>
-              </div>
-              <BaselineHistoryMatrix athleteId={athlete.id} />
-            </div>
-          )}
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div className="md:col-span-2 space-y-6">
-              <WeeklySummary />
-              <RecoveryLab athleteId={athlete.id} />
-              <DataCommandCenter athleteId={athlete.id} />
-            </div>
-            <div className="space-y-6">
-              <WorkoutUpload athleteId={athlete.id} onUploaded={() => loadAthleteData(athlete.id)} />
-              <BulkWorkoutImport athleteId={athlete.id} onUploaded={() => loadAthleteData(athlete.id)} />
-              <CoachMessageFeed messages={messages} />
-            </div>
+        {/* 3 — Recent activity */}
+        <section className="space-y-4">
+          <SectionHeading
+            title="Recent activity"
+            description="Drop a workout screenshot or review your latest sessions."
+            icon={Activity}
+            action={
+              <Link to="/import" className="inline-flex items-center gap-1 text-sm font-medium text-primary hover:underline whitespace-nowrap">
+                All import options <ArrowRight className="w-3.5 h-3.5" />
+              </Link>
+            }
+          />
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <OcrDropzone athleteId={athlete.id} onSaved={() => loadAthleteData(athlete.id)} />
+            <RecentWorkouts workouts={workouts} athlete={athlete} />
           </div>
-        </TabsContent>
+        </section>
 
-        <TabsContent value="calendar">
-          <TrainingCalendar athleteId={athlete.id} currentTsb={athlete.current_tsb} />
-        </TabsContent>
+        {/* 4 — Coach notes */}
+        <section className="space-y-4">
+          <SectionHeading title="Coach notes" description="Automated briefings and AI messages tuned to your recent trend." icon={MessageCircle} />
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <CoachAdvice />
+            <CoachMessageFeed messages={messages} />
+          </div>
+        </section>
 
-        <TabsContent value="physiology">
-          <PhysiologyLab athlete={athlete} />
-        </TabsContent>
+        {/* 5 — Recovery & Readiness */}
+        <section className="space-y-4">
+          <SectionHeading title="Recovery & Readiness" description="Sleep, HRV, autonomic stress and lifestyle context." icon={HeartPulse} />
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
+            <ReadinessScoreCard />
+            <SleepEnergyCard />
+            <AutonomicStressCard />
+          </div>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <RecoveryLab athleteId={athlete.id} />
+            <HolisticFactorsLog athleteId={athlete.id} />
+          </div>
+        </section>
 
-        <TabsContent value="bests">
-          <PersonalBests />
-        </TabsContent>
-      </Tabs>
+        {/* 6 — Advanced metrics (geek mode only, collapsible) */}
+        {showDeepMetrics && (
+          <Card>
+            <CardContent className="pt-6">
+              <Accordion type="single" collapsible defaultValue="advanced">
+                <AccordionItem value="advanced" className="border-0">
+                  <AccordionTrigger className="text-base font-heading font-semibold">Advanced metrics</AccordionTrigger>
+                  <AccordionContent className="space-y-8 pt-4">
+                    <DashboardRangeControls />
+                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                      <div className="lg:col-span-2">
+                        <FitnessStats athlete={athlete} />
+                      </div>
+                      <BaselineHistoryMatrix athleteId={athlete.id} />
+                    </div>
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                      <WeeklySummary />
+                      <DataCommandCenter athleteId={athlete.id} />
+                    </div>
+                  </AccordionContent>
+                </AccordionItem>
+              </Accordion>
+            </CardContent>
+          </Card>
+        )}
+      </PageShell>
     </FitnessProvider>
   );
 }

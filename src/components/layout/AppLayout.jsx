@@ -3,7 +3,8 @@ import { Outlet, Link, useLocation } from "react-router-dom";
 import { useAuth } from "@/lib/AuthContext";
 import { useUIPreferences } from "@/context/UIPreferencesContext";
 import { Button } from "@/components/ui/button";
-import { Activity, MessageCircle, LogOut, CalendarRange, FlaskConical, Settings, Upload, Gauge, CloudSun, LayoutGrid, Trophy } from "lucide-react";
+import ToolsDropdown from "@/components/layout/ToolsDropdown";
+import { Activity, MessageCircle, LogOut, CalendarRange, FlaskConical, Settings, Upload } from "lucide-react";
 
 export default function AppLayout() {
   const { logout } = useAuth();
@@ -25,37 +26,42 @@ export default function AppLayout() {
 
   return (
     <div className="min-h-screen bg-background">
-      <header className="border-b border-border">
-        <div className="max-w-7xl mx-auto flex items-center justify-between px-4 py-3">
-          <div className="flex items-center gap-2 font-heading font-bold text-lg">
-            <Activity className="w-5 h-5" />
-            Runpacelab
+      <header className="border-b border-border sticky top-0 bg-background/80 backdrop-blur z-30">
+        <div className="max-w-7xl mx-auto flex items-center justify-between gap-4 px-4 py-3">
+          <div className="flex items-center gap-6 min-w-0">
+            <Link to="/" className="flex items-center gap-2 font-heading font-bold text-lg shrink-0">
+              <Activity className="w-5 h-5 text-primary" />
+              Runpacelab
+            </Link>
+            <nav className="flex items-center gap-1 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden min-w-0">
+              {navLink("/", "Dashboard", Activity)}
+              {navLink("/plan", "Plan", CalendarRange)}
+              {navLink("/coach", "Coach", MessageCircle)}
+              <ToolsDropdown />
+            </nav>
           </div>
-          <nav className="flex items-center gap-1 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden min-w-0">
-            {navLink("/", "Dashboard", Activity)}
-            {navLink("/vdot", "VDOT", Gauge)}
-            {navLink("/weather", "Weather", CloudSun)}
-            {navLink("/zones", "Zones", LayoutGrid)}
-            {navLink("/plan", "Plan", CalendarRange)}
-            {navLink("/pbs", "Ledger", Trophy)}
-            {navLink("/coach", "AI Coach", MessageCircle)}
-            {navLink("/settings", "Settings", Settings)}
-            {navLink("/import", "Imports", Upload)}
+          <div className="flex items-center gap-1 shrink-0">
             <Button
               variant={showDeepMetrics ? "secondary" : "ghost"}
-              size="sm"
+              size="icon"
               onClick={toggleDeepMetrics}
               title="Toggle scientific metrics (CTL/ATL/TSB, VDOT)"
             >
-              <FlaskConical className="w-4 h-4" /><span className="hidden sm:inline ml-1">Geek Mode</span>
+              <FlaskConical className="w-4 h-4" />
             </Button>
-            <Button variant="ghost" size="sm" onClick={() => logout()} title="Logout">
-              <LogOut className="w-4 h-4" /><span className="hidden sm:inline ml-1">Logout</span>
+            <Link to="/import" title="Imports" className="flex items-center justify-center h-9 w-9 rounded-md text-muted-foreground hover:bg-accent">
+              <Upload className="w-4 h-4" />
+            </Link>
+            <Link to="/settings" title="Settings" className="flex items-center justify-center h-9 w-9 rounded-md text-muted-foreground hover:bg-accent">
+              <Settings className="w-4 h-4" />
+            </Link>
+            <Button variant="ghost" size="icon" onClick={() => logout()} title="Logout">
+              <LogOut className="w-4 h-4" />
             </Button>
-          </nav>
+          </div>
         </div>
       </header>
-      <main className="max-w-7xl mx-auto px-4 py-6">
+      <main className="max-w-7xl mx-auto px-4 py-8">
         <Outlet />
       </main>
     </div>

@@ -24,6 +24,8 @@ import Vdot from '@/pages/Vdot';
 import WeatherAdjust from '@/pages/WeatherAdjust';
 import Zones from '@/pages/Zones';
 import Pbs from '@/pages/Pbs';
+import Calendar from '@/pages/Calendar';
+import Physiology from '@/pages/Physiology';
 // Add page imports here
 
 const AuthenticatedApp = () => {
@@ -69,6 +71,8 @@ const AuthenticatedApp = () => {
           <Route path="/weather" element={<WeatherAdjust />} />
           <Route path="/zones" element={<Zones />} />
           <Route path="/pbs" element={<Pbs />} />
+          <Route path="/calendar" element={<Calendar />} />
+          <Route path="/physiology" element={<Physiology />} />
         </Route>
       </Route>
       <Route path="*" element={<PageNotFound />} />
