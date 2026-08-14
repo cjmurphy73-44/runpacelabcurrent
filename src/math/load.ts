@@ -35,7 +35,6 @@ export function calculaterTSS(
     return { tss: 0, intensityFactor: 0 };
   }
 
-  // Intensity Factor (IF) for running is ratio of threshold pace to average pace (speed ratio)
   const intensityFactor = thresholdPaceSecondsPerKm / avgPaceSecondsPerKm;
   const tss = Math.round((durationSeconds * Math.pow(intensityFactor, 2) / 3600) * 100);
 
@@ -93,11 +92,13 @@ export function calculateEWMA(
     atl = atl + (tss - atl) * atlLambda;
   }
 
-  const tsb = ctl - atl;
+  const roundedCTL = Number(ctl.toFixed(1));
+  const roundedATL = Number(atl.toFixed(1));
+  const tsb = Number((roundedCTL - roundedATL).toFixed(1));
 
   return {
-    ctl: Number(ctl.toFixed(1)),
-    atl: Number(atl.toFixed(1)),
-    tsb: Number(tsb.toFixed(1)),
+    ctl: roundedCTL,
+    atl: roundedATL,
+    tsb,
   };
 }

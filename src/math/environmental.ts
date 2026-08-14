@@ -1,76 +1,120 @@
 /**
- * Environmental and Biomechanical Pacing Adjustments
+ * Environmental Weather & Altitude Pace Adjuster Engine
  * 
- * Implements Alberto Minetti's metabolic energy cost equation for slope gradients
- * and dynamic thermal performance penalties based on temperature and dew point.
+ * Adjusts running target pace based on heat, humidity, dew point, and altitude.
+ * Primary models used:
+ * - Dew Point via Magnus-Tetens formula
+ * - Heat Stress Factor (% slowdown per °C above optimal ~10-15°C)
+ * - Altitude adjustment factor (~1% slowdown per 300m above 1,000m)
  */
 
-export interface ThermalPenaltyResult {
-  /** Penalty percentage applied (e.g. 2.5 means +2.5% slower) */
-  penaltyPercentage: number;
-  /** Adjusted pace in seconds per kilometer */
-  adjustedPaceSeconds: number;
+export interface WeatherCondition {
+  temperatureC: number;      // Temperature in Celsius
+  relativeHumidity: number; // 0 - 100 percentage
+  altitudeMeters?: number;  // Altitude above sea level in meters (optional)
+}
+
+export interface PaceAdjustmentResult {
+  dewPointC: number;
+  dewPointF: number;
+  heatStressFactor: number;   // e.g. 1.05 = 5% pace adjustment
+  altitudeFactor: number;     // e.g. 1.02 = 2% altitude penalty
+  totalPaceMultiplier: number;// Combined adjustment multiplier
+  adjustedPaceSecondsPerKm: number;
+  originalPaceSecondsPerKm: number;
+  paceImpactSecondsPerKm: number; // Seconds added per km
+  formattedAdjustedPace: string;
 }
 
 /**
- * Calculates Grade Adjusted Pace (GAP) using Minetti's 5th-order metabolic polynomial.
- *
- * @param paceSecondsPerKm - Flat land pace in seconds per kilometer
- * @param inclineGradeDecimal - Gradient as decimal (e.g., +0.05 for +5% incline, -0.05 for -5% decline)
- * @returns Equivalent flat-ground pace in seconds per kilometer
+ * Calculates Dew Point in Celsius using the Magnus-Tetens formula.
  */
-export function calculateMinettiGAP(
-  paceSecondsPerKm: number,
-  inclineGradeDecimal: number
-): number {
-  if (paceSecondsPerKm <= 0) {
-    throw new Error('Pace must be a positive number');
+export function calculateDewPoint(temperatureC: number, relativeHumidity: number): number {
+  if (relativeHumidity < 0 || relativeHumidity > 100) {
+    throw new Error('Relative humidity must be between 0 and 100');
   }
 
-  const i = inclineGradeDecimal;
+  const a = 17.27;
+  const b = 237.7;
+  const alpha = ((a * temperatureC) / (b + temperatureC)) + Math.log(relativeHumidity / 100);
+  const dewPoint = (b * alpha) / (a - alpha);
 
-  const metabolicCost =
-    155.4 * Math.pow(i, 5) -
-    30.4 * Math.pow(i, 4) -
-    43.3 * Math.pow(i, 3) +
-    46.3 * Math.pow(i, 2) +
-    19.5 * i +
-    3.6;
-
-  const flatCost = 3.6;
-  const costRatio = metabolicCost / flatCost;
-  const gapPace = paceSecondsPerKm / costRatio;
-
-  return Number(gapPace.toFixed(2));
+  return Math.round(dewPoint * 10) / 10;
 }
 
 /**
- * Calculates thermal performance penalty based on ambient temperature and dew point.
- *
- * @param tempF - Ambient temperature in degrees Fahrenheit
- * @param dewPointF - Dew point in degrees Fahrenheit
- * @param basePaceSecondsPerKm - Target pace on flat ground under ideal conditions
- * @returns Object containing penalty percentage and thermal-adjusted target pace
+ * Converts Celsius to Fahrenheit.
  */
-export function calculateThermalPenalty(
-  tempF: number,
-  dewPointF: number,
-  basePaceSecondsPerKm: number
-): ThermalPenaltyResult {
-  if (basePaceSecondsPerKm <= 0) {
-    throw new Error('Base pace must be a positive number');
+export function celsiusToFahrenheit(celsius: number): number {
+  return (celsius * 9) / 5 + 32;
+}
+
+/**
+ * Formats seconds per km to MM:SS string.
+ */
+function formatPace(paceSecondsPerKm: number): string {
+  const mins = Math.floor(paceSecondsPerKm / 60);
+  const secs = Math.round(paceSecondsPerKm % 60);
+  const paddedSecs = secs < 10 ? `0${secs}` : `${secs}`;
+  return `${mins}:${paddedSecs} /km`;
+}
+
+/**
+ * Calculates overall pace adjustment multiplier from temperature, humidity, and altitude.
+ */
+export function adjustPaceForEnvironment(
+  targetPaceSecondsPerKm: number,
+  weather: WeatherCondition
+): PaceAdjustmentResult {
+  if (targetPaceSecondsPerKm <= 0 || isNaN(targetPaceSecondsPerKm)) {
+    throw new Error('Target pace must be a positive number');
   }
 
-  const thermalSum = tempF + dewPointF;
-  const stressIndex = thermalSum - 100;
+  const dewPointC = calculateDewPoint(weather.temperatureC, weather.relativeHumidity);
+  const dewPointF = celsiusToFahrenheit(dewPointC);
+  const tempF = celsiusToFahrenheit(weather.temperatureC);
 
-  const rawPenalty = stressIndex > 0 ? (stressIndex / 2) * 0.5 : 0;
-  const penaltyPercentage = Number(rawPenalty.toFixed(2));
+  // 1. Calculate Heat Stress Adjustment based on Dew Point + Temperature sum
+  // Optimal running temp + dewpoint sum in Fahrenheit is < 100
+  const tempDewPointSum = tempF + dewPointF;
+  let heatStressPercent = 0;
 
-  const adjustedPaceSeconds = basePaceSecondsPerKm * (1 + penaltyPercentage / 100);
+  if (tempDewPointSum > 100) {
+    if (tempDewPointSum <= 120) {
+      heatStressPercent = (tempDewPointSum - 100) * 0.15; // ~1-3% slowdown
+    } else if (tempDewPointSum <= 140) {
+      heatStressPercent = 3 + (tempDewPointSum - 120) * 0.25; // ~3-8% slowdown
+    } else if (tempDewPointSum <= 160) {
+      heatStressPercent = 8 + (tempDewPointSum - 140) * 0.35; // ~8-15% slowdown
+    } else {
+      heatStressPercent = 15 + (tempDewPointSum - 160) * 0.5; // >15% severe slowdown
+    }
+  }
+
+  const heatStressFactor = 1 + heatStressPercent / 100;
+
+  // 2. Calculate Altitude Adjustment (~1% per 300m above 1000m)
+  const altitudeMeters = weather.altitudeMeters || 0;
+  let altitudePercent = 0;
+  if (altitudeMeters > 1000) {
+    altitudePercent = ((altitudeMeters - 1000) / 300) * 1.0;
+  }
+  const altitudeFactor = 1 + altitudePercent / 100;
+
+  // Combined Multiplier
+  const totalPaceMultiplier = heatStressFactor * altitudeFactor;
+  const adjustedPaceSecondsPerKm = Math.round(targetPaceSecondsPerKm * totalPaceMultiplier);
+  const paceImpactSecondsPerKm = adjustedPaceSecondsPerKm - targetPaceSecondsPerKm;
 
   return {
-    penaltyPercentage,
-    adjustedPaceSeconds: Number(adjustedPaceSeconds.toFixed(2)),
+    dewPointC,
+    dewPointF: Math.round(dewPointF * 10) / 10,
+    heatStressFactor: Math.round(heatStressFactor * 1000) / 1000,
+    altitudeFactor: Math.round(altitudeFactor * 1000) / 1000,
+    totalPaceMultiplier: Math.round(totalPaceMultiplier * 1000) / 1000,
+    adjustedPaceSecondsPerKm,
+    originalPaceSecondsPerKm: targetPaceSecondsPerKm,
+    paceImpactSecondsPerKm,
+    formattedAdjustedPace: formatPace(adjustedPaceSecondsPerKm),
   };
 }

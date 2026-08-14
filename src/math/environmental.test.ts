@@ -1,42 +1,69 @@
-import { describe, expect, it } from 'vitest';
-import { calculateMinettiGAP, calculateThermalPenalty } from './environmental';
+import { describe, it, expect } from 'vitest';
+import {
+  calculateDewPoint,
+  celsiusToFahrenheit,
+  adjustPaceForEnvironment,
+} from './environmental';
 
-describe('calculateMinettiGAP', () => {
-  it('returns exact same pace for flat ground (grade = 0)', () => {
-    const gap = calculateMinettiGAP(300, 0);
-    expect(gap).toBe(300);
+describe('Environmental Weather Pace Adjuster Engine', () => {
+  it('correctly calculates dew point for 25C and 80% humidity', () => {
+    const dewPoint = calculateDewPoint(25, 80);
+    expect(dewPoint).toBeGreaterThanOrEqual(21);
+    expect(dewPoint).toBeLessThanOrEqual(22);
   });
 
-  it('calculates equivalent flat pace for steep uphill (+10% incline)', () => {
-    const gap = calculateMinettiGAP(300, 0.10);
-    expect(gap).toBeLessThan(300);
-    expect(gap).toBeGreaterThan(100);
+  it('converts Celsius to Fahrenheit accurately', () => {
+    expect(celsiusToFahrenheit(0)).toBe(32);
+    expect(celsiusToFahrenheit(25)).toBe(77);
   });
 
-  it('calculates equivalent flat pace for moderate downhill (-5% decline)', () => {
-    const gap = calculateMinettiGAP(300, -0.05);
-    expect(gap).toBeGreaterThan(300);
+  it('returns no pace penalty for ideal cool conditions (12C, 50% RH, Sea Level)', () => {
+    const result = adjustPaceForEnvironment(240, {
+      temperatureC: 12,
+      relativeHumidity: 50,
+      altitudeMeters: 0,
+    });
+
+    expect(result.adjustedPaceSecondsPerKm).toBe(240);
+    expect(result.paceImpactSecondsPerKm).toBe(0);
+    expect(result.formattedAdjustedPace).toBe('4:00 /km');
   });
 
-  it('throws error for non-positive pace', () => {
-    expect(() => calculateMinettiGAP(0, 0.05)).toThrow('Pace must be a positive number');
-  });
-});
+  it('calculates significant slowdown for hot & humid day (32C, 85% RH)', () => {
+    // 4:00/km base pace = 240 seconds
+    const result = adjustPaceForEnvironment(240, {
+      temperatureC: 32,
+      relativeHumidity: 85,
+    });
 
-describe('calculateThermalPenalty', () => {
-  it('applies 0% penalty for cool/ideal conditions (60°F + 35°F dew point = 95)', () => {
-    const result = calculateThermalPenalty(60, 35, 300);
-    expect(result.penaltyPercentage).toBe(0);
-    expect(result.adjustedPaceSeconds).toBe(300);
-  });
-
-  it('calculates penalty for high heat and humidity (80°F + 70°F dew point = 150)', () => {
-    const result = calculateThermalPenalty(80, 70, 300);
-    expect(result.penaltyPercentage).toBe(12.5);
-    expect(result.adjustedPaceSeconds).toBe(337.5);
+    expect(result.adjustedPaceSecondsPerKm).toBeGreaterThan(260); // Should slow down >20s/km
+    expect(result.totalPaceMultiplier).toBeGreaterThan(1.10);
   });
 
-  it('throws error for non-positive base pace', () => {
-    expect(() => calculateThermalPenalty(80, 70, -10)).toThrow('Base pace must be a positive number');
+  it('applies altitude penalty at high elevation (2200m altitude)', () => {
+    const seaLevelResult = adjustPaceForEnvironment(240, {
+      temperatureC: 15,
+      relativeHumidity: 50,
+      altitudeMeters: 0,
+    });
+
+    const highAltitudeResult = adjustPaceForEnvironment(240, {
+      temperatureC: 15,
+      relativeHumidity: 50,
+      altitudeMeters: 2200, // Mexico City / Boulder elevation
+    });
+
+    expect(highAltitudeResult.adjustedPaceSecondsPerKm).toBeGreaterThan(seaLevelResult.adjustedPaceSecondsPerKm);
+    expect(highAltitudeResult.altitudeFactor).toBeGreaterThan(1.03);
+  });
+
+  it('throws error for invalid humidity or pace inputs', () => {
+    expect(() =>
+      adjustPaceForEnvironment(-100, { temperatureC: 20, relativeHumidity: 50 })
+    ).toThrow();
+
+    expect(() =>
+      adjustPaceForEnvironment(240, { temperatureC: 20, relativeHumidity: 120 })
+    ).toThrow();
   });
 });
