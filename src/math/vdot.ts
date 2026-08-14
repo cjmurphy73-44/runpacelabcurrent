@@ -1,44 +1,151 @@
 /**
  * Jack Daniels VDOT Calculation Engine
- *
- * VDOT is a pseudo-VO2 max metric combining oxygen consumption capacity
- * with running economy based on race performance rather than laboratory tests.
  */
 
-/**
- * Calculates Jack Daniels' VDOT value based on race duration and distance.
- *
- * @param timeSeconds - Total race duration in seconds (must be > 0)
- * @param distanceMeters - Total race distance in meters (must be > 0)
- * @returns Calculated VDOT score rounded to two decimal places
- * @throws Error if inputs are non-positive
- */
 export function calculateVDOT(timeSeconds: number, distanceMeters: number): number {
   if (timeSeconds <= 0 || distanceMeters <= 0) {
     throw new Error('Time and distance must be positive numbers');
   }
 
-  // Convert time to minutes and velocity to meters/minute
   const timeMinutes = timeSeconds / 60;
   const velocityMetersPerMin = distanceMeters / timeMinutes;
 
-  // 1. Oxygen Cost Equation (VO2 in ml/kg/min for a given running velocity v)
-  // VO2 = -4.60 + 0.182258 * v + 0.000104 * v^2
   const vo2Cost =
     -4.60 +
     0.182258 * velocityMetersPerMin +
     0.000104 * Math.pow(velocityMetersPerMin, 2);
 
-  // 2. Percent Max Oxygen Consumption (%VO2max sustained over duration t in minutes)
-  // %VO2max = 0.8 + 0.1894393 * e^(-0.012778 * t) + 0.2989558 * e^(-0.1932605 * t)
   const percentMaxVo2 =
     0.8 +
     0.1894393 * Math.exp(-0.012778 * timeMinutes) +
     0.2989558 * Math.exp(-0.1932605 * timeMinutes);
 
-  // 3. VDOT = Oxygen Cost / Sustained Percent Max
   const rawVdot = vo2Cost / percentMaxVo2;
 
-  // Round to 2 decimal places
   return Number(rawVdot.toFixed(2));
+}
+
+function velocityFromVO2(vo2: number): number {
+  const a = 0.000104;
+  const b = 0.182258;
+  const c = -(4.60 + vo2);
+  return (-b + Math.sqrt(b * b - 4 * a * c)) / (2 * a);
+}
+
+function velocityToSecPerKm(velocityMetersPerMin: number): number {
+  return Math.round(60000 / velocityMetersPerMin);
+}
+
+function formatPace(secPerKm: number): string {
+  const mins = Math.floor(secPerKm / 60);
+  const secs = Math.round(secPerKm % 60);
+  return `${mins}:${secs < 10 ? '0' : ''}${secs}/km`;
+}
+
+function formatDuration(totalSeconds: number): string {
+  const hours = Math.floor(totalSeconds / 3600);
+  const mins = Math.floor((totalSeconds % 3600) / 60);
+  const secs = Math.round(totalSeconds % 60);
+
+  const pad = (num: number) => (num < 10 ? `0${num}` : `${num}`);
+
+  if (hours > 0) {
+    return `${hours}:${pad(mins)}:${pad(secs)}`;
+  }
+  return `${mins}:${pad(secs)}`;
+}
+
+export interface TrainingPaces {
+  easy: { secPerKm: number; formatted: string };
+  marathon: { secPerKm: number; formatted: string };
+  threshold: { secPerKm: number; formatted: string };
+  interval: { secPerKm: number; formatted: string };
+  repetition: { secPerKm: number; formatted: string };
+}
+
+export function getTrainingPaces(vdot: number): TrainingPaces {
+  if (vdot <= 0) {
+    throw new Error('VDOT must be a positive number');
+  }
+
+  const easyPaceSec = velocityToSecPerKm(velocityFromVO2(vdot * 0.70));
+  const marathonPaceSec = velocityToSecPerKm(velocityFromVO2(vdot * 0.84));
+  const thresholdPaceSec = velocityToSecPerKm(velocityFromVO2(vdot * 0.88));
+  const intervalPaceSec = velocityToSecPerKm(velocityFromVO2(vdot * 0.98));
+  const repetitionPaceSec = velocityToSecPerKm(velocityFromVO2(vdot * 1.07));
+
+  return {
+    easy: { secPerKm: easyPaceSec, formatted: formatPace(easyPaceSec) },
+    marathon: { secPerKm: marathonPaceSec, formatted: formatPace(marathonPaceSec) },
+    threshold: { secPerKm: thresholdPaceSec, formatted: formatPace(thresholdPaceSec) },
+    interval: { secPerKm: intervalPaceSec, formatted: formatPace(intervalPaceSec) },
+    repetition: { secPerKm: repetitionPaceSec, formatted: formatPace(repetitionPaceSec) },
+  };
+}
+
+/**
+ * Solves equivalent race duration in seconds for a given distance and VDOT.
+ */
+function solveEquivalentTime(vdot: number, distanceMeters: number): number {
+  let lowMin = 1;
+  let highMin = 1000;
+  let timeMin = 30;
+
+  for (let i = 0; i < 30; i++) {
+    timeMin = (lowMin + highMin) / 2;
+    const v = distanceMeters / timeMin;
+    const vo2Cost = -4.60 + 0.182258 * v + 0.000104 * Math.pow(v, 2);
+    const pct =
+      0.8 +
+      0.1894393 * Math.exp(-0.012778 * timeMin) +
+      0.2989558 * Math.exp(-0.1932605 * timeMin);
+    const calcVdot = vo2Cost / pct;
+
+    if (calcVdot > vdot) {
+      lowMin = timeMin;
+    } else {
+      highMin = timeMin;
+    }
+  }
+
+  return Math.round(timeMin * 60);
+}
+
+export interface EquivalentTimes {
+  fiveKm: { seconds: number; formatted: string };
+  tenKm: { seconds: number; formatted: string };
+  halfMarathon: { seconds: number; formatted: string };
+  marathon: { seconds: number; formatted: string };
+}
+
+export function getEquivalentTimes(vdot: number): EquivalentTimes {
+  if (vdot <= 0) {
+    throw new Error('VDOT must be a positive number');
+  }
+
+  const distances = {
+    fiveKm: 5000,
+    tenKm: 10000,
+    halfMarathon: 21097.5,
+    marathon: 42195,
+  };
+
+  return {
+    fiveKm: {
+      seconds: solveEquivalentTime(vdot, distances.fiveKm),
+      formatted: formatDuration(solveEquivalentTime(vdot, distances.fiveKm)),
+    },
+    tenKm: {
+      seconds: solveEquivalentTime(vdot, distances.tenKm),
+      formatted: formatDuration(solveEquivalentTime(vdot, distances.tenKm)),
+    },
+    halfMarathon: {
+      seconds: solveEquivalentTime(vdot, distances.halfMarathon),
+      formatted: formatDuration(solveEquivalentTime(vdot, distances.halfMarathon)),
+    },
+    marathon: {
+      seconds: solveEquivalentTime(vdot, distances.marathon),
+      formatted: formatDuration(solveEquivalentTime(vdot, distances.marathon)),
+    },
+  };
 }

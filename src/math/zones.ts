@@ -1,12 +1,5 @@
 /**
  * Daniels VDOT Pace & Zone Generator Engine
- * 
- * Translates a given VDOT score into target pace ranges based on Jack Daniels Running Formula:
- * - Easy / Recovery (E): ~52% VDOT VO2 demand
- * - Marathon Pace (M): ~58% VDOT VO2 demand
- * - Threshold Pace (T): ~63.7% VDOT VO2 demand (Lactate Threshold)
- * - Interval Pace (I): ~71% VDOT VO2 demand (VO2max)
- * - Repetition Pace (R): ~77% VDOT VO2 demand (Speed & economy)
  */
 
 export interface PaceZone {
@@ -14,7 +7,7 @@ export interface PaceZone {
   minPaceSecondsPerKm: number;
   maxPaceSecondsPerKm: number;
   targetPaceSecondsPerKm: number;
-  formattedTargetPace: string; // e.g. "4:03 /km"
+  formattedTargetPace: string;
 }
 
 export interface TrainingZonesResult {
@@ -22,9 +15,21 @@ export interface TrainingZonesResult {
   zones: Record<'easy' | 'marathon' | 'threshold' | 'interval' | 'repetition', PaceZone>;
 }
 
-/**
- * Formats pace in total seconds per km into "MM:SS /km" format.
- */
+export interface HeartRateZone {
+  name: string;
+  minBpm: number;
+  maxBpm: number;
+}
+
+export interface HeartRateZonesResult {
+  method: 'karvonen' | 'percent_max';
+  zone1: HeartRateZone; // Easy / Active Recovery
+  zone2: HeartRateZone; // Aerobic / Endurance
+  zone3: HeartRateZone; // Tempo / Lactate Threshold
+  zone4: HeartRateZone; // Anaerobic / VO2 Max
+  zone5: HeartRateZone; // Neuromuscular / Speed
+}
+
 export function formatPace(paceSecondsPerKm: number): string {
   const mins = Math.floor(paceSecondsPerKm / 60);
   const secs = Math.round(paceSecondsPerKm % 60);
@@ -32,11 +37,6 @@ export function formatPace(paceSecondsPerKm: number): string {
   return `${mins}:${paddedSecs} /km`;
 }
 
-/**
- * Calculates running velocity (m/min) for a given VO2 cost (mL/kg/min)
- * Inverting Daniels VO2 formula: VO2 = -29.28 + 0.2*v + 0.000193*v^2
- * 0.000193*v^2 + 0.2*v - (VO2 + 29.28) = 0
- */
 export function getVelocityFromVO2(vo2: number): number {
   const a = 0.000193;
   const b = 0.2;
@@ -46,24 +46,44 @@ export function getVelocityFromVO2(vo2: number): number {
 }
 
 /**
- * Calculates target training pace zones from a VDOT score.
+ * Calculates 5-zone Heart Rate ranges using Karvonen (HR Reserve) or % Max HR.
  */
+export function calculateHeartRateZones(maxHr: number, restingHr?: number): HeartRateZonesResult {
+  if (maxHr <= 0) {
+    throw new Error('maxHr must be a positive number');
+  }
+
+  const isKarvonen = restingHr !== undefined && restingHr > 0;
+  const hrr = isKarvonen ? maxHr - restingHr : maxHr;
+
+  const getBpm = (pct: number) => {
+    return isKarvonen ? Math.round(restingHr + pct * hrr) : Math.round(pct * maxHr);
+  };
+
+  return {
+    method: isKarvonen ? 'karvonen' : 'percent_max',
+    zone1: { name: 'Active Recovery', minBpm: getBpm(0.50), maxBpm: getBpm(0.60) },
+    zone2: { name: 'Aerobic / Endurance', minBpm: getBpm(0.60), maxBpm: getBpm(0.70) },
+    zone3: { name: 'Tempo / Threshold', minBpm: getBpm(0.70), maxBpm: getBpm(0.80) },
+    zone4: { name: 'Anaerobic Capacity', minBpm: getBpm(0.80), maxBpm: getBpm(0.90) },
+    zone5: { name: 'Neuromuscular / Speed', minBpm: getBpm(0.90), maxBpm: maxHr },
+  };
+}
+
 export function generateTrainingZones(vdot: number): TrainingZonesResult {
   if (vdot <= 0 || isNaN(vdot)) {
     throw new Error('VDOT must be a positive number');
   }
 
-  // Calculate target VO2 demand for each zone relative to VDOT
   const easyVO2 = vdot * 0.52;
-  const easyMinVO2 = vdot * 0.55; // Faster Easy
-  const easyMaxVO2 = vdot * 0.48; // Slower Recovery Easy
+  const easyMinVO2 = vdot * 0.55;
+  const easyMaxVO2 = vdot * 0.48;
 
   const marathonVO2 = vdot * 0.58;
-  const thresholdVO2 = vdot * 0.637; // Threshold Pace
-  const intervalVO2 = vdot * 0.71;   // Interval Pace
-  const repetitionVO2 = vdot * 0.77; // Repetition Pace
+  const thresholdVO2 = vdot * 0.637;
+  const intervalVO2 = vdot * 0.71;
+  const repetitionVO2 = vdot * 0.77;
 
-  // Convert velocities (m/min) -> paces (seconds/km): Pace = (1000 / velocity) * 60
   const easyTargetPace = (1000 / getVelocityFromVO2(easyVO2)) * 60;
   const easyMinPace = (1000 / getVelocityFromVO2(easyMinVO2)) * 60;
   const easyMaxPace = (1000 / getVelocityFromVO2(easyMaxVO2)) * 60;
@@ -113,4 +133,56 @@ export function generateTrainingZones(vdot: number): TrainingZonesResult {
       },
     },
   };
+}
+
+/**
+ * Calculates Pace Zones given threshold pace or VDOT.
+ */
+export function calculatePaceZones(params: { thresholdPaceSecPerKm?: number; vdot?: number }) {
+  if (params.vdot) {
+    return generateTrainingZones(params.vdot).zones;
+  }
+
+  if (params.thresholdPaceSecPerKm) {
+    const tPace = params.thresholdPaceSecPerKm;
+    return {
+      easy: {
+        name: 'EASY' as const,
+        minPaceSecondsPerKm: Math.round(tPace * 1.15),
+        maxPaceSecondsPerKm: Math.round(tPace * 1.30),
+        targetPaceSecondsPerKm: Math.round(tPace * 1.22),
+        formattedTargetPace: formatPace(tPace * 1.22),
+      },
+      marathon: {
+        name: 'MARATHON' as const,
+        minPaceSecondsPerKm: Math.round(tPace * 1.05),
+        maxPaceSecondsPerKm: Math.round(tPace * 1.12),
+        targetPaceSecondsPerKm: Math.round(tPace * 1.08),
+        formattedTargetPace: formatPace(tPace * 1.08),
+      },
+      threshold: {
+        name: 'THRESHOLD' as const,
+        minPaceSecondsPerKm: Math.round(tPace - 4),
+        maxPaceSecondsPerKm: Math.round(tPace + 4),
+        targetPaceSecondsPerKm: Math.round(tPace),
+        formattedTargetPace: formatPace(tPace),
+      },
+      interval: {
+        name: 'INTERVAL' as const,
+        minPaceSecondsPerKm: Math.round(tPace * 0.90),
+        maxPaceSecondsPerKm: Math.round(tPace * 0.95),
+        targetPaceSecondsPerKm: Math.round(tPace * 0.92),
+        formattedTargetPace: formatPace(tPace * 0.92),
+      },
+      repetition: {
+        name: 'REPETITION' as const,
+        minPaceSecondsPerKm: Math.round(tPace * 0.82),
+        maxPaceSecondsPerKm: Math.round(tPace * 0.88),
+        targetPaceSecondsPerKm: Math.round(tPace * 0.85),
+        formattedTargetPace: formatPace(tPace * 0.85),
+      },
+    };
+  }
+
+  throw new Error('Either thresholdPaceSecPerKm or vdot must be provided');
 }
