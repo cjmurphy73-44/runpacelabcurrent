@@ -9,6 +9,7 @@ export default function Navigation() {
 
   const navItems = [
     { name: 'Dashboard', href: '/' },
+    { name: 'Recovery', href: '/recovery' },
     { name: 'VDOT', href: '/vdot' },
     { name: 'Weather', href: '/weather-adjust' },
     { name: 'Zones', href: '/zones' },
