@@ -26,6 +26,7 @@ import Zones from '@/pages/Zones';
 import Pbs from '@/pages/Pbs';
 import Calendar from '@/pages/Calendar';
 import Physiology from '@/pages/Physiology';
+import RecoveryCenter from '@/pages/RecoveryCenter';
 // Add page imports here
 
 const AuthenticatedApp = () => {
@@ -73,6 +74,7 @@ const AuthenticatedApp = () => {
           <Route path="/pbs" element={<Pbs />} />
           <Route path="/calendar" element={<Calendar />} />
           <Route path="/physiology" element={<Physiology />} />
+          <Route path="/recovery" element={<RecoveryCenter />} />
         </Route>
       </Route>
       <Route path="*" element={<PageNotFound />} />
