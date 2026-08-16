@@ -25,13 +25,43 @@ export const calculateTSB = (ctl, atl) => {
  * Intensity Metrics
  */
 
-// Placeholder for VDOT calculation logic
-export const estimateVDOT = (performanceMetric, durationSeconds) => {
-  // Logic to be implemented via Multi-model Physiological Engine
-  return 0;
+/**
+ * Estimates VDOT based on performance (Jack Daniels model).
+ * @param {number} distanceMeters - Distance of the performance in meters
+ * @param {number} timeSeconds - Time taken in seconds
+ * @returns {number} Estimated VDOT
+ */
+export const estimateVDOT = (distanceMeters, timeSeconds) => {
+  if (timeSeconds <= 0) return 0;
+  
+  // VO2 = (-4.6 + 0.182258 * v + 0.000104 * v^2) / (1 - 0.96 * exp(-0.193 * t))
+  // where v = velocity in m/min, t = time in minutes
+  const velocityMetersPerMin = (distanceMeters / timeSeconds) * 60;
+  const timeMinutes = timeSeconds / 60;
+  
+  const percentMaxVO2 = 0.8 + 0.1894393 * Math.exp(-0.012778 * timeMinutes) + 0.2989558 * Math.exp(-0.1932605 * timeMinutes);
+  const vo2 = (-4.6 + 0.182258 * velocityMetersPerMin + 0.000104 * Math.pow(velocityMetersPerMin, 2)) / percentMaxVO2;
+  
+  return vo2;
 };
 
-// Placeholder for FTP calculation
-export const calculateFTP = (bestAveragePower) => {
-  return bestAveragePower * 0.95;
+/**
+ * Calculates FTP based on best average power (usually 20-min test).
+ * @param {number} p20 - Average power over 20 minutes
+ * @returns {number} Estimated FTP
+ */
+export const calculateFTP = (p20) => {
+  // Standard 95% of 20-minute best average power
+  return Math.round(p20 * 0.95);
+};
+
+/**
+ * Calculates Threshold Pace (m/s) based on VDOT.
+ * @param {number} vdot - Athlete's current VDOT
+ * @returns {number} Threshold pace in m/s
+ */
+export const calculateThresholdPace = (vdot) => {
+  // Simplified derivation for threshold pace from VDOT
+  // T-pace is approximately 90% of VO2max velocity
+  return vdot * 0.055; 
 };
