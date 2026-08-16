@@ -1,51 +1,34 @@
 import { NextResponse } from 'next/server';
-import { z } from 'zod';
-
-const aiCoachSchema = z.object({
-  vdot: z.number().min(15).max(85).optional(),
-  temperatureC: z.number().optional(),
-  humidity: z.number().min(0).max(100).optional(),
-  query: z.string().optional(),
-});
+import { reconcileWorkout, ScheduledWorkout, ExecutedActivity } from '@/lib/reconciliationEngine';
 
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const validation = aiCoachSchema.safeParse(body);
+    const { scheduled, executed }: { scheduled: ScheduledWorkout | null; executed: ExecutedActivity } = body;
 
-    if (!validation.success) {
-      return NextResponse.json(
-        { success: false, error: 'Invalid input parameters', details: validation.error.format() },
-        { status: 400 }
-      );
-    }
+    const reconciliation = reconcileWorkout(scheduled, executed);
 
-    const { vdot = 45, temperatureC = 20, humidity = 50, query } = validation.data;
-
-    // Generate intelligent rule-based/AI coaching advice
-    let advice = `Based on your VDOT of ${vdot}, your aerobic baseline is strong. `;
-    
-    if (temperatureC > 25 || humidity > 70) {
-      advice += `⚠️ **Heat Advisory Alert**: With temperature at ${temperatureC}°C and humidity at ${humidity}%, your physiological strain is elevated. We recommend shifting your easy pace 15–25 seconds slower per kilometer and prioritizing hydration. `;
+    // Generate contextual AI coaching response based on adherence status
+    let aiResponse = "";
+    if (reconciliation.status === 'ON_BOOK') {
+      aiResponse = `Fantastic session execution! You hit your targets cleanly. Keep this cadence for your upcoming key efforts.`;
+    } else if (reconciliation.status === 'OVER_ACHIEVED') {
+      aiResponse = `Heads up! You ran ${Math.abs(reconciliation.distanceDeltaPct).toFixed(1)}% farther than prescribed. To prevent accumulated fatigue before your long run, I suggest dialing back tomorrow's pace into recovery zone.`;
+    } else if (reconciliation.status === 'SHORT_MODIFIED') {
+      aiResponse = `Life happens! You cut today's session short. No problem at all—let's prioritize rest and rebuild strength for your next scheduled interval workout.`;
     } else {
-      advice += `Weather conditions are optimal for training today! Stick to your prescribed zone targets. `;
-    }
-
-    if (query) {
-      advice += `\n\n*Coach Response to "${query}"*: Focus on maintaining consistent cadence and avoid surging during the middle kilometers of your long run.`;
+      aiResponse = `Unscheduled activity logged. Make sure this effort is accounted for in your weekly load so you don't overtrain.`;
     }
 
     return NextResponse.json({
       success: true,
-      data: {
-        coachName: "RPL Coach v0.5",
-        recommendation: advice,
-        metricsEvaluated: { vdot, temperatureC, humidity },
-      },
+      reconciliation,
+      aiAdvice: aiResponse,
+      timestamp: new Date().toISOString(),
     });
-  } catch (error: any) {
+  } catch (error) {
     return NextResponse.json(
-      { success: false, error: error.message || 'Internal server error' },
+      { success: false, error: 'Failed to process AI reconciliation.' },
       { status: 500 }
     );
   }
