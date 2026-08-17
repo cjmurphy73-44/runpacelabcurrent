@@ -134,15 +134,23 @@ export default function Home() {
         <section className="space-y-4">
           <SectionHeading title="Recovery & Readiness" description="Sleep, HRV, autonomic stress and lifestyle context." icon={HeartPulse} />
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
-            <ReadinessScoreCard />
-            <SleepEnergyCard />
-            <AutonomicStressCard />
+            <WipWrapper isWip featureName="Readiness Score">
+              <ReadinessScoreCard />
+            </WipWrapper>
+            <WipWrapper isWip featureName="Sleep & Energy">
+              <SleepEnergyCard />
+            </WipWrapper>
+            <WipWrapper isWip featureName="Autonomic Stress">
+              <AutonomicStressCard />
+            </WipWrapper>
           </div>
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <WipWrapper isWip featureName="Recovery Lab">
               <RecoveryLab athleteId={athlete.id} />
             </WipWrapper>
-            <HolisticFactorsLog athleteId={athlete.id} />
+            <WipWrapper isWip featureName="Holistic Factors">
+              <HolisticFactorsLog athleteId={athlete.id} />
+            </WipWrapper>
           </div>
         </section>
 
