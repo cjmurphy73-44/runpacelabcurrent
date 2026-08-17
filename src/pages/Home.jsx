@@ -27,6 +27,7 @@ import PageShell from "@/components/layout/PageShell";
 import SectionHeading from "@/components/layout/SectionHeading";
 import { Card, CardContent } from "@/components/ui/card";
 import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from "@/components/ui/accordion";
+import WipWrapper from "@/components/common/WipWrapper";
 import { Sun, TrendingUp, Activity, MessageCircle, HeartPulse, ArrowRight } from "lucide-react";
 
 export default function Home() {
@@ -138,7 +139,9 @@ export default function Home() {
             <AutonomicStressCard />
           </div>
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <RecoveryLab athleteId={athlete.id} />
+            <WipWrapper isWip featureName="Recovery Lab">
+              <RecoveryLab athleteId={athlete.id} />
+            </WipWrapper>
             <HolisticFactorsLog athleteId={athlete.id} />
           </div>
         </section>
