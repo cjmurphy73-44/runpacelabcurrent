@@ -97,7 +97,7 @@ export default function OcrVerificationModal({ open, image_url, parsed, athleteI
 
   return (
     <Dialog open={open} onOpenChange={(o) => !o && onClose?.()}>
-      <DialogContent className="max-w-4xl">
+      <DialogContent className="max-w-4xl max-h-[calc(100dvh-1.5rem)] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Verify Parsed Workout</DialogTitle>
         </DialogHeader>
