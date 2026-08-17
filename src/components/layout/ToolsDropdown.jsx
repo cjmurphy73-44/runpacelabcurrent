@@ -7,8 +7,10 @@ import {
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuSeparator,
+  DropdownMenuCheckboxItem,
 } from "@/components/ui/dropdown-menu";
-import { ChevronDown, Wrench, Gauge, CloudSun, LayoutGrid, Trophy, CalendarRange, FlaskConical } from "lucide-react";
+import { ChevronDown, Wrench, Gauge, CloudSun, LayoutGrid, Trophy, CalendarRange, FlaskConical, Microscope } from "lucide-react";
+import { useUIPreferences } from "@/context/UIPreferencesContext";
 
 const CALCULATORS = [
   { to: "/vdot", label: "VDOT Calculator", icon: Gauge },
@@ -19,10 +21,10 @@ const CALCULATORS = [
 const INSIGHTS = [
   { to: "/pbs", label: "Race Ledger", icon: Trophy },
   { to: "/calendar", label: "Training Calendar", icon: CalendarRange },
-  { to: "/physiology", label: "Physiology Lab", icon: FlaskConical },
 ];
 
 export default function ToolsDropdown() {
+  const { showDeepMetrics, toggleDeepMetrics } = useUIPreferences();
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
@@ -55,6 +57,17 @@ export default function ToolsDropdown() {
             </Link>
           </DropdownMenuItem>
         ))}
+        <DropdownMenuItem asChild>
+          <Link to="/physiology" className="flex items-center gap-2">
+            <FlaskConical className="w-4 h-4" />
+            Physiology Lab
+          </Link>
+        </DropdownMenuItem>
+        <DropdownMenuSeparator />
+        <DropdownMenuCheckboxItem checked={showDeepMetrics} onCheckedChange={toggleDeepMetrics}>
+          <Microscope className="w-4 h-4 mr-2" />
+          Scientific mode
+        </DropdownMenuCheckboxItem>
       </DropdownMenuContent>
     </DropdownMenu>
   );

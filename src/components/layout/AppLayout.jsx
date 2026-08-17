@@ -9,7 +9,7 @@ import { Activity, MessageCircle, LogOut, CalendarRange, FlaskConical, Settings,
 export default function AppLayout() {
   const { logout } = useAuth();
   const location = useLocation();
-  const { showDeepMetrics, toggleDeepMetrics } = useUIPreferences();
+  useUIPreferences();
 
   const navLink = (to, label, Icon) => (
     <Link
@@ -41,14 +41,13 @@ export default function AppLayout() {
             </nav>
           </div>
           <div className="flex items-center gap-1 shrink-0">
-            <Button
-              variant={showDeepMetrics ? "secondary" : "ghost"}
-              size="icon"
-              onClick={toggleDeepMetrics}
-              title="Toggle scientific metrics (CTL/ATL/TSB, VDOT)"
+            <Link
+              to="/physiology"
+              title="Physiology Lab"
+              className={`flex items-center justify-center h-9 w-9 rounded-md ${location.pathname === "/physiology" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-accent"}`}
             >
               <FlaskConical className="w-4 h-4" />
-            </Button>
+            </Link>
             <Link to="/import" title="Imports" className="flex items-center justify-center h-9 w-9 rounded-md text-muted-foreground hover:bg-accent">
               <Upload className="w-4 h-4" />
             </Link>
