@@ -1,14 +1,16 @@
-import React from "react";
+import React, { useState } from "react";
 import { Outlet, Link, useLocation } from "react-router-dom";
 import { useAuth } from "@/lib/AuthContext";
 import { useUIPreferences } from "@/context/UIPreferencesContext";
 import { Button } from "@/components/ui/button";
 import ToolsDropdown from "@/components/layout/ToolsDropdown";
-import { Activity, MessageCircle, LogOut, CalendarRange, FlaskConical, Settings, Upload } from "lucide-react";
+import BetaFeedbackModal from "@/components/feedback/BetaFeedbackModal";
+import { Activity, MessageCircle, LogOut, CalendarRange, FlaskConical, Settings, Upload, Megaphone } from "lucide-react";
 
 export default function AppLayout() {
   const { logout } = useAuth();
   const location = useLocation();
+  const [feedbackOpen, setFeedbackOpen] = useState(false);
   useUIPreferences();
 
   const navLink = (to, label, Icon) => (
@@ -54,12 +56,16 @@ export default function AppLayout() {
             <Link to="/settings" title="Settings" className="flex items-center justify-center h-9 w-9 rounded-md text-muted-foreground hover:bg-accent">
               <Settings className="w-4 h-4" />
             </Link>
+            <Button variant="ghost" size="icon" onClick={() => setFeedbackOpen(true)} title="Send beta feedback">
+              <Megaphone className="w-4 h-4" />
+            </Button>
             <Button variant="ghost" size="icon" onClick={() => logout()} title="Logout">
               <LogOut className="w-4 h-4" />
             </Button>
           </div>
         </div>
       </header>
+      <BetaFeedbackModal open={feedbackOpen} onClose={() => setFeedbackOpen(false)} />
       <main className="max-w-7xl mx-auto px-4 py-8">
         <Outlet />
       </main>

@@ -27,6 +27,7 @@ import Pbs from '@/pages/Pbs';
 import Calendar from '@/pages/Calendar';
 import Physiology from '@/pages/Physiology';
 import RecoveryCenter from '@/pages/RecoveryCenter';
+import PageErrorBoundary from '@/components/common/PageErrorBoundary';
 // Add page imports here
 
 const AuthenticatedApp = () => {
@@ -62,11 +63,11 @@ const AuthenticatedApp = () => {
       <Route path="/reset-password" element={<ResetPassword />} />
       <Route element={<ProtectedRoute unauthenticatedElement={<Navigate to="/login" replace />} />}>
         <Route element={<AppLayout />}>
-          <Route path="/" element={<Home />} />
+          <Route path="/" element={<PageErrorBoundary><Home /></PageErrorBoundary>} />
           <Route path="/coach" element={<CoachChat />} />
           <Route path="/plan" element={<TrainingPlan />} />
           <Route path="/dev-tracker" element={<DeveloperGuard><DevTracker /></DeveloperGuard>} />
-          <Route path="/settings" element={<AthleteSettings />} />
+          <Route path="/settings" element={<PageErrorBoundary><AthleteSettings /></PageErrorBoundary>} />
           <Route path="/import" element={<Imports />} />
           <Route path="/vdot" element={<Vdot />} />
           <Route path="/weather" element={<WeatherAdjust />} />
@@ -74,7 +75,7 @@ const AuthenticatedApp = () => {
           <Route path="/pbs" element={<Pbs />} />
           <Route path="/calendar" element={<Calendar />} />
           <Route path="/physiology" element={<Physiology />} />
-          <Route path="/recovery" element={<RecoveryCenter />} />
+          <Route path="/recovery" element={<PageErrorBoundary><RecoveryCenter /></PageErrorBoundary>} />
         </Route>
       </Route>
       <Route path="*" element={<PageNotFound />} />

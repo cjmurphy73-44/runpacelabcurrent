@@ -26,9 +26,12 @@ import { useUIPreferences } from "@/context/UIPreferencesContext";
 import PageShell from "@/components/layout/PageShell";
 import SectionHeading from "@/components/layout/SectionHeading";
 import { Card, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from "@/components/ui/accordion";
 import WipWrapper from "@/components/common/WipWrapper";
-import { Sun, TrendingUp, Activity, MessageCircle, HeartPulse, ArrowRight } from "lucide-react";
+import ManualWorkoutModal from "@/components/workout/ManualWorkoutModal";
+import OnboardingEmptyState from "@/components/dashboard/OnboardingEmptyState";
+import { Sun, TrendingUp, Activity, MessageCircle, HeartPulse, ArrowRight, Plus } from "lucide-react";
 
 export default function Home() {
   const [loading, setLoading] = useState(true);
@@ -37,6 +40,7 @@ export default function Home() {
   const [messages, setMessages] = useState([]);
   const [loadTimelineWorkouts, setLoadTimelineWorkouts] = useState([]);
   const [plannedWorkouts, setPlannedWorkouts] = useState([]);
+  const [manualOpen, setManualOpen] = useState(false);
   const { showDeepMetrics } = useUIPreferences();
 
   const loadAthleteData = useCallback(async (athleteId) => {
@@ -81,9 +85,23 @@ export default function Home() {
     );
   }
 
+  const isEmpty = workouts.length === 0;
+
   return (
     <FitnessProvider athleteId={athlete.id}>
       <PageShell maxWidth="max-w-7xl">
+        {isEmpty ? (
+          <section className="space-y-6">
+            <SectionHeading
+              title="Welcome"
+              description="You're set up — now let's log your first session and watch the engine respond."
+              icon={Sun}
+            />
+            <DashboardMetricBanner athlete={athlete} workouts={loadTimelineWorkouts} />
+            <OnboardingEmptyState athlete={athlete} onAddManual={() => setManualOpen(true)} />
+          </section>
+        ) : (
+          <>
         {/* 1 — Today's snapshot */}
         <section className="space-y-4">
           <SectionHeading title="Today's snapshot" description="Your form, readiness and prescribed session for today." icon={Sun} />
@@ -110,9 +128,14 @@ export default function Home() {
             description="Drop a workout screenshot or review your latest sessions."
             icon={Activity}
             action={
-              <Link to="/import" className="inline-flex items-center gap-1 text-sm font-medium text-primary hover:underline whitespace-nowrap">
-                All import options <ArrowRight className="w-3.5 h-3.5" />
-              </Link>
+              <div className="flex items-center gap-2">
+                <Button variant="outline" size="sm" onClick={() => setManualOpen(true)} className="whitespace-nowrap">
+                  <Plus className="w-3.5 h-3.5" /> Manual
+                </Button>
+                <Link to="/import" className="inline-flex items-center gap-1 text-sm font-medium text-primary hover:underline whitespace-nowrap">
+                  All import options <ArrowRight className="w-3.5 h-3.5" />
+                </Link>
+              </div>
             }
           />
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -154,8 +177,10 @@ export default function Home() {
           </div>
         </section>
 
+          </>
+        )}
         {/* 6 — Advanced metrics (geek mode only, collapsible) */}
-        {showDeepMetrics && (
+        {showDeepMetrics && !isEmpty && (
           <Card>
             <CardContent className="pt-6">
               <Accordion type="single" collapsible defaultValue="advanced">
@@ -180,6 +205,12 @@ export default function Home() {
           </Card>
         )}
       </PageShell>
+      <ManualWorkoutModal
+        open={manualOpen}
+        onClose={() => setManualOpen(false)}
+        athleteId={athlete.id}
+        onSaved={() => loadAthleteData(athlete.id)}
+      />
     </FitnessProvider>
   );
 }

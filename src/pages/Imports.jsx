@@ -1,13 +1,19 @@
 import React, { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { base44 } from "@/api/base44Client";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { Loader2, Upload, Webhook } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import { Loader2, Upload, Webhook, Plus, ArrowLeft } from "lucide-react";
 import BulkWorkoutImport from "@/components/dashboard/BulkWorkoutImport";
 import WebhookSyncPanel from "@/components/imports/WebhookSyncPanel";
+import ManualWorkoutModal from "@/components/workout/ManualWorkoutModal";
 
 export default function Imports() {
+  const navigate = useNavigate();
   const [athlete, setAthlete] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [manualOpen, setManualOpen] = useState(false);
 
   useEffect(() => {
     (async () => {
@@ -49,6 +55,20 @@ export default function Imports() {
         </p>
       </div>
 
+      <Card className="border-dashed bg-muted/30">
+        <CardContent className="pt-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+          <div>
+            <p className="font-heading font-semibold">No device? No problem.</p>
+            <p className="text-sm text-muted-foreground">
+              Log a quick workout manually and watch your CTL / ATL / TSB refresh instantly.
+            </p>
+          </div>
+          <Button onClick={() => setManualOpen(true)}>
+            <Plus className="w-4 h-4" /> Add a manual workout
+          </Button>
+        </CardContent>
+      </Card>
+
       <Tabs defaultValue="bulk" className="w-full">
         <TabsList className="grid w-full grid-cols-2">
           <TabsTrigger value="bulk" className="flex items-center gap-2">
@@ -72,6 +92,13 @@ export default function Imports() {
           <WebhookSyncPanel athleteId={athlete.id} />
         </TabsContent>
       </Tabs>
+
+      <ManualWorkoutModal
+        open={manualOpen}
+        onClose={() => setManualOpen(false)}
+        athleteId={athlete.id}
+        onSaved={() => navigate("/")}
+      />
     </div>
   );
 }
