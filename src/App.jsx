@@ -64,17 +64,17 @@ const AuthenticatedApp = () => {
       <Route element={<ProtectedRoute unauthenticatedElement={<Navigate to="/login" replace />} />}>
         <Route element={<AppLayout />}>
           <Route path="/" element={<PageErrorBoundary><Home /></PageErrorBoundary>} />
-          <Route path="/coach" element={<CoachChat />} />
-          <Route path="/plan" element={<TrainingPlan />} />
+          <Route path="/coach" element={<PageErrorBoundary><CoachChat /></PageErrorBoundary>} />
+          <Route path="/plan" element={<PageErrorBoundary><TrainingPlan /></PageErrorBoundary>} />
           <Route path="/dev-tracker" element={<DeveloperGuard><DevTracker /></DeveloperGuard>} />
           <Route path="/settings" element={<PageErrorBoundary><AthleteSettings /></PageErrorBoundary>} />
-          <Route path="/import" element={<Imports />} />
+          <Route path="/import" element={<PageErrorBoundary><Imports /></PageErrorBoundary>} />
           <Route path="/vdot" element={<Vdot />} />
           <Route path="/weather" element={<WeatherAdjust />} />
           <Route path="/zones" element={<Zones />} />
           <Route path="/pbs" element={<Pbs />} />
-          <Route path="/calendar" element={<Calendar />} />
-          <Route path="/physiology" element={<Physiology />} />
+          <Route path="/calendar" element={<PageErrorBoundary><Calendar /></PageErrorBoundary>} />
+          <Route path="/physiology" element={<PageErrorBoundary><Physiology /></PageErrorBoundary>} />
           <Route path="/recovery" element={<PageErrorBoundary><RecoveryCenter /></PageErrorBoundary>} />
         </Route>
       </Route>

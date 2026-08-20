@@ -17,8 +17,9 @@ export default function OnboardingEmptyState({ athlete, onAddManual }) {
         <div className="space-y-1.5">
           <h2 className="text-xl font-heading font-bold">Welcome to your training log{name}!</h2>
           <p className="text-sm text-muted-foreground">
-            You don't have any workouts yet. Connect your Coros account or add a manual workout and we'll
-            start tracking your fitness <span className="font-medium text-foreground">CTL</span>, fatigue{" "}
+            You don't have any activities yet. Connect your training device (Coros, Garmin, Strava…) or add a
+            manual session and we'll start tracking your fitness{" "}
+            <span className="font-medium text-foreground">CTL</span>, fatigue{" "}
             <span className="font-medium text-foreground">ATL</span> and form{" "}
             <span className="font-medium text-foreground">TSB</span> right away.
           </p>
@@ -29,12 +30,12 @@ export default function OnboardingEmptyState({ athlete, onAddManual }) {
           </Button>
           <Button asChild variant="outline">
             <Link to="/import">
-              <Watch className="w-4 h-4" /> Connect Coros / import files
+              <Watch className="w-4 h-4" /> Connect a device / import files
             </Link>
           </Button>
         </div>
         <p className="text-xs text-muted-foreground">
-          Tip: even a single 30-minute run is enough to light up the dashboard and let you watch the engine work.
+          Tip: even a single 30-minute session is enough to light up the dashboard and let you watch the engine work.
         </p>
       </CardContent>
     </Card>

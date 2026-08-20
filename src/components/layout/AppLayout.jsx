@@ -33,7 +33,10 @@ export default function AppLayout() {
           <div className="flex items-center gap-6 min-w-0">
             <Link to="/" className="flex items-center gap-2 font-heading font-bold text-lg shrink-0">
               <Activity className="w-5 h-5 text-primary" />
-              Runpacelab
+              <span className="flex flex-col leading-none">
+                <span>Runpacelab</span>
+                <span className="text-[10px] font-normal font-body text-muted-foreground tracking-wide uppercase">Multi-Sport Endurance</span>
+              </span>
             </Link>
             <nav className="flex items-center gap-1 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden min-w-0">
               {navLink("/", "Dashboard", Activity)}
@@ -56,8 +59,9 @@ export default function AppLayout() {
             <Link to="/settings" title="Settings" className="flex items-center justify-center h-9 w-9 rounded-md text-muted-foreground hover:bg-accent">
               <Settings className="w-4 h-4" />
             </Link>
-            <Button variant="ghost" size="icon" onClick={() => setFeedbackOpen(true)} title="Send beta feedback">
+            <Button variant="ghost" size="sm" onClick={() => setFeedbackOpen(true)} title="Send beta feedback" className="gap-1.5">
               <Megaphone className="w-4 h-4" />
+              <span className="hidden lg:inline text-sm">Feedback</span>
             </Button>
             <Button variant="ghost" size="icon" onClick={() => logout()} title="Logout">
               <LogOut className="w-4 h-4" />

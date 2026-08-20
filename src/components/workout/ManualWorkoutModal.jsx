@@ -20,6 +20,7 @@ const SPORTS = [
   { value: "running", label: "Run" },
   { value: "cycling", label: "Bike" },
   { value: "swimming", label: "Swim" },
+  { value: "triathlon", label: "Multisport" },
 ];
 
 function todayISO() {
