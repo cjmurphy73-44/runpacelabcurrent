@@ -34,7 +34,7 @@ export default function AppLayout() {
             <Link to="/" className="flex items-center gap-2 font-heading font-bold text-lg shrink-0">
               <Activity className="w-5 h-5 text-primary" />
               <span className="flex flex-col leading-none">
-                <span>Runpacelab</span>
+                <span>Trainpacelab</span>
                 <span className="text-[10px] font-normal font-body text-muted-foreground tracking-wide uppercase">Multi-Sport Endurance</span>
               </span>
             </Link>

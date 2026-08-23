@@ -1,4 +1,4 @@
-# Runpacelab — Product Roadmap
+# Trainpacelab — Product Roadmap
 
 _Endurance intelligence platform — adaptive, data-driven training built on physiological modeling, AI coaching, and wearable ingestion._
 

@@ -25,7 +25,7 @@ export default function BetaFeedbackModal({ open, onClose }) {
   const [message, setMessage] = useState("");
 
   const composed = `${message}\n\nFrom: ${email || "(anonymous)"}`;
-  const subject = encodeURIComponent(`[Beta Feedback] ${type.toUpperCase()} — Runpacelab`);
+  const subject = encodeURIComponent(`[Beta Feedback] ${type.toUpperCase()} — Trainpacelab`);
   const body = encodeURIComponent(composed);
   const mailto = `mailto:${BETA_FEEDBACK_EMAIL}?subject=${subject}&body=${body}`;
 
