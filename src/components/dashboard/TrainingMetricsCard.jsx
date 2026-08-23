@@ -5,14 +5,23 @@ import { TrendingUp, BatteryCharging, AlertCircle } from "lucide-react";
 
 export default function TrainingMetricsCard({ workouts = [] }) {
   const metrics = useMemo(() => {
-    // Assuming workouts have a { tss, date } structure
+    if (!workouts || workouts.length === 0) {
+      return { ctl: 0, atl: 0, tsb: 0 };
+    }
+
     const sortedWorkouts = [...workouts].sort((a, b) => new Date(a.date) - new Date(b.date));
     
-    const ctl = calculateCTL(sortedWorkouts);
-    const atl = calculateATL(sortedWorkouts);
-    const tsb = calculateTSB(ctl, atl);
+    let currentCTL = 0;
+    let currentATL = 0;
 
-    return { ctl, atl, tsb };
+    sortedWorkouts.forEach(workout => {
+      currentCTL = calculateCTL(currentCTL, workout.tss || 0);
+      currentATL = calculateATL(currentATL, workout.tss || 0);
+    });
+
+    const tsb = calculateTSB(currentCTL, currentATL);
+
+    return { ctl: currentCTL, atl: currentATL, tsb };
   }, [workouts]);
 
   const getTsbColor = (tsb) => {
@@ -20,6 +29,22 @@ export default function TrainingMetricsCard({ workouts = [] }) {
     if (tsb > -10) return "text-blue-600";
     return "text-red-600";
   };
+
+  if (!workouts || workouts.length === 0) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <TrendingUp className="w-5 h-5" /> Training Metrics
+          </CardTitle>
+          <CardDescription>No workout data available to calculate trends.</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <p className="text-sm text-muted-foreground">Upload your first workout to see your CTL, ATL, and TSB.</p>
+        </CardContent>
+      </Card>
+    );
+  }
 
   return (
     <Card>
