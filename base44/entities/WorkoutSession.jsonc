@@ -124,6 +124,10 @@
     "training_plan_session_id": {
       "type": "string",
       "description": "References TrainingPlanSession.id this workout was prescribed against, if any"
+    },
+    "post_workout_feedback_id": {
+      "type": "string",
+      "description": "References WorkoutFeedback.id \u2014 the latest AI post-workout insight generated for this session (relation to the WorkoutFeedback entity)"
     }
   },
   "required": [

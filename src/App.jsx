@@ -27,6 +27,7 @@ import Pbs from '@/pages/Pbs';
 import Calendar from '@/pages/Calendar';
 import Physiology from '@/pages/Physiology';
 import RecoveryCenter from '@/pages/RecoveryCenter';
+import ActivityDetail from '@/pages/ActivityDetail';
 import PageErrorBoundary from '@/components/common/PageErrorBoundary';
 // Add page imports here
 
@@ -76,6 +77,7 @@ const AuthenticatedApp = () => {
           <Route path="/calendar" element={<PageErrorBoundary><Calendar /></PageErrorBoundary>} />
           <Route path="/physiology" element={<PageErrorBoundary><Physiology /></PageErrorBoundary>} />
           <Route path="/recovery" element={<PageErrorBoundary><RecoveryCenter /></PageErrorBoundary>} />
+          <Route path="/activity/:id" element={<PageErrorBoundary><ActivityDetail /></PageErrorBoundary>} />
         </Route>
       </Route>
       <Route path="*" element={<PageNotFound />} />

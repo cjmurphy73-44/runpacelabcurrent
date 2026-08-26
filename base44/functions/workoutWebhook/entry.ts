@@ -6,6 +6,7 @@
 // Each ingest triggers recalculateCTLATLTSB so CTL/ATL/TSB on the dashboard update automatically.
 
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
+import { waitUntil } from 'base44:runtime';
 import { VALID_SPORTS, calcTrimp, normalizeSport, getOwnedAthlete, selfUrl, parseFitSummary } from '../../shared/workoutIngest.ts';
 
 function randomKey() {
@@ -98,6 +99,14 @@ async function handleIngest(req, base44, apiKey) {
 
   // Recompute CTL/ATL/TSB across all days so dashboard metrics update automatically.
   try { await base44.asServiceRole.functions.invoke('recalculateCTLATLTSB', { athlete_id: athlete.id }); } catch (e) { console.warn('recalculateCTLATLTSB failed:', e); }
+
+  // Post-Workout Insight Engine: dispatch the AI coach to generate + persist a
+  // WorkoutFeedback insight record (with intensity) for this session. Fire and
+  // forget — the webhook returns immediately; the insight is linked back to the
+  // session by postWorkoutAIEvaluation and surfaces in real time via ActivityDetail.
+  try {
+    waitUntil(base44.asServiceRole.functions.invoke('postWorkoutAIEvaluation', { workout_id: session.id, athlete_id: athlete.id }));
+  } catch (e) { console.warn('postWorkoutAIEvaluation dispatch failed:', e); }
 
   return Response.json({ success: true, workout_session_id: session.id });
 }

@@ -1,16 +1,166 @@
-import React from 'react';
+import React, { useEffect, useState } from "react";
+import { useParams, Link } from "react-router-dom";
+import { base44 } from "@/api/base44Client";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import PageShell from "@/components/layout/PageShell";
+import SectionHeading from "@/components/layout/SectionHeading";
+import { ArrowLeft, Sparkles, Activity as ActivityIcon, Clock, MapPin, HeartPulse, Gauge } from "lucide-react";
 
-const ActivityDetail = () => {
-  return (
-    <div className="min-h-screen bg-[#0B0D0E] text-gray-100 p-6">
-      <div className="bg-[#121518] border border-[#1E2328] rounded-lg p-6">
-        <h1 className="text-2xl font-bold text-gray-100 mb-4">Physiological Intensity Matrix</h1>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-           {/* Add visualization components here */}
-        </div>
-      </div>
-    </div>
-  );
+// Intensity → dynamic color tokens used across the insight card.
+const INTENSITY_STYLES = {
+  easy:      { label: "Easy",      chip: "bg-emerald-100 text-emerald-700 border-emerald-300", bar: "bg-emerald-500", ring: "border-l-emerald-500" },
+  moderate:  { label: "Moderate",  chip: "bg-amber-100 text-amber-700 border-amber-300",     bar: "bg-amber-500",   ring: "border-l-amber-500" },
+  hard:      { label: "Hard",      chip: "bg-orange-100 text-orange-700 border-orange-300", bar: "bg-orange-500",  ring: "border-l-orange-500" },
+  very_hard: { label: "Very Hard", chip: "bg-rose-100 text-rose-700 border-rose-300",       bar: "bg-rose-500",    ring: "border-l-rose-500" },
 };
 
-export default ActivityDetail;
+const INTENSITY_BAR_WIDTH = { easy: 25, moderate: 55, hard: 80, very_hard: 100 };
+
+export default function ActivityDetail() {
+  const { id } = useParams();
+  const [loading, setLoading] = useState(true);
+  const [workout, setWorkout] = useState(null);
+  const [feedback, setFeedback] = useState(null);
+
+  // Initial fetch + realtime subscription so insights appear the moment the
+  // background AI coach finishes generating them (post-webhook).
+  useEffect(() => {
+    let unsubscribe = null;
+    (async () => {
+      try {
+        const w = await base44.entities.WorkoutSession.get(id);
+        setWorkout(w);
+        const rows = await base44.entities.WorkoutFeedback.filter({ workout_id: id }, "-created_date", 5);
+        setFeedback(rows[0] || null);
+      } catch (e) {
+        console.error("ActivityDetail load failed", e);
+      } finally {
+        setLoading(false);
+      }
+      try {
+        unsubscribe = base44.entities.WorkoutFeedback.subscribe((event) => {
+          if (event?.data?.workout_id === id && (event.type === "create" || event.type === "update")) {
+            setFeedback(event.data);
+          }
+        });
+      } catch (e) {
+        /* subscribe optional */
+      }
+    })();
+    return () => {
+      if (typeof unsubscribe === "function") unsubscribe();
+    };
+  }, [id]);
+
+  if (loading) {
+    return <div className="text-center py-20 text-muted-foreground">Loading activity…</div>;
+  }
+
+  if (!workout) {
+    return (
+      <PageShell maxWidth="max-w-2xl">
+        <Card>
+          <CardContent className="pt-8 text-center space-y-3">
+            <p className="text-muted-foreground">This activity could not be found.</p>
+            <Button asChild variant="outline">
+              <Link to="/"><ArrowLeft className="w-4 h-4" /> Back to dashboard</Link>
+            </Button>
+          </CardContent>
+        </Card>
+      </PageShell>
+    );
+  }
+
+  const style = feedback?.intensity ? INTENSITY_STYLES[feedback.intensity] : null;
+
+  const summary = [
+    { icon: Clock, label: "Duration", value: workout.duration_minutes ? `${workout.duration_minutes} min` : "—" },
+    { icon: MapPin, label: "Distance", value: workout.distance_km ? `${workout.distance_km} km` : "—" },
+    { icon: HeartPulse, label: "Avg HR", value: workout.avg_hr ? `${workout.avg_hr} bpm` : "—" },
+    { icon: Gauge, label: "TRIMP", value: workout.session_trimp ? workout.session_trimp.toFixed(0) : "—" },
+  ];
+
+  const title = workout.sport
+    ? workout.sport.charAt(0).toUpperCase() + workout.sport.slice(1) + " session"
+    : "Activity";
+
+  return (
+    <PageShell maxWidth="max-w-3xl">
+      <div className="mb-2">
+        <Link to="/" className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
+          <ArrowLeft className="w-4 h-4" /> Dashboard
+        </Link>
+      </div>
+
+      <section className="space-y-4">
+        <SectionHeading
+          title={title}
+          description={`${workout.date || ""}${workout.source_format ? ` · ${workout.source_format}` : ""}`}
+          icon={ActivityIcon}
+        />
+        <Card>
+          <CardContent className="pt-6 grid grid-cols-2 sm:grid-cols-4 gap-4">
+            {summary.map((s) => (
+              <div key={s.label} className="space-y-1">
+                <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                  <s.icon className="w-3.5 h-3.5" />{s.label}
+                </div>
+                <div className="text-lg font-heading font-semibold">{s.value}</div>
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+      </section>
+
+      <section className="space-y-4">
+        <SectionHeading
+          title="AI post-workout insight"
+          description="Generated by your coach moments after this session landed."
+          icon={Sparkles}
+        />
+        <Card className={`border-l-4 ${style ? style.ring : "border-l-transparent"}`}>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0">
+            <CardTitle className="text-base">Coach feedback</CardTitle>
+            {style ? (
+              <Badge variant="outline" className={style.chip}>{style.label} intensity</Badge>
+            ) : feedback ? (
+              <Badge variant="outline">Pending</Badge>
+            ) : null}
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {style && (
+              <div className="h-1.5 w-full rounded-full bg-muted overflow-hidden">
+                <div
+                  className={`h-full ${style.bar} transition-all`}
+                  style={{ width: `${INTENSITY_BAR_WIDTH[feedback.intensity]}%` }}
+                />
+              </div>
+            )}
+            {feedback ? (
+              <>
+                <p className="text-sm leading-relaxed">{feedback.feedback}</p>
+                {Array.isArray(feedback.highlights) && feedback.highlights.length > 0 && (
+                  <ul className="space-y-1.5">
+                    {feedback.highlights.map((h, i) => (
+                      <li key={i} className="flex gap-2 text-sm text-muted-foreground">
+                        <span className={`mt-1.5 inline-block w-1.5 h-1.5 rounded-full ${style ? style.bar : "bg-muted-foreground"}`} />
+                        <span>{h}</span>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </>
+            ) : (
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <Sparkles className="w-4 h-4 animate-pulse" />
+                Your coach is analysing this session — insights will appear here automatically.
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </section>
+    </PageShell>
+  );
+}

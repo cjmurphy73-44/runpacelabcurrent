@@ -1,0 +1,50 @@
+{
+  "name": "WorkoutFeedback",
+  "type": "object",
+  "description": "AI-generated post-workout insight record produced by the postWorkoutAIEvaluation service. Mirrors the Prisma WorkoutFeedback model (id, workoutId, feedback, status, createdAt) with added intensity + highlights for dynamic color-coded rendering.",
+  "properties": {
+    "workout_id": {
+      "type": "string",
+      "description": "References WorkoutSession.id this feedback belongs to (the Prisma workoutId relation)"
+    },
+    "athlete_id": {
+      "type": "string",
+      "description": "References AthleteProfile.id; used to scope feedback to the owning athlete"
+    },
+    "feedback": {
+      "type": "string",
+      "description": "AI-generated coaching feedback text for the session"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "pending",
+        "complete",
+        "failed"
+      ],
+      "default": "pending",
+      "description": "Generation status of the feedback record"
+    },
+    "intensity": {
+      "type": "string",
+      "enum": [
+        "easy",
+        "moderate",
+        "hard",
+        "very_hard"
+      ],
+      "description": "Classified dominant session intensity used for dynamic color-coding in the UI"
+    },
+    "highlights": {
+      "type": "array",
+      "description": "Key takeaway bullets extracted by the AI coach",
+      "items": {
+        "type": "string"
+      }
+    }
+  },
+  "required": [
+    "workout_id",
+    "feedback"
+  ]
+}
