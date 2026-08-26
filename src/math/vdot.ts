@@ -7,6 +7,15 @@ export function calculateVDOT(timeSeconds: number, distanceMeters: number): numb
     throw new Error('Time and distance must be positive numbers');
   }
 
+  // Daniels' formula loses validity for very short efforts (< ~3 min / < ~1200 m):
+  // it produces inflated VDOT spikes from sprints or partial telemetry. Reject them
+  // so downstream training paces and race predictions stay grounded in real endurance efforts.
+  if (timeSeconds < 180 || distanceMeters < 1200) {
+    throw new Error(
+      'VDOT requires an effort of at least 180 seconds and 1200 meters (Daniels formula is invalid for short sprints)'
+    );
+  }
+
   const timeMinutes = timeSeconds / 60;
   const velocityMetersPerMin = distanceMeters / timeMinutes;
 

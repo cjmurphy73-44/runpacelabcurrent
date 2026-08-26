@@ -30,13 +30,14 @@ export interface PaceAdjustmentResult {
  * Calculates Dew Point in Celsius using the Magnus-Tetens formula.
  */
 export function calculateDewPoint(temperatureC: number, relativeHumidity: number): number {
-  if (relativeHumidity < 0 || relativeHumidity > 100) {
-    throw new Error('Relative humidity must be between 0 and 100');
-  }
+  // Clamp humidity to [1, 100] so Math.log(0) can never produce -Infinity and a
+  // NaN dew point that would propagate into UI components. Out-of-range inputs
+  // (e.g. 0%, 120%, or negative) are coerced to the valid range rather than throwing.
+  const clampedRh = Math.max(1, Math.min(100, relativeHumidity));
 
   const a = 17.27;
   const b = 237.7;
-  const alpha = ((a * temperatureC) / (b + temperatureC)) + Math.log(relativeHumidity / 100);
+  const alpha = ((a * temperatureC) / (b + temperatureC)) + Math.log(clampedRh / 100);
   const dewPoint = (b * alpha) / (a - alpha);
 
   return Math.round(dewPoint * 10) / 10;

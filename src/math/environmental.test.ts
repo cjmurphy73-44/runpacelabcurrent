@@ -57,13 +57,19 @@ describe('Environmental Weather Pace Adjuster Engine', () => {
     expect(highAltitudeResult.altitudeFactor).toBeGreaterThan(1.03);
   });
 
-  it('throws error for invalid humidity or pace inputs', () => {
+  it('throws error for invalid pace but clamps out-of-range humidity', () => {
+    // Invalid (non-positive) pace still throws.
     expect(() =>
       adjustPaceForEnvironment(-100, { temperatureC: 20, relativeHumidity: 50 })
     ).toThrow();
 
-    expect(() =>
-      adjustPaceForEnvironment(240, { temperatureC: 20, relativeHumidity: 120 })
-    ).toThrow();
+    // 0% humidity no longer yields a NaN dew point (clamped to 1%).
+    const zeroRh = adjustPaceForEnvironment(240, { temperatureC: 20, relativeHumidity: 0 });
+    expect(Number.isFinite(zeroRh.dewPointC)).toBe(true);
+    expect(Number.isFinite(zeroRh.formattedAdjustedPace)).toBe(true);
+
+    // 120% humidity is clamped to 100% rather than throwing.
+    const overRh = adjustPaceForEnvironment(240, { temperatureC: 20, relativeHumidity: 120 });
+    expect(overRh.adjustedPaceSecondsPerKm).toBeGreaterThanOrEqual(240);
   });
 });
