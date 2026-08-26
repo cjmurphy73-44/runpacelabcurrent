@@ -27,7 +27,11 @@ import Pbs from '@/pages/Pbs';
 import Calendar from '@/pages/Calendar';
 import Physiology from '@/pages/Physiology';
 import RecoveryCenter from '@/pages/RecoveryCenter';
+<<<<<<< HEAD
 import ActivityDetail from '@/pages/ActivityDetail';
+=======
+import { IntelligenceHub } from './components/IntelligenceHub';
+>>>>>>> 04c889e (feat: add IntelligenceHub component and dashboard navigation)
 import PageErrorBoundary from '@/components/common/PageErrorBoundary';
 // Add page imports here
 
@@ -65,6 +69,7 @@ const AuthenticatedApp = () => {
       <Route element={<ProtectedRoute unauthenticatedElement={<Navigate to="/login" replace />} />}>
         <Route element={<AppLayout />}>
           <Route path="/" element={<PageErrorBoundary><Home /></PageErrorBoundary>} />
+          <Route path="/intelligence" element={<PageErrorBoundary><IntelligenceHub /></PageErrorBoundary>} />
           <Route path="/coach" element={<PageErrorBoundary><CoachChat /></PageErrorBoundary>} />
           <Route path="/plan" element={<PageErrorBoundary><TrainingPlan /></PageErrorBoundary>} />
           <Route path="/dev-tracker" element={<DeveloperGuard><DevTracker /></DeveloperGuard>} />

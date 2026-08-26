@@ -5,7 +5,7 @@ import { useUIPreferences } from "@/context/UIPreferencesContext";
 import { Button } from "@/components/ui/button";
 import ToolsDropdown from "@/components/layout/ToolsDropdown";
 import BetaFeedbackModal from "@/components/feedback/BetaFeedbackModal";
-import { Activity, MessageCircle, LogOut, CalendarRange, FlaskConical, Settings, Upload, Megaphone } from "lucide-react";
+import { Activity, MessageCircle, LogOut, CalendarRange, FlaskConical, Settings, Upload, Megaphone, BrainCircuit } from "lucide-react";
 
 export default function AppLayout() {
   const { logout } = useAuth();
@@ -40,6 +40,7 @@ export default function AppLayout() {
             </Link>
             <nav className="flex items-center gap-1 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden min-w-0">
               {navLink("/", "Dashboard", Activity)}
+              {navLink("/intelligence", "Intelligence", BrainCircuit)}
               {navLink("/plan", "Plan", CalendarRange)}
               {navLink("/coach", "Coach", MessageCircle)}
               <ToolsDropdown />
