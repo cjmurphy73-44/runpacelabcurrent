@@ -3,24 +3,29 @@ import { base44 } from "@/api/base44Client";
 import MessageBubble from "@/components/coach/MessageBubble";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Send } from "lucide-react";
+import { useToast } from "@/components/ui/use-toast";
+import { Send, Loader2 } from "lucide-react";
+
+const AGENT_NAME = "early_version_ai_coach";
 
 export default function CoachChat() {
+  const { toast } = useToast();
   const [conversation, setConversation] = useState(null);
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
+  const [awaitingReply, setAwaitingReply] = useState(false);
   const bottomRef = useRef(null);
 
   useEffect(() => {
     (async () => {
-      const existing = await base44.agents.listConversations({ agent_name: "EarlyversionAIcoach" });
+      const existing = await base44.agents.listConversations({ agent_name: AGENT_NAME });
       let convo = existing?.[0];
       if (!convo) {
         convo = await base44.agents.createConversation({
-          agent_name: "EarlyversionAIcoach",
-          metadata: { name: "Coach Chat", description: "Chat with EarlyversionAIcoach" },
+          agent_name: AGENT_NAME,
+          metadata: { name: "Coach Chat", description: "Chat with the Trainpacelab AI coach" },
         });
       } else {
         convo = await base44.agents.getConversation(convo.id);
@@ -35,6 +40,8 @@ export default function CoachChat() {
     if (!conversation) return;
     const unsubscribe = base44.agents.subscribeToConversation(conversation.id, (data) => {
       setMessages(data.messages);
+      const last = (data.messages || [])[data.messages.length - 1];
+      if (last && (last.role === "assistant" || last.role === "agent")) setAwaitingReply(false);
     });
     return () => unsubscribe();
   }, [conversation?.id]);
@@ -49,8 +56,19 @@ export default function CoachChat() {
     setSending(true);
     const text = input;
     setInput("");
-    await base44.agents.addMessage(conversation, { role: "user", content: text });
-    setSending(false);
+    try {
+      await base44.agents.addMessage(conversation, { role: "user", content: text });
+      setAwaitingReply(true);
+    } catch (err) {
+      console.error("CoachChat send failed", err);
+      toast({
+        title: "Message not sent",
+        description: "Network hiccup or rate limit — please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setSending(false);
+    }
   };
 
   if (loading) {
@@ -68,6 +86,14 @@ export default function CoachChat() {
         {messages.map((m, i) => (
           <MessageBubble key={i} message={m} />
         ))}
+        {awaitingReply && (
+          <div className="flex justify-start">
+            <div className="flex items-center gap-2 max-w-[75%] rounded-lg px-4 py-2 text-sm bg-muted text-muted-foreground">
+              <Loader2 className="w-3.5 h-3.5 animate-spin" />
+              Coach is thinking…
+            </div>
+          </div>
+        )}
         <div ref={bottomRef} />
       </div>
       <form onSubmit={handleSend} className="flex items-center gap-2 border-t border-border pt-3">
