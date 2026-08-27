@@ -39,7 +39,7 @@ export default function DistancePBGrid({ allTimePBs, seasonPBs }) {
                     {formatDuration(season.timeMinutes)}
                     {isSeasonBest && <span className="ml-2 text-xs text-primary">(record)</span>}
                   </p>
-                  <p className="text-xs text-muted-foreground">This Season</p>
+                  <p className="text-xs text-muted-foreground">This Year</p>
                 </div>
               )}
             </CardContent>

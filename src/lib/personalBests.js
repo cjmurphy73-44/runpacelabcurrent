@@ -46,24 +46,102 @@ export function formatPace(minPerKm) {
   return `${mins}:${secs.toString().padStart(2, "0")} /km`;
 }
 
-// Finds the fastest recorded effort matching each standard race distance (with strict sport separation & validation).
+// Build a monotonic distance track (meters) from a session's telemetry stream.
+// The stream is ~1 sample/second (array index = seconds) and carries cumulative `distance`
+// in meters; `time` is null in stored streams, so we use the index as the time axis.
+function buildDistanceTrack(stream) {
+  const pts = stream || [];
+  if (pts.length < 2) return null;
+  let hasDistance = pts.some((p) => p && typeof p.distance === "number" && p.distance > 0);
+  let hasSpeed = pts.some((p) => p && typeof p.speed === "number" && p.speed > 0);
+  if (!hasDistance && !hasSpeed) return null;
+
+  const track = [];
+  let cum = 0;
+  let maxD = 0;
+  for (let k = 0; k < pts.length; k++) {
+    const p = pts[k] || {};
+    let d = typeof p.distance === "number" && isFinite(p.distance) ? p.distance : null;
+    if (d == null) {
+      const sp = typeof p.speed === "number" && isFinite(p.speed) ? p.speed : 0;
+      cum += sp; // 1 second per sample
+      d = cum;
+    }
+    // enforce non-decreasing (GPS noise) and accumulate max envelope
+    if (d < maxD) d = maxD;
+    maxD = d;
+    track.push({ t: k, d });
+  }
+  return track;
+}
+
+// Sliding two-pointer: fastest contiguous segment covering exactly `targetMeters`.
+// Returns elapsed seconds (with sub-second interpolation at the crossing), or null.
+function fastestDistanceSplit(track, targetMeters) {
+  if (!track || track.length < 2) return null;
+  let best = null;
+  let j = 0;
+  for (let i = 0; i < track.length; i++) {
+    if (j < i + 1) j = i + 1;
+    while (j < track.length && track[j].d - track[i].d < targetMeters) j++;
+    if (j >= track.length) break; // no point advancing i further (distance only grows)
+    if (track[j].d - track[i].d < targetMeters) continue;
+    // interpolate the exact crossing time between j-1 and j
+    const prev = track[j - 1];
+    const span = track[j].d - prev.d;
+    let crossT;
+    if (span > 0) {
+      const need = targetMeters - (prev.d - track[i].d);
+      const frac = Math.max(0, Math.min(1, need / span));
+      crossT = prev.t + frac * (track[j].t - prev.t);
+    } else {
+      crossT = track[j].t;
+    }
+    const elapsed = crossT - track[i].t;
+    if (elapsed > 0 && (best === null || elapsed < best)) best = elapsed;
+  }
+  return best;
+}
+
+// Finds the fastest recorded effort for each standard race distance by scanning the
+// telemetry splits of EVERY qualifying session (true sub-split extraction), not just
+// whole-session matches. Falls back to whole-session time only when a session has no
+// usable stream and its total distance closely matches the standard distance.
 export function findDistancePBs(sessions, sport = "running", filterFn = null) {
   const activities = sessions.filter(
-    (s) => s.sport === sport && s.distance_km > 0 && s.duration_minutes > 0 && (!filterFn || filterFn(s))
+    (s) => s.sport === sport && (s.distance_km > 0 || (s.streams && s.streams.length > 1)) && (!filterFn || filterFn(s))
   );
   const result = {};
   for (const dist of STANDARD_DISTANCES) {
-    const matches = activities.filter((s) => isValidForStandard(s.distance_km, dist));
-    if (matches.length === 0) {
-      result[dist.key] = null;
-      continue;
+    const targetMeters = dist.km * 1000;
+    let best = null; // { session, timeMinutes, paceMinPerKm, fromSplit }
+
+    for (const s of activities) {
+      let candidateSec = null;
+      let fromSplit = false;
+      const track = buildDistanceTrack(s.streams);
+      if (track) {
+        const seg = fastestDistanceSplit(track, targetMeters);
+        if (seg !== null) {
+          candidateSec = seg;
+          fromSplit = true;
+        }
+      }
+      // whole-session fallback: only when no stream split AND total distance matches
+      if (candidateSec === null && isValidForStandard(s.distance_km, dist) && s.distance_km > 0) {
+        candidateSec = (s.duration_seconds || s.duration_minutes * 60);
+      }
+      if (candidateSec === null) continue;
+      if (best === null || candidateSec < best.timeMinutes * 60) {
+        best = {
+          session: s,
+          timeMinutes: candidateSec / 60,
+          paceMinPerKm: candidateSec / 60 / (dist.km),
+          fromSplit,
+        };
+      }
     }
-    const best = matches.reduce((b, s) => (!b || s.duration_minutes < b.duration_minutes ? s : b), null);
-    result[dist.key] = {
-      session: best,
-      timeMinutes: best.duration_minutes,
-      paceMinPerKm: best.duration_minutes / best.distance_km,
-    };
+    result[dist.key] = best;
   }
   return result;
 }
