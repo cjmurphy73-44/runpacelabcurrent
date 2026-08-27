@@ -1,12 +1,13 @@
 import React, { useMemo, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { useFitness } from "@/context/FitnessContext";
+import { FitnessProvider, useFitness } from "@/context/FitnessContext";
+import { useAthlete } from "@/hooks/useAthlete";
 import DistancePBGrid from "@/components/dashboard/DistancePBGrid";
 import PeakOutputsGrid from "@/components/dashboard/PeakOutputsGrid";
 import { findDistancePBs, findPeakOutputs, seasonFilter } from "@/lib/personalBests";
 import { Trophy } from "lucide-react";
 
-export default function Pbs() {
+function RaceLedger() {
   const { workoutSessions, loading, isFetched } = useFitness() || {};
   const [sport, setSport] = useState("running");
 
@@ -70,5 +71,26 @@ export default function Pbs() {
         </CardContent>
       </Card>
     </div>
+  );
+}
+
+export default function Pbs() {
+  const { athlete, loading } = useAthlete();
+
+  if (loading) {
+    return <div className="text-center py-20 text-muted-foreground">Loading…</div>;
+  }
+  if (!athlete) {
+    return (
+      <div className="text-center py-20 text-muted-foreground">
+        Set up your athlete profile to view your race &amp; activity ledger.
+      </div>
+    );
+  }
+
+  return (
+    <FitnessProvider athleteId={athlete.id}>
+      <RaceLedger />
+    </FitnessProvider>
   );
 }
