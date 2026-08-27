@@ -141,6 +141,10 @@ export function findDistancePBs(sessions, sport = "running", filterFn = null) {
         };
       }
     }
+    // Running-plausibility guard for endurance distances: paces sustained below ~2:30/km over
+    // 10+ km are categorically cycling (world-record marathon pace is ~2:55/km). Such efforts
+    // are cycling activities mislabeled `sport=running`; drop them rather than emit a bogus PB.
+    if (best && dist.km >= 10 && best.paceMinPerKm < 2.5) best = null;
     result[dist.key] = best;
   }
   return result;
