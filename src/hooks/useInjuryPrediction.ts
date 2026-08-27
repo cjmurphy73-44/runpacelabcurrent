@@ -1,14 +1,8 @@
-import { useState, useEffect } from 'react';
-import { TrainingData, RiskAssessment, calculateACWR } from '../lib/injuryEngine';
+import { useMemo } from 'react';
+import { calculateACWR, DailyMetrics } from '../lib/injuryEngine';
 
-export const useInjuryPrediction = (history: TrainingData[]) => {
-  const [assessment, setAssessment] = useState<RiskAssessment | null>(null);
-
-  useEffect(() => {
-    if (history) {
-      setAssessment(calculateACWR(history));
-    }
+export function useInjuryPrediction(history: DailyMetrics[]) {
+  return useMemo(() => {
+    return calculateACWR(history);
   }, [history]);
-
-  return assessment;
-};
+}
