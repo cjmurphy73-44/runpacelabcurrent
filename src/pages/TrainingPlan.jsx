@@ -2,7 +2,8 @@ import React, { useEffect, useState, useCallback } from "react";
 import { base44 } from "@/api/base44Client";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
-import { Sparkles } from "lucide-react";
+import { Sparkles, ShieldAlert } from "lucide-react";
+import { useCoachInjurySignal } from "@/hooks/useCoachInjurySignal";
 import TrainingPlanGenerator from "@/components/trainingplan/TrainingPlanGenerator";
 import TrainingPlanTimeline from "@/components/trainingplan/TrainingPlanTimeline";
 import TrainingPlanWeeklyBreakdown from "@/components/trainingplan/TrainingPlanWeeklyBreakdown";
@@ -14,6 +15,7 @@ export default function TrainingPlan() {
   const [plan, setPlan] = useState(null);
   const [showGenerator, setShowGenerator] = useState(false);
   const [committing, setCommitting] = useState(false);
+  const injury = useCoachInjurySignal(athlete?.id);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -82,6 +84,16 @@ export default function TrainingPlan() {
         <div className="flex justify-end">
           <Button variant="outline" size="sm" onClick={() => setShowGenerator(true)}>Generate New Plan</Button>
         </div>
+      )}
+      {injury.holdReason && (
+        <Alert variant="destructive">
+          <ShieldAlert className="w-4 h-4" />
+          <AlertTitle>Coach-directed hold active</AlertTitle>
+          <AlertDescription>
+            Running sessions in this plan are paused per your recent coach conversation — treat upcoming run days as rest or recovery (rest, cross-train on the bike/pool, or easy strength) until you're cleared.
+            <span className="block italic mt-1">{injury.summary}</span>
+          </AlertDescription>
+        </Alert>
       )}
       <TrainingPlanTimeline plan={plan} />
       <TrainingPlanWeeklyBreakdown weeklyPlans={plan.weekly_plans} />

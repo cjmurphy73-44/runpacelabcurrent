@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useCoachingInsights } from '../hooks/useCoachingInsights';
 import { Button } from '@/components/ui/button';
-import { MapPin, RefreshCw, Info } from 'lucide-react';
+import { MapPin, RefreshCw, Info, ShieldAlert, AlertTriangle } from 'lucide-react';
 
 export const IntelligenceHub: React.FC = () => {
   const { data, loading, error, refetchWeather, weatherRefreshing } = useCoachingInsights();
@@ -48,6 +48,32 @@ export const IntelligenceHub: React.FC = () => {
         <h2 className="text-2xl font-bold text-slate-900">Intelligence Hub</h2>
         <p className="text-slate-600">Your daily physiological command center.</p>
       </header>
+
+      {/* Coach injury / recovery signal */}
+      {data?.injurySignal?.level === 'hold' && (
+        <section className="bg-rose-50 border border-rose-200 p-5 rounded-xl">
+          <div className="flex items-start gap-3">
+            <ShieldAlert className="w-5 h-5 text-rose-600 mt-0.5 shrink-0" />
+            <div>
+              <h3 className="font-semibold text-rose-900">Coach hold — running paused</h3>
+              <p className="text-rose-700 text-sm mt-1">{data.injurySignal.summary}</p>
+              {data.injurySignal.evidence[0]?.snippet && (
+                <p className="italic text-rose-600/80 text-xs mt-1">“{data.injurySignal.evidence[0].snippet}”</p>
+              )}
+              <p className="text-rose-700 text-sm mt-2">Pace targets below are superseded — no running today; rest or cross-train at easy effort.</p>
+            </div>
+          </div>
+        </section>
+      )}
+      {data?.injurySignal?.level === 'caution' && (
+        <section className="bg-amber-50 border border-amber-200 p-4 rounded-xl flex items-start gap-3">
+          <AlertTriangle className="w-5 h-5 text-amber-600 mt-0.5 shrink-0" />
+          <div>
+            <h3 className="font-semibold text-amber-900">Coach note — caution</h3>
+            <p className="text-amber-700 text-sm mt-1">{data.injurySignal.summary}</p>
+          </div>
+        </section>
+      )}
 
       {/* Readiness Score */}
       <section className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">

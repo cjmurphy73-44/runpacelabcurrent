@@ -1,6 +1,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { base44 } from "@/api/base44Client";
 import { adjustPaceForEnvironment, calculateDewPoint } from "@/math/environmental";
+import { computeInjurySignal } from "@/lib/coachInjurySignal";
 
 /**
  * useCoachingInsights — ENG-01
@@ -134,7 +135,7 @@ export function useCoachingInsights() {
             "-date",
             1
           ),
-          base44.entities.CoachMessage.filter({ athlete_id: athlete.id }, "-created_date", 5),
+          base44.entities.CoachMessage.filter({ athlete_id: athlete.id }, "-created_date", 30),
         ]);
 
         // --- Readiness ---
@@ -191,12 +192,16 @@ export function useCoachingInsights() {
         // --- Coaching feedback ---
         const coachingFeedback = recentMessages.length ? recentMessages[0].content_text : null;
 
+        // --- Coach injury / recovery signal (fed across every surface) ---
+        const injurySignal = computeInjurySignal(recentMessages);
+
         if (!cancelled) {
           setData({
             readinessScore,
             readinessSource,
             readinessExplanation,
             coachingFeedback,
+            injurySignal,
             ...weather,
           });
           setError(null);
