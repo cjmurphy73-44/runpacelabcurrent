@@ -1,5 +1,5 @@
 import React from 'react';
-import { useCoachingInsights } from '../hooks/useCoachingInsights'; // ENG-01 hook
+import { useCoachingInsights } from '../hooks/useCoachingInsights';
 
 export const IntelligenceHub: React.FC = () => {
   const { data, loading, error } = useCoachingInsights();
@@ -13,14 +13,10 @@ export const IntelligenceHub: React.FC = () => {
         <h2 className="text-2xl font-bold text-slate-900">Intelligence Hub</h2>
         <p className="text-slate-600">Your daily physiological command center.</p>
       </header>
-
-      {/* Readiness Score Card */}
       <section className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
         <h3 className="font-semibold text-slate-900 mb-2">Readiness Score</h3>
         <div className="text-4xl font-bold text-blue-600">{data?.readinessScore || 'N/A'}</div>
       </section>
-
-      {/* Actionable Insights Grid */}
       <section className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
           <h3 className="font-semibold text-slate-900 mb-2">Weather Adjustment</h3>
