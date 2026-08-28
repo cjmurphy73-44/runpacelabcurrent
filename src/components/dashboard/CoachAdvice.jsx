@@ -15,7 +15,7 @@ export default function CoachAdvice() {
   const insights = useMemo(() => computePhenotypeInsights(dailyMetrics, biometricTelemetry), [dailyMetrics, biometricTelemetry]);
 
   return (
-    <Card className="h-full">
+    <Card className="self-start">
       <CardHeader><CardTitle className="text-sm font-heading">Coach Advice — Phenotyping Engine</CardTitle></CardHeader>
       <CardContent className="space-y-4">
         {insights.length === 0 ? (

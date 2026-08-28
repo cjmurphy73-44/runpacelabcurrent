@@ -156,7 +156,7 @@ export default function Home() {
         {/* 4 — Coach notes */}
         <section className="space-y-4">
           <SectionHeading index="04" title="Coach notes" description="Automated briefings and AI messages tuned to your recent trend." icon={MessageCircle} />
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
             <CoachAdvice />
             <CoachMessageFeed messages={messages} />
           </div>

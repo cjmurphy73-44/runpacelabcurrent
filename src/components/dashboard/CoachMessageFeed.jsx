@@ -16,7 +16,7 @@ export default function CoachMessageFeed({ messages = [] }) {
   const briefing = useMemo(() => computeCoachBriefing(workoutSessions, dailyMetrics), [workoutSessions, dailyMetrics]);
 
   return (
-    <Card className="h-full">
+    <Card className="self-start">
       <CardHeader>
         <CardTitle className="text-sm font-heading flex items-center gap-2">
           <Sparkles className="w-4 h-4" /> Coach updates
@@ -28,6 +28,7 @@ export default function CoachMessageFeed({ messages = [] }) {
         ) : (
           <>
             <div className="space-y-3">
+
               {briefing.map((u, i) => {
                 const { Icon, color } = TONE[u.tone] || TONE.neutral;
                 return (
@@ -43,8 +44,8 @@ export default function CoachMessageFeed({ messages = [] }) {
             </div>
 
             {messages.length > 0 && (
-              <div className="space-y-3 pt-1">
-                <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">AI notes</span>
+              <div className="max-h-80 overflow-y-auto pr-1 -mr-1 space-y-3 pt-1">
+                <span className="sticky top-0 block bg-card text-xs font-medium uppercase tracking-wide text-muted-foreground">AI notes</span>
                 {messages.map((m) => (
                   <div key={m.id} className="border-b border-border last:border-0 pb-3 last:pb-0">
                     <Badge variant="outline" className="capitalize mb-1">{m.message_type.replace(/_/g, " ")}</Badge>
