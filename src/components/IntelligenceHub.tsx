@@ -1,10 +1,12 @@
 import React, { useState } from 'react';
 import { useCoachingInsights } from '../hooks/useCoachingInsights';
+import { usePaceCalibration } from '@/hooks/usePaceCalibration';
 import { Button } from '@/components/ui/button';
-import { MapPin, RefreshCw, Info, ShieldAlert, AlertTriangle } from 'lucide-react';
+import { MapPin, RefreshCw, Info, ShieldAlert, AlertTriangle, TrendingUp } from 'lucide-react';
 
 export const IntelligenceHub: React.FC = () => {
   const { data, loading, error, refetchWeather, weatherRefreshing } = useCoachingInsights();
+  const { calibration, loading: calibrationLoading } = usePaceCalibration();
 
   if (loading) return <div className="p-6 text-slate-400">Loading your daily briefing...</div>;
   if (error) return <div className="p-6 text-red-500">Error loading coaching data.</div>;
@@ -108,6 +110,20 @@ export const IntelligenceHub: React.FC = () => {
 
       {/* Coaching Brief */}
       <section className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        {!calibrationLoading && calibration?.status === 'needs_adjustment' && (
+          <div className="bg-indigo-50 p-6 rounded-xl border border-indigo-200 shadow-sm">
+            <div className="flex items-center gap-2 mb-2">
+              <TrendingUp className="w-5 h-5 text-indigo-600" />
+              <h3 className="font-semibold text-indigo-900">Pace Adjustment Required</h3>
+            </div>
+            <p className="text-indigo-700 text-sm mb-4">
+              Historical data suggests your training zones have drifted. Suggested adjustment: {(calibration.suggestedPaceAdjustment * 100).toFixed(0)}% of current target.
+            </p>
+            <Button size="sm" className="bg-indigo-600 hover:bg-indigo-700 text-white">
+              Accept New Zones
+            </Button>
+          </div>
+        )}
         <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
           <h3 className="font-semibold text-slate-900 mb-2">Coaching Brief</h3>
           <p className="text-slate-700">{data?.coachingFeedback || 'Awaiting workout analysis.'}</p>
