@@ -31,6 +31,7 @@ import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from "@/
 import WipWrapper from "@/components/common/WipWrapper";
 import ManualWorkoutModal from "@/components/workout/ManualWorkoutModal";
 import OnboardingEmptyState from "@/components/dashboard/OnboardingEmptyState";
+import PlannedActualReconciliation from "@/components/dashboard/PlannedActualReconciliation";
 import { Sun, TrendingUp, Activity, MessageCircle, HeartPulse, ArrowRight, Plus } from "lucide-react";
 
 export default function Home() {
@@ -143,6 +144,11 @@ export default function Home() {
             <OcrDropzone athleteId={athlete.id} onSaved={() => loadAthleteData(athlete.id)} />
             <RecentWorkouts workouts={workouts} athlete={athlete} />
           </div>
+        </section>
+
+        {/* 3b — Planned vs. Actual */}
+        <section className="space-y-4">
+          <PlannedActualReconciliation athleteId={athlete.id} />
         </section>
 
         {/* 4 — Coach notes */}
