@@ -1,28 +1,57 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
+import { base44 } from '@/api/base44Client';
 
-// This is a placeholder for the pace calibration hook.
-// It tracks calibration drift status.
+type Calibration = {
+  status: 'needs_adjustment' | 'ok';
+  suggestedPaceAdjustment: number;
+};
 
+/**
+ * Placeholder pace-calibration hook. Surfaces a suggested pace-zone
+ * adjustment and exposes `acceptAdjustment`, which applies the drift
+ * to the athlete's `functional_threshold_pace_ms` so pace targets across
+ * the app re-anchor from the new threshold.
+ */
 export function usePaceCalibration() {
-  const [calibration, setCalibration] = useState<{
-    status: 'needs_adjustment' | 'ok';
-    suggestedPaceAdjustment: number;
-  } | null>(null);
+  const [calibration, setCalibration] = useState<Calibration | null>(null);
   const [loading, setLoading] = useState(true);
+  const [accepting, setAccepting] = useState(false);
+  const [accepted, setAccepted] = useState(false);
 
   useEffect(() => {
-    // In a real implementation, this would fetch data from the analytics engine
-    // For now, we simulate a 'needs_adjustment' status
+    // Placeholder drift detection — a real engine would compare recent
+    // threshold efforts against the stored FTP. For now we surface a
+    // suggested 5% adjustment so the accept flow is exercisable.
     const timer = setTimeout(() => {
-      setCalibration({
-        status: 'needs_adjustment',
-        suggestedPaceAdjustment: 0.05 // 5% adjustment
-      });
+      setCalibration({ status: 'needs_adjustment', suggestedPaceAdjustment: 0.05 });
       setLoading(false);
     }, 1000);
-
     return () => clearTimeout(timer);
   }, []);
 
-  return { calibration, loading };
+  const acceptAdjustment = useCallback(async () => {
+    const adj = calibration?.suggestedPaceAdjustment;
+    if (!adj || accepting || accepted) return;
+    setAccepting(true);
+    try {
+      const user = await base44.auth.me();
+      const profiles = await base44.entities.AthleteProfile.filter({ created_by_id: user.id });
+      if (!profiles.length) throw new Error('No athlete profile found.');
+      const athlete = profiles[0];
+      const current = athlete.functional_threshold_pace_ms || 0;
+      if (current > 0) {
+        // Fitness gained -> threshold pace (m/s) increases by the suggested fraction.
+        const next = Math.round(current * (1 + adj) * 1000) / 1000;
+        await base44.entities.AthleteProfile.update(athlete.id, {
+          functional_threshold_pace_ms: next,
+        });
+      }
+      setAccepted(true);
+      setCalibration((c) => (c ? { ...c, status: 'ok' } : c));
+    } finally {
+      setAccepting(false);
+    }
+  }, [calibration, accepting, accepted]);
+
+  return { calibration, loading, acceptAdjustment, accepting, accepted };
 }

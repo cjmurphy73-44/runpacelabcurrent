@@ -6,7 +6,7 @@ import { MapPin, RefreshCw, Info, ShieldAlert, AlertTriangle, TrendingUp } from 
 
 export const IntelligenceHub: React.FC = () => {
   const { data, loading, error, refetchWeather, weatherRefreshing } = useCoachingInsights();
-  const { calibration, loading: calibrationLoading } = usePaceCalibration();
+  const { calibration, loading: calibrationLoading, acceptAdjustment, accepting, accepted } = usePaceCalibration();
 
   if (loading) return <div className="p-6 text-slate-400">Loading your daily briefing...</div>;
   if (error) return <div className="p-6 text-red-500">Error loading coaching data.</div>;
@@ -119,8 +119,13 @@ export const IntelligenceHub: React.FC = () => {
             <p className="text-indigo-700 text-sm mb-4">
               Historical data suggests your training zones have drifted. Suggested adjustment: {(calibration.suggestedPaceAdjustment * 100).toFixed(0)}% of current target.
             </p>
-            <Button size="sm" className="bg-indigo-600 hover:bg-indigo-700 text-white">
-              Accept New Zones
+            <Button
+              size="sm"
+              className="bg-indigo-600 hover:bg-indigo-700 text-white"
+              onClick={() => acceptAdjustment().catch(() => {})}
+              disabled={accepting || accepted}
+            >
+              {accepted ? 'Accepted ✓' : accepting ? 'Applying…' : 'Accept New Zones'}
             </Button>
           </div>
         )}
