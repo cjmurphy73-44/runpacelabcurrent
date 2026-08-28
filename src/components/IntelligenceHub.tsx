@@ -1,12 +1,15 @@
 import React, { useState } from 'react';
 import { useCoachingInsights } from '../hooks/useCoachingInsights';
 import { usePaceCalibration } from '@/hooks/usePaceCalibration';
+import { CrossTrainingWidget } from './dashboard/CrossTrainingWidget';
+import { useCrossTraining } from '../hooks/useCrossTraining';
 import { Button } from '@/components/ui/button';
 import { MapPin, RefreshCw, Info, ShieldAlert, AlertTriangle, TrendingUp } from 'lucide-react';
 
 export const IntelligenceHub: React.FC = () => {
   const { data, loading, error, refetchWeather, weatherRefreshing } = useCoachingInsights();
   const { calibration, loading: calibrationLoading, acceptAdjustment, accepting, accepted } = usePaceCalibration();
+  const { recommendation, isRequired } = useCrossTraining();
 
   if (loading) return <div className="p-6 text-slate-400">Loading your daily briefing...</div>;
   if (error) return <div className="p-6 text-red-500">Error loading coaching data.</div>;
@@ -52,6 +55,12 @@ export const IntelligenceHub: React.FC = () => {
       </header>
 
       {/* Coach injury / recovery signal */}
+      {isRequired && (
+        <CrossTrainingWidget 
+          recommendation={recommendation} 
+          recommendationId="daily-default"
+        />
+      )}
       {data?.injurySignal?.level === 'hold' && (
         <section className="bg-rose-50 border border-rose-200 p-5 rounded-xl">
           <div className="flex items-start gap-3">
