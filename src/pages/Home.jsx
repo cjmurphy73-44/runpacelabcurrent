@@ -104,7 +104,7 @@ export default function Home() {
           <>
         {/* 1 — Today's snapshot */}
         <section className="space-y-4">
-          <SectionHeading title="Today's snapshot" description="Your form, readiness and prescribed session for today." icon={Sun} />
+          <SectionHeading index="01" title="Today's snapshot" description="Your form, readiness and prescribed session for today." icon={Sun} />
           <DashboardMetricBanner athlete={athlete} workouts={loadTimelineWorkouts} />
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             <div className="lg:col-span-2">
@@ -116,7 +116,7 @@ export default function Home() {
 
         {/* 2 — Load & Form */}
         <section className="space-y-4">
-          <SectionHeading title="Load & Form" description="Fitness, fatigue and the balance between them over time." icon={TrendingUp} />
+          <SectionHeading index="02" title="Load & Form" description="Fitness, fatigue and the balance between them over time." icon={TrendingUp} />
           <LoadFatigueChart completedSessions={loadTimelineWorkouts} plannedWorkouts={plannedWorkouts} />
           <HorizonStrip athleteId={athlete.id} />
         </section>
@@ -124,6 +124,7 @@ export default function Home() {
         {/* 3 — Recent activity */}
         <section className="space-y-4">
           <SectionHeading
+            index="03"
             title="Recent activity"
             description="Drop a workout screenshot or review your latest sessions."
             icon={Activity}
@@ -146,7 +147,7 @@ export default function Home() {
 
         {/* 4 — Coach notes */}
         <section className="space-y-4">
-          <SectionHeading title="Coach notes" description="Automated briefings and AI messages tuned to your recent trend." icon={MessageCircle} />
+          <SectionHeading index="04" title="Coach notes" description="Automated briefings and AI messages tuned to your recent trend." icon={MessageCircle} />
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <CoachAdvice />
             <CoachMessageFeed messages={messages} />
@@ -155,7 +156,7 @@ export default function Home() {
 
         {/* 5 — Recovery & Readiness */}
         <section className="space-y-4">
-          <SectionHeading title="Recovery & Readiness" description="Sleep, HRV, autonomic stress and lifestyle context." icon={HeartPulse} />
+          <SectionHeading index="05" title="Recovery & Readiness" description="Sleep, HRV, autonomic stress and lifestyle context." icon={HeartPulse} />
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
             <WipWrapper isWip featureName="Readiness Score">
               <ReadinessScoreCard />

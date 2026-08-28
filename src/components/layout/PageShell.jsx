@@ -4,15 +4,15 @@ export default function PageShell({ title, description, icon: Icon, maxWidth = "
   return (
     <div className={`${maxWidth} mx-auto`}>
       {(title || actions) && (
-        <div className="flex items-start justify-between gap-4 mb-8">
+        <div className="flex items-start justify-between gap-4 mb-8 pb-5 border-b border-border">
           <div className="min-w-0">
             {title && (
-              <h1 className="flex items-center gap-2 text-xl font-heading font-bold tracking-tight">
+              <h1 className="flex items-center gap-2 text-2xl font-display font-bold tracking-tight">
                 {Icon && <Icon className="w-5 h-5 text-primary" />}
                 {title}
               </h1>
             )}
-            {description && <p className="text-sm text-muted-foreground mt-1 max-w-2xl">{description}</p>}
+            {description && <p className="text-sm text-muted-foreground mt-1.5 max-w-2xl">{description}</p>}
           </div>
           {actions && <div className="shrink-0">{actions}</div>}
         </div>
