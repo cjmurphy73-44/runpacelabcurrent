@@ -18,7 +18,7 @@ function titleCase(sport) {
 }
 
 export default function PlannedActualReconciliation({ athleteId }) {
-  const { matches, loading, error, confirmMatch, confirmingId, lastConfirmed } = usePlannedActualReconciliation(athleteId);
+  const { matches, loading, error, confirmMatch, confirmingId, lastConfirmed, autoLinkedCount } = usePlannedActualReconciliation(athleteId);
 
   return (
     <div className="space-y-4">
@@ -27,6 +27,11 @@ export default function PlannedActualReconciliation({ athleteId }) {
         description="Ingested sessions fuzzy-matched to scheduled plan items (±1 day, ±20% duration). Confirm a match to mark the plan session complete and link the activity."
         icon={CalendarCheck}
       />
+      {autoLinkedCount > 0 && (
+        <p className="text-xs text-muted-foreground">
+          {autoLinkedCount} session{autoLinkedCount === 1 ? "" : "s"} auto-linked at ≥90% confidence — only lower-confidence matches need review below.
+        </p>
+      )}
       <Card>
         <CardContent className="pt-6">
           {loading ? (
