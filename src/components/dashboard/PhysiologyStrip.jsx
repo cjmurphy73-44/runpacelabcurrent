@@ -50,11 +50,12 @@ export default function PhysiologyStrip({ athlete }) {
   const vdot = athlete?.vdot_estimate ?? null;
   const threshold = useMemo(
     () => deriveRunningThresholdPace(
-      workoutSessions,
-      athlete?.vdot_estimate,
-      athlete?.functional_threshold_pace_ms,
-    ),
-    [workoutSessions, athlete?.vdot_estimate, athlete?.functional_threshold_pace_ms]
+        workoutSessions,
+        athlete?.vdot_estimate,
+        athlete?.functional_threshold_pace_ms,
+        athlete?.lactate_threshold_hr,
+      ),
+    [workoutSessions, athlete?.vdot_estimate, athlete?.functional_threshold_pace_ms, athlete?.lactate_threshold_hr]
   );
 
   const injury = useMemo(

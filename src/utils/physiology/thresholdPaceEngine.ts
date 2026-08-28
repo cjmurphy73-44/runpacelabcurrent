@@ -19,9 +19,11 @@ export interface ThresholdPaceResult {
 }
 
 const WINDOW_DAYS = 42;
-const MIN_THR_DUR_S = 18 * 60;  // ~threshold-effort duration band (18–90 min)
-const MAX_THR_DUR_S = 90 * 60;
-const BAND = 0.15;               // accept runs whose pace is within ±15% of Daniels T-pace
+const MIN_THR_DUR_S = 18 * 60;  // sustained-effort floor — short jogs excluded
+const FASTEST_K = 8;             // recency-weighted mean of the fastest K qualifying runs
+const HR_BAND = 0.08;            // a run counts as threshold-intensity if avg HR is within ±8% of LTHR
+const PACE_BAND = 0.12;          // (no LTHR) fallback gate around the Daniels T-pace
+const MAX_SANE_PACE_MS = 1000 / 150; // 2:30/km — anything faster over >10km is mislabeled cycling
 
 function isRun(sport?: string): boolean {
   return !!sport && sport.toLowerCase().startsWith('run');
@@ -66,31 +68,45 @@ export function deriveRunningThresholdPace(
   sessions: any[],
   vdot?: number | null,
   storedFtpMs?: number | null,
+  lactateThresholdHr?: number | null,
 ): ThresholdPaceResult {
   const baseline = danielsThresholdMs(vdot);
   const recent = (sessions || []).filter((s: any) => dayAge(s.date) <= WINDOW_DAYS);
 
   const runs = recent.filter((s: any) => isRun(s.sport));
+  // Empirical anchor: consider EVERY recent run, but only keep the ones that were
+  // actually a threshold-intensity effort — avg HR near lactate-threshold HR when
+  // available, else pace within the Daniels T-pace band. Easy jogs and short
+  // outings do NOT anchor a threshold pace; they're not threshold efforts. Also
+  // apply the running-plausibility guard to drop impossible paces (cycling data
+  // mislabeled as a run, e.g. 2:30/km over 10km).
   const observed = runs
     .map((s: any) => {
       const durS = s.duration_seconds ?? (s.duration_minutes ? s.duration_minutes * 60 : 0);
       const pace = sessionPaceMs(s);
       const age = dayAge(s.date);
-      let valid = false;
-      if (baseline && durS >= MIN_THR_DUR_S && durS <= MAX_THR_DUR_S && pace) {
-        // Keep runs whose pace sits in the threshold band around the Daniels value.
-        if (pace >= baseline * (1 - BAND) && pace <= baseline * (1 + BAND)) valid = true;
+      if (!pace || durS < MIN_THR_DUR_S) return null;
+      if ((s.distance_km ?? 0) > 10 && pace > MAX_SANE_PACE_MS) return null; // implausible run
+      let intensityOk = false;
+      if (lactateThresholdHr && s.avg_hr) {
+        // Gate by actual intensity: near-threshold HR runs.
+        intensityOk = Math.abs(s.avg_hr - lactateThresholdHr) / lactateThresholdHr <= HR_BAND;
+      } else if (baseline) {
+        // No LTHR — gate by pace proximity to the Daniels T-pace.
+        intensityOk = pace >= baseline * (1 - PACE_BAND) && pace <= baseline * (1 + PACE_BAND);
+      } else {
+        intensityOk = true; // nothing to gate on — last resort
       }
-      return valid ? { pace, age } : null;
+      return intensityOk ? { pace, age } : null;
     })
     .filter(Boolean) as { pace: number; age: number }[];
 
   const crossTrainCount = recent.filter((s: any) => isCrossTrain(s.sport)).length;
 
-  // Recency-weighted mean of the up-to-5 fastest valid threshold-ish runs.
+  // Recency-weighted mean of the fastest qualifying runs (threshold ≈ best sustained effort).
   let observedMs: number | null = null;
   if (observed.length) {
-    const top = [...observed].sort((a, b) => b.pace - a.pace).slice(0, 5);
+    const top = [...observed].sort((a, b) => b.pace - a.pace).slice(0, FASTEST_K);
     let wsum = 0;
     let psum = 0;
     for (const o of top) {
@@ -101,19 +117,23 @@ export function deriveRunningThresholdPace(
     observedMs = wsum > 0 ? psum / wsum : null;
   }
 
-  // Blend: empirical runs increasingly override the Daniels baseline as more arrive.
+  // Blend: the more threshold-intensity runs we have, the more the empirical
+  // value dominates over the (possibly stale) Daniels T-pace.
   let paceMs: number | null = null;
   let source = '';
   if (observedMs != null && baseline != null) {
     if (observed.length >= 3) {
-      paceMs = 0.6 * observedMs + 0.4 * baseline;
+      paceMs = 0.65 * observedMs + 0.35 * baseline;
       source = `From ${observed.length} recent runs`;
+    } else if (observed.length === 2) {
+      paceMs = 0.5 * observedMs + 0.5 * baseline;
+      source = `From 2 recent runs`;
     } else {
-      paceMs = 0.4 * observedMs + 0.6 * baseline;
-      source = `From ${observed.length} recent run${observed.length === 1 ? '' : 's'}`;
+      paceMs = 0.35 * observedMs + 0.65 * baseline;
+      source = `From 1 recent run`;
     }
   } else if (baseline != null) {
-    // No recent runs to verify against — be honest about why.
+    // No threshold-intensity runs to verify against — be honest about why.
     paceMs = baseline;
     source = crossTrainCount > 0
       ? 'VDOT only — cross-training in progress'
