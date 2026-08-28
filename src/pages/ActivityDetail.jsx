@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import PageShell from "@/components/layout/PageShell";
 import SectionHeading from "@/components/layout/SectionHeading";
-import { ArrowLeft, Sparkles, Activity as ActivityIcon, Clock, MapPin, HeartPulse, Gauge, RotateCw, AlertCircle } from "lucide-react";
+import { ArrowLeft, Sparkles, Activity as ActivityIcon, Clock, MapPin, HeartPulse, Gauge, RotateCw, AlertCircle, Files, Layers } from "lucide-react";
 
 // Intensity → dynamic color tokens used across the insight card.
 const INTENSITY_STYLES = {
@@ -18,15 +18,33 @@ const INTENSITY_STYLES = {
 
 const INTENSITY_BAR_WIDTH = { easy: 25, moderate: 55, hard: 80, very_hard: 100 };
 
+// Quantum Polar file-type badges + parse-status pills.
+const FILE_TYPE_STYLES = {
+  fit: { label: "FIT", chip: "bg-primary/10 text-primary border-primary/30" },
+  tcx: { label: "TCX", chip: "bg-teal-50 text-teal-700 border-teal-200" },
+  csv: { label: "CSV", chip: "bg-slate-100 text-slate-600 border-slate-300" },
+};
+const STATUS_STYLES = {
+  parsed: { label: "Parsed", pill: "bg-emerald-50 text-emerald-700 border-emerald-200" },
+  failed: { label: "Failed",  pill: "bg-rose-50 text-rose-700 border-rose-200" },
+  pending: { label: "Pending", pill: "bg-amber-50 text-amber-700 border-amber-200" },
+};
+
+function fmtOffset(sec) {
+  if (sec == null || isNaN(sec)) return "—";
+  const m = Math.floor(sec / 60);
+  const s = Math.round(sec % 60);
+  return `${m}:${String(s).padStart(2, "0")}`;
+}
+
 export default function ActivityDetail() {
   const { id } = useParams();
   const [loading, setLoading] = useState(true);
   const [workout, setWorkout] = useState(null);
   const [feedback, setFeedback] = useState(null);
+  const [assets, setAssets] = useState([]);
   const [retrying, setRetrying] = useState(false);
 
-  // Initial fetch + realtime subscription so insights appear the moment the
-  // background AI coach finishes generating them (post-webhook).
   useEffect(() => {
     let unsubscribe = null;
     (async () => {
@@ -35,6 +53,10 @@ export default function ActivityDetail() {
         setWorkout(w);
         const rows = await base44.entities.WorkoutFeedback.filter({ workout_id: id }, "-created_date", 5);
         setFeedback(rows[0] || null);
+        try {
+          const a = await base44.entities.WorkoutAsset.filter({ session_id: id }, "uploaded_at", 50);
+          setAssets(Array.isArray(a) ? a : []);
+        } catch (e) { /* assets optional */ }
       } catch (e) {
         console.error("ActivityDetail load failed", e);
       } finally {
@@ -46,18 +68,12 @@ export default function ActivityDetail() {
             setFeedback(event.data);
           }
         });
-      } catch (e) {
-        /* subscribe optional */
-      }
+      } catch (e) { /* subscribe optional */ }
     })();
-    return () => {
-      if (typeof unsubscribe === "function") unsubscribe();
-    };
+    return () => { if (typeof unsubscribe === "function") unsubscribe(); };
   }, [id]);
 
-  if (loading) {
-    return <div className="text-center py-20 text-muted-foreground">Loading activity…</div>;
-  }
+  if (loading) return <div className="text-center py-20 text-muted-foreground">Loading activity…</div>;
 
   if (!workout) {
     return (
@@ -102,6 +118,9 @@ export default function ActivityDetail() {
     ? workout.sport.charAt(0).toUpperCase() + workout.sport.slice(1) + " session"
     : "Activity";
 
+  const laps = Array.isArray(workout.laps) ? workout.laps : [];
+  const sortedAssets = [...assets].sort((a, b) => (SOURCE_PRIORITY_UI[b.file_type] || 0) - (SOURCE_PRIORITY_UI[a.file_type] || 0) || (a.uploaded_at || "").localeCompare(b.uploaded_at || ""));
+
   return (
     <PageShell maxWidth="max-w-3xl">
       <div className="mb-2">
@@ -113,7 +132,7 @@ export default function ActivityDetail() {
       <section className="space-y-4">
         <SectionHeading
           title={title}
-          description={`${workout.date || ""}${workout.source_format ? ` · ${workout.source_format}` : ""}`}
+          description={`${workout.date || ""}${workout.source_format ? ` · ${workout.source_format.toUpperCase()}` : ""}`}
           icon={ActivityIcon}
         />
         <Card>
@@ -129,6 +148,78 @@ export default function ActivityDetail() {
           </CardContent>
         </Card>
       </section>
+
+      <section className="space-y-4">
+        <SectionHeading
+          title="Attached files"
+          description="Every raw source format bound to this session — streams and laps are reconciled under strict priority (FIT > TCX > CSV)."
+          icon={Files}
+        />
+        <Card>
+          <CardContent className="pt-6">
+            {sortedAssets.length === 0 ? (
+              <p className="text-sm text-muted-foreground">No raw files are recorded for this session.</p>
+            ) : (
+              <ul className="divide-y divide-border">
+                {sortedAssets.map((a) => {
+                  const ft = FILE_TYPE_STYLES[a.file_type] || FILE_TYPE_STYLES.csv;
+                  const st = STATUS_STYLES[a.parsing_status] || STATUS_STYLES.pending;
+                  return (
+                    <li key={a.id} className="flex flex-wrap items-center gap-3 py-3">
+                      <span className={`inline-flex items-center justify-center min-w-[3rem] px-2 py-1 rounded border text-[11px] font-mono font-semibold tracking-wide ${ft.chip}`}>
+                        {ft.label}
+                      </span>
+                      <span className="font-mono text-sm text-foreground truncate max-w-[16rem]" title={a.file_name}>{a.file_name}</span>
+                      <span className="text-xs text-muted-foreground tabular-nums">{a.uploaded_at ? new Date(a.uploaded_at).toLocaleString() : "—"}</span>
+                      <span className={`ml-auto inline-flex items-center px-2 py-0.5 rounded-full border text-[10px] font-medium ${st.pill}`}>{st.label}</span>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+          </CardContent>
+        </Card>
+      </section>
+
+      {laps.length > 0 && (
+        <section className="space-y-4">
+          <SectionHeading
+            title="Lap splits"
+            description="Reconciled lap segments unified from the bound assets."
+            icon={Layers}
+          />
+          <Card>
+            <CardContent className="pt-6">
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="text-left text-[11px] uppercase tracking-wider text-muted-foreground border-b border-border">
+                      <th className="py-2 pr-4 font-medium">#</th>
+                      <th className="py-2 pr-4 font-medium">Start</th>
+                      <th className="py-2 pr-4 font-medium">Duration</th>
+                      <th className="py-2 pr-4 font-medium">Distance</th>
+                      <th className="py-2 pr-4 font-medium">Avg HR</th>
+                      <th className="py-2 pr-4 font-medium">Speed</th>
+                    </tr>
+                  </thead>
+                  <tbody className="font-mono tabular-nums">
+                    {laps.map((l, i) => (
+                      <tr key={i} className="border-b border-border last:border-0">
+                        <td className="py-2 pr-4 text-muted-foreground">{(l.lap_index ?? i) + 1}</td>
+                        <td className="py-2 pr-4">{fmtOffset(l.start_time_offset_s)}</td>
+                        <td className="py-2 pr-4">{l.duration_s != null ? `${l.duration_s}s` : "—"}</td>
+                        <td className="py-2 pr-4">{l.distance_km != null ? `${l.distance_km} km` : "—"}</td>
+                        <td className="py-2 pr-4">{l.avg_hr ?? "—"}</td>
+                        <td className="py-2 pr-4">{l.avg_speed != null ? `${l.avg_speed} m/s` : "—"}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </CardContent>
+          </Card>
+        </section>
+      )}
 
       <section className="space-y-4">
         <SectionHeading
@@ -195,3 +286,5 @@ export default function ActivityDetail() {
     </PageShell>
   );
 }
+
+const SOURCE_PRIORITY_UI = { fit: 4, tcx: 3, csv: 2, manual: 1 };

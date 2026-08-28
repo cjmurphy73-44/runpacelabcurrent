@@ -62,14 +62,15 @@
       "type": "string",
       "enum": [
         "fit",
+        "tcx",
         "csv",
         "webhook"
       ],
-      "description": "Original file/ingestion format"
+      "description": "Format of the dominant asset that produced the reconciled master stream (highest-priority bound asset)"
     },
     "raw_file_url": {
       "type": "string",
-      "description": "URL of the originally uploaded raw file"
+      "description": "URL of the originally uploaded raw file (primary/first asset)"
     },
     "session_trimp": {
       "type": "number",
@@ -94,7 +95,7 @@
     },
     "streams": {
       "type": "array",
-      "description": "Second-by-second normalized telemetry stream (only stored for shorter sessions to avoid oversized records)",
+      "description": "Unified master telemetry stream reconciled from all bound WorkoutAssets (priority ladder FIT>TCX>CSV). Only stored for shorter sessions to avoid oversized records.",
       "items": {
         "type": "object",
         "properties": {
@@ -117,6 +118,43 @@
           "speed": {
             "type": "number",
             "description": "Speed in meters/second"
+          }
+        }
+      }
+    },
+    "laps": {
+      "type": "array",
+      "description": "Reconciled lap/split segments unified from bound assets (FIT lap message 19 preferred, then TCX <Lap>)",
+      "items": {
+        "type": "object",
+        "properties": {
+          "lap_index": {
+            "type": "integer",
+            "description": "Sequential lap number, 0-based"
+          },
+          "start_time_offset_s": {
+            "type": "number",
+            "description": "Seconds from session start to the lap start"
+          },
+          "duration_s": {
+            "type": "number",
+            "description": "Lap duration in seconds"
+          },
+          "distance_km": {
+            "type": "number",
+            "description": "Lap distance in kilometers"
+          },
+          "avg_hr": {
+            "type": "integer",
+            "description": "Average heart rate for the lap"
+          },
+          "max_hr": {
+            "type": "integer",
+            "description": "Max heart rate for the lap"
+          },
+          "avg_speed": {
+            "type": "number",
+            "description": "Average speed for the lap in meters/second"
           }
         }
       }
