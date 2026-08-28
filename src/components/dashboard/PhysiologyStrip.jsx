@@ -1,7 +1,6 @@
 import React, { useMemo } from "react";
 import { useFitness } from "@/context/FitnessContext";
 import { calculateACWR } from "@/lib/injuryEngine";
-import { deriveRunningThresholdPace } from "@/utils/physiology/thresholdPaceEngine";
 import { Zap, Gauge, ShieldAlert, HeartPulse } from "lucide-react";
 
 const ZONE = {
@@ -45,18 +44,10 @@ function Tile({ icon: Icon, label, value, suffix, sub, badge }) {
 }
 
 export default function PhysiologyStrip({ athlete }) {
-  const { dailyMetrics, workoutSessions } = useFitness();
+  const { dailyMetrics } = useFitness();
 
   const vdot = athlete?.vdot_estimate ?? null;
-  const threshold = useMemo(
-    () => deriveRunningThresholdPace(
-        workoutSessions,
-        athlete?.vdot_estimate,
-        athlete?.functional_threshold_pace_ms,
-        athlete?.lactate_threshold_hr,
-      ),
-    [workoutSessions, athlete?.vdot_estimate, athlete?.functional_threshold_pace_ms, athlete?.lactate_threshold_hr]
-  );
+  const ftpMs = athlete?.functional_threshold_pace_ms ?? null;
 
   const injury = useMemo(
     () => calculateACWR(dailyMetrics.map((d) => ({ load: d.total_trimp || 0 }))),
@@ -85,9 +76,9 @@ export default function PhysiologyStrip({ athlete }) {
       <Tile
         icon={Gauge}
         label="Threshold pace"
-        value={formatPace(threshold.paceMs)}
-        suffix={threshold.paceMs ? "/km" : ""}
-        sub={threshold.paceMs ? threshold.source : "Set in Physiology"}
+        value={formatPace(ftpMs)}
+        suffix={ftpMs ? "/km" : ""}
+        sub={ftpMs ? "Lactate threshold" : "Set in Physiology"}
       />
       <Tile
         icon={ShieldAlert}
