@@ -32,6 +32,7 @@ import WipWrapper from "@/components/common/WipWrapper";
 import ManualWorkoutModal from "@/components/workout/ManualWorkoutModal";
 import OnboardingEmptyState from "@/components/dashboard/OnboardingEmptyState";
 import PlannedActualReconciliation from "@/components/dashboard/PlannedActualReconciliation";
+import PhysiologyStrip from "@/components/dashboard/PhysiologyStrip";
 import { Sun, TrendingUp, Activity, MessageCircle, HeartPulse, ArrowRight, Plus } from "lucide-react";
 
 export default function Home() {
@@ -107,6 +108,7 @@ export default function Home() {
         <section className="space-y-4">
           <SectionHeading index="01" title="Today's snapshot" description="Your form, readiness and prescribed session for today." icon={Sun} />
           <DashboardMetricBanner athlete={athlete} workouts={loadTimelineWorkouts} />
+          <PhysiologyStrip athlete={athlete} />
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             <div className="lg:col-span-2">
               <TodaySessionCard athleteId={athlete.id} />

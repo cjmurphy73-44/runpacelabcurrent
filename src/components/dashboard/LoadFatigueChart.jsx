@@ -3,7 +3,7 @@ import {
   ResponsiveContainer, ComposedChart, Area, Line, XAxis, YAxis, CartesianGrid, Tooltip, ReferenceLine,
 } from "recharts";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Gauge, TrendingUp, TrendingDown, AlertTriangle } from "lucide-react";
+import { Gauge, AlertTriangle } from "lucide-react";
 import { calculateHistoricalAndProjectedLoad, getTsbZoneInfo, toDateKey } from "@/lib/loadForecasting";
 import { THEME_COLORS as COLORS } from "@/constants/colors";
 
@@ -80,7 +80,6 @@ export default function LoadFatigueChart({ completedSessions = [], plannedWorkou
     );
   }
 
-  const current = [...timeline].reverse().find((p) => !p.isProjected) || timeline[0];
   const projected = timeline[timeline.length - 1];
   const projectedZone = getTsbZoneInfo(projected.tsb);
 
@@ -94,10 +93,7 @@ export default function LoadFatigueChart({ completedSessions = [], plannedWorkou
     <Card>
       <CardHeader><CardTitle className="text-sm font-heading">Load & Fatigue Forecast</CardTitle></CardHeader>
       <CardContent className="space-y-4">
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-          <MetricCard icon={TrendingUp} label="CTL (Fitness)" value={current.ctl} />
-          <MetricCard icon={TrendingDown} label="ATL (Fatigue)" value={current.atl} />
-          <MetricCard icon={Gauge} label="TSB (Form)" value={current.tsb} />
+        <div className="flex flex-wrap items-center gap-3">
           <MetricCard
             icon={Gauge}
             label="7-Day Projected TSB"
