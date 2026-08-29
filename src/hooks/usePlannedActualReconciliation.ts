@@ -15,6 +15,7 @@ export function usePlannedActualReconciliation(athleteId) {
   const [error, setError] = useState(null);
   const [confirmingId, setConfirmingId] = useState(null);
   const [lastConfirmed, setLastConfirmed] = useState(null);
+  const [autoLinkedCount, setAutoLinkedCount] = useState(0);
 
   const load = useCallback(async () => {
     if (!athleteId) return;
@@ -54,8 +55,32 @@ export function usePlannedActualReconciliation(athleteId) {
           status: p.status,
         }));
 
-      const results = workoutMatchingEngine.matchAll(ingested, candidates).filter((m) => m.matchStatus !== 'UNMATCHED');
-      setMatches(results);
+      const all = workoutMatchingEngine.matchAll(ingested, candidates).filter((m) => m.matchStatus !== 'UNMATCHED');
+
+      // Auto-link high-confidence exact matches so completed sessions are marked off without
+      // a manual step. Each scheduled item is only auto-linked once per pass (deduped), and any
+      // write failure falls back to the manual review list. On the next load the auto-linked rows
+      // are gone from both pools (plan session no longer pending / workout now linked), so this
+      // pass is self-limiting — no re-entrancy loop.
+      const AUTO_CONFIDENCE = 0.9;
+      const linkedScheduled = new Set();
+      const autoLinked = [];
+      const reviewable = [];
+      for (const m of all) {
+        const canAuto = m.matchStatus === 'EXACT' && m.confidenceScore >= AUTO_CONFIDENCE && !linkedScheduled.has(m.scheduledWorkoutId);
+        if (!canAuto) { reviewable.push(m); continue; }
+        try {
+          await base44.entities.TrainingPlanSession.update(m.scheduledWorkoutId, { status: 'completed' });
+          await base44.entities.WorkoutSession.update(m.sessionId, { training_plan_session_id: m.scheduledWorkoutId });
+          linkedScheduled.add(m.scheduledWorkoutId);
+          autoLinked.push(m.sessionId);
+        } catch {
+          reviewable.push(m);
+        }
+      }
+
+      setMatches(reviewable);
+      setAutoLinkedCount(autoLinked.length);
     } catch (e) {
       setError(e?.message || 'Failed to load reconciliation matches');
     } finally {
@@ -86,5 +111,5 @@ export function usePlannedActualReconciliation(athleteId) {
     }
   }, [confirmingId, load]);
 
-  return { matches, loading, error, confirmMatch, confirmingId, lastConfirmed, refresh: load };
+  return { matches, loading, error, confirmMatch, confirmingId, lastConfirmed, autoLinkedCount, refresh: load };
 }

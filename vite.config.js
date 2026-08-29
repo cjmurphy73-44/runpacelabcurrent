@@ -14,6 +14,11 @@ export default defineConfig({
     }),
     react(),
   ],
+  server: {
+    host: '0.0.0.0',
+    port: 7860,
+    allowedHosts: ['connors-macbook-pro.tailcbed5c.ts.net']
+  },
   test: {
     globals: true,
     environment: 'node',

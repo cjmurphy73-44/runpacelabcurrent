@@ -61,7 +61,14 @@ export const calculateFTP = (p20) => {
  * @returns {number} Threshold pace in m/s
  */
 export const calculateThresholdPace = (vdot) => {
-  // Simplified derivation for threshold pace from VDOT
-  // T-pace is approximately 90% of VO2max velocity
-  return vdot * 0.055; 
+  // Daniels threshold (T-pace): velocity at ~88% of VO2max.
+  // Solves the Daniels VO2 cost equation for the velocity that produces vdot*0.88,
+  // then converts m/min -> m/s.
+  if (!vdot || vdot <= 0) return 0;
+  const targetVo2 = vdot * 0.88;
+  const a = 0.000104, b = 0.182258, c = -(4.60 + targetVo2);
+  const disc = b * b - 4 * a * c;
+  if (disc < 0) return 0;
+  const vMetersPerMin = (-b + Math.sqrt(disc)) / (2 * a);
+  return vMetersPerMin / 60; // m/s
 };
