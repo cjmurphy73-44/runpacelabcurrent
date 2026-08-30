@@ -34,6 +34,7 @@ export interface MatchResult {
     durationVariancePercent: number;
     distanceVariancePercent?: number;
     dayOffset: number;
+    completionRatio: number; // actualDuration / prescribedDuration (0..n); nullish when no prescribed duration
   };
   scheduled?: ScheduledWorkout;
 }
@@ -109,7 +110,7 @@ export class WorkoutMatchingEngine {
         sessionId: ingested.sessionId,
         matchStatus: 'UNMATCHED',
         confidenceScore: 0,
-        varianceDetails: { durationVariancePercent: 0, dayOffset: 0 },
+        varianceDetails: { durationVariancePercent: 0, dayOffset: 0, completionRatio: NaN },
       };
     }
 
@@ -118,12 +119,17 @@ export class WorkoutMatchingEngine {
     if (dv > EXACT_VARIANCE * 100) matchStatus = 'COMPLETED_EXCEEDED';
     else if (dv < -EXACT_VARIANCE * 100) matchStatus = 'COMPLETED_SHORT';
 
+    const ratio =
+      bestMatch.targetDurationMinutes && bestMatch.targetDurationMinutes > 0
+        ? ingested.durationMinutes / bestMatch.targetDurationMinutes
+        : NaN;
+
     return {
       scheduledWorkoutId: bestMatch.id,
       sessionId: ingested.sessionId,
       matchStatus,
       confidenceScore: parseFloat(bestScore.toFixed(2)),
-      varianceDetails: bestDetails,
+      varianceDetails: { ...bestDetails, completionRatio: parseFloat(ratio.toFixed(2)) },
       scheduled: bestMatch,
     };
   }

@@ -4,12 +4,12 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import SectionHeading from "@/components/layout/SectionHeading";
 import { usePlannedActualReconciliation } from "@/hooks/usePlannedActualReconciliation";
-import { CalendarCheck, Link2, TrendingUp, TrendingDown, Equal } from "lucide-react";
+import { CalendarCheck, Link2, TrendingUp, TrendingDown, Equal, Check, Unlink, SkipForward, AlertTriangle } from "lucide-react";
 
 const STATUS_STYLES = {
   EXACT: { label: "On plan", chip: "bg-emerald-50 text-emerald-700 border-emerald-200" },
-  COMPLETED_EXCEEDED: { label: "Exceeded plan", chip: "bg-amber-50 text-amber-700 border-amber-200" },
-  COMPLETED_SHORT: { label: "Short of plan", chip: "bg-rose-50 text-rose-700 border-rose-200" },
+  COMPLETED_EXCEEDED: { label: "Excess", chip: "bg-amber-50 text-amber-700 border-amber-200" },
+  COMPLETED_SHORT: { label: "Partial", chip: "bg-rose-50 text-rose-700 border-rose-200" },
 };
 
 function titleCase(sport) {
@@ -17,21 +17,135 @@ function titleCase(sport) {
   return sport.charAt(0).toUpperCase() + sport.slice(1);
 }
 
+function pctText(ratio) {
+  if (ratio == null || isNaN(ratio)) return "—";
+  return `${Math.round(ratio * 100)}% of plan`;
+}
+
 export default function PlannedActualReconciliation({ athleteId }) {
-  const { matches, loading, error, confirmMatch, confirmingId, lastConfirmed, autoLinkedCount } = usePlannedActualReconciliation(athleteId);
+  const {
+    matches,
+    autoLinked,
+    overdue,
+    loading,
+    error,
+    confirmMatch,
+    confirmAutoLink,
+    rejectAutoLink,
+    markSkipped,
+    confirmingId,
+    rejectingId,
+    skippingId,
+    lastConfirmed,
+    lastRejected,
+    lastSkipped,
+  } = usePlannedActualReconciliation(athleteId);
 
   return (
     <div className="space-y-4">
       <SectionHeading
         title="Planned vs. Actual"
-        description="Ingested sessions fuzzy-matched to scheduled plan items (±1 day, ±20% duration). Confirm a match to mark the plan session complete and link the activity."
+        description="Ingested sessions fuzzy-matched to scheduled plan items (±1 day, ±20% duration). Confirm a match to mark the plan session complete / partial / excess and link the activity."
         icon={CalendarCheck}
       />
-      {autoLinkedCount > 0 && (
-        <p className="text-xs text-muted-foreground">
-          {autoLinkedCount} session{autoLinkedCount === 1 ? "" : "s"} auto-linked at ≥90% confidence — only lower-confidence matches need review below.
-        </p>
+
+      {/* Auto-linked — verify or unlink */}
+      {autoLinked.length > 0 && (
+        <Card>
+          <CardContent className="pt-6 space-y-3">
+            <div className="flex items-center gap-2 text-sm font-medium text-foreground">
+              <Check className="w-4 h-4 text-emerald-600" />
+              {autoLinked.length} session{autoLinked.length === 1 ? "" : "s"} auto-linked at ≥90% — verify this is what you did, or unlink.
+            </div>
+            <ul className="divide-y divide-border">
+              {autoLinked.map((m) => {
+                const confirmed = lastConfirmed === m.sessionId;
+                const rejected = lastRejected === m.sessionId;
+                const isRejecting = rejectingId === m.sessionId;
+                const onPlan = m.matchStatus === "EXACT";
+                return (
+                  <li key={m.sessionId} className="py-3 flex flex-wrap items-center gap-3">
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="font-medium text-foreground">{titleCase(m.scheduled?.sport)}</span>
+                        <Badge variant="outline" className={STATUS_STYLES.EXACT.chip}>Auto-linked · on plan</Badge>
+                        <span className="text-xs text-muted-foreground font-mono tabular-nums">{pctText(m.varianceDetails.completionRatio)}</span>
+                      </div>
+                      <div className="mt-1 text-xs text-muted-foreground font-mono tabular-nums">
+                        plan {m.scheduled?.date || "—"} · target {m.scheduled?.targetDurationMinutes ?? "—"} min
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Button
+                        size="sm"
+                        variant={confirmed ? "secondary" : "outline"}
+                        onClick={() => confirmAutoLink(m)}
+                        disabled={confirmed}
+                        className="gap-1.5"
+                      >
+                        <Check className="w-3.5 h-3.5" />
+                        {confirmed ? "Verified" : "That's it"}
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => rejectAutoLink(m)}
+                        disabled={isRejecting || rejected}
+                        className="gap-1.5 text-muted-foreground"
+                      >
+                        <Unlink className="w-3.5 h-3.5" />
+                        {rejected ? "Unlinked" : isRejecting ? "Unlinking…" : "That wasn't it"}
+                      </Button>
+                    </div>
+                  </li>
+                );
+              })}
+            </ul>
+          </CardContent>
+        </Card>
       )}
+
+      {/* Overdue planned sessions — mark as skipped */}
+      {overdue.length > 0 && (
+        <Card>
+          <CardContent className="pt-6 space-y-3">
+            <div className="flex items-center gap-2 text-sm font-medium text-foreground">
+              <AlertTriangle className="w-4 h-4 text-amber-600" />
+              {overdue.length} planned session{overdue.length === 1 ? "" : "s"} overdue with no matching activity. Mark as skipped if you didn't do it.
+            </div>
+            <ul className="divide-y divide-border">
+              {overdue.map((s) => {
+                const skipped = lastSkipped === s.id;
+                const isSkipping = skippingId === s.id;
+                return (
+                  <li key={s.id} className="py-3 flex flex-wrap items-center gap-3">
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="font-medium text-foreground">{titleCase(s.sport)}</span>
+                        {s.intensityZone && <Badge variant="outline">{s.intensityZone}</Badge>}
+                      </div>
+                      <div className="mt-1 text-xs text-muted-foreground font-mono tabular-nums">
+                        due {s.date} · {s.prescribedDurationMinutes ?? "—"} min
+                      </div>
+                    </div>
+                    <Button
+                      size="sm"
+                      variant={skipped ? "secondary" : "outline"}
+                      onClick={() => markSkipped(s.id)}
+                      disabled={isSkipping || skipped}
+                      className="gap-1.5"
+                    >
+                      <SkipForward className="w-3.5 h-3.5" />
+                      {skipped ? "Skipped" : isSkipping ? "Skipping…" : "Mark as skipped"}
+                    </Button>
+                  </li>
+                );
+              })}
+            </ul>
+          </CardContent>
+        </Card>
+      )}
+
       <Card>
         <CardContent className="pt-6">
           {loading ? (
@@ -62,6 +176,7 @@ export default function PlannedActualReconciliation({ athleteId }) {
                         <span className="inline-flex items-center gap-1">
                           <VIcon className="w-3.5 h-3.5" /> {dv > 0 ? "+" : ""}{dv}%
                         </span>
+                        <span>· {pctText(m.varianceDetails.completionRatio)}</span>
                         {m.varianceDetails.dayOffset !== 0 && (
                           <span className="text-amber-600">day {m.varianceDetails.dayOffset > 0 ? "+" : ""}{m.varianceDetails.dayOffset}</span>
                         )}

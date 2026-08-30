@@ -1,21 +1,44 @@
 // src/hooks/usePlannedActualReconciliation.ts
-// Dashboard hook that loads an athlete's unlinked ingested sessions and pending
-// scheduled plan sessions, runs the WorkoutMatchingEngine, and exposes a confirmMatch
-// action that links an actual session to its scheduled item (TrainingPlanSession ->
-// completed/modified, WorkoutSession -> training_plan_session_id) without ever
-// touching training load.
+// Loads an athlete's unlinked ingested sessions and pending scheduled plan sessions,
+// runs the WorkoutMatchingEngine, auto-links high-confidence matches, and exposes:
+//  - reviewable matches (lower confidence) for manual confirm
+//  - auto-linked matches pending user verification (confirm / reject-unlink)
+//  - overdue planned sessions (pending + date passed + no linked workout) for skip
+// confirmMatch / rejectAutoLink / markSkipped mutate the plan session status and the
+// workout link. Completion outcome is split into completed / partial / excess from the
+// actual-to-prescribed duration ratio — `modified` is no longer written.
 
 import { useEffect, useState, useCallback } from 'react';
 import { base44 } from '@/api/base44Client';
 import { workoutMatchingEngine } from '@/services/workoutMatchingEngine';
 
+const AUTO_CONFIDENCE = 0.9;
+
+function todayKey() {
+  return new Date().toISOString().split('T')[0];
+}
+
+function statusForMatch(match) {
+  switch (match.matchStatus) {
+    case 'EXACT': return 'completed';
+    case 'COMPLETED_SHORT': return 'partial';
+    case 'COMPLETED_EXCEEDED': return 'excess';
+    default: return 'modified'; // legacy fallback, should not occur for matched rows
+  }
+}
+
 export function usePlannedActualReconciliation(athleteId) {
   const [matches, setMatches] = useState([]);
+  const [autoLinked, setAutoLinked] = useState([]); // pending user verification
+  const [overdue, setOverdue] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [confirmingId, setConfirmingId] = useState(null);
+  const [rejectingId, setRejectingId] = useState(null);
+  const [skippingId, setSkippingId] = useState(null);
   const [lastConfirmed, setLastConfirmed] = useState(null);
-  const [autoLinkedCount, setAutoLinkedCount] = useState(0);
+  const [lastRejected, setLastRejected] = useState(null);
+  const [lastSkipped, setLastSkipped] = useState(null);
 
   const load = useCallback(async () => {
     if (!athleteId) return;
@@ -27,7 +50,6 @@ export function usePlannedActualReconciliation(athleteId) {
         base44.entities.TrainingPlanSession.filter({ athlete_id: athleteId }, '-date', 200),
       ]);
 
-      // Ingested = recent actuals not already linked to a plan session.
       const ingested = (sessions || [])
         .filter((s) => !s.training_plan_session_id)
         .map((s) => ({
@@ -38,14 +60,13 @@ export function usePlannedActualReconciliation(athleteId) {
           distanceKm: s.distance_km,
         }));
 
-      // Candidates = pending scheduled sessions within a generous recent+near-future window.
       const today = new Date();
       const since = new Date(today); since.setDate(since.getDate() - 30);
-      const until = new Date(today); until.setDate(until.getDate() + 7);
       const sinceKey = since.toISOString().split('T')[0];
-      const untilKey = until.toISOString().split('T')[0];
+      const tKey = todayKey();
+
       const candidates = (planned || [])
-        .filter((p) => (!p.status || p.status === 'pending') && p.date >= sinceKey && p.date <= untilKey)
+        .filter((p) => (!p.status || p.status === 'pending') && p.date >= sinceKey)
         .map((p) => ({
           id: p.id,
           date: p.date,
@@ -57,14 +78,8 @@ export function usePlannedActualReconciliation(athleteId) {
 
       const all = workoutMatchingEngine.matchAll(ingested, candidates).filter((m) => m.matchStatus !== 'UNMATCHED');
 
-      // Auto-link high-confidence exact matches so completed sessions are marked off without
-      // a manual step. Each scheduled item is only auto-linked once per pass (deduped), and any
-      // write failure falls back to the manual review list. On the next load the auto-linked rows
-      // are gone from both pools (plan session no longer pending / workout now linked), so this
-      // pass is self-limiting — no re-entrancy loop.
-      const AUTO_CONFIDENCE = 0.9;
       const linkedScheduled = new Set();
-      const autoLinked = [];
+      const autoLinkedRows = [];
       const reviewable = [];
       for (const m of all) {
         const canAuto = m.matchStatus === 'EXACT' && m.confidenceScore >= AUTO_CONFIDENCE && !linkedScheduled.has(m.scheduledWorkoutId);
@@ -73,14 +88,28 @@ export function usePlannedActualReconciliation(athleteId) {
           await base44.entities.TrainingPlanSession.update(m.scheduledWorkoutId, { status: 'completed' });
           await base44.entities.WorkoutSession.update(m.sessionId, { training_plan_session_id: m.scheduledWorkoutId });
           linkedScheduled.add(m.scheduledWorkoutId);
-          autoLinked.push(m.sessionId);
+          autoLinkedRows.push(m);
         } catch {
           reviewable.push(m);
         }
       }
 
+      // Overdue = pending (not auto-linked this pass, not previously completed) with date < today.
+      const tK = tKey;
+      const overdueRows = (planned || [])
+        .filter((p) => (!p.status || p.status === 'pending') && p.date < tK)
+        .filter((p) => !linkedScheduled.has(p.id))
+        .map((p) => ({
+          id: p.id,
+          date: p.date,
+          sport: p.sport,
+          prescribedDurationMinutes: p.prescribed_duration_minutes,
+          intensityZone: p.prescribed_intensity_zone,
+        }));
+
       setMatches(reviewable);
-      setAutoLinkedCount(autoLinked.length);
+      setAutoLinked(autoLinkedRows);
+      setOverdue(overdueRows);
     } catch (e) {
       setError(e?.message || 'Failed to load reconciliation matches');
     } finally {
@@ -94,9 +123,7 @@ export function usePlannedActualReconciliation(athleteId) {
     if (!match || !match.scheduledWorkoutId || confirmingId) return false;
     setConfirmingId(match.sessionId);
     try {
-      // EXACT -> completed; lagging/overshooting the plan -> modified.
-      const newStatus = match.matchStatus === 'EXACT' ? 'completed' : 'modified';
-      await base44.entities.TrainingPlanSession.update(match.scheduledWorkoutId, { status: newStatus });
+      await base44.entities.TrainingPlanSession.update(match.scheduledWorkoutId, { status: statusForMatch(match) });
       await base44.entities.WorkoutSession.update(match.sessionId, {
         training_plan_session_id: match.scheduledWorkoutId,
       });
@@ -111,5 +138,64 @@ export function usePlannedActualReconciliation(athleteId) {
     }
   }, [confirmingId, load]);
 
-  return { matches, loading, error, confirmMatch, confirmingId, lastConfirmed, autoLinkedCount, refresh: load };
+  // Acknowledge an auto-link — no DB write (already linked); just dismiss from the verify queue.
+  const confirmAutoLink = useCallback((match) => {
+    setLastConfirmed(match.sessionId);
+    setAutoLinked((prev) => prev.filter((m) => m.sessionId !== match.sessionId));
+  }, []);
+
+  // Reject an auto-link — unlink the workout and reset the plan session to pending.
+  const rejectAutoLink = useCallback(async (match) => {
+    if (!match || rejectingId) return false;
+    setRejectingId(match.sessionId);
+    try {
+      await base44.entities.WorkoutSession.update(match.sessionId, { training_plan_session_id: null });
+      await base44.entities.TrainingPlanSession.update(match.scheduledWorkoutId, { status: 'pending' });
+      setLastRejected(match.sessionId);
+      setAutoLinked((prev) => prev.filter((m) => m.sessionId !== match.sessionId));
+      await load();
+      return true;
+    } catch (e) {
+      setError(e?.message || 'Failed to unlink match');
+      return false;
+    } finally {
+      setRejectingId(null);
+    }
+  }, [rejectingId, load]);
+
+  const markSkipped = useCallback(async (sessionId) => {
+    if (!sessionId || skippingId) return false;
+    setSkippingId(sessionId);
+    try {
+      await base44.entities.TrainingPlanSession.update(sessionId, { status: 'skipped' });
+      setLastSkipped(sessionId);
+      setOverdue((prev) => prev.filter((s) => s.id !== sessionId));
+      return true;
+    } catch (e) {
+      setError(e?.message || 'Failed to mark session as skipped');
+      return false;
+    } finally {
+      setSkippingId(null);
+    }
+  }, [skippingId]);
+
+  return {
+    matches,
+    autoLinked,
+    overdue,
+    loading,
+    error,
+    confirmMatch,
+    confirmAutoLink,
+    rejectAutoLink,
+    markSkipped,
+    confirmingId,
+    rejectingId,
+    skippingId,
+    lastConfirmed,
+    lastRejected,
+    lastSkipped,
+    autoLinkedCount: autoLinked.length,
+    refresh: load,
+  };
 }

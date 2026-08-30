@@ -55,10 +55,13 @@
       "enum": [
         "pending",
         "completed",
+        "partial",
+        "excess",
         "modified",
         "skipped"
       ],
-      "default": "pending"
+      "default": "pending",
+      "description": "completion outcome: completed (within \u00b15%), partial (<95% of prescribed), excess (>105% of prescribed), skipped (overdue + not performed), modified (legacy fallback)"
     }
   },
   "required": [
