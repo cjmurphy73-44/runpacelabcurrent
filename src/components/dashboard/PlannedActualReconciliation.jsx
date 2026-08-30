@@ -6,6 +6,8 @@ import SectionHeading from "@/components/layout/SectionHeading";
 import { usePlannedActualReconciliation } from "@/hooks/usePlannedActualReconciliation";
 import { useToast } from "@/components/ui/use-toast";
 import { CalendarCheck, Link2, TrendingUp, TrendingDown, Equal, Check, Unlink, SkipForward, AlertTriangle, Sun } from "lucide-react";
+import { useSubscription } from "@/hooks/useSubscription";
+import FeatureGate from "@/components/billing/FeatureGate";
 
 const STATUS_STYLES = {
   EXACT: { label: "On plan", chip: "bg-emerald-50 text-emerald-700 border-emerald-200" },
@@ -49,6 +51,7 @@ export default function PlannedActualReconciliation({ athleteId }) {
     lastAdjustment,
   } = usePlannedActualReconciliation(athleteId);
   const { toast } = useToast();
+  const { plan } = useSubscription();
 
   useEffect(() => {
     if (lastAdjustment?.summary) {
@@ -63,6 +66,8 @@ export default function PlannedActualReconciliation({ athleteId }) {
         description="Ingested sessions fuzzy-matched to scheduled plan items (±1 day, ±20% duration). Unmarked sessions older than a week are hidden. Confirm a match to mark the plan session complete / partial / excess and link the activity."
         icon={CalendarCheck}
       />
+
+      <FeatureGate feature="adaptive_replan" plan={plan} />
 
       {/* Auto-linked — verify or unlink */}
       {autoLinked.length > 0 && (

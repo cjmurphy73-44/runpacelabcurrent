@@ -6,6 +6,8 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Loader2, Copy, RefreshCw, KeyRound, Webhook as WebhookIcon, Check } from "lucide-react";
 import WebhookSetupGuides from "@/components/imports/WebhookSetupGuides";
+import { useSubscription } from "@/hooks/useSubscription";
+import FeatureGate from "@/components/billing/FeatureGate";
 
 export default function WebhookSyncPanel({ athleteId }) {
   const [apiKey, setApiKey] = useState(null);
@@ -14,6 +16,7 @@ export default function WebhookSyncPanel({ athleteId }) {
   const [generating, setGenerating] = useState(false);
   const [error, setError] = useState(null);
   const [copied, setCopied] = useState(null);
+  const { plan } = useSubscription();
 
   const load = useCallback(async () => {
     try {
@@ -78,10 +81,12 @@ export default function WebhookSyncPanel({ athleteId }) {
               <p className="text-sm text-muted-foreground">
                 No webhook credentials yet. Generate your personalized endpoint to get started.
               </p>
-              <Button onClick={generate} disabled={generating}>
-                {generating ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <KeyRound className="w-4 h-4 mr-2" />}
-                Generate webhook URL & API key
-              </Button>
+              <FeatureGate feature="unlimited_sync" plan={plan} compact>
+                <Button onClick={generate} disabled={generating}>
+                  {generating ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <KeyRound className="w-4 h-4 mr-2" />}
+                  Generate webhook URL & API key
+                </Button>
+              </FeatureGate>
             </div>
           ) : (
             <>
@@ -103,10 +108,12 @@ export default function WebhookSyncPanel({ athleteId }) {
                   </Button>
                 </div>
               </div>
-              <Button variant="outline" size="sm" onClick={regenerate} disabled={generating}>
-                {generating ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <RefreshCw className="w-4 h-4 mr-2" />}
-                Regenerate key
-              </Button>
+              <FeatureGate feature="unlimited_sync" plan={plan} compact>
+                <Button variant="outline" size="sm" onClick={regenerate} disabled={generating}>
+                  {generating ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <RefreshCw className="w-4 h-4 mr-2" />}
+                  Regenerate key
+                </Button>
+              </FeatureGate>
             </>
           )}
           {error && <p className="text-sm text-destructive">{error}</p>}

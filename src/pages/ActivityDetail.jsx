@@ -2,6 +2,8 @@ import React, { useEffect, useState } from "react";
 import { useParams, Link } from "react-router-dom";
 import { base44 } from "@/api/base44Client";
 import { downloadWorkoutFile } from "@/services/workoutExport";
+import { useSubscription } from "@/hooks/useSubscription";
+import FeatureGate from "@/components/billing/FeatureGate";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -51,6 +53,7 @@ export default function ActivityDetail() {
   const [patching, setPatching] = useState(false);
   const [patchMsg, setPatchMsg] = useState(null);
   const [planSession, setPlanSession] = useState(null);
+  const { plan } = useSubscription();
 
   useEffect(() => {
     let unsubscribe = null;
@@ -162,9 +165,11 @@ export default function ActivityDetail() {
           description={`${workout.date || ""}${workout.source_format ? ` · ${workout.source_format.toUpperCase()}` : ""}`}
           icon={ActivityIcon}
           action={planSession ? (
-            <Button size="sm" variant="outline" onClick={() => downloadWorkoutFile(planSession)} className="gap-1.5">
-              <Download className="w-3.5 h-3.5" /> Export Workout
-            </Button>
+            <FeatureGate feature="structured_export" plan={plan} compact>
+              <Button size="sm" variant="outline" onClick={() => downloadWorkoutFile(planSession)} className="gap-1.5">
+                <Download className="w-3.5 h-3.5" /> Export Workout
+              </Button>
+            </FeatureGate>
           ) : undefined}
         />
         <Card>

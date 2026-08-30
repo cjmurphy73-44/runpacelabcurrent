@@ -7,6 +7,8 @@ import moment from "moment";
 import { ShieldAlert, Download } from "lucide-react";
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 import { useCoachInjurySignal } from "@/hooks/useCoachInjurySignal";
+import { useSubscription } from "@/hooks/useSubscription";
+import FeatureGate from "@/components/billing/FeatureGate";
 
 const ZONE_TRIMP_FACTOR = { Z1: 0.5, Z2: 0.7, Z3: 0.9, Z4: 1.1, Z5: 1.3 };
 
@@ -15,6 +17,7 @@ export default function TrainingCalendar({ athleteId, currentTsb }) {
   const [loading, setLoading] = useState(true);
   const [requesting, setRequesting] = useState(false);
   const injury = useCoachInjurySignal(athleteId);
+  const { plan } = useSubscription();
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -83,9 +86,11 @@ export default function TrainingCalendar({ athleteId, currentTsb }) {
                       <p className="text-muted-foreground">Target TRIMP ~{estTrimp}</p>
                       {session.rationale_text && <p className="text-xs text-muted-foreground">{session.rationale_text}</p>}
                       <p className="text-xs uppercase tracking-wide text-muted-foreground">{session.status}</p>
-                      <Button size="sm" variant="outline" onClick={() => downloadWorkoutFile(session)} className="gap-1.5 mt-2 w-full">
-                        <Download className="w-3.5 h-3.5" /> Export Workout
-                      </Button>
+                      <FeatureGate feature="structured_export" plan={plan} compact>
+                        <Button size="sm" variant="outline" onClick={() => downloadWorkoutFile(session)} className="gap-1.5 mt-2 w-full">
+                          <Download className="w-3.5 h-3.5" /> Export Workout
+                        </Button>
+                      </FeatureGate>
                     </div>
                   ) : (
                     <p className="text-sm text-muted-foreground">Rest day</p>

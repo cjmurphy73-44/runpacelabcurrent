@@ -11,6 +11,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { base44 } from '@/api/base44Client';
 import { workoutMatchingEngine } from '@/services/workoutMatchingEngine';
+import { useSubscription } from '@/hooks/useSubscription';
 
 const AUTO_CONFIDENCE = 0.9;
 
@@ -31,6 +32,7 @@ function statusForMatch(match) {
 }
 
 export function usePlannedActualReconciliation(athleteId) {
+  const { isPro } = useSubscription();
   const [matches, setMatches] = useState([]);
   const [autoLinked, setAutoLinked] = useState([]); // pending user verification
   const [overdue, setOverdue] = useState([]);
@@ -53,6 +55,10 @@ export function usePlannedActualReconciliation(athleteId) {
   // autoReplanOnDeviation backend function. Fire-and-forget from the mutation
   // site; the result lands as `lastAdjustment` and surfaces as a coaching toast.
   const triggerReplan = useCallback(async (sessionId) => {
+    if (!isPro) {
+      setLastAdjustment({ sessionId, summary: 'Adaptive re-planning is a Pro feature — upgrade to let your coach auto-rebalance your week.', ok: false, gated: true });
+      return;
+    }
     setAdjustingId(sessionId);
     try {
       const res = await base44.functions.invoke('autoReplanOnDeviation', { session_id: sessionId });
@@ -62,7 +68,7 @@ export function usePlannedActualReconciliation(athleteId) {
     } finally {
       setAdjustingId(null);
     }
-  }, []);
+  }, [isPro]);
 
   const load = useCallback(async () => {
     if (!athleteId) return;
