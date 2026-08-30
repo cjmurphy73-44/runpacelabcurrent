@@ -10,6 +10,7 @@ const STATUS_STYLES = {
   EXACT: { label: "On plan", chip: "bg-emerald-50 text-emerald-700 border-emerald-200" },
   COMPLETED_EXCEEDED: { label: "Excess", chip: "bg-amber-50 text-amber-700 border-amber-200" },
   COMPLETED_SHORT: { label: "Partial", chip: "bg-rose-50 text-rose-700 border-rose-200" },
+  PLAUSIBLE: { label: "Plausible", chip: "bg-sky-50 text-sky-700 border-sky-200" },
 };
 
 function titleCase(sport) {
@@ -190,8 +191,11 @@ export default function PlannedActualReconciliation({ athleteId }) {
                       className="gap-1.5"
                     >
                       <Link2 className="w-3.5 h-3.5" />
-                      {confirmed ? "Linked" : isConfirming ? "Linking…" : "Confirm match"}
+                      {confirmed ? "Linked" : isConfirming ? "Linking…" : m.matchStatus === "PLAUSIBLE" ? "That was it" : "Confirm match"}
                     </Button>
+                    {m.matchStatus === "PLAUSIBLE" && !confirmed && (
+                      <span className="w-full text-[11px] text-sky-600">Outside ±20% — looks close enough to confirm?</span>
+                    )}
                   </li>
                 );
               })}

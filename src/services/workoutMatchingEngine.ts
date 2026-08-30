@@ -23,7 +23,7 @@ export interface IngestedWorkoutData {
   distanceKm?: number;
 }
 
-export type MatchStatus = 'EXACT' | 'COMPLETED_EXCEEDED' | 'COMPLETED_SHORT' | 'UNMATCHED';
+export type MatchStatus = 'EXACT' | 'COMPLETED_EXCEEDED' | 'COMPLETED_SHORT' | 'PLAUSIBLE' | 'UNMATCHED';
 
 export interface MatchResult {
   scheduledWorkoutId: string | null;
@@ -39,10 +39,11 @@ export interface MatchResult {
   scheduled?: ScheduledWorkout;
 }
 
-const DURATION_TOLERANCE = 0.20;   // ±20% on prescribed duration
-const DISTANCE_TOLERANCE = 0.25;   // ±25% on prescribed distance
-const EXACT_VARIANCE = 0.05;        // within ±5% counts as "on plan"
-const MAX_DAY_OFFSET = 1;          // same day or ±1 day
+const DURATION_TOLERANCE = 0.20;          // ±20% strict window — classed as matched (completed/partial/excess)
+const PLAUSIBLE_DURATION_TOLERANCE = 0.50; // ±50% wide window — same-sport ±1-day sessions to surface as "is this it?"
+const DISTANCE_TOLERANCE = 0.25;           // ±25% on prescribed distance
+const EXACT_VARIANCE = 0.05;               // within ±5% counts as "on plan"
+const MAX_DAY_OFFSET = 1;                 // same day or ±1 day
 
 function normalizeSport(sport: string): string {
   return String(sport || '').toLowerCase().trim();
@@ -72,12 +73,14 @@ export class WorkoutMatchingEngine {
       const dayOffset = this.calculateDayOffset(ingested.date, scheduled.date);
       if (Math.abs(dayOffset) > MAX_DAY_OFFSET) continue;
 
-      // 3. Duration variance (±20% window) when the plan prescribed a duration.
+      // 3. Duration variance — strict ±20% window classed as matched; a wider ±50%
+      //    PLAUSIBLE window surfaces same-sport ±1-day near-misses for user confirm
+      //    (e.g. a 60-min ride against a 50-min prescription) without auto-linking them.
       const hasDurationTarget = !!scheduled.targetDurationMinutes && scheduled.targetDurationMinutes > 0;
       let durationVariance = 0;
       if (hasDurationTarget) {
         durationVariance = (ingested.durationMinutes - scheduled.targetDurationMinutes!) / scheduled.targetDurationMinutes!;
-        if (Math.abs(durationVariance) > DURATION_TOLERANCE) continue;
+        if (Math.abs(durationVariance) > PLAUSIBLE_DURATION_TOLERANCE) continue;
       }
 
       // 4. Distance variance (±25% window) when both sides carry a distance.
@@ -90,7 +93,11 @@ export class WorkoutMatchingEngine {
 
       // Confidence: 50% temporal closeness + 50% duration accuracy.
       const temporalScore = 1 - Math.abs(dayOffset) * 0.3;
-      const durationScore = hasDurationTarget ? 1 - Math.min(Math.abs(durationVariance), DURATION_TOLERANCE) / DURATION_TOLERANCE : 1;
+      // Duration score clamps at 0 outside the strict window so PLAUSIBLE rows carry low
+      // (but not negative) confidence — they are surfaced for user confirm, never auto-linked.
+      const durationScore = hasDurationTarget
+        ? Math.max(0, 1 - Math.min(Math.abs(durationVariance), DURATION_TOLERANCE) / DURATION_TOLERANCE)
+        : 1;
       const totalScore = temporalScore * 0.5 + durationScore * 0.5;
 
       if (totalScore > bestScore) {
@@ -116,7 +123,8 @@ export class WorkoutMatchingEngine {
 
     let matchStatus: MatchStatus = 'EXACT';
     const dv = bestDetails.durationVariancePercent;
-    if (dv > EXACT_VARIANCE * 100) matchStatus = 'COMPLETED_EXCEEDED';
+    if (Math.abs(dv) > DURATION_TOLERANCE * 100) matchStatus = 'PLAUSIBLE';
+    else if (dv > EXACT_VARIANCE * 100) matchStatus = 'COMPLETED_EXCEEDED';
     else if (dv < -EXACT_VARIANCE * 100) matchStatus = 'COMPLETED_SHORT';
 
     const ratio =

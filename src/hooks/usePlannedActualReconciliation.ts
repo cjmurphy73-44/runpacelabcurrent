@@ -19,10 +19,13 @@ function todayKey() {
 }
 
 function statusForMatch(match) {
+  const ratio = match.varianceDetails?.completionRatio;
+  const isShort = isNaN(ratio) ? match.matchStatus === 'COMPLETED_SHORT' : ratio < 0.95;
   switch (match.matchStatus) {
     case 'EXACT': return 'completed';
     case 'COMPLETED_SHORT': return 'partial';
     case 'COMPLETED_EXCEEDED': return 'excess';
+    case 'PLAUSIBLE': return isShort ? 'partial' : 'excess';
     default: return 'modified'; // legacy fallback, should not occur for matched rows
   }
 }
@@ -94,11 +97,16 @@ export function usePlannedActualReconciliation(athleteId) {
         }
       }
 
-      // Overdue = pending (not auto-linked this pass, not previously completed) with date < today.
+      // Overdue = pending (not matched this pass — strict or plausible — and not previously
+      // completed) with date < today. A plausible match (e.g. 21% over-duration) must NOT
+      // surface here — it belongs in the reviewable list for user confirm instead.
+      const matchedScheduledIds = new Set(
+        all.filter((m) => m.matchStatus !== 'UNMATCHED').map((m) => m.scheduledWorkoutId)
+      );
       const tK = tKey;
       const overdueRows = (planned || [])
         .filter((p) => (!p.status || p.status === 'pending') && p.date < tK)
-        .filter((p) => !linkedScheduled.has(p.id))
+        .filter((p) => !linkedScheduled.has(p.id) && !matchedScheduledIds.has(p.id))
         .map((p) => ({
           id: p.id,
           date: p.date,
