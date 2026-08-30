@@ -66,7 +66,7 @@ describe('Environmental Weather Pace Adjuster Engine', () => {
     // 0% humidity no longer yields a NaN dew point (clamped to 1%).
     const zeroRh = adjustPaceForEnvironment(240, { temperatureC: 20, relativeHumidity: 0 });
     expect(Number.isFinite(zeroRh.dewPointC)).toBe(true);
-    expect(Number.isFinite(zeroRh.formattedAdjustedPace)).toBe(true);
+    expect(typeof zeroRh.formattedAdjustedPace).toBe("string");
 
     // 120% humidity is clamped to 100% rather than throwing.
     const overRh = adjustPaceForEnvironment(240, { temperatureC: 20, relativeHumidity: 120 });
