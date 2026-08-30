@@ -1,0 +1,65 @@
+{
+  "name": "GarminConnection",
+  "type": "object",
+  "description": "Per-athlete Garmin Connect / Garmin Health OAuth connection. Holds tokens used by garminSync to pull historical activities and to resolve incoming Garmin Health webhook pushes.",
+  "properties": {
+    "athlete_id": {
+      "type": "string",
+      "description": "References AthleteProfile.id"
+    },
+    "garmin_user_id": {
+      "type": "string",
+      "description": "Garmin-side user id returned with the access token, used to resolve webhook payloads to this athlete"
+    },
+    "access_token": {
+      "type": "string",
+      "description": "Current Garmin OAuth access token"
+    },
+    "refresh_token": {
+      "type": "string",
+      "description": "Garmin OAuth refresh token, used to re-authorize after the access token expires"
+    },
+    "token_expires_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When the current access token expires"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "connected",
+        "error",
+        "disconnected",
+        "expired"
+      ],
+      "default": "connected"
+    },
+    "connected_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "last_sync_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Last successful historical sync or webhook ingest"
+    },
+    "last_error": {
+      "type": "string",
+      "description": "Last error message from a failed sync/token refresh"
+    }
+  },
+  "required": [
+    "athlete_id"
+  ],
+  "rls": {
+    "read": {
+      "created_by_id": "{{user.id}}"
+    },
+    "update": {
+      "created_by_id": "{{user.id}}"
+    },
+    "delete": {
+      "created_by_id": "{{user.id}}"
+    }
+  }
+}
