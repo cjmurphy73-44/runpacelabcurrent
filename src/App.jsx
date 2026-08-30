@@ -31,6 +31,7 @@ import ActivityDetail from '@/pages/ActivityDetail';
 import { IntelligenceHub } from './components/IntelligenceHub';
 import PageErrorBoundary from '@/components/common/PageErrorBoundary';
 import RacePrediction from '@/pages/RacePrediction';
+import CoachWorkspace from '@/pages/CoachWorkspace';
 // Add page imports here
 
 const AuthenticatedApp = () => {
@@ -82,6 +83,7 @@ const AuthenticatedApp = () => {
           <Route path="/recovery" element={<PageErrorBoundary><RecoveryCenter /></PageErrorBoundary>} />
           <Route path="/activity/:id" element={<PageErrorBoundary><ActivityDetail /></PageErrorBoundary>} />
           <Route path="/predict" element={<PageErrorBoundary><RacePrediction /></PageErrorBoundary>} />
+          <Route path="/roster" element={<PageErrorBoundary><CoachWorkspace /></PageErrorBoundary>} />
         </Route>
       </Route>
       <Route path="*" element={<PageNotFound />} />

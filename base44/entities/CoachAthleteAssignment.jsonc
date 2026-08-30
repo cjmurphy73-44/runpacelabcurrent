@@ -1,0 +1,74 @@
+{
+  "name": "CoachAthleteAssignment",
+  "type": "object",
+  "description": "Links a coach (User with role 'coach' or 'admin') to an athlete (AthleteProfile) in the coach's roster. Drives the Coach Workspace roster, comparison views, and plan-assignment tools. One row per coach\u2192athlete relationship; status 'archived' removes the athlete from the active roster without deleting the link.",
+  "properties": {
+    "coach_user_id": {
+      "type": "string",
+      "description": "References User.id of the coach who owns this roster entry"
+    },
+    "athlete_profile_id": {
+      "type": "string",
+      "description": "References AthleteProfile.id of the assigned athlete"
+    },
+    "athlete_name_snapshot": {
+      "type": "string",
+      "description": "Cached 'first_name last_name' for fast roster rendering without a join"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "active",
+        "archived"
+      ],
+      "default": "active",
+      "description": "active = visible on the roster; archived = hidden but link preserved"
+    },
+    "notes": {
+      "type": "string",
+      "description": "Coach's private notes about this athlete (focus areas, cautions)"
+    }
+  },
+  "required": [
+    "coach_user_id",
+    "athlete_profile_id"
+  ],
+  "rls": {
+    "read": {
+      "$or": [
+        {
+          "created_by_id": "{{user.id}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    },
+    "update": {
+      "$or": [
+        {
+          "created_by_id": "{{user.id}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    },
+    "delete": {
+      "$or": [
+        {
+          "created_by_id": "{{user.id}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    }
+  }
+}

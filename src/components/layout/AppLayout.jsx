@@ -5,13 +5,14 @@ import { useUIPreferences } from "@/context/UIPreferencesContext";
 import { Button } from "@/components/ui/button";
 import ToolsDropdown from "@/components/layout/ToolsDropdown";
 import BetaFeedbackModal from "@/components/feedback/BetaFeedbackModal";
-import { Activity, MessageCircle, LogOut, CalendarRange, FlaskConical, Settings, Upload, Megaphone, BrainCircuit } from "lucide-react";
+import { Activity, MessageCircle, LogOut, CalendarRange, FlaskConical, Settings, Upload, Megaphone, BrainCircuit, Users } from "lucide-react";
 
 export default function AppLayout() {
-  const { logout } = useAuth();
+  const { user, logout } = useAuth();
   const location = useLocation();
   const [feedbackOpen, setFeedbackOpen] = useState(false);
   useUIPreferences();
+  const isCoach = user?.role === "coach" || user?.role === "admin";
 
   const navLink = (to, label, Icon) => (
     <Link
@@ -43,6 +44,7 @@ export default function AppLayout() {
               {navLink("/intelligence", "Intelligence", BrainCircuit)}
               {navLink("/plan", "Plan", CalendarRange)}
               {navLink("/coach", "Coach", MessageCircle)}
+              {isCoach && navLink("/roster", "Roster", Users)}
               <ToolsDropdown />
             </nav>
           </div>
