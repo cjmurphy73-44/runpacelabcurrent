@@ -5,7 +5,7 @@ export const PLAN_TIERS = ["free", "pro", "team"] as const;
 export type PlanTier = (typeof PLAN_TIERS)[number];
 
 // Gated advanced features named in Task D-22.
-export const GATED_FEATURES = ["unlimited_sync", "adaptive_replan", "structured_export"] as const;
+export const GATED_FEATURES = ["unlimited_sync", "adaptive_replan", "structured_export", "coach_workspace"] as const;
 export type GatedFeature = (typeof GATED_FEATURES)[number];
 
 export const FREE_LIMITS = {
@@ -17,7 +17,7 @@ export const FREE_LIMITS = {
 const FEATURE_BY_PLAN: Record<PlanTier, GatedFeature[]> = {
   free: [],
   pro: ["unlimited_sync", "adaptive_replan", "structured_export"],
-  team: ["unlimited_sync", "adaptive_replan", "structured_export"], // team ⊇ pro
+  team: ["unlimited_sync", "adaptive_replan", "structured_export", "coach_workspace"], // team ⊇ pro + coach workspace
 };
 
 export function isPro(plan: string | null | undefined): boolean {

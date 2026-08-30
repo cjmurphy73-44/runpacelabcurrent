@@ -9,12 +9,14 @@ import PageShell from "@/components/layout/PageShell";
 import RosterCard from "@/components/coach/RosterCard";
 import AddAthleteDialog from "@/components/coach/AddAthleteDialog";
 import ComparisonTable from "@/components/coach/ComparisonTable";
-
-const isCoach = (role) => role === "coach" || role === "admin";
+import { Link } from "react-router-dom";
+import { useCoachAccess } from "@/hooks/useCoachAccess";
+import FeatureGate from "@/components/billing/FeatureGate";
 
 export default function CoachWorkspace() {
   const { user } = useAuth();
   const { toast } = useToast();
+  const { coachMode, canUseCoachWorkspace, plan } = useCoachAccess();
   const [assignments, setAssignments] = useState([]);
   const [profiles, setProfiles] = useState({}); // athlete_profile_id -> AthleteProfile
   const [workouts, setWorkouts] = useState({}); // athlete_profile_id -> WorkoutSession[]
@@ -100,12 +102,22 @@ export default function CoachWorkspace() {
     return n;
   });
 
-  if (!isCoach(user?.role)) {
+  if (!coachMode) {
     return (
       <PageShell title="Coach Workspace" description="Multi-athlete roster, comparison, and assignment tools.">
-        <Card><CardContent className="py-12 text-center text-muted-foreground">
-          Coach workspace is available to coach and admin accounts.
+        <Card><CardContent className="py-12 text-center space-y-3 text-muted-foreground">
+          <Users className="w-10 h-10 text-muted-foreground/40 mx-auto" />
+          <p className="font-medium text-foreground">Coach mode is off</p>
+          <p>Enable Coach mode in Settings to manage an athlete roster.</p>
+          <Button asChild variant="outline" size="sm"><Link to="/settings">Open Settings</Link></Button>
         </CardContent></Card>
+      </PageShell>
+    );
+  }
+  if (!canUseCoachWorkspace) {
+    return (
+      <PageShell title="Coach Workspace" description="Multi-athlete roster, comparison, and assignment tools.">
+        <FeatureGate feature="coach_workspace" plan={plan} />
       </PageShell>
     );
   }

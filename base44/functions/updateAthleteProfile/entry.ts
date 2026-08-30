@@ -6,7 +6,7 @@ const ALLOWED_FIELDS = [
   'first_name', 'last_name', 'country', 'height_cm', 'weight_kg', 'age', 'sex',
   'training_tier_preference', 'max_heart_rate', 'resting_hr', 'lactate_threshold_hr',
   'ftp_watts', 'functional_threshold_pace_ms', 'vdot_estimate',
-  'ctl_time_constant_days', 'atl_time_constant_days', 'injury_history',
+  'ctl_time_constant_days', 'atl_time_constant_days', 'injury_history', 'profile_role',
 ];
 
 // Training-philosophy → EWMA time constants, kept in sync with ProfileSetupForm so editing the

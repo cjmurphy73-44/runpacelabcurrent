@@ -6,15 +6,15 @@ import { Button } from "@/components/ui/button";
 import ToolsDropdown from "@/components/layout/ToolsDropdown";
 import BetaFeedbackModal from "@/components/feedback/BetaFeedbackModal";
 import { Activity, MessageCircle, LogOut, CalendarRange, FlaskConical, Settings, Upload, Megaphone, BrainCircuit, Users, Sparkles } from "lucide-react";
-import { useSubscription } from "@/hooks/useSubscription";
+import { useCoachAccess } from "@/hooks/useCoachAccess";
 
 export default function AppLayout() {
   const { user, logout } = useAuth();
   const location = useLocation();
   const [feedbackOpen, setFeedbackOpen] = useState(false);
   useUIPreferences();
-  const isCoach = user?.role === "coach" || user?.role === "admin";
-  const { isPro } = useSubscription();
+  const { isPro, coachMode } = useCoachAccess();
+  const isCoach = coachMode;
 
   const navLink = (to, label, Icon) => (
     <Link

@@ -7,7 +7,8 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Loader2, Save, Trash2, ShieldAlert, Zap, Link2 } from "lucide-react";
+import { Loader2, Save, Trash2, ShieldAlert, Zap, Link2, Users } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
 import CorosIntegration from "@/components/settings/CorosIntegration";
 import GarminIntegration from "@/components/settings/GarminIntegration";
 import StravaIntegration from "@/components/settings/StravaIntegration";
@@ -26,6 +27,7 @@ const EMPTY_FORM = {
   max_heart_rate: "", resting_hr: "", lactate_threshold_hr: "",
   ftp_watts: "", functional_threshold_pace_ms: "", vdot_estimate: "",
   injury_history: "",
+  profile_role: "athlete",
 };
 
 export default function AthleteSettings() {
@@ -35,6 +37,23 @@ export default function AthleteSettings() {
   const [saving, setSaving] = useState(false);
   const [resetting, setResetting] = useState(false);
   const [message, setMessage] = useState(null);
+  const [togglingCoach, setTogglingCoach] = useState(false);
+
+  const handleToggleCoach = async (checked) => {
+    const next = checked ? "coach" : "athlete";
+    setForm((f) => ({ ...f, profile_role: next }));
+    setTogglingCoach(true);
+    setMessage(null);
+    try {
+      const res = await base44.functions.invoke("updateAthleteProfile", { athlete_id: athlete?.id, updates: { profile_role: next } });
+      setAthlete(res.data?.athlete || athlete);
+      setMessage({ type: "success", text: next === "coach" ? "Coach mode enabled — Roster is now in your nav." : "Coach mode disabled." });
+    } catch (err) {
+      setForm((f) => ({ ...f, profile_role: checked ? "athlete" : "coach" }));
+      setMessage({ type: "error", text: err?.response?.data?.error || "Could not update coach mode." });
+    }
+    setTogglingCoach(false);
+  };
 
   useEffect(() => {
     (async () => {
@@ -59,6 +78,7 @@ export default function AthleteSettings() {
             functional_threshold_pace_ms: a.functional_threshold_pace_ms ?? "",
             vdot_estimate: a.vdot_estimate ?? "",
             injury_history: a.injury_history ?? "",
+            profile_role: a.profile_role ?? "athlete",
           });
         }
       } catch (err) {
@@ -93,6 +113,7 @@ export default function AthleteSettings() {
       functional_threshold_pace_ms: form.functional_threshold_pace_ms ? Number(form.functional_threshold_pace_ms) : undefined,
       vdot_estimate: form.vdot_estimate ? Number(form.vdot_estimate) : undefined,
       injury_history: form.injury_history || undefined,
+      profile_role: form.profile_role || "athlete",
       ctl_time_constant_days: c.ctl,
       atl_time_constant_days: c.atl,
     };
@@ -279,6 +300,24 @@ export default function AthleteSettings() {
               Save changes
             </Button>
           </form>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="font-heading flex items-center gap-2">
+            <Users className="w-4 h-4 text-primary" /> Coach mode
+          </CardTitle>
+          <CardDescription>Enable coach mode to manage an athlete roster and use the multi-athlete workspace.</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="flex items-center justify-between gap-4">
+            <div className="space-y-1">
+              <p className="text-sm font-medium">Coach profile</p>
+              <p className="text-xs text-muted-foreground">Off = athlete-only. On = adds the Roster to your nav; multi-athlete tools are gated by the Team plan.</p>
+            </div>
+            <Switch checked={form.profile_role === "coach"} onCheckedChange={handleToggleCoach} disabled={togglingCoach || !athlete} />
+          </div>
         </CardContent>
       </Card>
 

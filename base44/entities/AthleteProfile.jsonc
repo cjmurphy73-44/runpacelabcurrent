@@ -48,6 +48,15 @@
       "default": "conservative",
       "description": "Athlete's chosen training philosophy"
     },
+    "profile_role": {
+      "type": "string",
+      "enum": [
+        "athlete",
+        "coach"
+      ],
+      "default": "athlete",
+      "description": "Whether this account uses TrainPaceLab as an athlete only, or also as a coach. Setting to 'coach' reveals the Coach Workspace (roster & multi-athlete tools) in the nav; the workspace itself is gated by the Team plan."
+    },
     "max_heart_rate": {
       "type": "integer",
       "minimum": 0,

@@ -9,6 +9,7 @@ const LABELS = {
   unlimited_sync: "Unlimited wearable sync is a Pro feature",
   adaptive_replan: "Adaptive re-planning is a Pro feature",
   structured_export: "Structured workout export is a Pro feature",
+  coach_workspace: "The Coach Workspace is a Team feature",
 };
 
 export default function FeatureGate({ feature, plan, children, compact = false }) {
@@ -22,6 +23,8 @@ export default function FeatureGate({ feature, plan, children, compact = false }
     );
   }
 
+  const target = feature === "coach_workspace" ? PLAN_DETAILS.team : PLAN_DETAILS.pro;
+  const cta = feature === "coach_workspace" ? "Upgrade to Team" : "Upgrade to Pro";
   return (
     <Card className="border-dashed">
       <CardContent className="flex items-center justify-between gap-4 p-5">
@@ -29,10 +32,10 @@ export default function FeatureGate({ feature, plan, children, compact = false }
           <div className="w-9 h-9 rounded-full bg-primary/10 text-primary flex items-center justify-center shrink-0"><Lock className="w-4 h-4" /></div>
           <div className="min-w-0">
             <p className="text-sm font-medium truncate">{LABELS[feature]}</p>
-            <p className="text-xs text-muted-foreground">{PLAN_DETAILS.pro.tagline} · {PLAN_DETAILS.pro.price}/{PLAN_DETAILS.pro.cadence}</p>
+            <p className="text-xs text-muted-foreground">{target.tagline} · {target.price}/{target.cadence}</p>
           </div>
         </div>
-        <Button asChild size="sm"><Link to="/subscribe">Upgrade to Pro</Link></Button>
+        <Button asChild size="sm"><Link to="/subscribe">{cta}</Link></Button>
       </CardContent>
     </Card>
   );
