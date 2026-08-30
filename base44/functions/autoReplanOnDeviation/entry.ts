@@ -1,4 +1,5 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
+import { sendAthletePush } from '../../shared/pushNotifications.ts';
 
 // C-13 Adaptive Re-planning.
 // Fired from the reconciliation hook the moment a planned session is marked
@@ -113,6 +114,15 @@ Return an adjustment for EVERY session id listed.`,
       athlete_id: session.athlete_id,
       message_type: 'micro_adjustment',
       content_text: summary,
+    });
+
+    // Notify the athlete's mobile device that their plan was auto-adjusted
+    // (native builds only — fails silently until push credentials are configured).
+    await sendAthletePush(base44, session.athlete_id, {
+      title: 'Training plan auto-adjusted',
+      content: summary,
+      action_label: 'Open plan',
+      action_url: '/plan',
     });
 
     return Response.json({ success: true, adjusted: updates, summary, deviated_session: session_id });

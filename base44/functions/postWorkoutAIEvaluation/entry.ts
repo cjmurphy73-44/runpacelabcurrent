@@ -1,4 +1,5 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
+import { sendAthletePush } from '../../shared/pushNotifications.ts';
 
 // Post-Workout Insight Engine entry point.
 // Invoked after a workout is ingested (by workoutWebhook) or on demand / retry.
@@ -71,6 +72,17 @@ Deno.serve(async (req: Request) => {
       await base44.entities.WorkoutSession.update(workout_id, { post_workout_feedback_id: feedbackRecord.id });
     } catch (linkErr) {
       console.warn('Failed to link feedback to session:', linkErr);
+    }
+
+    // 6. Notify the athlete's mobile device that fresh coach insight is available
+    //    (native builds only — fails silently until push credentials are configured).
+    if (!failed) {
+      await sendAthletePush(base44, athlete_id, {
+        title: 'New coach insight',
+        content: 'Your post-workout AI evaluation is ready to review.',
+        action_label: 'View insight',
+        action_url: `/activity/${workout_id}`,
+      });
     }
 
     return new Response(
