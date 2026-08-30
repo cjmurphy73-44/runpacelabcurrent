@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import SectionHeading from "@/components/layout/SectionHeading";
 import { usePlannedActualReconciliation } from "@/hooks/usePlannedActualReconciliation";
-import { CalendarCheck, Link2, TrendingUp, TrendingDown, Equal, Check, Unlink, SkipForward, AlertTriangle } from "lucide-react";
+import { CalendarCheck, Link2, TrendingUp, TrendingDown, Equal, Check, Unlink, SkipForward, AlertTriangle, Sun } from "lucide-react";
 
 const STATUS_STYLES = {
   EXACT: { label: "On plan", chip: "bg-emerald-50 text-emerald-700 border-emerald-200" },
@@ -28,25 +28,29 @@ export default function PlannedActualReconciliation({ athleteId }) {
     matches,
     autoLinked,
     overdue,
+    todaySessions,
     loading,
     error,
     confirmMatch,
     confirmAutoLink,
     rejectAutoLink,
     markSkipped,
+    markCompleted,
     confirmingId,
     rejectingId,
     skippingId,
+    markingId,
     lastConfirmed,
     lastRejected,
     lastSkipped,
+    lastMarkedDone,
   } = usePlannedActualReconciliation(athleteId);
 
   return (
     <div className="space-y-4">
       <SectionHeading
         title="Planned vs. Actual"
-        description="Ingested sessions fuzzy-matched to scheduled plan items (±1 day, ±20% duration). Confirm a match to mark the plan session complete / partial / excess and link the activity."
+        description="Ingested sessions fuzzy-matched to scheduled plan items (±1 day, ±20% duration). Unmarked sessions older than a week are hidden. Confirm a match to mark the plan session complete / partial / excess and link the activity."
         icon={CalendarCheck}
       />
 
@@ -106,13 +110,68 @@ export default function PlannedActualReconciliation({ athleteId }) {
         </Card>
       )}
 
+      {/* Today's planned sessions — quick mark off */}
+      {todaySessions.length > 0 && (
+        <Card>
+          <CardContent className="pt-6 space-y-3">
+            <div className="flex items-center gap-2 text-sm font-medium text-foreground">
+              <Sun className="w-4 h-4 text-amber-500" />
+              {todaySessions.length} session{todaySessions.length === 1 ? "" : "s"} planned for today — mark off when done.
+            </div>
+            <ul className="divide-y divide-border">
+              {todaySessions.map((s) => {
+                const done = lastMarkedDone === s.id;
+                const skipped = lastSkipped === s.id;
+                const isMarking = markingId === s.id;
+                const isSkipping = skippingId === s.id;
+                return (
+                  <li key={s.id} className="py-3 flex flex-wrap items-center gap-3">
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="font-medium text-foreground">{titleCase(s.sport)}</span>
+                        {s.intensityZone && <Badge variant="outline">{s.intensityZone}</Badge>}
+                      </div>
+                      <div className="mt-1 text-xs text-muted-foreground font-mono tabular-nums">
+                        today · {s.prescribedDurationMinutes ?? "—"} min
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Button
+                        size="sm"
+                        variant={done ? "secondary" : "default"}
+                        onClick={() => markCompleted(s.id)}
+                        disabled={isMarking || done || skipped}
+                        className="gap-1.5"
+                      >
+                        <Check className="w-3.5 h-3.5" />
+                        {done ? "Done" : isMarking ? "Marking…" : "Done"}
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant={skipped ? "secondary" : "outline"}
+                        onClick={() => markSkipped(s.id)}
+                        disabled={isSkipping || skipped || done}
+                        className="gap-1.5 text-muted-foreground"
+                      >
+                        <SkipForward className="w-3.5 h-3.5" />
+                        {skipped ? "Skipped" : isSkipping ? "…" : "Skip"}
+                      </Button>
+                    </div>
+                  </li>
+                );
+              })}
+            </ul>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Overdue planned sessions — mark as skipped */}
       {overdue.length > 0 && (
         <Card>
           <CardContent className="pt-6 space-y-3">
             <div className="flex items-center gap-2 text-sm font-medium text-foreground">
               <AlertTriangle className="w-4 h-4 text-amber-600" />
-              {overdue.length} planned session{overdue.length === 1 ? "" : "s"} overdue with no matching activity. Mark as skipped if you didn't do it.
+              {overdue.length} planned session{overdue.length === 1 ? "" : "s"} overdue in the past week with no matching activity. Mark as skipped if you didn't do it.
             </div>
             <ul className="divide-y divide-border">
               {overdue.map((s) => {

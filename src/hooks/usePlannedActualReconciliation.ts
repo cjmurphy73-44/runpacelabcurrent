@@ -34,14 +34,17 @@ export function usePlannedActualReconciliation(athleteId) {
   const [matches, setMatches] = useState([]);
   const [autoLinked, setAutoLinked] = useState([]); // pending user verification
   const [overdue, setOverdue] = useState([]);
+  const [todaySessions, setTodaySessions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [confirmingId, setConfirmingId] = useState(null);
   const [rejectingId, setRejectingId] = useState(null);
   const [skippingId, setSkippingId] = useState(null);
+  const [markingId, setMarkingId] = useState(null);
   const [lastConfirmed, setLastConfirmed] = useState(null);
   const [lastRejected, setLastRejected] = useState(null);
   const [lastSkipped, setLastSkipped] = useState(null);
+  const [lastMarkedDone, setLastMarkedDone] = useState(null);
 
   const load = useCallback(async () => {
     if (!athleteId) return;
@@ -104,8 +107,23 @@ export function usePlannedActualReconciliation(athleteId) {
         all.filter((m) => m.matchStatus !== 'UNMATCHED').map((m) => m.scheduledWorkoutId)
       );
       const tK = tKey;
+      // Unmarked plan sessions older than 7 days are silently dropped — not shown, not
+      // mutated (the pending record stays in the DB). Only sessions within the last week
+      // surface as overdue for the user to skip or confirm.
+      const overdueCutoff = new Date(today); overdueCutoff.setDate(overdueCutoff.getDate() - 7);
+      const overdueCutoffKey = overdueCutoff.toISOString().split('T')[0];
+      const todayRows = (planned || [])
+        .filter((p) => (!p.status || p.status === 'pending') && p.date === tK)
+        .filter((p) => !linkedScheduled.has(p.id) && !matchedScheduledIds.has(p.id))
+        .map((p) => ({
+          id: p.id,
+          date: p.date,
+          sport: p.sport,
+          prescribedDurationMinutes: p.prescribed_duration_minutes,
+          intensityZone: p.prescribed_intensity_zone,
+        }));
       const overdueRows = (planned || [])
-        .filter((p) => (!p.status || p.status === 'pending') && p.date < tK)
+        .filter((p) => (!p.status || p.status === 'pending') && p.date < tK && p.date >= overdueCutoffKey)
         .filter((p) => !linkedScheduled.has(p.id) && !matchedScheduledIds.has(p.id))
         .map((p) => ({
           id: p.id,
@@ -118,6 +136,7 @@ export function usePlannedActualReconciliation(athleteId) {
       setMatches(reviewable);
       setAutoLinked(autoLinkedRows);
       setOverdue(overdueRows);
+      setTodaySessions(todayRows);
     } catch (e) {
       setError(e?.message || 'Failed to load reconciliation matches');
     } finally {
@@ -178,6 +197,7 @@ export function usePlannedActualReconciliation(athleteId) {
       await base44.entities.TrainingPlanSession.update(sessionId, { status: 'skipped' });
       setLastSkipped(sessionId);
       setOverdue((prev) => prev.filter((s) => s.id !== sessionId));
+      setTodaySessions((prev) => prev.filter((s) => s.id !== sessionId));
       return true;
     } catch (e) {
       setError(e?.message || 'Failed to mark session as skipped');
@@ -187,22 +207,44 @@ export function usePlannedActualReconciliation(athleteId) {
     }
   }, [skippingId]);
 
+  // Quick "mark off" for today's planned sessions — marks the plan session completed
+  // without linking an uploaded activity (user did the session, no file needed).
+  const markCompleted = useCallback(async (sessionId) => {
+    if (!sessionId || markingId) return false;
+    setMarkingId(sessionId);
+    try {
+      await base44.entities.TrainingPlanSession.update(sessionId, { status: 'completed' });
+      setLastMarkedDone(sessionId);
+      setTodaySessions((prev) => prev.filter((s) => s.id !== sessionId));
+      return true;
+    } catch (e) {
+      setError(e?.message || 'Failed to mark session as complete');
+      return false;
+    } finally {
+      setMarkingId(null);
+    }
+  }, [markingId]);
+
   return {
     matches,
     autoLinked,
     overdue,
+    todaySessions,
     loading,
     error,
     confirmMatch,
     confirmAutoLink,
     rejectAutoLink,
     markSkipped,
+    markCompleted,
     confirmingId,
     rejectingId,
     skippingId,
+    markingId,
     lastConfirmed,
     lastRejected,
     lastSkipped,
+    lastMarkedDone,
     autoLinkedCount: autoLinked.length,
     refresh: load,
   };
