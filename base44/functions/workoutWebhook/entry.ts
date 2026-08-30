@@ -33,12 +33,12 @@ function jsonToSummary(body) {
   };
 }
 
-async function handleIngest(req, base44, apiKey) {
+async function handleIngest(req, base44, apiKey, parsedBody) {
   const athletes = await base44.asServiceRole.entities.AthleteProfile.filter({ webhook_api_key: apiKey });
   const athlete = athletes[0];
   if (!athlete) return Response.json({ error: 'Invalid API key' }, { status: 401 });
 
-  const body = await req.json().catch(() => ({}));
+  const body = parsedBody ?? {};
 
   // Strava delivers only activity references (no full data). Acknowledge so it stops retrying;
   // full per-activity Strava import needs Strava OAuth (follow-up) — use the Bulk tab meanwhile.
@@ -145,6 +145,99 @@ async function handleGetKey(req, base44) {
   return Response.json({ api_key: key, webhook_url: key ? `${selfUrl(req)}?key=${key}` : null });
 }
 
+function env(name) { try { return Deno.env.get(name) || ''; } catch { return ''; } }
+
+async function refreshStravaToken(base44, conn) {
+  const now = Date.now();
+  const expiresAt = conn.token_expires_at ? Date.parse(conn.token_expires_at) : 0;
+  if (expiresAt > now + 60_000) return conn.access_token;
+  const r = await fetch('https://www.strava.com/oauth/token', {
+    method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: new URLSearchParams({ client_id: env('STRAVA_CLIENT_ID'), client_secret: env('STRAVA_CLIENT_SECRET'), grant_type: 'refresh_token', refresh_token: conn.refresh_token }),
+  });
+  if (!r.ok) return null;
+  const tok = await r.json();
+  await base44.asServiceRole.entities.StravaConnection.update(conn.id, { access_token: tok.access_token, refresh_token: tok.refresh_token, token_expires_at: new Date(Date.now() + (tok.expires_in || 21600) * 1000).toISOString() });
+  return tok.access_token;
+}
+
+// Strava webhook event: validate the owner_id has a connected account, refresh the token, fetch the
+// full activity from the Strava API, then run idempotency (C-19) + dedup + ingest.
+async function handleStravaEvent(base44, body) {
+  const owner = String(body.owner_id ?? '');
+  const conns = await base44.asServiceRole.entities.StravaConnection.filter({ strava_athlete_id: owner });
+  const conn = conns[0];
+  if (!conn) return Response.json({ success: true, ack: true, note: 'No connected Strava account for owner_id' });
+
+  const eventId = `strava:${body.object_id}:${body.object_type}:${body.aspect_type}`;
+  try {
+    const seen = await base44.asServiceRole.entities.WebhookEvent.filter({ event_id: eventId });
+    if (seen.length > 0) return Response.json({ success: true, skipped: true, idempotent: true });
+  } catch { /* fail open */ }
+
+  if (body.aspect_type === 'delete') return Response.json({ success: true, ack: true });
+  if (body.aspect_type !== 'create' && body.aspect_type !== 'update') return Response.json({ success: true, ack: true });
+
+  const token = await refreshStravaToken(base44, conn);
+  if (!token) {
+    await base44.asServiceRole.entities.StravaConnection.update(conn.id, { status: 'expired', last_error: 'Token refresh failed' });
+    return Response.json({ success: true, ack: true, note: 'Token refresh failed' });
+  }
+
+  let act;
+  try {
+    const r = await fetch(`https://www.strava.com/api/v3/activities/${body.object_id}`, { headers: { Authorization: `Bearer ${token}` } });
+    if (!r.ok) return Response.json({ success: true, ack: true, note: `Strava activity fetch ${r.status}` });
+    act = await r.json();
+  } catch { return Response.json({ success: true, ack: true, note: 'Activity fetch error' }); }
+
+  const date = (act.start_date || act.start_date_local || '').slice(0, 10);
+  const durationMinutes = (Number(act.elapsed_time || 0) / 60) || (Number(act.moving_time || 0) / 60);
+  if (!date || isNaN(Date.parse(date)) || durationMinutes < 1 || durationMinutes > 1440) return Response.json({ success: true, ack: true });
+  const sport = normalizeSport(act.sport_type || act.type);
+  const distanceKm = Math.round((Number(act.distance || 0) / 1000) * 100) / 100;
+
+  const athlete = await base44.asServiceRole.entities.AthleteProfile.get(conn.athlete_id).catch(() => null);
+  if (!athlete) return Response.json({ success: true, ack: true });
+
+  const existing = await base44.asServiceRole.entities.WorkoutSession.filter({ athlete_id: conn.athlete_id, date });
+  const isDuplicate = existing.some((s) => s.sport === sport && Math.abs((s.duration_minutes || 0) - durationMinutes) < 1 && Math.abs((s.distance_km || 0) - distanceKm) < 0.1);
+  if (isDuplicate) {
+    try { await base44.asServiceRole.entities.WebhookEvent.create({ event_id: eventId, provider: 'strava', athlete_id: conn.athlete_id, outcome: 'skipped_duplicate' }); } catch {}
+    return Response.json({ success: true, skipped: true });
+  }
+
+  const restHr = athlete.resting_hr || 60, maxHr = athlete.max_heart_rate || 190;
+  const avgHr = act.average_heartrate || null;
+  const session = await base44.asServiceRole.entities.WorkoutSession.create({
+    athlete_id: conn.athlete_id, date, sport: VALID_SPORTS.includes(sport) ? sport : 'running',
+    duration_minutes: Math.round(durationMinutes * 100) / 100, duration_seconds: Math.round(durationMinutes * 60),
+    distance_km: distanceKm, avg_hr: avgHr || undefined, max_hr: act.max_heartrate || undefined,
+    source_format: 'webhook', session_trimp: avgHr ? calcTrimp(durationMinutes, avgHr, restHr, maxHr, athlete.sex) : 0,
+  });
+
+  try { await base44.asServiceRole.entities.WebhookEvent.create({ event_id: eventId, provider: 'strava', athlete_id: conn.athlete_id, workout_session_id: session.id, outcome: 'created' }); } catch {}
+  try { await base44.asServiceRole.functions.invoke('recalculateCTLATLTSB', { athlete_id: conn.athlete_id }); } catch {}
+  try { waitUntil(base44.asServiceRole.functions.invoke('postWorkoutAIEvaluation', { workout_id: session.id, athlete_id: conn.athlete_id })); } catch {}
+  await base44.asServiceRole.entities.StravaConnection.update(conn.id, { last_sync_at: new Date().toISOString(), last_error: '', status: 'connected' });
+  return Response.json({ success: true, workout_session_id: session.id });
+}
+
+// Strava push-subscription registration manager (one subscription per app, uses STRAVA_VERIFY_TOKEN).
+async function handleSubscribeStrava(req, base44) {
+  const clientId = env('STRAVA_CLIENT_ID'), clientSecret = env('STRAVA_CLIENT_SECRET'), verifyToken = env('STRAVA_VERIFY_TOKEN');
+  if (!clientId || !clientSecret || !verifyToken) return Response.json({ error: 'STRAVA_CLIENT_ID, STRAVA_CLIENT_SECRET and STRAVA_VERIFY_TOKEN must be set' }, { status: 503 });
+  const callbackUrl = selfUrl(req).split('?')[0];
+  const r = await fetch('https://www.strava.com/api/v3/push_subscriptions', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ client_id: clientId, client_secret: clientSecret, callback_url: callbackUrl, verify_token: verifyToken }),
+  });
+  const txt = await r.text();
+  if (!r.ok) return Response.json({ error: `Strava subscription failed: ${r.status}`, details: txt }, { status: 502 });
+  let parsed; try { parsed = JSON.parse(txt); } catch { parsed = txt; }
+  return Response.json({ success: true, callback_url: callbackUrl, response: parsed });
+}
+
 Deno.serve(async (req) => {
   try {
     const base44 = createClientFromRequest(req);
@@ -153,18 +246,30 @@ Deno.serve(async (req) => {
     // Strava subscription verification handshake (no key needed; Strava sends GET with hub.challenge).
     const hubChallenge = u.searchParams.get('hub.challenge');
     if (req.method === 'GET' && hubChallenge) {
+      const verifyToken = env('STRAVA_VERIFY_TOKEN');
+      if (verifyToken && u.searchParams.get('hub.verify_token') !== verifyToken) {
+        return Response.json({ error: 'Invalid verify token' }, { status: 403 });
+      }
       return Response.json({ 'hub.challenge': hubChallenge });
+    }
+
+    const body = await req.json().catch(() => ({}));
+
+    // Strava webhook event POST (no API key; the subscription delivers to this public callback).
+    // { object_type, object_id, aspect_type, owner_id, updates, event_time }
+    if (body.object_type && body.object_id != null && body.aspect_type) {
+      return await handleStravaEvent(base44, body);
     }
 
     // External ingest: ?key= or X-Api-Key header.
     const apiKey = u.searchParams.get('key') || req.headers.get('x-api-key');
-    if (apiKey) return await handleIngest(req, base44, apiKey);
+    if (apiKey) return await handleIngest(req, base44, apiKey, body);
 
-    // App-user actions via base44.functions.invoke (POST { action }).
-    const body = await req.json().catch(() => ({}));
+    // App-user / admin actions via base44.functions.invoke (POST { action }).
     const action = body.action;
     if (action === 'generate_key') return await handleGenerateKey(req, base44);
     if (action === 'get_key') return await handleGetKey(req, base44);
+    if (action === 'subscribe_strava') return await handleSubscribeStrava(req, base44);
     return Response.json({ error: `Unknown action: ${action || '(none)'}` }, { status: 400 });
   } catch (error) {
     return Response.json({ error: error.message }, { status: 500 });

@@ -1,19 +1,13 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
 import { VALID_SPORTS, calcTrimp, normalizeSport, getOwnedAthlete, selfUrl } from '../../shared/workoutIngest.ts';
+import { env, hmacBase64Url } from '../../shared/oauth.ts';
 
 const STRAVA_API = 'https://www.strava.com';
 const SCOPE = 'read,activity:read_all';
 
-function env(name) { try { return Deno.env.get(name) || ''; } catch { return ''; } }
 function requireConfig() {
   const clientId = env('STRAVA_CLIENT_ID'), clientSecret = env('STRAVA_CLIENT_SECRET');
   return { clientId, clientSecret, configured: Boolean(clientId && clientSecret) };
-}
-
-async function hmacBase64Url(message, secret) {
-  const key = await crypto.subtle.importKey('raw', new TextEncoder().encode(secret), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
-  const sig = await crypto.subtle.sign('HMAC', key, new TextEncoder().encode(message));
-  return btoa(String.fromCharCode(...new Uint8Array(sig))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
 }
 
 async function refreshStravaToken(base44, conn) {

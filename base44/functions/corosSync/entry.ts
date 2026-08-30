@@ -1,22 +1,12 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
 import { VALID_SPORTS, calcTrimp, normalizeSport, getOwnedAthlete, selfUrl, parseFitSummary } from '../../shared/workoutIngest.ts';
-
-function env(name) {
-  try { return Deno.env.get(name) || ''; } catch { return ''; }
-}
+import { env, hmacBase64Url } from '../../shared/oauth.ts';
 
 function requireConfig() {
   const clientId = env('COROS_CLIENT_ID');
   const clientSecret = env('COROS_CLIENT_SECRET');
   const apiBase = env('COROS_API_BASE');
   return { clientId, clientSecret, apiBase, configured: Boolean(clientId && clientSecret && apiBase) };
-}
-
-// HMAC-sign the OAuth `state` so a forged callback can't bind a victim's athlete_id to an attacker's auth code.
-async function hmacBase64Url(message, secret) {
-  const key = await crypto.subtle.importKey('raw', new TextEncoder().encode(secret), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
-  const sig = await crypto.subtle.sign('HMAC', key, new TextEncoder().encode(message));
-  return btoa(String.fromCharCode(...new Uint8Array(sig))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
 }
 
 // selfUrl, getOwnedAthlete and parseFitSummary are imported from ../../shared/workoutIngest.ts.

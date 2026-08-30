@@ -1,19 +1,12 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
 import { VALID_SPORTS, calcTrimp, normalizeSport, getOwnedAthlete, selfUrl } from '../../shared/workoutIngest.ts';
-
-function env(name) { try { return Deno.env.get(name) || ''; } catch { return ''; } }
+import { env, hmacBase64Url } from '../../shared/oauth.ts';
 
 function requireConfig() {
   const clientId = env('GARMIN_CLIENT_ID');
   const clientSecret = env('GARMIN_CLIENT_SECRET');
   const apiBase = env('GARMIN_API_BASE');
   return { clientId, clientSecret, apiBase, configured: Boolean(clientId && clientSecret && apiBase) };
-}
-
-async function hmacBase64Url(message, secret) {
-  const key = await crypto.subtle.importKey('raw', new TextEncoder().encode(secret), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
-  const sig = await crypto.subtle.sign('HMAC', key, new TextEncoder().encode(message));
-  return btoa(String.fromCharCode(...new Uint8Array(sig))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
 }
 
 // Browser redirect: Garmin sends ?code=...&state=<athlete_id>.<sig>. No user session (it's a redirect
