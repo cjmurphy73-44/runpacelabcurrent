@@ -1,13 +1,14 @@
 import React, { useEffect, useState } from "react";
 import { useParams, Link } from "react-router-dom";
 import { base44 } from "@/api/base44Client";
+import { downloadWorkoutFile } from "@/services/workoutExport";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import PageShell from "@/components/layout/PageShell";
 import SectionHeading from "@/components/layout/SectionHeading";
-import { ArrowLeft, Sparkles, Activity as ActivityIcon, Clock, MapPin, HeartPulse, Gauge, RotateCw, AlertCircle, Files, Layers, CalendarDays, Pencil, Check, X, Loader2 } from "lucide-react";
+import { ArrowLeft, Sparkles, Activity as ActivityIcon, Clock, MapPin, HeartPulse, Gauge, RotateCw, AlertCircle, Files, Layers, CalendarDays, Pencil, Check, X, Loader2, Download } from "lucide-react";
 
 // Intensity → dynamic color tokens used across the insight card.
 const INTENSITY_STYLES = {
@@ -49,6 +50,7 @@ export default function ActivityDetail() {
   const [dateDraft, setDateDraft] = useState("");
   const [patching, setPatching] = useState(false);
   const [patchMsg, setPatchMsg] = useState(null);
+  const [planSession, setPlanSession] = useState(null);
 
   useEffect(() => {
     let unsubscribe = null;
@@ -56,6 +58,9 @@ export default function ActivityDetail() {
       try {
         const w = await base44.entities.WorkoutSession.get(id);
         setWorkout(w);
+        if (w.training_plan_session_id) {
+          try { setPlanSession(await base44.entities.TrainingPlanSession.get(w.training_plan_session_id)); } catch { setPlanSession(null); }
+        }
         const rows = await base44.entities.WorkoutFeedback.filter({ workout_id: id }, "-created_date", 5);
         setFeedback(rows[0] || null);
         try {
@@ -156,6 +161,11 @@ export default function ActivityDetail() {
           title={title}
           description={`${workout.date || ""}${workout.source_format ? ` · ${workout.source_format.toUpperCase()}` : ""}`}
           icon={ActivityIcon}
+          action={planSession ? (
+            <Button size="sm" variant="outline" onClick={() => downloadWorkoutFile(planSession)} className="gap-1.5">
+              <Download className="w-3.5 h-3.5" /> Export Workout
+            </Button>
+          ) : undefined}
         />
         <Card>
           <CardContent className="pt-6 grid grid-cols-2 sm:grid-cols-4 gap-4">

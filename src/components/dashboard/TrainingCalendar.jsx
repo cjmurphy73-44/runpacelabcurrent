@@ -1,9 +1,10 @@
 import React, { useEffect, useState, useCallback } from "react";
 import { base44 } from "@/api/base44Client";
+import { downloadWorkoutFile } from "@/services/workoutExport";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import moment from "moment";
-import { ShieldAlert } from "lucide-react";
+import { ShieldAlert, Download } from "lucide-react";
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 import { useCoachInjurySignal } from "@/hooks/useCoachInjurySignal";
 
@@ -82,6 +83,9 @@ export default function TrainingCalendar({ athleteId, currentTsb }) {
                       <p className="text-muted-foreground">Target TRIMP ~{estTrimp}</p>
                       {session.rationale_text && <p className="text-xs text-muted-foreground">{session.rationale_text}</p>}
                       <p className="text-xs uppercase tracking-wide text-muted-foreground">{session.status}</p>
+                      <Button size="sm" variant="outline" onClick={() => downloadWorkoutFile(session)} className="gap-1.5 mt-2 w-full">
+                        <Download className="w-3.5 h-3.5" /> Export Workout
+                      </Button>
                     </div>
                   ) : (
                     <p className="text-sm text-muted-foreground">Rest day</p>

@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useCallback } from "react";
 import { Link } from "react-router-dom";
 import { base44 } from "@/api/base44Client";
-import ProfileSetupForm from "@/components/dashboard/ProfileSetupForm";
+import OnboardingFlow from "@/components/dashboard/OnboardingFlow";
 import FitnessStats from "@/components/dashboard/FitnessStats";
 import OcrDropzone from "@/components/imports/OcrDropzone";
 import RecentWorkouts from "@/components/dashboard/RecentWorkouts";
@@ -82,7 +82,7 @@ export default function Home() {
   if (!athlete) {
     return (
       <div className="py-8">
-        <ProfileSetupForm onCreated={(profile) => setAthlete(profile)} />
+        <OnboardingFlow onCreated={(profile) => setAthlete(profile)} />
       </div>
     );
   }

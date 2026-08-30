@@ -47,6 +47,57 @@
     "target_pace": {
       "type": "string"
     },
+    "structured_steps": {
+      "type": "array",
+      "description": "Structured step breakdown (warmup / intervals / cooldown) used by the workout exporter to build a watch-loadable .fit/structured-text workout. Optional \u2014 when absent the exporter synthesises a single main block from prescribed_duration_minutes + prescribed_intensity_zone.",
+      "items": {
+        "type": "object",
+        "properties": {
+          "order": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "warmup",
+              "interval",
+              "recovery",
+              "cooldown",
+              "rest",
+              "main"
+            ]
+          },
+          "duration_seconds": {
+            "type": "number",
+            "minimum": 0
+          },
+          "target_pace_sec_per_km": {
+            "type": "number",
+            "minimum": 0
+          },
+          "target_power_watts": {
+            "type": "number",
+            "minimum": 0
+          },
+          "target_hr_low": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "target_hr_high": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "description": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "type",
+          "duration_seconds"
+        ]
+      }
+    },
     "rationale_text": {
       "type": "string"
     },
@@ -57,11 +108,11 @@
         "completed",
         "partial",
         "excess",
-        "modified",
-        "skipped"
+        "skipped",
+        "modified"
       ],
       "default": "pending",
-      "description": "completion outcome: completed (within \u00b15%), partial (<95% of prescribed), excess (>105% of prescribed), skipped (overdue + not performed), modified (legacy fallback)"
+      "description": "completion outcome: completed (within \u00b15%), partial (<95% of prescribed), excess (>105% of prescribed), skipped (overdue + not performed), modified (auto-replanned by the adaptive re-planning engine)"
     }
   },
   "required": [

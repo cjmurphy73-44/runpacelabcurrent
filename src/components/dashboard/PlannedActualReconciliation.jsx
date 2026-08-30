@@ -1,9 +1,10 @@
-import React from "react";
+import React, { useEffect } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import SectionHeading from "@/components/layout/SectionHeading";
 import { usePlannedActualReconciliation } from "@/hooks/usePlannedActualReconciliation";
+import { useToast } from "@/components/ui/use-toast";
 import { CalendarCheck, Link2, TrendingUp, TrendingDown, Equal, Check, Unlink, SkipForward, AlertTriangle, Sun } from "lucide-react";
 
 const STATUS_STYLES = {
@@ -44,7 +45,16 @@ export default function PlannedActualReconciliation({ athleteId }) {
     lastRejected,
     lastSkipped,
     lastMarkedDone,
+    adjustingId,
+    lastAdjustment,
   } = usePlannedActualReconciliation(athleteId);
+  const { toast } = useToast();
+
+  useEffect(() => {
+    if (lastAdjustment?.summary) {
+      toast({ title: "Coach adjustment", description: lastAdjustment.summary });
+    }
+  }, [lastAdjustment, toast]);
 
   return (
     <div className="space-y-4">

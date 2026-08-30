@@ -45,6 +45,24 @@ export function usePlannedActualReconciliation(athleteId) {
   const [lastRejected, setLastRejected] = useState(null);
   const [lastSkipped, setLastSkipped] = useState(null);
   const [lastMarkedDone, setLastMarkedDone] = useState(null);
+  const [adjustingId, setAdjustingId] = useState(null);
+  const [lastAdjustment, setLastAdjustment] = useState(null);
+
+  // C-13 Adaptive re-planning: when a planned session deviates (skipped / partial
+  // / excess) the coach automatically re-optimizes the remaining block via the
+  // autoReplanOnDeviation backend function. Fire-and-forget from the mutation
+  // site; the result lands as `lastAdjustment` and surfaces as a coaching toast.
+  const triggerReplan = useCallback(async (sessionId) => {
+    setAdjustingId(sessionId);
+    try {
+      const res = await base44.functions.invoke('autoReplanOnDeviation', { session_id: sessionId });
+      setLastAdjustment({ sessionId, summary: res?.summary || 'Your coach is adjusting the rest of your week.', ok: !res?.error });
+    } catch (e) {
+      setLastAdjustment({ sessionId, summary: 'Coach adjustment is running in the background.', ok: false });
+    } finally {
+      setAdjustingId(null);
+    }
+  }, []);
 
   const load = useCallback(async () => {
     if (!athleteId) return;
@@ -149,12 +167,14 @@ export function usePlannedActualReconciliation(athleteId) {
   const confirmMatch = useCallback(async (match) => {
     if (!match || !match.scheduledWorkoutId || confirmingId) return false;
     setConfirmingId(match.sessionId);
+    const newStatus = statusForMatch(match);
     try {
-      await base44.entities.TrainingPlanSession.update(match.scheduledWorkoutId, { status: statusForMatch(match) });
+      await base44.entities.TrainingPlanSession.update(match.scheduledWorkoutId, { status: newStatus });
       await base44.entities.WorkoutSession.update(match.sessionId, {
         training_plan_session_id: match.scheduledWorkoutId,
       });
       setLastConfirmed(match.sessionId);
+      if (newStatus === 'partial' || newStatus === 'excess') void triggerReplan(match.scheduledWorkoutId);
       await load();
       return true;
     } catch (e) {
@@ -163,7 +183,7 @@ export function usePlannedActualReconciliation(athleteId) {
     } finally {
       setConfirmingId(null);
     }
-  }, [confirmingId, load]);
+  }, [confirmingId, load, triggerReplan]);
 
   // Acknowledge an auto-link — no DB write (already linked); just dismiss from the verify queue.
   const confirmAutoLink = useCallback((match) => {
@@ -198,6 +218,7 @@ export function usePlannedActualReconciliation(athleteId) {
       setLastSkipped(sessionId);
       setOverdue((prev) => prev.filter((s) => s.id !== sessionId));
       setTodaySessions((prev) => prev.filter((s) => s.id !== sessionId));
+      void triggerReplan(sessionId);
       return true;
     } catch (e) {
       setError(e?.message || 'Failed to mark session as skipped');
@@ -205,7 +226,7 @@ export function usePlannedActualReconciliation(athleteId) {
     } finally {
       setSkippingId(null);
     }
-  }, [skippingId]);
+  }, [skippingId, triggerReplan]);
 
   // Quick "mark off" for today's planned sessions — marks the plan session completed
   // without linking an uploaded activity (user did the session, no file needed).
@@ -245,6 +266,8 @@ export function usePlannedActualReconciliation(athleteId) {
     lastRejected,
     lastSkipped,
     lastMarkedDone,
+    adjustingId,
+    lastAdjustment,
     autoLinkedCount: autoLinked.length,
     refresh: load,
   };
