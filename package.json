@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "test": "vitest run",
+    "test:ci": "vitest run --reporter=dot",
     "dev": "vite",
     "build": "vite build",
     "lint": "eslint . --quiet",

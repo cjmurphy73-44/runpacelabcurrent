@@ -1,0 +1,58 @@
+{
+  "name": "WebhookEvent",
+  "type": "object",
+  "description": "Idempotency log for inbound wearable / Strava / COROS webhook events. Prevents duplicate processing when a provider retries an event that has already been ingested. Each event_id is unique; a repeat push with the same id is skipped without creating a second WorkoutSession.",
+  "properties": {
+    "event_id": {
+      "type": "string",
+      "description": "Provider event id or a deterministic key. For Strava: 'strava:<object_id>:<object_type>:<aspect_type>'. For generic ingests: 'generic:<athlete_id>:<date>:<sport>:<duration_minutes*100>:<distance_km*100>'."
+    },
+    "provider": {
+      "type": "string",
+      "enum": [
+        "strava",
+        "coros",
+        "generic"
+      ],
+      "default": "generic"
+    },
+    "athlete_id": {
+      "type": "string",
+      "description": "References AthleteProfile.id the event was resolved to (if any)"
+    },
+    "workout_session_id": {
+      "type": "string",
+      "description": "References WorkoutSession.id created from this event, when outcome is 'created'"
+    },
+    "outcome": {
+      "type": "string",
+      "enum": [
+        "created",
+        "skipped_duplicate",
+        "ack_only"
+      ],
+      "default": "created"
+    }
+  },
+  "required": [
+    "event_id",
+    "provider"
+  ],
+  "rls": {
+    "read": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "update": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "delete": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
+}

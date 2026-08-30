@@ -73,12 +73,25 @@ async function handleIngest(req, base44, apiKey) {
   const sport = VALID_SPORTS.includes(summary.sport) ? summary.sport : 'running';
   const distanceKm = summary.distance_km || 0;
 
+  // Idempotency: providers retry (Strava re-sends, COROS re-post). Key on
+  // athlete + date + sport + rounded duration/distance so a re-push of the SAME
+  // event is skipped exactly once — independent of the looser (±1min / ±0.1km)
+  // fuzzy dedup below, which fails when rounding jitter slips past its window.
+  const eventId = `generic:${athlete.id}:${date}:${sport}:${Math.round(durationMinutes * 100)}:${Math.round(distanceKm * 100)}`;
+  try {
+    const seen = await base44.asServiceRole.entities.WebhookEvent.filter({ event_id: eventId });
+    if (seen.length > 0) return Response.json({ success: true, skipped: true, idempotent: true });
+  } catch (e) { console.warn('WebhookEvent idempotency check failed:', e); /* fail open */ }
+
   // Dedup safeguard (mirrors webhookWearableSync / bulkIngestWorkouts).
   const existing = await base44.asServiceRole.entities.WorkoutSession.filter({ athlete_id: athlete.id, date });
   const isDuplicate = existing.some((s) =>
     s.sport === sport && Math.abs((s.duration_minutes || 0) - durationMinutes) < 1 && Math.abs((s.distance_km || 0) - distanceKm) < 0.1
   );
-  if (isDuplicate) return Response.json({ success: true, skipped: true });
+  if (isDuplicate) {
+    try { await base44.asServiceRole.entities.WebhookEvent.create({ event_id: eventId, provider: 'generic', athlete_id: athlete.id, outcome: 'skipped_duplicate' }); } catch (e) { console.warn('WebhookEvent log failed:', e); }
+    return Response.json({ success: true, skipped: true });
+  }
 
   const restHr = athlete.resting_hr || 60;
   const maxHr = athlete.max_heart_rate || summary.max_hr || 190;
@@ -96,6 +109,8 @@ async function handleIngest(req, base44, apiKey) {
     source_format: sourceFormat,
     session_trimp: sessionTrimp,
   });
+
+  try { await base44.asServiceRole.entities.WebhookEvent.create({ event_id: eventId, provider: 'generic', athlete_id: athlete.id, workout_session_id: session.id, outcome: 'created' }); } catch (e) { console.warn('WebhookEvent log failed:', e); }
 
   // Recompute CTL/ATL/TSB across all days so dashboard metrics update automatically.
   try { await base44.asServiceRole.functions.invoke('recalculateCTLATLTSB', { athlete_id: athlete.id }); } catch (e) { console.warn('recalculateCTLATLTSB failed:', e); }

@@ -4,9 +4,10 @@ import { base44 } from "@/api/base44Client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import PageShell from "@/components/layout/PageShell";
 import SectionHeading from "@/components/layout/SectionHeading";
-import { ArrowLeft, Sparkles, Activity as ActivityIcon, Clock, MapPin, HeartPulse, Gauge, RotateCw, AlertCircle, Files, Layers } from "lucide-react";
+import { ArrowLeft, Sparkles, Activity as ActivityIcon, Clock, MapPin, HeartPulse, Gauge, RotateCw, AlertCircle, Files, Layers, CalendarDays, Pencil, Check, X, Loader2 } from "lucide-react";
 
 // Intensity → dynamic color tokens used across the insight card.
 const INTENSITY_STYLES = {
@@ -44,6 +45,10 @@ export default function ActivityDetail() {
   const [feedback, setFeedback] = useState(null);
   const [assets, setAssets] = useState([]);
   const [retrying, setRetrying] = useState(false);
+  const [editingDate, setEditingDate] = useState(false);
+  const [dateDraft, setDateDraft] = useState("");
+  const [patching, setPatching] = useState(false);
+  const [patchMsg, setPatchMsg] = useState(null);
 
   useEffect(() => {
     let unsubscribe = null;
@@ -107,6 +112,23 @@ export default function ActivityDetail() {
     }
   };
 
+  const handlePatchDate = async () => {
+    if (!workout || !dateDraft || patching) return;
+    setPatching(true);
+    setPatchMsg(null);
+    try {
+      const updated = await base44.entities.WorkoutSession.update(workout.id, { date: dateDraft });
+      setWorkout(updated);
+      try { await base44.functions.invoke("recalculateCTLATLTSB", { athlete_id: workout.athlete_id }); } catch (e) { console.warn("recalc after date patch failed", e); }
+      setPatchMsg({ ok: true, text: "Date updated — load metrics recalculated." });
+      setEditingDate(false);
+    } catch (e) {
+      setPatchMsg({ ok: false, text: e?.response?.data?.error || "Could not update date." });
+    } finally {
+      setPatching(false);
+    }
+  };
+
   const summary = [
     { icon: Clock, label: "Duration", value: workout.duration_minutes ? `${workout.duration_minutes} min` : "—" },
     { icon: MapPin, label: "Distance", value: workout.distance_km ? `${workout.distance_km} km` : "—" },
@@ -145,6 +167,34 @@ export default function ActivityDetail() {
                 <div className="text-lg font-heading font-semibold">{s.value}</div>
               </div>
             ))}
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="pt-6 flex flex-wrap items-center gap-3">
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <CalendarDays className="w-4 h-4" /> Session date
+            </div>
+            {editingDate ? (
+              <>
+                <Input type="date" value={dateDraft} onChange={(e) => setDateDraft(e.target.value)} className="w-auto" />
+                <Button size="sm" onClick={handlePatchDate} disabled={patching || !dateDraft} className="gap-1.5">
+                  {patching ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Check className="w-3.5 h-3.5" />} Save
+                </Button>
+                <Button size="sm" variant="ghost" onClick={() => { setEditingDate(false); setPatchMsg(null); }} className="gap-1.5">
+                  <X className="w-3.5 h-3.5" /> Cancel
+                </Button>
+              </>
+            ) : (
+              <>
+                <span className="text-sm font-mono tabular-nums">{workout.date || "—"}</span>
+                <Button size="sm" variant="outline" onClick={() => { setDateDraft(workout.date || ""); setEditingDate(true); }} className="gap-1.5">
+                  <Pencil className="w-3.5 h-3.5" /> Correct date
+                </Button>
+              </>
+            )}
+            {patchMsg && (
+              <span className={`text-xs ${patchMsg.ok ? "text-primary" : "text-destructive"}`}>{patchMsg.text}</span>
+            )}
           </CardContent>
         </Card>
       </section>
