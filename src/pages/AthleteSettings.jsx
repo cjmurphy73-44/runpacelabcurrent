@@ -296,15 +296,6 @@ export default function AthleteSettings() {
         </CardContent>
       </Card>
 
-      <Alert>
-        <ShieldAlert className="w-4 h-4" />
-        <AlertTitle>Pending: Garmin &amp; Strava credentials</AlertTitle>
-        <AlertDescription>
-          Ingestion is wired and ready. Add the provider OAuth credentials in app secrets to activate
-          live syncing — <span className="font-mono text-xs">GARMIN_CLIENT_ID, GARMIN_CLIENT_SECRET, GARMIN_API_BASE, GARMIN_WEBHOOK_SECRET, STRAVA_CLIENT_ID, STRAVA_CLIENT_SECRET, STRAVA_VERIFY_TOKEN</span> — then register the Garmin push at <span className="font-mono text-xs">/functions/garminWebhook</span> and run the Strava subscription via the <span className="font-mono text-xs">subscribe_strava</span> action.
-        </AlertDescription>
-      </Alert>
-
       <Card className="border-destructive/30">
         <CardHeader>
           <CardTitle className="font-heading text-destructive flex items-center gap-2">

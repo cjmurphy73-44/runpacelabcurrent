@@ -13,6 +13,7 @@
 
 import { calculateVDOT, getTrainingPaces } from './vdot';
 import { calculateHeartRateZones, HeartRateZone } from './zones';
+import { VdotResult } from './types';
 
 export interface OnboardingInput {
   /** Race distance in metres (5000, 10000, 21097.5, 42195). */
@@ -89,3 +90,47 @@ export const RACE_DISTANCES = [
   { key: 'half', label: 'Half marathon', meters: 21097.5 },
   { key: 'marathon', label: 'Marathon', meters: 42195 },
 ] as const;
+
+/**
+ * VDOT → training pace zones (Easy / Marathon / Threshold / Interval /
+ * Repetition) expressed as sec/km, in the @/science VdotResult shape.
+ *
+ * @citation Daniels (2013) Training Intensity Zones table.
+ * @assumption Training zones correspond to fixed fractions of an approximate
+ * threshold velocity (Easy ~68%, Marathon ~81%, Threshold ~88%, Interval ~97%,
+ * Repetition ~105%).
+ * @limitation Simplified proportional mapping; for precise zones prefer
+ * getTrainingPaces() in ./vdot, which inverts the Daniels VO2-cost equation.
+ */
+export function getVdotPaceZones(vdot: number): VdotResult {
+  if (!vdot || vdot <= 0) {
+    return {
+      vdot: 0,
+      easyPaceSecPerKm: 0,
+      marathonPaceSecPerKm: 0,
+      thresholdPaceSecPerKm: 0,
+      intervalPaceSecPerKm: 0,
+      repetitionPaceSecPerKm: 0,
+    };
+  }
+
+  // Approximate threshold velocity (m/min) calibrated against Daniels tables.
+  const baseVelocity = 29.5 + vdot * 0.35;
+
+  const thresholdVel = baseVelocity * 0.88;
+  const easyVel = baseVelocity * 0.68;
+  const marathonVel = baseVelocity * 0.81;
+  const intervalVel = baseVelocity * 0.97;
+  const repetitionVel = baseVelocity * 1.05;
+
+  const toSecPerKm = (vel: number) => Math.round(60000 / Math.max(10, vel));
+
+  return {
+    vdot,
+    easyPaceSecPerKm: toSecPerKm(easyVel),
+    marathonPaceSecPerKm: toSecPerKm(marathonVel),
+    thresholdPaceSecPerKm: toSecPerKm(thresholdVel),
+    intervalPaceSecPerKm: toSecPerKm(intervalVel),
+    repetitionPaceSecPerKm: toSecPerKm(repetitionVel),
+  };
+}
