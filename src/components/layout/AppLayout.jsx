@@ -5,7 +5,8 @@ import { useUIPreferences } from "@/context/UIPreferencesContext";
 import { Button } from "@/components/ui/button";
 import ToolsDropdown from "@/components/layout/ToolsDropdown";
 import BetaFeedbackModal from "@/components/feedback/BetaFeedbackModal";
-import { Activity, MessageCircle, LogOut, CalendarRange, FlaskConical, Settings, Upload, Megaphone, BrainCircuit, Users } from "lucide-react";
+import { Activity, MessageCircle, LogOut, CalendarRange, FlaskConical, Settings, Upload, Megaphone, BrainCircuit, Users, Sparkles } from "lucide-react";
+import { useSubscription } from "@/hooks/useSubscription";
 
 export default function AppLayout() {
   const { user, logout } = useAuth();
@@ -13,6 +14,7 @@ export default function AppLayout() {
   const [feedbackOpen, setFeedbackOpen] = useState(false);
   useUIPreferences();
   const isCoach = user?.role === "coach" || user?.role === "admin";
+  const { isPro } = useSubscription();
 
   const navLink = (to, label, Icon) => (
     <Link
@@ -59,6 +61,11 @@ export default function AppLayout() {
             <Link to="/import" title="Imports" className="flex items-center justify-center h-9 w-9 rounded-md text-muted-foreground hover:bg-accent">
               <Upload className="w-4 h-4" />
             </Link>
+            {!isPro && (
+              <Button asChild variant="default" size="sm" title="Upgrade plan" className="gap-1.5">
+                <Link to="/subscribe"><Sparkles className="w-4 h-4" /><span className="hidden sm:inline">Upgrade</span></Link>
+              </Button>
+            )}
             <Link to="/settings" title="Settings" className="flex items-center justify-center h-9 w-9 rounded-md text-muted-foreground hover:bg-accent">
               <Settings className="w-4 h-4" />
             </Link>
