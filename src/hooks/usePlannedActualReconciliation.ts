@@ -6,7 +6,7 @@
 //  - overdue planned sessions (pending + date passed + no linked workout) for skip
 // confirmMatch / rejectAutoLink / markSkipped mutate the plan session status and the
 // workout link. Completion outcome is split into completed / partial / excess from the
-// actual-to-prescribed duration ratio — `modified` is no longer written.
+// actual-to-prescribed duration ratio.
 
 import { useEffect, useState, useCallback } from 'react';
 import { base44 } from '@/api/base44Client';
@@ -26,7 +26,7 @@ function statusForMatch(match) {
     case 'COMPLETED_SHORT': return 'partial';
     case 'COMPLETED_EXCEEDED': return 'excess';
     case 'PLAUSIBLE': return isShort ? 'partial' : 'excess';
-    default: return 'modified'; // legacy fallback, should not occur for matched rows
+    default: return 'partial'; // fallback for matched rows
   }
 }
 

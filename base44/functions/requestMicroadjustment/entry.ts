@@ -57,7 +57,6 @@ Deno.serve(async (req) => {
       prescribed_duration_minutes: a.new_duration_minutes,
       prescribed_intensity_zone: a.new_intensity_zone || undefined,
       rationale_text: a.rationale,
-      status: 'modified',
     }));
 
     if (updates.length > 0) await base44.entities.TrainingPlanSession.bulkUpdate(updates);

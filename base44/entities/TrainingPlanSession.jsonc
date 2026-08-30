@@ -108,11 +108,18 @@
         "completed",
         "partial",
         "excess",
+<<<<<<< Updated upstream
         "skipped",
         "modified"
       ],
       "default": "pending",
       "description": "completion outcome: completed (within \u00b15%), partial (<95% of prescribed), excess (>105% of prescribed), skipped (overdue + not performed), modified (auto-replanned by the adaptive re-planning engine)"
+=======
+        "skipped"
+      ],
+      "default": "pending",
+      "description": "completion outcome: completed (within \u00b15%), partial (<95% of prescribed), excess (>105% of prescribed), skipped (overdue + not performed)"
+>>>>>>> Stashed changes
     }
   },
   "required": [
