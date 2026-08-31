@@ -2,7 +2,22 @@ import React, { useMemo } from "react";
 import { useFitness } from "@/context/FitnessContext";
 import { calculateACWR } from "@/lib/injuryEngine";
 import { deriveRunningThresholdPace } from "@/utils/physiology/thresholdPaceEngine";
+import { Term } from "@/components/ui/Term";
 import { Zap, Gauge, ShieldAlert, HeartPulse } from "lucide-react";
+
+// Re-write the threshold-engine provenance strings into clearer, actionable
+// sub-labels (the raw "VDOT Daniels T-pace" / "VDOT only — ..." reads like a
+// glitch; this explains WHY it's a VDOT estimate and what to do next).
+function humanThresholdSource(source) {
+  if (!source) return "";
+  const map = {
+    "VDOT Daniels T-pace": "From VDOT T-pace — log a threshold run to refine",
+    "VDOT only — cross-training in progress": "From VDOT T-pace · cross-training",
+    "Stored baseline": "From your stored baseline",
+    "Set VDOT or a baseline": "Set VDOT or a baseline",
+  };
+  return map[source] || source;
+}
 
 const ZONE = {
   Green: { label: "Low", badge: "border-emerald-200 bg-emerald-50 text-emerald-700" },
@@ -77,28 +92,29 @@ export default function PhysiologyStrip({ athlete }) {
     <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
       <Tile
         icon={Zap}
-        label="VO₂max · VDOT"
+        label={<Term k="vdot">VO₂max · VDOT</Term>}
         value={vdot != null ? Math.round(vdot) : "—"}
         suffix={vdot != null ? "ml/kg/min" : ""}
         sub={vdot == null ? "Set in Physiology" : undefined}
       />
       <Tile
         icon={Gauge}
-        label="Threshold pace"
+        label={<Term k="threshold_pace">Threshold pace</Term>}
         value={formatPace(threshold.paceMs)}
         suffix={threshold.paceMs ? "/km" : ""}
-        sub={threshold.paceMs ? threshold.source : "Set in Physiology"}
+        sub={threshold.paceMs ? humanThresholdSource(threshold.source) : "Set in Physiology"}
       />
       <Tile
         icon={ShieldAlert}
-        label="Injury risk"
+        label={<Term k="acwr">Injury risk</Term>}
         value={hasInjuryData ? zone.label : "—"}
         badge={hasInjuryData ? zone.badge : undefined}
         sub={hasInjuryData ? `ACWR ${injury.acwr.toFixed(2)}` : "Needs 14 days"}
       />
       <Tile
         icon={HeartPulse}
-        label="Readiness"
+        label={<Term k="readiness">Readiness</Term>}
+
         value={readiness != null ? readiness : "—"}
         suffix={readiness != null ? "/100" : ""}
         sub={readiness != null ? rTone.label : "No score today"}
