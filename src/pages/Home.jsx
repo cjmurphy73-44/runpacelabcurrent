@@ -16,10 +16,10 @@ import AutonomicStressCard from "@/components/dashboard/AutonomicStressCard";
 import SleepEnergyCard from "@/components/dashboard/SleepEnergyCard";
 import HolisticFactorsLog from "@/components/dashboard/HolisticFactorsLog";
 import TodaySessionCard from "@/components/dashboard/TodaySessionCard";
-import StatusGauges from "@/components/dashboard/StatusGauges";
+
 import HorizonStrip from "@/components/dashboard/HorizonStrip";
 import LoadFatigueChart from "@/components/dashboard/LoadFatigueChart";
-import DashboardMetricBanner from "@/components/dashboard/DashboardMetricBanner";
+
 import DashboardRangeControls from "@/components/dashboard/DashboardRangeControls";
 import { FitnessProvider } from "@/context/FitnessContext";
 import { useUIPreferences } from "@/context/UIPreferencesContext";
@@ -99,7 +99,6 @@ export default function Home() {
               description="You're set up — now let's log your first session and watch the engine respond."
               icon={Sun}
             />
-            <DashboardMetricBanner athlete={athlete} workouts={loadTimelineWorkouts} />
             <OnboardingEmptyState athlete={athlete} onAddManual={() => setManualOpen(true)} />
           </section>
         ) : (
@@ -107,14 +106,8 @@ export default function Home() {
         {/* 1 — Today's snapshot */}
         <section className="space-y-4">
           <SectionHeading index="01" title="Today's snapshot" description="Your form, readiness and prescribed session for today." icon={Sun} />
-          <DashboardMetricBanner athlete={athlete} workouts={loadTimelineWorkouts} />
           <PhysiologyStrip athlete={athlete} />
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <div className="lg:col-span-2">
-              <TodaySessionCard athleteId={athlete.id} />
-            </div>
-            <StatusGauges athlete={athlete} />
-          </div>
+          <TodaySessionCard athleteId={athlete.id} />
         </section>
 
         {/* 2 — Load & Form */}

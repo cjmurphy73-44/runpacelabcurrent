@@ -4,8 +4,9 @@ import { useAuth } from "@/lib/AuthContext";
 import { useUIPreferences } from "@/context/UIPreferencesContext";
 import { Button } from "@/components/ui/button";
 import ToolsDropdown from "@/components/layout/ToolsDropdown";
+import AccountMenu from "@/components/layout/AccountMenu";
 import BetaFeedbackModal from "@/components/feedback/BetaFeedbackModal";
-import { Activity, MessageCircle, LogOut, CalendarRange, FlaskConical, Settings, Upload, Megaphone, BrainCircuit, Users, Sparkles, LineChart } from "lucide-react";
+import { Activity, MessageCircle, CalendarRange, Upload, BrainCircuit, Users, Sparkles, LineChart } from "lucide-react";
 import { useCoachAccess } from "@/hooks/useCoachAccess";
 
 export default function AppLayout() {
@@ -52,13 +53,6 @@ export default function AppLayout() {
             </nav>
           </div>
           <div className="flex items-center gap-1 shrink-0">
-            <Link
-              to="/physiology"
-              title="Physiology Lab"
-              className={`flex items-center justify-center h-9 w-9 rounded-md ${location.pathname === "/physiology" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-accent"}`}
-            >
-              <FlaskConical className="w-4 h-4" />
-            </Link>
             <Link to="/import" title="Imports" className="flex items-center justify-center h-9 w-9 rounded-md text-muted-foreground hover:bg-accent">
               <Upload className="w-4 h-4" />
             </Link>
@@ -67,16 +61,7 @@ export default function AppLayout() {
                 <Link to="/subscribe"><Sparkles className="w-4 h-4" /><span className="hidden sm:inline">Upgrade</span></Link>
               </Button>
             )}
-            <Link to="/settings" title="Settings" className="flex items-center justify-center h-9 w-9 rounded-md text-muted-foreground hover:bg-accent">
-              <Settings className="w-4 h-4" />
-            </Link>
-            <Button variant="ghost" size="sm" onClick={() => setFeedbackOpen(true)} title="Send beta feedback" className="gap-1.5">
-              <Megaphone className="w-4 h-4" />
-              <span className="hidden lg:inline text-sm">Feedback</span>
-            </Button>
-            <Button variant="ghost" size="icon" onClick={() => logout()} title="Logout">
-              <LogOut className="w-4 h-4" />
-            </Button>
+            <AccountMenu onFeedback={() => setFeedbackOpen(true)} onLogout={logout} />
           </div>
         </div>
       </header>
