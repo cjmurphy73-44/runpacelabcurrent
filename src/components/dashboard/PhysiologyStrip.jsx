@@ -5,14 +5,14 @@ import { deriveRunningThresholdPace } from "@/utils/physiology/thresholdPaceEngi
 import { Term } from "@/components/ui/Term";
 import { Zap, Gauge, ShieldAlert, HeartPulse } from "lucide-react";
 
-// Re-write the threshold-engine provenance strings into clearer, actionable
-// sub-labels (the raw "VDOT Daniels T-pace" / "VDOT only — ..." reads like a
-// glitch; this explains WHY it's a VDOT estimate and what to do next).
+// Map the threshold-engine provenance strings to clear on-tile sub-labels.
+// We deliberately keep the literal "VDOT"/"vdot" wording OFF the tile (it reads
+// like a glitch) — the full provenance is still available via the hover tooltip.
 function humanThresholdSource(source) {
   if (!source) return "";
   const map = {
-    "VDOT Daniels T-pace": "From VDOT T-pace — log a threshold run to refine",
-    "VDOT only — cross-training in progress": "From VDOT T-pace · cross-training",
+    "VDOT Daniels T-pace": "Estimated · log a threshold run to verify",
+    "VDOT only — cross-training in progress": "Cross-training · estimated until a run verifies",
     "Stored baseline": "From your stored baseline",
     "Set VDOT or a baseline": "Set VDOT or a baseline",
   };
