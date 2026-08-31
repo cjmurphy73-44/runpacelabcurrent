@@ -4,7 +4,7 @@ import { downloadWorkoutFile } from "@/services/workoutExport";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import moment from "moment";
-import { ShieldAlert, Download } from "lucide-react";
+import { ShieldAlert, Download, Sparkles } from "lucide-react";
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 import { useCoachInjurySignal } from "@/hooks/useCoachInjurySignal";
 import { useSubscription } from "@/hooks/useSubscription";
@@ -52,9 +52,10 @@ export default function TrainingCalendar({ athleteId, currentTsb }) {
         </Alert>
       )}
       <div className="flex items-center justify-between flex-wrap gap-2">
-        <h2 className="text-lg font-heading font-bold">Next 7 Days</h2>
-        <Button onClick={requestMicroadjustment} disabled={requesting}>
-          {requesting ? "Adjusting..." : "Request AI Microadjustment"}
+        <h2 className="text-base font-heading font-semibold">Next 7 Days</h2>
+        <Button size="sm" variant="outline" onClick={requestMicroadjustment} disabled={requesting} className="gap-1.5">
+          <Sparkles className="w-3.5 h-3.5" />
+          {requesting ? "Adjusting…" : "AI Microadjustment"}
         </Button>
       </div>
       {loading ? (

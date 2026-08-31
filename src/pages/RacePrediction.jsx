@@ -111,7 +111,7 @@ export default function RacePrediction() {
 
       {result && result.predictions.length > 0 && (
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0">
+          <CardHeader className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:space-y-0">
             <div>
               <CardTitle className="font-heading">Predicted times</CardTitle>
               <CardDescription>From VDOT {result.vdot?.toFixed(1)} · confidence {Math.round(result.confidence * 100)}%</CardDescription>

@@ -26,33 +26,14 @@ export default function PhysiologyLab({ athlete }) {
         <AlertDescription>{status.detail}</AlertDescription>
       </Alert>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <Card>
-          <CardHeader><CardTitle className="text-sm font-heading">Fitness (CTL)</CardTitle></CardHeader>
-          <CardContent className="text-sm text-muted-foreground space-y-2">
-            <p>A 42-day rolling average of your training load.</p>
-            <p>Building CTL steadily over weeks and months increases your long-term performance capacity — it's the foundation that lets you handle bigger workouts without breaking down.</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader><CardTitle className="text-sm font-heading">Fatigue (ATL)</CardTitle></CardHeader>
-          <CardContent className="text-sm text-muted-foreground space-y-2">
-            <p>A 7-day short-term measure of recent training stress.</p>
-            <p>Short spikes in fatigue are necessary to trigger adaptation, but if it stays high without recovery, injury and burnout risk climbs.</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader><CardTitle className="text-sm font-heading">Form (TSB)</CardTitle></CardHeader>
-          <CardContent className="text-sm text-muted-foreground space-y-2">
-            <p>The balance between Fitness and Fatigue (CTL − ATL).</p>
-            <ul className="list-disc pl-4 space-y-1">
-              <li>Optimal Training Balance: +5 to −15</li>
-              <li>Fresh / Racing: +10 to +25</li>
-              <li>Overtraining Danger: below −30</li>
-            </ul>
-          </CardContent>
-        </Card>
-      </div>
+      <Card className="max-w-3xl">
+        <CardHeader className="pb-2"><CardTitle className="text-sm font-heading">Load model legend</CardTitle></CardHeader>
+        <CardContent className="text-sm text-muted-foreground space-y-1.5 pt-0">
+          <p><span className="font-medium text-foreground">Fitness (CTL)</span> — 42-day rolling load average; the foundation that lets you absorb bigger weeks.</p>
+          <p><span className="font-medium text-foreground">Fatigue (ATL)</span> — 7-day stress; spikes drive adaptation, sustained highs raise injury risk.</p>
+          <p><span className="font-medium text-foreground">Form (TSB = CTL − ATL)</span> — +5 to −15 optimal training · +10 to +25 fresh / racing · below −30 overtraining danger.</p>
+        </CardContent>
+      </Card>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <ThresholdTrendChart />

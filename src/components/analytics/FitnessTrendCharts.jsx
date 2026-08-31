@@ -91,7 +91,7 @@ export default function FitnessTrendCharts({ athleteId }) {
           <CardTitle className="font-heading flex items-center gap-2"><TrendingUp className="w-4 h-4 text-primary" /> Long-term fitness trends</CardTitle>
           <CardDescription>CTL (fitness) · ATL (fatigue) · TSB (form) and weekly training load.</CardDescription>
         </div>
-        <div className="flex gap-1">
+        <div className="flex flex-wrap gap-1">
           {WINDOWS.map((w) => (
             <Button key={w.months} size="sm" variant={months === w.months ? "default" : "outline"} onClick={() => setMonths(w.months)}>
               {w.label}

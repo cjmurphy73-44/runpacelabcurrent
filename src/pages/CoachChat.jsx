@@ -21,7 +21,7 @@ export default function CoachChat() {
   useEffect(() => {
     (async () => {
       const existing = await base44.agents.listConversations({ agent_name: AGENT_NAME });
-      let convo = existing?.[0];
+      let convo = (existing || []).find((c) => c?.metadata?.name === "Coach Chat") || existing?.[0];
       if (!convo) {
         convo = await base44.agents.createConversation({
           agent_name: AGENT_NAME,
@@ -76,7 +76,7 @@ export default function CoachChat() {
   }
 
   return (
-    <div className="flex flex-col h-[70vh] max-w-2xl mx-auto">
+    <div className="flex flex-col h-[calc(100vh-7.5rem)] max-w-2xl mx-auto">
       <div className="flex-1 overflow-y-auto space-y-3 pb-4">
         {messages.length === 0 && (
           <p className="text-center text-sm text-muted-foreground py-8">

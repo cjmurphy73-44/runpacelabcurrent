@@ -31,8 +31,6 @@ export default function RecoveryCenterView() {
 
   return (
     <div className="max-w-2xl mx-auto space-y-6">
-      <h1 className="text-2xl font-heading font-bold">Recovery Center</h1>
-      
       <Alert variant="warning">
         <AlertTriangle className="h-4 w-4" />
         <AlertTitle>Work In Progress</AlertTitle>
@@ -48,7 +46,7 @@ export default function RecoveryCenterView() {
           <CardDescription>Enter your morning metrics to adjust today's training intensity.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="hrv">HRV (ms)</Label>
               <Input id="hrv" type="number" value={metrics.hrv} onChange={(e) => setMetrics({...metrics, hrv: e.target.value})} />
