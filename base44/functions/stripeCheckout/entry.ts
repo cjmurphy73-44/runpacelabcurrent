@@ -24,7 +24,7 @@ export default async function(req) {
     params.append("client_reference_id", user_id || "");
     params.append("success_url", `${origin}/subscribe?status=success`);
     params.append("cancel_url", `${origin}/subscribe?status=canceled`);
-    const appId = secrets.get("BASE44_APP_ID") || "";
+    const appId = Deno.env.get("BASE44_APP_ID") || "";
     params.append("metadata[base44_app_id]", appId);
     params.append("metadata[plan]", plan);
     params.append("subscription_data[metadata][base44_app_id]", appId);
