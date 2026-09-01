@@ -34,6 +34,18 @@
     "athlete_profile_id"
   ],
   "rls": {
+    "create": {
+      "$or": [
+        {
+          "data.coach_user_id": "{{user.id}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    },
     "read": {
       "$or": [
         {
