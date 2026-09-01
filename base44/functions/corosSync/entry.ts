@@ -140,6 +140,7 @@ async function handleWebhook(req, base44) {
 
   const session = await base44.asServiceRole.entities.WorkoutSession.create({
     athlete_id: athleteId,
+    created_by_id: athlete.created_by_id,
     date,
     sport,
     duration_minutes: Math.round(durationMinutes * 100) / 100,
@@ -262,6 +263,7 @@ async function handleSyncHistorical(base44) {
       const maxHrRow = Number(a.max_heart_rate) || null;
       toCreate.push({
         athlete_id: athlete.id,
+        created_by_id: athlete.created_by_id,
         date,
         sport,
         duration_minutes: Math.round(durationMinutes * 100) / 100,

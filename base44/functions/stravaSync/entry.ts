@@ -115,7 +115,7 @@ async function handleSyncHistorical(base44) {
       const existing = await base44.asServiceRole.entities.WorkoutSession.filter({ athlete_id: athlete.id, date });
       if (existing.some((s) => s.sport === sport && Math.abs((s.duration_minutes||0) - durationMinutes) < 1 && Math.abs((s.distance_km||0) - distanceKm) < 0.1)) continue;
       const avgHr = a.average_heartrate || null;
-      toCreate.push({ athlete_id: athlete.id, date, sport: VALID_SPORTS.includes(sport) ? sport : 'running', duration_minutes: Math.round(durationMinutes*100)/100, duration_seconds: Math.round(durationMinutes*60), distance_km: distanceKm, avg_hr: avgHr || undefined, max_hr: a.max_heartrate || undefined, source_format: 'webhook', session_trimp: avgHr ? calcTrimp(durationMinutes, avgHr, restHr, maxHr, athlete.sex) : 0 });
+      toCreate.push({ athlete_id: athlete.id, created_by_id: athlete.created_by_id, date, sport: VALID_SPORTS.includes(sport) ? sport : 'running', duration_minutes: Math.round(durationMinutes*100)/100, duration_seconds: Math.round(durationMinutes*60), distance_km: distanceKm, avg_hr: avgHr || undefined, max_hr: a.max_heartrate || undefined, source_format: 'webhook', session_trimp: avgHr ? calcTrimp(durationMinutes, avgHr, restHr, maxHr, athlete.sex) : 0 });
     }
     for (let i = 0; i < toCreate.length; i += 500) await base44.asServiceRole.entities.WorkoutSession.bulkCreate(toCreate.slice(i, i + 500));
     imported = toCreate.length;
