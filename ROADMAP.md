@@ -57,6 +57,43 @@ The proprietary physiology engines (`src/science/*.ts` — VDOT, threshold-pace,
 ### Stage S8 — Reliability: CI gate on the science test suite (Blocked on a one-time manual commit)
 Move the existing vitest suite (`src/science/__tests__`, `src/math/*.test.ts`, `src/services/*.test.ts`) into a `.github/workflows/ci.yml` that fails the build on test failure. The GitHub connector's `repo` scope can't author workflow files, so this needs a single manual commit to the repo.
 
+## Above-Competitor Standards (In Progress)
+
+Differentiators that justify a premium over stock training apps (TrainingPeaks, Garmin Coach, Stryd) and the free tiers of AI-coach clones — every one leans into TrainPaceLab's scientific + adaptive + coaching-staffable spine rather than repackaging a generic pace calculator.
+
+### C1 — Scientific transparency as a moat (Shipped)
+- Every physiology formula in `src/science/*` is pure, side-effect-free TypeScript with `src/science/CITATIONS.md` citing the academic source (Banister TRIMP, Coggan TSS, Daniels VDOT, Minetti grade-cost, heat-stress bands).
+- Glossary + `<Term>` tooltip component so the UI teaches the metric, not just displays a number.
+- This is the thing stock apps hide or can't cite; it's the basis for the "elite / clinical" positioning.
+
+### C2 — Adaptive re-planning, not static plans (Shipped + WIP)
+- `autoReplanOnDeviation` marks sessions completed/partial/excess/skipped from reconciled actuals, then re-prescribes.
+- Gated as `adaptive_replan` (Pro+) — a paid feature competitors charge a coach's seat for.
+- Finish: un-WIP and QA the race-strategy engine + recovery center once preview QA is available.
+
+### C3 — Native multi-file workout reconciliation (Shipped)
+- One workout can bind FIT + TCX + CSV via `WorkoutAsset`; `streamReconcile` unifies them on a strict priority ladder without discarding originals. Competitors force "one file, one workout" and silently drop the lesser format.
+- `.fit` structured-text export so a prescribed session syncs to the athlete's watch (`structured_export`, Team).
+
+### C4 — HR-gated, multi-sport threshold derivation (Shipped)
+- Threshold pace anchored to runs performed at threshold heart rate (±8% LTHR) to exclude mislabeled cross-training garbage, not a naive VDOT-only band.
+- Multi-sport inclusive language + `.toLowerCase().startsWith('run')` normalization across the app — cycling / swimming / strength don't get silently miscategorized.
+
+### C5 — Hybrid coach model that competitors can't price (Shipped)
+- Free athlete tier, Pro for solo data-driven athletes, Team for a coach + roster — the single-subscription-per-coach model undercuts TrainingPeaks' per-athlete billing.
+- Self-selected Coach mode (nav visibility) + Team plan (functional roster access) + coach roster scoped via `CoachAthleteAssignment`.
+
+### C6 — Injury-aware, holistic context (In Progress)
+- `injury_history` drives tailored prehab routines + load caps in generated plans; coach injury-signal hook flags red-flag patterns.
+- `DailyMetrics.holistic_factors` (nutrition / soreness / jet-lag) feed readiness alongside HRV/sleep — context competitors ignore.
+
+### C7 — Quantum Polar clinical UX (Shipped, ongoing mobile polish)
+- Clinical, high-precision aesthetic (hairline borders, electric-blue accents, tabular-mono numerics) that reads "elite lab instrument" rather than "consumer fitness app".
+- Single-scroll vertical dashboards, consolidated Account menu + Tools dropdown; mobile track view (one-handed, large targets) still pending.
+
+### C8 — Price-defensible free tier (Planned — finalize)
+- Keep the free tier genuinely useful (profile + manual ingest + dashboard + VDOT) so the upgrade is a value choice, not a paywall to escape ads. The moat is the adaptive + coaching layer above it; the free tier is the proof.
+
 ## Phase 4 — Live Integrations & Polish (Planned)
 - Smart Sync Manager — unify Garmin Health / Strava / Wahoo webhook ingestion behind one normalized `TelemetryParser` service.
 - Metric visualization overhaul — zone shading (Z1–Z5), crosshair-synced charts, richer CTL/ATL/TSB correlation views.
