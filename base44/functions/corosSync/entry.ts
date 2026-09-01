@@ -102,7 +102,7 @@ async function handleWebhook(req, base44) {
   }
   if (!summary) {
     const dur = Number(activity.duration_seconds ?? activity.duration ?? 0);
-    const distRaw = activity.distance_km ?? activity.distance_meters ? activity.distance_meters / 1000 : null;
+    const distRaw = activity.distance_km ?? (activity.distance_meters ? activity.distance_meters / 1000 : null);
     summary = {
       derived_date: activity.date || activity.start_time?.slice(0, 10) || null,
       sport: normalizeSport(activity.sport || activity.activity_type),
