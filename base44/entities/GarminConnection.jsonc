@@ -52,6 +52,11 @@
     "athlete_id"
   ],
   "rls": {
+    "create": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
     "read": {
       "created_by_id": "{{user.id}}"
     },
