@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Gauge } from "lucide-react";
+import CollapsibleSection from "@/components/ui/CollapsibleSection";
 import { calculateVDOT, getTrainingPaces, getEquivalentTimes } from "@/math/vdot";
 
 const DISTANCE_PRESETS = [
@@ -134,7 +135,7 @@ export default function Vdot() {
           </form>
 
           {result && (
-            <div className="pt-6 border-t space-y-8">
+            <div className="pt-6 border-t space-y-6">
               <div className="flex items-center justify-between p-6 rounded-xl bg-gradient-to-r from-blue-900 to-indigo-900 text-white shadow-lg">
                 <div>
                   <p className="text-xs uppercase tracking-wider text-blue-200">Calculated Score</p>
@@ -157,8 +158,7 @@ export default function Vdot() {
                 </div>
               </div>
 
-              <div>
-                <h4 className="font-heading font-bold text-lg mb-3">Equivalent Race Times</h4>
+              <CollapsibleSection title="Equivalent Race Times" subtitle="VDOT-projected across distances">
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                   {equivEntries.map(([dist, t]) => (
                     <div key={dist} className="p-3 bg-muted rounded-lg">
@@ -167,7 +167,7 @@ export default function Vdot() {
                     </div>
                   ))}
                 </div>
-              </div>
+              </CollapsibleSection>
             </div>
           )}
         </CardContent>

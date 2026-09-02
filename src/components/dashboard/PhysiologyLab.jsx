@@ -1,6 +1,7 @@
 import React from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
+import { BookOpen } from "lucide-react";
+import CollapsibleSection from "@/components/ui/CollapsibleSection";
 import RaceStrategyPlanner from "@/components/dashboard/RaceStrategyPlanner";
 import WipWrapper from "@/components/common/WipWrapper";
 import ThresholdTrendChart from "@/components/dashboard/ThresholdTrendChart";
@@ -26,16 +27,18 @@ export default function PhysiologyLab({ athlete }) {
         <AlertDescription>{status.detail}</AlertDescription>
       </Alert>
 
-      <Card className="max-w-3xl">
-        <CardHeader className="pb-2"><CardTitle className="text-sm font-heading">Load model legend</CardTitle></CardHeader>
-        <CardContent className="text-sm text-muted-foreground space-y-1.5 pt-0">
-          <p><span className="font-medium text-foreground">Fitness (CTL)</span> — 42-day rolling load average; the foundation that lets you absorb bigger weeks.</p>
-          <p><span className="font-medium text-foreground">Fatigue (ATL)</span> — 7-day stress; spikes drive adaptation, sustained highs raise injury risk.</p>
-          <p><span className="font-medium text-foreground">Form (TSB = CTL − ATL)</span> — +5 to −15 optimal training · +10 to +25 fresh / racing · below −30 overtraining danger.</p>
-        </CardContent>
-      </Card>
+      <CollapsibleSection
+        title="Load model legend"
+        subtitle="CTL · ATL · TSB"
+        icon={BookOpen}
+        className="max-w-3xl"
+      >
+        <p className="text-sm text-muted-foreground"><span className="font-medium text-foreground">Fitness (CTL)</span> — 42-day rolling load average; the foundation that lets you absorb bigger weeks.</p>
+        <p className="text-sm text-muted-foreground"><span className="font-medium text-foreground">Fatigue (ATL)</span> — 7-day stress; spikes drive adaptation, sustained highs raise injury risk.</p>
+        <p className="text-sm text-muted-foreground"><span className="font-medium text-foreground">Form (TSB = CTL − ATL)</span> — +5 to −15 optimal training · +10 to +25 fresh / racing · below −30 overtraining danger.</p>
+      </CollapsibleSection>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
         <ThresholdTrendChart />
         <AutonomicStressCard />
       </div>

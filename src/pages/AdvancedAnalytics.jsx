@@ -4,7 +4,8 @@ import PageShell from "@/components/layout/PageShell";
 import FitnessTrendCharts from "@/components/analytics/FitnessTrendCharts";
 import PowerPaceHistograms from "@/components/analytics/PowerPaceHistograms";
 import RaceTaperCalculator from "@/components/analytics/RaceTaperCalculator";
-import { Loader2 } from "lucide-react";
+import { Loader2, CalendarClock } from "lucide-react";
+import CollapsibleSection from "@/components/ui/CollapsibleSection";
 
 export default function AdvancedAnalytics() {
   const { athlete, loading } = useAthlete();
@@ -29,7 +30,7 @@ export default function AdvancedAnalytics() {
 
   return (
     <PageShell title="Advanced Analytics" description="Long-term fitness trends, workload distributions, and race taper planning.">
-      <div className="space-y-8">
+      <div className="space-y-6">
         <FitnessTrendCharts athleteId={athlete.id} />
         <PowerPaceHistograms
           athleteId={athlete.id}
@@ -37,7 +38,9 @@ export default function AdvancedAnalytics() {
           lthr={athlete.lactate_threshold_hr}
           ftpWatts={athlete.ftp_watts}
         />
-        <RaceTaperCalculator athlete={athlete} />
+        <CollapsibleSection title="Race Taper Calculator" subtitle="optional planning tool" icon={CalendarClock}>
+          <RaceTaperCalculator athlete={athlete} />
+        </CollapsibleSection>
       </div>
     </PageShell>
   );

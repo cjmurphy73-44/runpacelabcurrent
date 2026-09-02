@@ -5,6 +5,7 @@ import { useAthlete } from "@/hooks/useAthlete";
 import DistancePBGrid from "@/components/dashboard/DistancePBGrid";
 import PeakOutputsGrid from "@/components/dashboard/PeakOutputsGrid";
 import { findDistancePBs, findPeakOutputs, seasonFilter } from "@/lib/personalBests";
+import CollapsibleSection from "@/components/ui/CollapsibleSection";
 import { Trophy } from "lucide-react";
 
 function RaceLedger() {
@@ -57,15 +58,14 @@ function RaceLedger() {
               No sessions recorded yet — upload a workout to start building your ledger.
             </p>
           ) : (
-            <div className="space-y-8 pt-2">
+            <div className="space-y-6 pt-2">
               <div>
                 <h3 className="font-heading font-bold text-lg mb-3">Race Distance Ledger ({sport})</h3>
                 <DistancePBGrid allTimePBs={allTimePBs} seasonPBs={seasonPBs} />
               </div>
-              <div>
-                <h3 className="font-heading font-bold text-lg mb-3">Peak Sustained Outputs</h3>
+              <CollapsibleSection title="Peak Sustained Outputs" subtitle="deepest sustained efforts">
                 <PeakOutputsGrid power={peakOutputs.power} pace={peakOutputs.pace} />
-              </div>
+              </CollapsibleSection>
             </div>
           )}
         </CardContent>

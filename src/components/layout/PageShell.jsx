@@ -4,7 +4,7 @@ export default function PageShell({ title, description, icon: Icon, maxWidth = "
   return (
     <div className={`${maxWidth} mx-auto`}>
       {(title || actions) && (
-        <div className="flex items-start justify-between gap-4 mb-8 pb-5 border-b border-border">
+        <div className="flex items-start justify-between gap-4 mb-6 pb-4 border-b border-border">
           <div className="min-w-0">
             {title && (
               <h1 className="flex items-center gap-2 text-2xl font-display font-bold tracking-tight">
@@ -17,7 +17,7 @@ export default function PageShell({ title, description, icon: Icon, maxWidth = "
           {actions && <div className="shrink-0">{actions}</div>}
         </div>
       )}
-      <div className="space-y-10">{children}</div>
+      <div className="space-y-8">{children}</div>
     </div>
   );
 }

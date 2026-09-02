@@ -3,7 +3,8 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { CloudSun } from "lucide-react";
+import { CloudSun, SlidersHorizontal } from "lucide-react";
+import CollapsibleSection from "@/components/ui/CollapsibleSection";
 import { adjustPaceForEnvironment } from "@/math/environmental";
 
 export default function WeatherAdjust() {
@@ -159,19 +160,21 @@ export default function WeatherAdjust() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                {[
-                  { label: "Dew Point", value: `${result.dewPointC}°C (${result.dewPointF}°F)` },
-                  { label: "Heat Stress", value: `${((result.heatStressFactor - 1) * 100).toFixed(1)}%` },
-                  { label: "Altitude Impact", value: `${((result.altitudeFactor - 1) * 100).toFixed(1)}%` },
-                  { label: "Total Pace Multiplier", value: `${result.totalPaceMultiplier}x` },
-                ].map((c) => (
-                  <div key={c.label} className="p-4 bg-muted rounded-lg">
-                    <p className="text-xs font-semibold text-muted-foreground uppercase">{c.label}</p>
-                    <p className="text-xl font-bold mt-1">{c.value}</p>
-                  </div>
-                ))}
-              </div>
+              <CollapsibleSection title="Adjustment factor breakdown" subtitle="dew point · heat · altitude" icon={SlidersHorizontal}>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                  {[
+                    { label: "Dew Point", value: `${result.dewPointC}°C (${result.dewPointF}°F)` },
+                    { label: "Heat Stress", value: `${((result.heatStressFactor - 1) * 100).toFixed(1)}%` },
+                    { label: "Altitude Impact", value: `${((result.altitudeFactor - 1) * 100).toFixed(1)}%` },
+                    { label: "Total Pace Multiplier", value: `${result.totalPaceMultiplier}x` },
+                  ].map((c) => (
+                    <div key={c.label} className="p-4 bg-muted rounded-lg">
+                      <p className="text-xs font-semibold text-muted-foreground uppercase">{c.label}</p>
+                      <p className="text-xl font-bold mt-1">{c.value}</p>
+                    </div>
+                  ))}
+                </div>
+              </CollapsibleSection>
             </div>
           )}
         </CardContent>

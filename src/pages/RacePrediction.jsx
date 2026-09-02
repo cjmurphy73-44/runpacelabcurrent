@@ -7,7 +7,8 @@ import PageShell from "@/components/layout/PageShell";
 import SectionHeading from "@/components/layout/SectionHeading";
 import { predictRaceTimes } from "@/science/racePrediction";
 import { getEquivalentTimes } from "@/science/vdot";
-import { Gauge, Timer, TrendingUp, Hourglass, Sparkles } from "lucide-react";
+import { Gauge, Timer, TrendingUp, Hourglass, Sparkles, SlidersHorizontal } from "lucide-react";
+import CollapsibleSection from "@/components/ui/CollapsibleSection";
 
 const PRESET_DISTANCES = [
   { meters: 5000, label: "5K" },
@@ -76,28 +77,30 @@ export default function RacePrediction() {
               </Select>
             </div>
           </div>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-2 border-t border-border">
-            <div>
-              <Label>Current VDOT (override)</Label>
-              <Input type="number" step="0.1" placeholder="from result" value={vdotOverride} onChange={(e) => setVdotOverride(e.target.value)} />
+          <CollapsibleSection title="Advanced inputs" subtitle="VDOT override · form (TSB) · qualifying runs" icon={SlidersHorizontal} className="border-t-0">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <div>
+                <Label>Current VDOT (override)</Label>
+                <Input type="number" step="0.1" placeholder="from result" value={vdotOverride} onChange={(e) => setVdotOverride(e.target.value)} />
+              </div>
+              <div>
+                <Label>TSB (form)</Label>
+                <Input type="number" placeholder="e.g. +10" value={tsb} onChange={(e) => setTsb(e.target.value)} />
+              </div>
+              <div>
+                <Label>Recent threshold runs</Label>
+                <Select value={runs} onValueChange={setRuns}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectGroup>
+                      <SelectLabel>Qualifying runs (6-week window)</SelectLabel>
+                      {["0", "1", "2", "3", "4", "5", "6", "8"].map((n) => <SelectItem key={n} value={n}>{n}</SelectItem>)}
+                    </SelectGroup>
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
-            <div>
-              <Label>TSB (form)</Label>
-              <Input type="number" placeholder="e.g. +10" value={tsb} onChange={(e) => setTsb(e.target.value)} />
-            </div>
-            <div>
-              <Label>Recent threshold runs</Label>
-              <Select value={runs} onValueChange={setRuns}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectGroup>
-                    <SelectLabel>Qualifying runs (6-week window)</SelectLabel>
-                    {["0", "1", "2", "3", "4", "5", "6", "8"].map((n) => <SelectItem key={n} value={n}>{n}</SelectItem>)}
-                  </SelectGroup>
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
+          </CollapsibleSection>
         </CardContent>
       </Card>
 
