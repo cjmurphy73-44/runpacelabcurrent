@@ -23,6 +23,7 @@ import LoadFatigueChart from "@/components/dashboard/LoadFatigueChart";
 import DashboardRangeControls from "@/components/dashboard/DashboardRangeControls";
 import { FitnessProvider } from "@/context/FitnessContext";
 import { useUIPreferences } from "@/context/UIPreferencesContext";
+import CollapsibleSection from "@/components/ui/CollapsibleSection";
 import PageShell from "@/components/layout/PageShell";
 import SectionHeading from "@/components/layout/SectionHeading";
 import { Card, CardContent } from "@/components/ui/card";
@@ -141,23 +142,32 @@ export default function Home() {
           </div>
         </section>
 
-        {/* 3b — Planned vs. Actual */}
-        <section className="space-y-4">
+        {/* 3b — Planned vs. Actual (collapsible) */}
+        <CollapsibleSection
+          title="Planned vs. Actual"
+          subtitle="Reconciliation across your recent sessions"
+        >
           <PlannedActualReconciliation athleteId={athlete.id} />
-        </section>
+        </CollapsibleSection>
 
-        {/* 4 — Coach notes */}
-        <section className="space-y-4">
-          <SectionHeading index="04" title="Coach notes" description="Automated briefings and AI messages tuned to your recent trend." icon={MessageCircle} />
+        {/* 4 — Coach notes (collapsible) */}
+        <CollapsibleSection
+          title="04 · Coach notes"
+          subtitle="Briefings & AI messages tuned to your trend"
+          icon={MessageCircle}
+        >
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
             <CoachAdvice />
             <CoachMessageFeed messages={messages} />
           </div>
-        </section>
+        </CollapsibleSection>
 
-        {/* 5 — Recovery & Readiness */}
-        <section className="space-y-4">
-          <SectionHeading index="05" title="Recovery & Readiness" description="Sleep, HRV, autonomic stress and lifestyle context." icon={HeartPulse} />
+        {/* 5 — Recovery & Readiness (collapsible) */}
+        <CollapsibleSection
+          title="05 · Recovery & Readiness"
+          subtitle="Sleep, HRV, autonomic stress & lifestyle"
+          icon={HeartPulse}
+        >
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
             <WipWrapper isWip featureName="Readiness Score">
               <ReadinessScoreCard />
@@ -177,7 +187,7 @@ export default function Home() {
               <HolisticFactorsLog athleteId={athlete.id} />
             </WipWrapper>
           </div>
-        </section>
+        </CollapsibleSection>
 
           </>
         )}
