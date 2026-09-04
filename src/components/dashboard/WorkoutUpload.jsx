@@ -7,10 +7,17 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { UploadCloud } from "lucide-react";
 
+// Local-calendar YYYY-MM-DD. Date.toISOString() is UTC, so a morning upload in
+// UTC+10 (Brisbane) would otherwise default to the previous day.
+function todayLocalISO() {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
 export default function WorkoutUpload({ athleteId, onUploaded }) {
   const [file, setFile] = useState(null);
   const [sport, setSport] = useState("running");
-  const [date, setDate] = useState(new Date().toISOString().slice(0, 10));
+  const [date, setDate] = useState(todayLocalISO());
   const [status, setStatus] = useState(null);
   const [uploading, setUploading] = useState(false);
 
@@ -67,7 +74,7 @@ export default function WorkoutUpload({ athleteId, onUploaded }) {
             </div>
             <div>
               <Label>Date</Label>
-              <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} max={new Date().toISOString().slice(0, 10)} required />
+              <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} max={todayLocalISO()} required />
             </div>
           </div>
           <Button type="submit" disabled={uploading || !file} className="w-full">
