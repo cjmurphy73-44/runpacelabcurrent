@@ -4,6 +4,7 @@ import {
 } from "recharts";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Gauge, AlertTriangle } from "lucide-react";
+import { useTelemetryData } from "@/hooks/useTelemetryData";
 import { calculateHistoricalAndProjectedLoad, getTsbZoneInfo, toDateKey } from "@/lib/loadForecasting";
 import { THEME_COLORS as COLORS } from "@/constants/colors";
 
@@ -42,6 +43,8 @@ function MetricCard({ icon: Icon, label, value, suffix, badge }) {
 }
 
 export default function LoadFatigueChart({ completedSessions = [], plannedWorkouts = [] }) {
+  const dailyLoadHistory = useTelemetryData(completedSessions);
+
   const timeline = useMemo(
     () => calculateHistoricalAndProjectedLoad(completedSessions, plannedWorkouts, 7),
     [completedSessions, plannedWorkouts]
