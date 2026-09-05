@@ -17,8 +17,8 @@ export function AuditBadge({ metric, className }) {
   const [open, setOpen] = useState(false);
   const entry = auditEntry(metric);
   const { lens } = useUIPreferences();
-  if (!entry) return null;
-  const badgeText = lens === "scientific" ? "Math" : "How";
+  if (!entry || lens === "simplified") return null;
+  const badgeText = "Math";
 
   return (
     <>

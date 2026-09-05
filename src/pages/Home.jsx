@@ -113,12 +113,16 @@ export default function Home() {
           <TodaySessionCard athleteId={athlete.id} />
         </section>
 
-        {/* 2 — Load & Form */}
-        <section className="space-y-4">
-          <SectionHeading index="02" title="Load & Form" description="Fitness, fatigue and the balance between them over time." icon={TrendingUp} />
+        {/* 2 — Load & Form (deep — collapses in Simplified mode) */}
+        <CollapsibleSection
+          title="02 · Load & Form"
+          subtitle="Fitness, fatigue and the balance between them over time"
+          icon={TrendingUp}
+          deep
+        >
           <LoadFatigueChart completedSessions={loadTimelineWorkouts} plannedWorkouts={plannedWorkouts} />
           <HorizonStrip athleteId={athlete.id} />
-        </section>
+        </CollapsibleSection>
 
         {/* 3 — Recent activity */}
         <section className="space-y-4">
@@ -148,6 +152,7 @@ export default function Home() {
         <CollapsibleSection
           title="Planned vs. Actual"
           subtitle="Reconciliation across your recent sessions"
+          deep
         >
           <PlannedActualReconciliation athleteId={athlete.id} />
         </CollapsibleSection>
@@ -157,6 +162,7 @@ export default function Home() {
           title="04 · Coach notes"
           subtitle="Briefings & AI messages tuned to your trend"
           icon={MessageCircle}
+          deep
         >
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
             <CoachAdvice />
@@ -169,6 +175,7 @@ export default function Home() {
           title="05 · Recovery & Readiness"
           subtitle="Sleep, HRV, autonomic stress & lifestyle"
           icon={HeartPulse}
+          deep
         >
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
             <WipWrapper isWip featureName="Readiness Score">

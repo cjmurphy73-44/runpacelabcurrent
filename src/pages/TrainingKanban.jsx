@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useCallback } from "react";
-import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
 import { base44 } from "@/api/base44Client";
 import PageShell from "@/components/layout/PageShell";
+import SectionHeading from "@/components/layout/SectionHeading";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -22,32 +22,55 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { useToast } from "@/components/ui/use-toast";
-import { Plus, RefreshCw, KanbanSquare } from "lucide-react";
+import { Plus, RefreshCw, KanbanSquare, ChevronLeft, ChevronRight, Check, X, CalendarDays } from "lucide-react";
 
-// Kanban board over TrainingPlanSession. Drag a card between the three columns
-// to update its status; dropping into Completed stamps a fresh updated_date
-// (built-in on the entity). Add-session dialog creates a prescribed session on
-// the athlete's active plan.
+// Hybrid Training Board:
+//  - Week spine (Mon–Sun) with today highlighted; each day row shows the
+//    prescribed session(s) plus the actual logged workout for that date.
+//    Tap to Complete / Skip (no drag — fiddly on mobile).
+//  - "Coming up" backlog of prescribed sessions beyond this week, with a
+//    one-tap "→ This week" move.
+// Status is read from the session's own status field (skipped ≠ done), not a
+// column mapping.
 
 const SPORTS = ["running", "cycling", "swimming", "strength", "triathlon", "other"];
+const DAY_NAMES = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
-const COLUMNS = [
-  { id: "todo", title: "To Do", status: "pending", accent: "border-t-slate-400" },
-  { id: "progress", title: "In Progress", status: "partial", accent: "border-t-amber-400" },
-  { id: "done", title: "Completed", status: "completed", accent: "border-t-emerald-500" },
-];
+const STATUS_META = {
+  pending: { label: "Planned", cls: "bg-slate-100 text-slate-600" },
+  completed: { label: "Done", cls: "bg-emerald-100 text-emerald-700" },
+  partial: { label: "Partial", cls: "bg-amber-100 text-amber-700" },
+  excess: { label: "Excess", cls: "bg-orange-100 text-orange-700" },
+  skipped: { label: "Skipped", cls: "bg-zinc-200 text-zinc-600" },
+  modified: { label: "Modified", cls: "bg-blue-100 text-blue-700" },
+};
 
-function statusColumn(status) {
-  if (status === "pending") return "todo";
-  if (status === "partial" || status === "modified") return "progress";
-  return "done"; // completed, excess, skipped
+function startOfWeekMonday(d) {
+  const date = new Date(d);
+  const day = date.getDay(); // 0 Sun .. 6 Sat
+  const diff = day === 0 ? -6 : 1 - day; // back to Monday
+  date.setDate(date.getDate() + diff);
+  date.setHours(0, 0, 0, 0);
+  return date;
 }
-
-function todayLocalISO() {
-  const d = new Date();
+function addDays(d, n) {
+  const r = new Date(d);
+  r.setDate(r.getDate() + n);
+  return r;
+}
+function localISO(d) {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(
     d.getDate()
   ).padStart(2, "0")}`;
+}
+function formatShort(d) {
+  return d.toLocaleDateString(undefined, { month: "short", day: "numeric" });
+}
+function todayLocalISO() {
+  return localISO(new Date());
+}
+function parseISODate(iso) {
+  return new Date(iso + "T00:00:00");
 }
 
 export default function TrainingKanban() {
@@ -56,6 +79,8 @@ export default function TrainingKanban() {
   const [athlete, setAthlete] = useState(null);
   const [plan, setPlan] = useState(null);
   const [sessions, setSessions] = useState([]);
+  const [workouts, setWorkouts] = useState([]);
+  const [weekOffset, setWeekOffset] = useState(0);
   const [addOpen, setAddOpen] = useState(false);
   const [newS, setNewS] = useState({
     date: todayLocalISO(),
@@ -85,12 +110,12 @@ export default function TrainingKanban() {
         1
       );
       setPlan(active[0] || null);
-      const list = await base44.entities.TrainingPlanSession.filter(
-        { athlete_id: a.id },
-        "-date",
-        300
-      );
-      setSessions(list);
+      const [sess, wks] = await Promise.all([
+        base44.entities.TrainingPlanSession.filter({ athlete_id: a.id }, "date", 300),
+        base44.entities.WorkoutSession.filter({ athlete_id: a.id }, "-date", 90),
+      ]);
+      setSessions(sess);
+      setWorkouts(wks);
     } finally {
       setLoading(false);
     }
@@ -100,32 +125,47 @@ export default function TrainingKanban() {
     load();
   }, [load]);
 
-  const onDragEnd = async (result) => {
-    const { source, destination, draggableId } = result;
-    if (!destination || source.droppableId === destination.droppableId) return;
-    const col = COLUMNS.find((c) => c.id === destination.droppableId);
-    const session = sessions.find((s) => s.id === draggableId);
-    if (!session || !col) return;
-    const prevStatus = session.status;
-    // optimistic
-    setSessions((prev) =>
-      prev.map((s) => (s.id === session.id ? { ...s, status: col.status } : s))
-    );
+  const weekAnchor = addDays(startOfWeekMonday(new Date()), weekOffset * 7);
+  const weekStart = localISO(weekAnchor);
+  const weekEnd = localISO(addDays(weekAnchor, 6));
+  const todayISO = todayLocalISO();
+  const days = DAY_NAMES.map((name, i) => {
+    const d = addDays(weekAnchor, i);
+    const iso = localISO(d);
+    return { name, date: d, iso, isToday: iso === todayISO };
+  });
+
+  // index executed workouts by date for the "actual" column
+  const workoutsByDate = {};
+  workouts.forEach((w) => {
+    if (!w.date) return;
+    workoutsByDate[w.date] = workoutsByDate[w.date] || [];
+    workoutsByDate[w.date].push(w);
+  });
+
+  const mark = async (session, status) => {
+    const prev = session.status;
+    setSessions((arr) => arr.map((s) => (s.id === session.id ? { ...s, status } : s)));
     try {
-      await base44.entities.TrainingPlanSession.update(session.id, {
-        status: col.status,
+      await base44.entities.TrainingPlanSession.update(session.id, { status });
+      toast({
+        title: status === "completed" ? "Marked done" : status === "skipped" ? "Skipped" : "Updated",
       });
-      if (col.status === "completed") {
-        toast({
-          title: "Marked completed",
-          description: `${session.date} · timestamp updated.`,
-        });
-      }
     } catch (e) {
-      setSessions((prev) =>
-        prev.map((s) => (s.id === session.id ? { ...s, status: prevStatus } : s))
-      );
+      setSessions((arr) => arr.map((s) => (s.id === session.id ? { ...s, status: prev } : s)));
       toast({ title: "Update failed", variant: "destructive" });
+    }
+  };
+
+  const moveToThisWeek = async (session) => {
+    const prevDate = session.date;
+    setSessions((arr) => arr.map((s) => (s.id === session.id ? { ...s, date: weekStart } : s)));
+    try {
+      await base44.entities.TrainingPlanSession.update(session.id, { date: weekStart });
+      toast({ title: "Moved to this week", description: formatShort(weekAnchor) });
+    } catch (e) {
+      setSessions((arr) => arr.map((s) => (s.id === session.id ? { ...s, date: prevDate } : s)));
+      toast({ title: "Move failed", variant: "destructive" });
     }
   };
 
@@ -167,17 +207,18 @@ export default function TrainingKanban() {
     );
   }
 
-  const grouped = { todo: [], progress: [], done: [] };
-  sessions.forEach((s) => grouped[statusColumn(s.status)].push(s));
-  Object.values(grouped).forEach((arr) =>
-    arr.sort((a, b) => (a.date || "").localeCompare(b.date || ""))
-  );
+  const weekLabel = `${formatShort(weekAnchor)} – ${formatShort(addDays(weekAnchor, 6))}`;
+  const backlog = sessions
+    .filter((s) => s.status === "pending" && s.date > weekEnd)
+    .sort((a, b) => (a.date || "").localeCompare(b.date || ""))
+    .slice(0, 12);
 
   return (
     <PageShell
       title="Training Board"
-      description="Drag sessions across columns. Moving to Completed stamps a new updated timestamp."
+      description="Your week at a glance — prescribed vs. what you actually did. Tap to complete or skip."
       icon={KanbanSquare}
+      maxWidth="max-w-3xl"
       action={
         <div className="flex gap-2">
           <Button variant="outline" size="sm" onClick={load}>
@@ -186,7 +227,7 @@ export default function TrainingKanban() {
           </Button>
           <Button size="sm" onClick={() => setAddOpen(true)} disabled={!plan}>
             <Plus className="w-4 h-4" />
-            Add session
+            Add
           </Button>
         </div>
       }
@@ -199,70 +240,124 @@ export default function TrainingKanban() {
           </CardContent>
         </Card>
       )}
-      <DragDropContext onDragEnd={onDragEnd}>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          {COLUMNS.map((col) => (
-            <Droppable key={col.id} droppableId={col.id}>
-              {(provided, snapshot) => (
-                <div
-                  ref={provided.innerRef}
-                  {...provided.droppableProps}
-                  className={`rounded-md border border-border border-t-4 ${col.accent} bg-muted/30 min-h-[200px] ${
-                    snapshot.isDraggingOver ? "ring-2 ring-primary/40" : ""
-                  }`}
-                >
-                  <div className="flex items-center justify-between px-3 py-2 border-b border-border">
-                    <span className="text-sm font-semibold">{col.title}</span>
-                    <span className="text-xs text-muted-foreground tabular-nums">
-                      {grouped[col.id].length}
-                    </span>
-                  </div>
-                  <div className="p-2 space-y-2 min-h-[60px]">
-                    {grouped[col.id].length === 0 && (
-                      <div className="text-xs text-muted-foreground text-center py-6">
-                        No sessions
+
+      {/* Week stepper */}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <Button variant="outline" size="icon" onClick={() => setWeekOffset((w) => w - 1)} aria-label="Previous week">
+            <ChevronLeft className="w-4 h-4" />
+          </Button>
+          <span className="text-sm font-semibold tabular-nums min-w-[150px] text-center">{weekLabel}</span>
+          <Button variant="outline" size="icon" onClick={() => setWeekOffset((w) => w + 1)} aria-label="Next week">
+            <ChevronRight className="w-4 h-4" />
+          </Button>
+        </div>
+        {weekOffset !== 0 && (
+          <Button variant="ghost" size="sm" onClick={() => setWeekOffset(0)}>
+            Today
+          </Button>
+        )}
+      </div>
+
+      {/* Day rows */}
+      <div className="space-y-2">
+        {days.map((d) => {
+          const daySessions = sessions.filter((s) => s.date === d.iso);
+          const dayActual = workoutsByDate[d.iso] || [];
+          return (
+            <div
+              key={d.iso}
+              className={`rounded-lg border p-3 ${d.isToday ? "border-primary/60 bg-primary/5" : "border-border bg-card"}`}
+            >
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-semibold uppercase text-muted-foreground w-9">{d.name}</span>
+                <span className="text-sm tabular-nums">{formatShort(d.date)}</span>
+                {d.isToday && (
+                  <span className="text-[10px] font-medium uppercase tracking-wider text-primary">Today</span>
+                )}
+              </div>
+
+              {daySessions.length === 0 && dayActual.length === 0 && (
+                <div className="text-xs text-muted-foreground py-2 pl-11">Rest day</div>
+              )}
+
+              {daySessions.map((s) => {
+                const meta = STATUS_META[s.status] || STATUS_META.pending;
+                const actual = dayActual.length > 0 ? dayActual[0] : null;
+                return (
+                  <div key={s.id} className="mt-2 rounded-md border border-border bg-background p-3">
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm font-medium">{s.rationale_text || `${s.sport} session`}</span>
+                      <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded ${meta.cls}`}>
+                        {meta.label}
+                      </span>
+                    </div>
+                    <div className="text-xs text-muted-foreground mt-0.5 capitalize">
+                      {s.sport}
+                      {s.prescribed_duration_minutes ? ` · ${s.prescribed_duration_minutes} min` : ""}
+                      {s.prescribed_intensity_zone ? ` · ${s.prescribed_intensity_zone}` : ""}
+                    </div>
+                    {actual && (
+                      <div className="text-xs text-emerald-600 mt-1">
+                        ✓ Logged
+                        {actual.distance_km ? ` · ${actual.distance_km} km` : ""}
+                        {actual.duration_minutes ? ` · ${Math.round(actual.duration_minutes)} min` : ""}
                       </div>
                     )}
-                    {grouped[col.id].map((s, idx) => (
-                      <Draggable key={s.id} draggableId={s.id} index={idx}>
-                        {(p, snap) => (
-                          <div
-                            ref={p.innerRef}
-                            {...p.draggableProps}
-                            {...p.dragHandleProps}
-                            className={`rounded-md border border-border bg-card p-3 text-sm shadow-sm cursor-grab ${
-                              snap.isDragging ? "ring-2 ring-primary" : ""
-                            }`}
-                          >
-                            <div className="flex items-center justify-between">
-                              <span className="font-medium tabular-nums">{s.date}</span>
-                              <span className="text-xs capitalize text-muted-foreground">
-                                {s.sport}
-                              </span>
-                            </div>
-                            {s.rationale_text && (
-                              <div className="mt-1 font-medium">{s.rationale_text}</div>
-                            )}
-                            <div className="mt-1 text-xs text-muted-foreground">
-                              {s.prescribed_duration_minutes
-                                ? `${s.prescribed_duration_minutes} min`
-                                : ""}
-                              {s.prescribed_intensity_zone
-                                ? ` · ${s.prescribed_intensity_zone}`
-                                : ""}
-                            </div>
-                          </div>
-                        )}
-                      </Draggable>
-                    ))}
-                    {provided.placeholder}
+                    {s.status === "pending" && (
+                      <div className="flex gap-2 mt-2">
+                        <Button size="sm" variant="outline" onClick={() => mark(s, "completed")}>
+                          <Check className="w-3.5 h-3.5" />
+                          Complete
+                        </Button>
+                        <Button size="sm" variant="ghost" onClick={() => mark(s, "skipped")}>
+                          <X className="w-3.5 h-3.5" />
+                          Skip
+                        </Button>
+                      </div>
+                    )}
                   </div>
+                );
+              })}
+
+              {daySessions.length === 0 && dayActual.length > 0 && (
+                <div className="text-xs text-emerald-600 py-1 pl-11">
+                  ✓ Logged
+                  {dayActual[0].distance_km ? ` · ${dayActual[0].distance_km} km` : ""}
+                  {dayActual[0].duration_minutes ? ` · ${Math.round(dayActual[0].duration_minutes)} min` : ""}
                 </div>
               )}
-            </Droppable>
-          ))}
-        </div>
-      </DragDropContext>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Backlog */}
+      {backlog.length > 0 && (
+        <section className="space-y-3 mt-8">
+          <SectionHeading
+            title="Coming up"
+            subtitle="Prescribed sessions beyond this week"
+            icon={CalendarDays}
+          />
+          <div className="space-y-2">
+            {backlog.map((s) => (
+              <div key={s.id} className="flex items-center justify-between rounded-md border border-border bg-card p-3">
+                <div className="min-w-0">
+                  <div className="text-sm font-medium truncate">{s.rationale_text || `${s.sport} session`}</div>
+                  <div className="text-xs text-muted-foreground capitalize">
+                    {formatShort(parseISODate(s.date))} · {s.sport}
+                    {s.prescribed_duration_minutes ? ` · ${s.prescribed_duration_minutes} min` : ""}
+                  </div>
+                </div>
+                <Button size="sm" variant="outline" onClick={() => moveToThisWeek(s)} className="shrink-0 ml-2">
+                  → This week
+                </Button>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
 
       <Dialog open={addOpen} onOpenChange={(o) => !o && setAddOpen(false)}>
         <DialogContent>

@@ -1,6 +1,7 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { ChevronDown } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useUIPreferences } from "@/context/UIPreferencesContext";
 
 /**
  * CollapsibleSection — a progressive-disclosure wrapper for optional/secondary
@@ -11,7 +12,10 @@ import { cn } from "@/lib/utils";
  * Props:
  *  - title:        label on the trigger
  *  - subtitle:     optional muted hint
- *  - defaultOpen:  start expanded (default false)
+ *  - defaultOpen:  start expanded (default false). Overrides lens behaviour.
+ *  - deep:         marks an analytically-heavy section. Deep sections start
+ *                  OPEN in Scientific mode and COLLAPSED in Simplified mode
+ *                  (progressive disclosure), and re-sync when the lens changes.
  *  - icon:          optional lucide icon
  *  - badge:         optional right-aligned content (count, status)
  *  - className:     applied to the outer container
@@ -19,13 +23,23 @@ import { cn } from "@/lib/utils";
 export default function CollapsibleSection({
   title,
   subtitle,
-  defaultOpen = false,
+  defaultOpen,
+  deep = false,
   icon: Icon,
   badge,
   className,
   children,
 }) {
-  const [open, setOpen] = useState(defaultOpen);
+  const { lens } = useUIPreferences();
+  const initialOpen = defaultOpen !== undefined ? defaultOpen : (deep ? lens !== "simplified" : false);
+  const [open, setOpen] = useState(initialOpen);
+
+  // Progressive disclosure: toggling the lens re-syncs deep sections to the
+  // lens default so the switch has a visible effect on the dashboard.
+  useEffect(() => {
+    if (deep) setOpen(lens !== "simplified");
+  }, [lens, deep]);
+
   return (
     <div className={cn("rounded-lg border border-border bg-card", className)}>
       <button
