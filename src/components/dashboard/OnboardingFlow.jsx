@@ -8,6 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from "@/components/ui/accordion";
 import { Activity, Gauge, HeartPulse, Sparkles } from "lucide-react";
 import { deriveOnboardingProfile, RACE_DISTANCES } from "@/science/daniels";
+import { deriveNoviceBaseline } from "@/science/noviceBaseline";
 
 const TIER_CONSTS = {
   conservative: { ctl: 10, atl: 12 },
@@ -25,6 +26,7 @@ export default function OnboardingFlow({ onCreated }) {
   const [form, setForm] = useState({
     first_name: "", last_name: "", sex: "male", dob: "", age: "",
     raceDistance: "5k", raceMinutes: "", raceSeconds: "", weeklyMileage: "", tier: "moderate",
+    noviceMode: false, easyDistance: "", easyMinutes: "", effort: "easy",
   });
   const [overrides, setOverrides] = useState({});
   const [saving, setSaving] = useState(false);
@@ -33,10 +35,26 @@ export default function OnboardingFlow({ onCreated }) {
   const set = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target.value }));
 
   const derived = useMemo(() => {
+    const age = form.age ? Number(form.age) : ageFromDob(form.dob);
+    if (age == null) return null;
+    if (form.noviceMode) {
+      const ed = Number(form.easyDistance);
+      const em = Number(form.easyMinutes);
+      if (!ed && !Number(form.weeklyMileage)) return null;
+      try {
+        return deriveNoviceBaseline({
+          age,
+          sex: form.sex,
+          weeklyMileageKm: Number(form.weeklyMileage) || 0,
+          easyRunDistanceKm: ed || undefined,
+          easyRunMinutes: em || undefined,
+          effort: form.effort,
+        });
+      } catch { return null; }
+    }
     const dist = RACE_DISTANCES.find((d) => d.key === form.raceDistance);
     const t = Number(form.raceMinutes) * 60 + Number(form.raceSeconds);
-    const age = form.age ? Number(form.age) : ageFromDob(form.dob);
-    if (!dist || !t || t < 180 || age == null) return null;
+    if (!dist || !t || t < 180) return null;
     try {
       return deriveOnboardingProfile({
         raceDistanceMeters: dist.meters,
@@ -52,7 +70,7 @@ export default function OnboardingFlow({ onCreated }) {
 
   const submit = async (e) => {
     e.preventDefault();
-    if (!derived) { setError("Add a recent race result so we can derive your baseline."); return; }
+    if (!derived) { setError(form.noviceMode ? "Add an easy run (distance + time) or weekly mileage to estimate a baseline." : "Add a recent race result so we can derive your baseline."); return; }
     if (!form.first_name || !form.last_name) { setError("First and last name are required."); return; }
     setSaving(true); setError("");
     try {
@@ -87,22 +105,56 @@ export default function OnboardingFlow({ onCreated }) {
             <div><Label>First name</Label><Input value={form.first_name} onChange={set("first_name")} required /></div>
             <div><Label>Last name</Label><Input value={form.last_name} onChange={set("last_name")} required /></div>
           </div>
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-            <div className="col-span-2 sm:col-span-1">
-              <Label>Recent race</Label>
-              <Select value={form.raceDistance} onValueChange={(v) => setForm((f) => ({ ...f, raceDistance: v }))}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>{RACE_DISTANCES.map((d) => <SelectItem key={d.key} value={d.key}>{d.label}</SelectItem>)}</SelectContent>
-              </Select>
-            </div>
-            <div className="col-span-2">
-              <Label>Finish time (mm:ss)</Label>
-              <div className="flex items-center gap-2">
-                <Input type="number" min="0" value={form.raceMinutes} onChange={set("raceMinutes")} placeholder="20" className="w-20" />
-                <span className="text-muted-foreground">:</span>
-                <Input type="number" min="0" max="59" value={form.raceSeconds} onChange={set("raceSeconds")} placeholder="00" className="w-20" />
+          <div className="flex gap-1 rounded-md border border-border p-0.5 w-fit">
+            <button type="button" onClick={() => setForm((f) => ({ ...f, noviceMode: false }))} className={`px-3 h-8 rounded-[5px] text-xs font-medium ${!form.noviceMode ? "bg-primary text-primary-foreground" : "text-muted-foreground"}`}>I have a race time</button>
+            <button type="button" onClick={() => setForm((f) => ({ ...f, noviceMode: true }))} className={`px-3 h-8 rounded-[5px] text-xs font-medium ${form.noviceMode ? "bg-primary text-primary-foreground" : "text-muted-foreground"}`}>I'm new — no race yet</button>
+          </div>
+
+          {form.noviceMode ? (
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+              <div className="col-span-2">
+                <Label>Recent easy run — distance (km)</Label>
+                <Input type="number" min="0" step="0.1" value={form.easyDistance} onChange={set("easyDistance")} placeholder="e.g. 5" />
+              </div>
+              <div>
+                <Label>Time (min)</Label>
+                <Input type="number" min="0" value={form.easyMinutes} onChange={set("easyMinutes")} placeholder="e.g. 30" />
+              </div>
+              <div>
+                <Label>It felt…</Label>
+                <Select value={form.effort} onValueChange={(v) => setForm((f) => ({ ...f, effort: v }))}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="easy">Easy</SelectItem>
+                    <SelectItem value="steady">Steady</SelectItem>
+                    <SelectItem value="hard">Hard</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="col-span-2 sm:col-span-4">
+                <p className="text-xs text-muted-foreground">No easy run handy? Just enter your weekly mileage below and we'll estimate from that.</p>
               </div>
             </div>
+          ) : (
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+              <div className="col-span-2 sm:col-span-1">
+                <Label>Recent race</Label>
+                <Select value={form.raceDistance} onValueChange={(v) => setForm((f) => ({ ...f, raceDistance: v }))}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>{RACE_DISTANCES.map((d) => <SelectItem key={d.key} value={d.key}>{d.label}</SelectItem>)}</SelectContent>
+                </Select>
+              </div>
+              <div className="col-span-2">
+                <Label>Finish time (mm:ss)</Label>
+                <div className="flex items-center gap-2">
+                  <Input type="number" min="0" value={form.raceMinutes} onChange={set("raceMinutes")} placeholder="20" className="w-20" />
+                  <span className="text-muted-foreground">:</span>
+                  <Input type="number" min="0" max="59" value={form.raceSeconds} onChange={set("raceSeconds")} placeholder="00" className="w-20" />
+                </div>
+              </div>
+            </div>
+          )}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
             <div><Label>Date of birth</Label><Input type="date" value={form.dob} onChange={set("dob")} /></div>
             <div><Label>or Age</Label><Input type="number" min="1" value={form.age} onChange={set("age")} placeholder="—" /></div>
           </div>
@@ -164,9 +216,9 @@ export default function OnboardingFlow({ onCreated }) {
 
           {error && <p className="text-sm text-destructive">{error}</p>}
           <Button type="submit" disabled={saving || !derived} className="w-full">
-            {saving ? "Creating…" : derived ? "Create profile" : "Enter a race result to derive your baseline"}
+            {saving ? "Creating…" : derived ? "Create profile" : form.noviceMode ? "Add an easy run or weekly mileage to estimate" : "Enter a race result to derive your baseline"}
           </Button>
-          <p className="text-xs text-muted-foreground">From one race time, age and mileage we derive your VDOT, threshold pace, max HR, heart-rate zones and starting fitness seeds. Adjust anything under Advanced tuning, or change later in Settings.</p>
+          <p className="text-xs text-muted-foreground">{form.noviceMode ? "From an easy run (or weekly mileage), age and sex we estimate a baseline VDOT, threshold pace, max HR and heart-rate zones. Log a real race or threshold run later to lock it in." : "From one race time, age and mileage we derive your VDOT, threshold pace, max HR, heart-rate zones and starting fitness seeds. Adjust anything under Advanced tuning, or change later in Settings."}</p>
         </form>
       </CardContent>
     </Card>

@@ -20,6 +20,9 @@ import {
   Legend,
 } from "recharts";
 import { Activity } from "lucide-react";
+import { useUIPreferences } from "@/context/UIPreferencesContext";
+import { termLabel } from "@/lib/terminology";
+import { AuditBadge } from "@/components/ui/AuditBadge";
 
 // Multi-axis 12-week rolling trend: Weekly Volume (km + hours) against ACWR
 // and resting heart rate. ACWR = acute(7d load) / chronic(28d load ÷ 4).
@@ -38,6 +41,8 @@ function cutoffISO(days) {
 }
 
 export default function PerformanceTrendMatrix({ athleteId }) {
+  const { lens } = useUIPreferences();
+  const acwrLabel = termLabel("acwr", lens);
   const [sessions, setSessions] = useState([]);
   const [metrics, setMetrics] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -148,12 +153,14 @@ export default function PerformanceTrendMatrix({ athleteId }) {
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="font-heading flex items-center gap-2">
-          <Activity className="w-4 h-4 text-primary" /> Performance Trend Matrix
-        </CardTitle>
+        <div className="flex items-center justify-between gap-2">
+          <CardTitle className="font-heading flex items-center gap-2">
+            <Activity className="w-4 h-4 text-primary" /> Performance Trend Matrix
+          </CardTitle>
+          <AuditBadge metric="acwr" />
+        </div>
         <CardDescription>
-          12-week rolling view · weekly volume (km/hours) vs. acute:chronic workload ratio
-          (ACWR) and resting heart rate.
+          12-week rolling view · weekly volume (km/hours) vs. {acwrLabel.toLowerCase()} and resting heart rate.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
@@ -175,7 +182,7 @@ export default function PerformanceTrendMatrix({ athleteId }) {
               <ReferenceLine yAxisId="acwr" y={1.5} stroke="hsl(var(--destructive))" strokeDasharray="4 2" />
               <Bar yAxisId="vol" dataKey="km" name="Volume (km)" fill="hsl(var(--chart-2))" radius={[3, 3, 0, 0]} barSize={18} />
               <Line yAxisId="vol" type="monotone" dataKey="hours" name="Volume (hrs)" stroke="hsl(var(--chart-4))" dot={false} strokeWidth={2} />
-              <Line yAxisId="acwr" type="monotone" dataKey="acwr" name="ACWR" stroke="hsl(var(--chart-5))" dot={false} strokeWidth={2} />
+              <Line yAxisId="acwr" type="monotone" dataKey="acwr" name={acwrLabel} stroke="hsl(var(--chart-5))" dot={false} strokeWidth={2} />
             </ComposedChart>
           </ResponsiveContainer>
         </div>

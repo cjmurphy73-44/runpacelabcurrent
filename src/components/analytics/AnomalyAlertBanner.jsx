@@ -5,6 +5,8 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/use-toast";
 import { ShieldAlert, AlertTriangle, CheckCircle2, Bed, Gauge } from "lucide-react";
+import { useUIPreferences } from "@/context/UIPreferencesContext";
+import { termLabel } from "@/lib/terminology";
 
 // Dynamic anomaly banner: flags ACWR spikes (>1.5), sharp VDOT/efficiency drops,
 // and consecutive high-strain sessions. Each alert offers a one-click action that
@@ -34,6 +36,8 @@ function highIntensity(s, maxHr) {
 export default function AnomalyAlertBanner({ athleteId, maxHr }) {
   const { toast } = useToast();
   const navigate = useNavigate();
+  const { lens } = useUIPreferences();
+  const acwrLabel = termLabel("acwr", lens);
   const [sessions, setSessions] = useState([]);
   const [plan, setPlan] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -120,7 +124,7 @@ export default function AnomalyAlertBanner({ athleteId, maxHr }) {
       out.push({
         key: "acwr",
         severity: acwr > 1.8 ? "high" : "med",
-        title: `ACWR spike — ${acwr.toFixed(2)}`,
+        title: `${acwrLabel} spike — ${acwr.toFixed(2)}`,
         detail: "Acute load is well above your chronic base. Reduce volume this week.",
         actionLabel: "Suggest load reduction",
         actionKind: "load",

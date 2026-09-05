@@ -10,7 +10,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import PageShell from "@/components/layout/PageShell";
 import SectionHeading from "@/components/layout/SectionHeading";
-import { ArrowLeft, Sparkles, Activity as ActivityIcon, Clock, MapPin, HeartPulse, Gauge, RotateCw, AlertCircle, Files, Layers, CalendarDays, Pencil, Check, X, Loader2, Download } from "lucide-react";
+import { ArrowLeft, Sparkles, Activity as ActivityIcon, Clock, MapPin, HeartPulse, Gauge, RotateCw, AlertCircle, Files, Layers, CalendarDays, Pencil, Check, X, Loader2, Download, TrendingDown } from "lucide-react";
+import { AuditBadge } from "@/components/ui/AuditBadge";
 
 // Intensity → dynamic color tokens used across the insight card.
 const INTENSITY_STYLES = {
@@ -213,6 +214,33 @@ export default function ActivityDetail() {
           </CardContent>
         </Card>
       </section>
+
+      {(workout.efficiency_factor != null || workout.aerobic_decoupling != null) && (
+        <section className="space-y-4">
+          <SectionHeading
+            title="Efficiency & decoupling"
+            description="Aerobic efficiency and pace/HR drift for this session."
+            icon={TrendingDown}
+            action={<AuditBadge metric="decoupling" />}
+          />
+          <Card>
+            <CardContent className="pt-6 grid grid-cols-2 gap-4">
+              <div className="space-y-1">
+                <div className="text-xs text-muted-foreground">Efficiency Factor</div>
+                <div className="text-lg font-heading font-semibold tabular-nums">
+                  {workout.efficiency_factor != null ? workout.efficiency_factor.toFixed(2) : "—"}
+                </div>
+              </div>
+              <div className="space-y-1">
+                <div className="text-xs text-muted-foreground">Aerobic Decoupling (Pa:HR)</div>
+                <div className="text-lg font-heading font-semibold tabular-nums">
+                  {workout.aerobic_decoupling != null ? `${workout.aerobic_decoupling.toFixed(1)}%` : "—"}
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </section>
+      )}
 
       <section className="space-y-4">
         <SectionHeading

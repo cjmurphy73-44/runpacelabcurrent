@@ -8,6 +8,9 @@ import {
   CardDescription,
 } from "@/components/ui/card";
 import { LayoutGrid } from "lucide-react";
+import { useUIPreferences } from "@/context/UIPreferencesContext";
+import { termLabel } from "@/lib/terminology";
+import { AuditBadge } from "@/components/ui/AuditBadge";
 
 // GitHub-style compliance heatmap: daily executed vs. prescribed coach workouts
 // over ~13 weeks. Cell fill = intensity zone of the prescribed session; an inner
@@ -52,6 +55,8 @@ const STRAIN_DOT = {
 };
 
 export default function ComplianceHeatmap({ athleteId, maxHr }) {
+  const { lens } = useUIPreferences();
+  const strainLabel = termLabel("strain", lens);
   const [prescribed, setPrescribed] = useState([]);
   const [executed, setExecuted] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -154,12 +159,15 @@ export default function ComplianceHeatmap({ athleteId, maxHr }) {
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="font-heading flex items-center gap-2">
-          <LayoutGrid className="w-4 h-4 text-primary" /> Compliance Matrix
-        </CardTitle>
+        <div className="flex items-center justify-between gap-2">
+          <CardTitle className="font-heading flex items-center gap-2">
+            <LayoutGrid className="w-4 h-4 text-primary" /> Compliance Matrix
+          </CardTitle>
+          <AuditBadge metric="strain" />
+        </div>
         <CardDescription>
           Daily execution vs. prescribed sessions over 13 weeks. Fill = intensity zone;
-          dot = strain severity; red outline = missed prescribed session.
+          dot = {strainLabel.toLowerCase()}; red outline = missed prescribed session.
         </CardDescription>
       </CardHeader>
       <CardContent>

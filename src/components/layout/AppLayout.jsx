@@ -6,14 +6,14 @@ import { Button } from "@/components/ui/button";
 import ToolsDropdown from "@/components/layout/ToolsDropdown";
 import AccountMenu from "@/components/layout/AccountMenu";
 import BetaFeedbackModal from "@/components/feedback/BetaFeedbackModal";
-import { Activity, MessageCircle, CalendarRange, Upload, BrainCircuit, Users, Sparkles, LineChart } from "lucide-react";
+import { Activity, MessageCircle, CalendarRange, Upload, BrainCircuit, Users, Sparkles, LineChart, Microscope, Zap } from "lucide-react";
 import { useCoachAccess } from "@/hooks/useCoachAccess";
 
 export default function AppLayout() {
   const { user, logout } = useAuth();
   const location = useLocation();
   const [feedbackOpen, setFeedbackOpen] = useState(false);
-  useUIPreferences();
+  const { lens, setLens } = useUIPreferences();
   const { isPro, coachMode } = useCoachAccess();
   const isCoach = coachMode;
 
@@ -53,6 +53,28 @@ export default function AppLayout() {
             </nav>
           </div>
           <div className="flex items-center gap-1 shrink-0">
+            <div className="flex items-center rounded-md border border-border p-0.5 mr-1" title="Switch between Scientific and Simplified mode">
+              <button
+                type="button"
+                onClick={() => setLens("scientific")}
+                className={`flex items-center gap-1 px-2 h-8 rounded-[5px] text-xs font-medium transition-colors ${
+                  lens === "scientific" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                <Microscope className="w-3.5 h-3.5" />
+                <span className="hidden lg:inline">Scientific</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setLens("simplified")}
+                className={`flex items-center gap-1 px-2 h-8 rounded-[5px] text-xs font-medium transition-colors ${
+                  lens === "simplified" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                <Zap className="w-3.5 h-3.5" />
+                <span className="hidden lg:inline">Simplified</span>
+              </button>
+            </div>
             <Link to="/import" title="Imports" className="flex items-center justify-center h-9 w-9 rounded-md text-muted-foreground hover:bg-accent">
               <Upload className="w-4 h-4" />
             </Link>

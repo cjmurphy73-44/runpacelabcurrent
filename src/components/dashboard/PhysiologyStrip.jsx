@@ -3,6 +3,7 @@ import { useFitness } from "@/context/FitnessContext";
 import { calculateACWR } from "@/lib/injuryEngine";
 import { deriveRunningThresholdPace } from "@/utils/physiology/thresholdPaceEngine";
 import { Term } from "@/components/ui/Term";
+import { AuditBadge } from "@/components/ui/AuditBadge";
 import { Zap, Gauge, ShieldAlert, HeartPulse } from "lucide-react";
 
 // Map the threshold-engine provenance strings to clear on-tile sub-labels.
@@ -92,7 +93,12 @@ export default function PhysiologyStrip({ athlete }) {
     <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
       <Tile
         icon={Zap}
-        label={<Term k="vdot">VO₂max · VDOT</Term>}
+        label={
+          <span className="inline-flex items-center gap-1">
+            <Term k="vdot">VO₂max · VDOT</Term>
+            <AuditBadge metric="vdot" />
+          </span>
+        }
         value={vdot != null ? Math.round(vdot) : "—"}
         suffix={vdot != null ? "ml/kg/min" : ""}
         sub={vdot == null ? "Set in Physiology" : undefined}

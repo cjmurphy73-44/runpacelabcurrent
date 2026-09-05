@@ -31,6 +31,7 @@ import { Button } from "@/components/ui/button";
 import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from "@/components/ui/accordion";
 import WipWrapper from "@/components/common/WipWrapper";
 import WorkoutLogWizard from "@/components/workout/WorkoutLogWizard";
+import CalibrationMeter from "@/components/dashboard/CalibrationMeter";
 import OnboardingEmptyState from "@/components/dashboard/OnboardingEmptyState";
 import PlannedActualReconciliation from "@/components/dashboard/PlannedActualReconciliation";
 import PhysiologyStrip from "@/components/dashboard/PhysiologyStrip";
@@ -108,6 +109,7 @@ export default function Home() {
         <section className="space-y-4">
           <SectionHeading index="01" title="Today's snapshot" description="Your form, readiness and prescribed session for today." icon={Sun} />
           <PhysiologyStrip athlete={athlete} />
+          <CalibrationMeter athlete={athlete} athleteId={athlete.id} />
           <TodaySessionCard athleteId={athlete.id} />
         </section>
 
