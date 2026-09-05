@@ -9,6 +9,7 @@ import PageShell from "@/components/layout/PageShell";
 import RosterCard from "@/components/coach/RosterCard";
 import AddAthleteDialog from "@/components/coach/AddAthleteDialog";
 import ComparisonTable from "@/components/coach/ComparisonTable";
+import RosterDashboard from "@/components/coach/RosterDashboard";
 import { Link } from "react-router-dom";
 import { useCoachAccess } from "@/hooks/useCoachAccess";
 import FeatureGate from "@/components/billing/FeatureGate";
@@ -161,36 +162,13 @@ export default function CoachWorkspace() {
             ))}
           </div>
           <ComparisonTable athletes={compared} />
-          <Card>
-            <CardHeader><CardTitle className="text-sm">Plan assignment</CardTitle><CardDescription className="text-xs">Athletes without an active plan are flagged for review.</CardDescription></CardHeader>
-            <CardContent className="p-0">
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead><tr className="border-b border-border">
-                    <th className="text-left font-medium text-muted-foreground px-4 py-2">Athlete</th>
-                    <th className="text-left font-medium text-muted-foreground px-4 py-2">Plan</th>
-                    <th className="text-left font-medium text-muted-foreground px-4 py-2">Status</th>
-                  </tr></thead>
-                  <tbody>
-                    {assignments.map((a) => {
-                      const pl = plans[a.athlete_profile_id];
-                      return (
-                        <tr key={a.id} className="border-b border-border last:border-0">
-                          <td className="px-4 py-2 font-medium">{a.athlete_name_snapshot}</td>
-                          <td className="px-4 py-2 text-muted-foreground">{pl?.plan_title ?? "—"}</td>
-                          <td className="px-4 py-2">
-                            {pl
-                              ? <span className="text-emerald-600 text-xs font-medium capitalize">{pl.status}</span>
-                              : <span className="text-amber-600 text-xs font-medium">Needs a plan</span>}
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
-            </CardContent>
-          </Card>
+          <RosterDashboard
+            assignments={assignments}
+            profiles={profiles}
+            workouts={workouts}
+            plans={plans}
+            onChanged={loadRoster}
+          />
         </>
       )}
       <AddAthleteDialog

@@ -34,6 +34,7 @@ import RacePrediction from '@/pages/RacePrediction';
 import CoachWorkspace from '@/pages/CoachWorkspace';
 import Subscribe from '@/pages/Subscribe';
 import AdvancedAnalytics from '@/pages/AdvancedAnalytics';
+import TrainingKanban from '@/pages/TrainingKanban';
 // Add page imports here
 
 const AuthenticatedApp = () => {
@@ -86,6 +87,7 @@ const AuthenticatedApp = () => {
           <Route path="/activity/:id" element={<PageErrorBoundary><ActivityDetail /></PageErrorBoundary>} />
           <Route path="/predict" element={<PageErrorBoundary><RacePrediction /></PageErrorBoundary>} />
           <Route path="/analytics" element={<PageErrorBoundary><AdvancedAnalytics /></PageErrorBoundary>} />
+          <Route path="/kanban" element={<PageErrorBoundary><TrainingKanban /></PageErrorBoundary>} />
           <Route path="/roster" element={<PageErrorBoundary><CoachWorkspace /></PageErrorBoundary>} />
           <Route path="/subscribe" element={<PageErrorBoundary><Subscribe /></PageErrorBoundary>} />
         </Route>

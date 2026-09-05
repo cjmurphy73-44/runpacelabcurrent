@@ -30,7 +30,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from "@/components/ui/accordion";
 import WipWrapper from "@/components/common/WipWrapper";
-import ManualWorkoutModal from "@/components/workout/ManualWorkoutModal";
+import WorkoutLogWizard from "@/components/workout/WorkoutLogWizard";
 import OnboardingEmptyState from "@/components/dashboard/OnboardingEmptyState";
 import PlannedActualReconciliation from "@/components/dashboard/PlannedActualReconciliation";
 import PhysiologyStrip from "@/components/dashboard/PhysiologyStrip";
@@ -217,7 +217,7 @@ export default function Home() {
           </Card>
         )}
       </PageShell>
-      <ManualWorkoutModal
+      <WorkoutLogWizard
         open={manualOpen}
         onClose={() => setManualOpen(false)}
         athleteId={athlete.id}

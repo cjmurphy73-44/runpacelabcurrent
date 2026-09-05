@@ -9,7 +9,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuCheckboxItem,
 } from "@/components/ui/dropdown-menu";
-import { ChevronDown, Wrench, Gauge, CloudSun, LayoutGrid, Trophy, CalendarRange, FlaskConical, Microscope, Target } from "lucide-react";
+import { ChevronDown, Wrench, Gauge, CloudSun, LayoutGrid, Trophy, CalendarRange, FlaskConical, Microscope, Target, KanbanSquare } from "lucide-react";
 import { useUIPreferences } from "@/context/UIPreferencesContext";
 
 const CALCULATORS = [
@@ -22,6 +22,7 @@ const INSIGHTS = [
   { to: "/predict", label: "Race Predictor", icon: Target },
   { to: "/pbs", label: "Race Ledger", icon: Trophy },
   { to: "/calendar", label: "Training Calendar", icon: CalendarRange },
+  { to: "/kanban", label: "Training Board", icon: KanbanSquare },
 ];
 
 export default function ToolsDropdown() {
