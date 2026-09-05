@@ -4,6 +4,9 @@ import PageShell from "@/components/layout/PageShell";
 import FitnessTrendCharts from "@/components/analytics/FitnessTrendCharts";
 import PowerPaceHistograms from "@/components/analytics/PowerPaceHistograms";
 import RaceTaperCalculator from "@/components/analytics/RaceTaperCalculator";
+import AnomalyAlertBanner from "@/components/analytics/AnomalyAlertBanner";
+import PerformanceTrendMatrix from "@/components/analytics/PerformanceTrendMatrix";
+import ComplianceHeatmap from "@/components/analytics/ComplianceHeatmap";
 import { Loader2, CalendarClock } from "lucide-react";
 import CollapsibleSection from "@/components/ui/CollapsibleSection";
 
@@ -31,6 +34,9 @@ export default function AdvancedAnalytics() {
   return (
     <PageShell title="Advanced Analytics" description="Long-term fitness trends, workload distributions, and race taper planning.">
       <div className="space-y-6">
+        <AnomalyAlertBanner athleteId={athlete.id} maxHr={athlete.max_heart_rate} />
+        <PerformanceTrendMatrix athleteId={athlete.id} />
+        <ComplianceHeatmap athleteId={athlete.id} maxHr={athlete.max_heart_rate} />
         <FitnessTrendCharts athleteId={athlete.id} />
         <PowerPaceHistograms
           athleteId={athlete.id}
