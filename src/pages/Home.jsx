@@ -34,6 +34,7 @@ import WorkoutLogWizard from "@/components/workout/WorkoutLogWizard";
 import CalibrationMeter from "@/components/dashboard/CalibrationMeter";
 import OnboardingEmptyState from "@/components/dashboard/OnboardingEmptyState";
 import PlannedActualReconciliation from "@/components/dashboard/PlannedActualReconciliation";
+import CoachBriefing from "@/components/dashboard/CoachBriefing";
 import PhysiologyStrip from "@/components/dashboard/PhysiologyStrip";
 import { Sun, TrendingUp, Activity, MessageCircle, HeartPulse, ArrowRight, Plus } from "lucide-react";
 
@@ -142,6 +143,7 @@ export default function Home() {
               </div>
             }
           />
+          <CoachBriefing athlete={athlete} />
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <OcrDropzone athleteId={athlete.id} onSaved={() => loadAthleteData(athlete.id)} />
             <RecentWorkouts workouts={workouts} athlete={athlete} />
