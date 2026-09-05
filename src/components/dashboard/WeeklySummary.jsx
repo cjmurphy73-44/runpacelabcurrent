@@ -62,18 +62,18 @@ export default function WeeklySummary() {
         ) : (
           <div className="space-y-3">
             {weeks.map((w) => (
-              <div key={w.weekStart} className="flex items-center justify-between border-b border-border pb-2 last:border-0 last:pb-0">
-                <div>
-                  <p className="text-sm font-medium">{moment(w.weekStart).format("MMM D")} – {moment(w.weekEnd).format("MMM D")}</p>
-                  <p className="text-xs text-muted-foreground">
+              <div key={w.weekStart} className="flex items-center justify-between border-b border-border pb-2 last:border-0 last:pb-0 min-w-0">
+                <div className="min-w-0 truncate pr-2">
+                  <p className="text-sm font-medium truncate">{moment(w.weekStart).format("MMM D")} – {moment(w.weekEnd).format("MMM D")}</p>
+                  <p className="text-xs text-muted-foreground truncate">
                     {w.workoutCount} workout{w.workoutCount === 1 ? "" : "s"} · TRIMP {w.totalTrimp}
                     {w.avgHr ? ` · Avg HR ${w.avgHr}` : ""}
                   </p>
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 shrink-0">
                   <div className="text-right">
-                    <p className="text-sm font-semibold">CTL {w.ctl ?? "-"}</p>
-                    <p className="text-xs text-muted-foreground">TSB {w.tsb ?? "-"}</p>
+                    <p className="text-sm font-semibold tabular-nums">CTL {w.ctl ?? "-"}</p>
+                    <p className="text-xs text-muted-foreground tabular-nums">TSB {w.tsb ?? "-"}</p>
                   </div>
                   {w.trend === "up" && <ArrowUp className="w-4 h-4 text-green-500" />}
                   {w.trend === "down" && <ArrowDown className="w-4 h-4 text-red-500" />}
