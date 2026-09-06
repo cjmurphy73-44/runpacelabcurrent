@@ -9,7 +9,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuCheckboxItem,
 } from "@/components/ui/dropdown-menu";
-import { ChevronDown, Wrench, Gauge, CloudSun, LayoutGrid, Trophy, CalendarRange, FlaskConical, Microscope, Target, KanbanSquare } from "lucide-react";
+import { ChevronDown, Wrench, Gauge, CloudSun, LayoutGrid, Trophy, CalendarRange, FlaskConical, Microscope, Target, KanbanSquare, HeartPulse } from "lucide-react";
 import { useUIPreferences } from "@/context/UIPreferencesContext";
 
 const CALCULATORS = [
@@ -63,6 +63,12 @@ export default function ToolsDropdown() {
           <Link to="/physiology" className="flex items-center gap-2">
             <FlaskConical className="w-4 h-4" />
             Physiology Lab
+          </Link>
+        </DropdownMenuItem>
+        <DropdownMenuItem asChild>
+          <Link to="/recovery" className="flex items-center gap-2">
+            <HeartPulse className="w-4 h-4" />
+            Recovery Center
           </Link>
         </DropdownMenuItem>
         <DropdownMenuSeparator />
