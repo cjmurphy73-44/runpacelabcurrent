@@ -1,72 +1,67 @@
-import React, { useState, useEffect } from "react";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Button } from "@/components/ui/button";
+import React from "react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { AlertTriangle, Save } from "lucide-react";
+import { Loader2, AlertTriangle } from "lucide-react";
+import RecoveryUpload from "@/components/recovery/RecoveryUpload";
+import BiometricLogForm from "@/components/dashboard/BiometricLogForm";
+import { useFitness } from "@/context/FitnessContext";
+import moment from "moment";
 
-export default function RecoveryCenterView() {
-  const [metrics, setMetrics] = useState({
-    hrv: "",
-    sleepScore: "",
-    restingHeartRate: "",
-    readiness: ""
-  });
-  const [isSaved, setIsSaved] = useState(false);
-
-  useEffect(() => {
-    const saved = localStorage.getItem("rpl_recovery_metrics");
-    if (saved) {
-      setMetrics(JSON.parse(saved));
-    }
-  }, []);
-
-  const handleSave = () => {
-    localStorage.setItem("rpl_recovery_metrics", JSON.stringify(metrics));
-    window.dispatchEvent(new Event("training-plan-updated"));
-    setIsSaved(true);
-    setTimeout(() => setIsSaved(false), 2000);
-  };
+export default function RecoveryCenterView({ athleteId }) {
+  const { dailyMetrics, loading } = useFitness();
+  const rows = [...dailyMetrics].sort((a, b) => b.date.localeCompare(a.date)).slice(0, 30);
 
   return (
-    <div className="max-w-2xl mx-auto space-y-6">
+    <div className="max-w-3xl mx-auto space-y-6">
       <Alert variant="warning">
         <AlertTriangle className="h-4 w-4" />
         <AlertTitle>Work In Progress</AlertTitle>
         <AlertDescription>
-          Automated wearable integration (WHOOP, Oura, Garmin) is currently pending.
-          Manual overrides are active.
+          Automated wearable integration (WHOOP, Oura, Garmin) is pending. Upload a CSV/JSON export or log today's metrics manually.
         </AlertDescription>
       </Alert>
 
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
+        <RecoveryUpload athleteId={athleteId} />
+        <Card>
+          <CardHeader><CardTitle className="text-sm font-heading">Quick log</CardTitle></CardHeader>
+          <CardContent><BiometricLogForm athleteId={athleteId} /></CardContent>
+        </Card>
+      </div>
+
       <Card>
-        <CardHeader>
-          <CardTitle>Manual Recovery Log</CardTitle>
-          <CardDescription>Enter your morning metrics to adjust today's training intensity.</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="hrv">HRV (ms)</Label>
-              <Input id="hrv" type="number" value={metrics.hrv} onChange={(e) => setMetrics({...metrics, hrv: e.target.value})} />
+        <CardHeader><CardTitle className="text-sm font-heading">Recent recovery</CardTitle></CardHeader>
+        <CardContent>
+          {loading ? (
+            <div className="flex items-center text-sm text-muted-foreground"><Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading…</div>
+          ) : rows.length === 0 ? (
+            <p className="text-sm text-muted-foreground">No recovery data yet — upload a file or log today's metrics.</p>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="text-left text-xs text-muted-foreground border-b border-border">
+                    <th className="py-2 pr-3">Date</th>
+                    <th className="py-2 pr-3">HRV (ms)</th>
+                    <th className="py-2 pr-3">Sleep</th>
+                    <th className="py-2 pr-3">Resting HR</th>
+                    <th className="py-2 pr-3">Readiness</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {rows.map((r) => (
+                    <tr key={r.id} className="border-b border-border last:border-0">
+                      <td className="py-2 pr-3">{moment(r.date).format("MMM D")}</td>
+                      <td className="py-2 pr-3">{r.hrv ?? "-"}</td>
+                      <td className="py-2 pr-3">{r.sleep_score ?? "-"}</td>
+                      <td className="py-2 pr-3">{r.resting_hr ?? "-"}</td>
+                      <td className="py-2 pr-3">{r.readiness_score ?? "-"}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="sleep">Sleep Score (%)</Label>
-              <Input id="sleep" type="number" value={metrics.sleepScore} onChange={(e) => setMetrics({...metrics, sleepScore: e.target.value})} />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="rhr">Resting HR (bpm)</Label>
-              <Input id="rhr" type="number" value={metrics.restingHeartRate} onChange={(e) => setMetrics({...metrics, restingHeartRate: e.target.value})} />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="readiness">Readiness (1-10)</Label>
-              <Input id="readiness" type="number" min="1" max="10" value={metrics.readiness} onChange={(e) => setMetrics({...metrics, readiness: e.target.value})} />
-            </div>
-          </div>
-          <Button onClick={handleSave} className="w-full">
-            <Save className="w-4 h-4 mr-2" /> {isSaved ? "Saved!" : "Save Manual Metrics"}
-          </Button>
+          )}
         </CardContent>
       </Card>
     </div>
