@@ -1,7 +1,6 @@
 import React from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Loader2, AlertTriangle } from "lucide-react";
+import { Loader2 } from "lucide-react";
 import RecoveryUpload from "@/components/recovery/RecoveryUpload";
 import BiometricLogForm from "@/components/dashboard/BiometricLogForm";
 import { useFitness } from "@/context/FitnessContext";
@@ -13,14 +12,6 @@ export default function RecoveryCenterView({ athleteId }) {
 
   return (
     <div className="max-w-3xl mx-auto space-y-6">
-      <Alert variant="warning">
-        <AlertTriangle className="h-4 w-4" />
-        <AlertTitle>Work In Progress</AlertTitle>
-        <AlertDescription>
-          Automated wearable integration (WHOOP, Oura, Garmin) is pending. Upload a CSV/JSON export or log today's metrics manually.
-        </AlertDescription>
-      </Alert>
-
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
         <RecoveryUpload athleteId={athleteId} />
         <Card>
