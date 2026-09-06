@@ -167,18 +167,18 @@ describe('gold: environment / heat', () => {
 
 describe('gold: ACWR', () => {
   it('Green below 1.2', () => {
-    const hist = Array(28).fill(100);
+    const hist = Array(28).fill({ load: 100 });
     const r = calculateACWR(hist);
     expect(r.acwr).toBeCloseTo(1, 1);
     expect(r.zone).toBe('Green');
   });
   it('Red above 1.5', () => {
-    const hist = Array(21).fill(100).concat(Array(7).fill(200));
+    const hist = Array(21).fill({ load: 100 }).concat(Array(7).fill({ load: 200 }));
     const r = calculateACWR(hist);
     expect(r.zone).toBe('Red');
   });
   it('returns Green with < 14 days', () => {
-    expect(calculateACWR(Array(7).fill(100)).zone).toBe('Green');
+    expect(calculateACWR(Array(7).fill({ load: 100 })).zone).toBe('Green');
   });
 });
 

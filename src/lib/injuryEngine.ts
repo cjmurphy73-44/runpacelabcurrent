@@ -10,10 +10,10 @@ export function calculateACWR(history: DailyMetrics[]): { acwr: number; zone: Ri
   const acuteWindow = history.slice(-7);
   const chronicWindow = history.slice(-28);
 
-  const acuteLoad = acuteWindow.reduce((acc, curr) => acc + curr.load, 0) / 7;
-  const chronicLoad = chronicWindow.reduce((acc, curr) => acc + curr.load, 0) / 28;
+  const acuteLoad = acuteWindow.reduce((acc, curr) => acc + (curr.load || 0), 0) / 7;
+  const chronicLoad = chronicWindow.reduce((acc, curr) => acc + (curr.load || 0), 0) / 28;
 
-  const acwr = chronicLoad === 0 ? 0 : acuteLoad / chronicLoad;
+  const acwr = chronicLoad > 0 ? acuteLoad / chronicLoad : 0;
 
   let zone: RiskZone = 'Green';
   if (acwr > 1.5) zone = 'Red';
