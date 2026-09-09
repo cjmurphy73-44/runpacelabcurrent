@@ -124,7 +124,7 @@ export const StravaAdapter = {
       }
       if (latlngStream && latlngStream[i] !== undefined) {
         datapoint.latitude = latlngStream[i][0];
-        saved_longitude: latlngStream[i][1];
+        datapoint.longitude = latlngStream[i][1];
       }
 
       normalizedStreams.push(datapoint);
