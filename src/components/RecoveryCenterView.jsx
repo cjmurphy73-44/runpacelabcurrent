@@ -2,6 +2,7 @@ import React from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Loader2 } from "lucide-react";
 import RecoveryUpload from "@/components/recovery/RecoveryUpload";
+import RecoveryOcrDropzone from "@/components/recovery/RecoveryOcrDropzone";
 import BiometricLogForm from "@/components/dashboard/BiometricLogForm";
 import { useFitness } from "@/context/FitnessContext";
 import moment from "moment";
@@ -13,12 +14,13 @@ export default function RecoveryCenterView({ athleteId }) {
   return (
     <div className="max-w-3xl mx-auto space-y-6">
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
+        <RecoveryOcrDropzone athleteId={athleteId} />
         <RecoveryUpload athleteId={athleteId} />
-        <Card>
-          <CardHeader><CardTitle className="text-sm font-heading">Quick log</CardTitle></CardHeader>
-          <CardContent><BiometricLogForm athleteId={athleteId} /></CardContent>
-        </Card>
       </div>
+      <Card>
+        <CardHeader><CardTitle className="text-sm font-heading">Quick log</CardTitle></CardHeader>
+        <CardContent><BiometricLogForm athleteId={athleteId} /></CardContent>
+      </Card>
 
       <Card>
         <CardHeader><CardTitle className="text-sm font-heading">Recent recovery</CardTitle></CardHeader>

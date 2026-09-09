@@ -1,4 +1,5 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.40';
+import { num, clampHr, toDateKey, parseLlmResult, flagLowConfidenceFields } from '../../shared/ocrHelpers.ts';
 
 const VALID_SPORTS = ['running', 'cycling', 'swimming', 'strength', 'triathlon', 'other'];
 
@@ -13,26 +14,6 @@ function mapActivityToSport(raw) {
   if (/tri/.test(s)) return { sport: 'triathlon', raw: s };
   if (/(strength|gym|weight|hiit|core|lift)/.test(s)) return { sport: 'strength', raw: s };
   return { sport: 'other', raw: s };
-}
-
-function num(v, fallback) {
-  const n = Number(v);
-  return Number.isFinite(n) ? n : fallback;
-}
-
-// Clamp a heart-rate sample to physiological bounds; returns undefined when the
-// source value is null/missing (so it is dropped from the payload, not saved as 0).
-function clampHr(v) {
-  const n = Number(v);
-  if (!Number.isFinite(n) || n <= 0) return undefined;
-  return Math.min(Math.max(Math.round(n), 30), 230);
-}
-
-function toDateKey(s) {
-  if (!s || typeof s !== 'string') return undefined;
-  if (/^\d{4}-\d{2}-\d{2}/.test(s)) return s.slice(0, 10);
-  const t = Date.parse(s);
-  return isNaN(t) ? undefined : new Date(t).toISOString().slice(0, 10);
 }
 
 export default async function(req) {
@@ -96,10 +77,7 @@ export default async function(req) {
       response_json_schema,
     });
 
-    // InvokeLLM returns a dict when response_json_schema is provided; guard against a string fallback.
-    const parsed = (llmRes && typeof llmRes === 'object' && !Array.isArray(llmRes))
-      ? llmRes
-      : (typeof llmRes === 'string' ? (() => { try { return JSON.parse(llmRes); } catch { return {}; } })() : {});
+    const parsed = parseLlmResult(llmRes);
 
     const flagged = new Set(Array.isArray(parsed.flagged_fields) ? parsed.flagged_fields.map((f) => String(f)) : []);
 
@@ -127,14 +105,11 @@ export default async function(req) {
 
     // 4. Clamp confidence to [0,1]; when overall confidence is low (<0.85) flag every
     //    populated numeric field so the verification modal highlights them in amber.
-    let confidence = num(parsed.confidence_score, 0.5);
-    confidence = Math.max(0, Math.min(1, confidence));
-    if (confidence < 0.85) {
-      ['duration_seconds', 'distance_km', 'avg_pace_sec_km', 'avg_hr', 'max_hr', 'avg_power', 'elevation_gain_m'].forEach((f) => {
-        const v = parsed[f];
-        if (v !== null && v !== undefined && Number(v) !== 0) flagged.add(f);
-      });
-    }
+    const confidence = flagLowConfidenceFields(
+      parsed,
+      ['duration_seconds', 'distance_km', 'avg_pace_sec_km', 'avg_hr', 'max_hr', 'avg_power', 'elevation_gain_m'],
+      flagged
+    );
 
     const start_time = typeof parsed.start_time === 'string' && parsed.start_time ? parsed.start_time : null;
     const today = new Date().toISOString().slice(0, 10);
