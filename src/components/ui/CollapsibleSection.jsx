@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { ChevronDown } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useUIPreferences } from "@/context/UIPreferencesContext";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 /**
  * CollapsibleSection — a progressive-disclosure wrapper for optional/secondary
@@ -31,14 +32,22 @@ export default function CollapsibleSection({
   children,
 }) {
   const { lens } = useUIPreferences();
-  const initialOpen = defaultOpen !== undefined ? defaultOpen : (deep ? lens !== "simplified" : false);
-  const [open, setOpen] = useState(initialOpen);
+  const isMobile = useIsMobile();
+  const [open, setOpen] = useState(() => {
+    if (defaultOpen !== undefined) return defaultOpen;
+    if (!deep) return false;
+    // Match useIsMobile's 768px breakpoint synchronously so deep sections mount
+    // collapsed on mobile instead of flashing open and collapsing on next tick.
+    const mob = typeof window !== "undefined" && window.innerWidth < 768;
+    return !mob && lens !== "simplified";
+  });
 
   // Progressive disclosure: toggling the lens re-syncs deep sections to the
-  // lens default so the switch has a visible effect on the dashboard.
+  // lens default so the switch has a visible effect on the dashboard. On mobile
+  // deep sections stay collapsed so the primary view stays calm on small screens.
   useEffect(() => {
-    if (deep) setOpen(lens !== "simplified");
-  }, [lens, deep]);
+    if (deep) setOpen(!isMobile && lens !== "simplified");
+  }, [lens, deep, isMobile]);
 
   return (
     <div className={cn("rounded-lg border border-border bg-card", className)}>

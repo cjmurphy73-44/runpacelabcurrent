@@ -9,21 +9,9 @@ import {
   DropdownMenuSeparator,
   DropdownMenuCheckboxItem,
 } from "@/components/ui/dropdown-menu";
-import { ChevronDown, Wrench, Gauge, CloudSun, LayoutGrid, Trophy, CalendarRange, FlaskConical, Microscope, Target, KanbanSquare, HeartPulse } from "lucide-react";
+import { ChevronDown, Wrench, Microscope } from "lucide-react";
 import { useUIPreferences } from "@/context/UIPreferencesContext";
-
-const CALCULATORS = [
-  { to: "/vdot", label: "VDOT Calculator", icon: Gauge },
-  { to: "/weather", label: "Weather Adjuster", icon: CloudSun },
-  { to: "/zones", label: "Training Zones", icon: LayoutGrid },
-];
-
-const INSIGHTS = [
-  { to: "/predict", label: "Race Predictor", icon: Target },
-  { to: "/pbs", label: "Race Ledger", icon: Trophy },
-  { to: "/calendar", label: "Training Calendar", icon: CalendarRange },
-  { to: "/kanban", label: "Training Board", icon: KanbanSquare },
-];
+import { CALCULATORS, INSIGHTS, LABS } from "@/components/layout/navItems";
 
 export default function ToolsDropdown() {
   const { showDeepMetrics, toggleDeepMetrics } = useUIPreferences();
@@ -59,18 +47,14 @@ export default function ToolsDropdown() {
             </Link>
           </DropdownMenuItem>
         ))}
-        <DropdownMenuItem asChild>
-          <Link to="/physiology" className="flex items-center gap-2">
-            <FlaskConical className="w-4 h-4" />
-            Physiology Lab
-          </Link>
-        </DropdownMenuItem>
-        <DropdownMenuItem asChild>
-          <Link to="/recovery" className="flex items-center gap-2">
-            <HeartPulse className="w-4 h-4" />
-            Recovery Center
-          </Link>
-        </DropdownMenuItem>
+        {LABS.map((t) => (
+          <DropdownMenuItem key={t.to} asChild>
+            <Link to={t.to} className="flex items-center gap-2">
+              <t.icon className="w-4 h-4" />
+              {t.label}
+            </Link>
+          </DropdownMenuItem>
+        ))}
         <DropdownMenuSeparator />
         <DropdownMenuCheckboxItem checked={showDeepMetrics} onCheckedChange={toggleDeepMetrics}>
           <Microscope className="w-4 h-4 mr-2" />

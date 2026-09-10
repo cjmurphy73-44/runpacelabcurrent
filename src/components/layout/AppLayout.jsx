@@ -6,8 +6,10 @@ import { Button } from "@/components/ui/button";
 import ToolsDropdown from "@/components/layout/ToolsDropdown";
 import AccountMenu from "@/components/layout/AccountMenu";
 import BetaFeedbackModal from "@/components/feedback/BetaFeedbackModal";
-import { Activity, MessageCircle, CalendarRange, Upload, BrainCircuit, Users, Sparkles, LineChart, Microscope, Zap } from "lucide-react";
+import { Activity, Microscope, Zap, Sparkles, Upload, Users } from "lucide-react";
 import { useCoachAccess } from "@/hooks/useCoachAccess";
+import MobileNav from "@/components/layout/MobileNav";
+import { PRIMARY_NAV } from "@/components/layout/navItems";
 
 export default function AppLayout() {
   const { user, logout } = useAuth();
@@ -39,21 +41,20 @@ export default function AppLayout() {
               <Activity className="w-5 h-5 text-primary" />
               <span className="flex flex-col leading-none">
                 <span>Trainpacelab</span>
-                <span className="text-[10px] font-normal font-body text-muted-foreground tracking-wide uppercase">Multi-Sport Endurance</span>
+                <span className="hidden sm:block text-[10px] font-normal font-body text-muted-foreground tracking-wide uppercase">Multi-Sport Endurance</span>
               </span>
             </Link>
-            <nav className="flex items-center gap-1 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden min-w-0">
-              {navLink("/", "Dashboard", Activity)}
-              {navLink("/intelligence", "Intelligence", BrainCircuit)}
-              {navLink("/analytics", "Analytics", LineChart)}
-              {navLink("/plan", "Plan", CalendarRange)}
-              {navLink("/coach", "Coach", MessageCircle)}
+            <nav className="hidden lg:flex items-center gap-1 min-w-0">
+              {PRIMARY_NAV.map((n) => navLink(n.to, n.label, n.icon))}
               {isCoach && navLink("/roster", "Roster", Users)}
               <ToolsDropdown />
             </nav>
+            <div className="lg:hidden">
+              <MobileNav />
+            </div>
           </div>
           <div className="flex items-center gap-1 shrink-0">
-            <div className="flex items-center rounded-md border border-border p-0.5 mr-1" title="Switch between Scientific and Simplified mode">
+            <div className="hidden lg:flex items-center rounded-md border border-border p-0.5 mr-1" title="Switch between Scientific and Simplified mode">
               <button
                 type="button"
                 onClick={() => setLens("scientific")}
@@ -75,11 +76,11 @@ export default function AppLayout() {
                 <span className="hidden lg:inline">Simplified</span>
               </button>
             </div>
-            <Link to="/import" title="Imports" className="flex items-center justify-center h-9 w-9 rounded-md text-muted-foreground hover:bg-accent">
+            <Link to="/import" title="Imports" className="hidden lg:flex items-center justify-center h-9 w-9 rounded-md text-muted-foreground hover:bg-accent">
               <Upload className="w-4 h-4" />
             </Link>
             {!isPro && (
-              <Button asChild variant="default" size="sm" title="Upgrade plan" className="gap-1.5">
+              <Button asChild variant="default" size="sm" title="Upgrade plan" className="hidden lg:inline-flex gap-1.5">
                 <Link to="/subscribe"><Sparkles className="w-4 h-4" /><span className="hidden sm:inline">Upgrade</span></Link>
               </Button>
             )}
