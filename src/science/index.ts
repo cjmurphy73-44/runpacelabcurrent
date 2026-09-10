@@ -21,3 +21,4 @@ export * from './injury';
 export * from './racePacing';
 export * from './racePrediction';
 export * from './norwegianEngine';
+export * from './reconciliation';
