@@ -1,77 +1,91 @@
-// src/science/norwegianEngine.ts
-import { getTrainingPaces, TrainingPaces } from './vdot';
+import { getTrainingPaces } from './vdot';
 
-export interface NorwegianIntervalPrescription {
-  sessionType: 'double_threshold_am' | 'double_threshold_pm' | 'cruise_intervals';
-  targetLactateMin: number; // e.g. 2.0 mmol/L
-  targetLactateMax: number; // e.g. 3.5 mmol/L
-  targetRpe: number;        // e.g. 6 - 7
+export type IntervalFormat = '10x1000' | '5x2000' | '4x3000';
+
+export interface NorwegianPrescription {
+  format: IntervalFormat;
+  vdot: number;
   recommendedPaceSecPerKm: number;
   formattedPace: string;
-  repeatDistanceMeters: number;
-  repeatCount: number;
+  targetLactateMin: number;
+  targetLactateMax: number;
+  targetRpe: number;
   recoverySeconds: number;
+  repeatCount: number;
+  repeatDistanceMeters: number;
   totalWorkMeters: number;
-  decouplingLimitPct: number; // typically 5.0%
 }
 
-export function generateNorwegianSession(
-  vdot: number,
-  format: '10x1000' | '5x2000' | '4x3000' = '5x2000'
-): NorwegianIntervalPrescription {
+export interface DecouplingResult {
+  decouplingPct: number;
+  isExceeded: boolean;
+  status: string;
+}
+
+export interface TelemetryInputs {
+  firstHalfAvgSpeed: number;
+  firstHalfAvgHr: number;
+  secondHalfAvgSpeed: number;
+  secondHalfAvgHr: number;
+}
+
+export function calculateNorwegianPrescription(vdot: number, format: IntervalFormat): NorwegianPrescription {
   const paces = getTrainingPaces(vdot);
-  // Norwegian threshold pacing sits slightly slower than traditional single T-pace (approx +2 to +4s / km)
-  // to ensure blood lactate stays firmly below OBLA (2.0 - 3.5 mmol/L).
-  const thresholdSecPerKm = paces.threshold.secPerKm + 3;
-  const minutes = Math.floor(thresholdSecPerKm / 60);
-  const seconds = Math.round(thresholdSecPerKm % 60);
-  const formattedPace = `${minutes}:${seconds < 10 ? '0' : ''}${seconds}/km`;
+  const targetSecPerKm = Math.round(paces.threshold.secPerKm + 3);
 
-  let repeatDistance = 2000;
-  let repeatCount = 5;
-  let recoverySeconds = 60;
+  const mins = Math.floor(targetSecPerKm / 60);
+  const secs = targetSecPerKm % 60;
+  const formattedPace = `${mins}:${secs < 10 ? '0' : ''}${secs}/km`;
 
-  if (format === '10x1000') {
-    repeatDistance = 1000;
-    repeatCount = 10;
-    recoverySeconds = 45;
-  } else if (format === '4x3000') {
-    repeatDistance = 3000;
-    repeatCount = 4;
+  let repeatCount = 10;
+  let repeatDistanceMeters = 1000;
+  let recoverySeconds = 45;
+
+  if (format === '5x2000') {
+    repeatCount = 5;
+    repeatDistanceMeters = 2000;
     recoverySeconds = 90;
+  } else if (format === '4x3000') {
+    repeatCount = 4;
+    repeatDistanceMeters = 3000;
+    recoverySeconds = 120;
   }
 
+  const totalWorkMeters = repeatCount * repeatDistanceMeters;
+
   return {
-    sessionType: 'double_threshold_am',
+    format,
+    vdot,
+    recommendedPaceSecPerKm: targetSecPerKm,
+    formattedPace,
     targetLactateMin: 2.0,
     targetLactateMax: 3.5,
     targetRpe: 6.5,
-    recommendedPaceSecPerKm: thresholdSecPerKm,
-    formattedPace,
-    repeatDistanceMeters: repeatDistance,
-    repeatCount,
     recoverySeconds,
-    totalWorkMeters: repeatDistance * repeatCount,
-    decouplingLimitPct: 5.0,
+    repeatCount,
+    repeatDistanceMeters,
+    totalWorkMeters,
   };
 }
 
-export function checkCardiacDecoupling(
-  firstHalfAvgHr: number,
-  firstHalfAvgSpeed: number,
-  secondHalfAvgHr: number,
-  secondHalfAvgSpeed: number
-): { decouplingPct: number; isExceeded: boolean; status: string } {
-  const ef1 = firstHalfAvgSpeed / Math.max(1, firstHalfAvgHr);
-  const ef2 = secondHalfAvgSpeed / Math.max(1, secondHalfAvgHr);
-  const decouplingPct = Number((((ef1 - ef2) / ef1) * 100).toFixed(2));
-  const isExceeded = decouplingPct > 5.0;
+export function calculateDecoupling(inputs: TelemetryInputs): DecouplingResult {
+  const ef1 = inputs.firstHalfAvgHr > 0 ? inputs.firstHalfAvgSpeed / inputs.firstHalfAvgHr : 0;
+  const ef2 = inputs.secondHalfAvgHr > 0 ? inputs.secondHalfAvgSpeed / inputs.secondHalfAvgHr : 0;
+
+  let decouplingPct = 0;
+  if (ef1 > 0 && ef2 > 0) {
+    decouplingPct = Number((((ef1 - ef2) / ef1) * 100).toFixed(1));
+  }
+
+  const absDecoupling = Math.abs(decouplingPct);
+  const isExceeded = absDecoupling > 5.0;
+  const status = isExceeded
+    ? `Aerobic decoupling is ${absDecoupling}%, exceeding the 5.0% threshold. Cardiac drift indicates accumulated fatigue or excessive initial intensity.`
+    : `Aerobic decoupling is ${absDecoupling}%, well within the target < 5.0% band. Excellent aerobic stability and pacing control.`;
 
   return {
-    decouplingPct,
+    decouplingPct: absDecoupling,
     isExceeded,
-    status: isExceeded
-      ? 'Warning: Aerobic decoupling > 5%. Glycogen depletion or heat strain detected.'
-      : 'Optimal: Aerobic stability within elite threshold tolerance (< 5%).',
+    status,
   };
 }
