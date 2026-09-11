@@ -51,7 +51,7 @@ export default function CorosIntegration({ athleteId }) {
   };
 
   const disconnect = async () => {
-    if (!window.confirm("Disconnect your COROS account? Future COROS webhooks will stop syncing until you reconnect.")) return;
+    if (!window.confirm("Disconnect your COROS account? Auto-sync from COROS will stop until you reconnect.")) return;
     setDisconnecting(true); setError(null);
     try {
       await base44.functions.invoke("corosSync", { action: "disconnect" });
