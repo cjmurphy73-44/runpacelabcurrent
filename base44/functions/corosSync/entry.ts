@@ -2,6 +2,7 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
 import { VALID_SPORTS, calcTrimp, normalizeSport, getOwnedAthlete } from '../../shared/workoutIngest.ts';
 import { env, hmacBase64Url } from '../../shared/oauth.ts';
 
+<<<<<<< Updated upstream
 // COROS MCP (Model Context Protocol) — OAuth 2.1 self-service integration.
 // No COROS developer-portal application or approval required. Endpoints were
 // discovered live from the MCP server's RFC 9728 protected-resource metadata:
@@ -61,6 +62,9 @@ async function parseState(state: string): Promise<{ athleteId: string | null; ve
   try { return { athleteId, verifier: b64urlDecode(verifierB64), ok: true }; }
   catch { return { athleteId, verifier: null, ok: false }; }
 }
+=======
+// ----- action handlers -----
+>>>>>>> Stashed changes
 
 async function fetchWithTimeout(url: string, opts: RequestInit, ms = 20000): Promise<Response> {
   const ctrl = new AbortController();
@@ -79,20 +83,36 @@ async function handleOAuthCallback(req, base44) {
   const code = u.searchParams.get('code');
   const state = u.searchParams.get('state') || '';
   if (!code) return Response.json({ error: 'Missing authorization code' }, { status: 400 });
+<<<<<<< Updated upstream
   const { athleteId, verifier, ok } = await parseState(state);
   if (!ok || !athleteId || !verifier) return Response.json({ error: 'Invalid state' }, { status: 400 });
   const clientId = getClientId();
   if (!clientId) return Response.json({ error: 'COROS MCP client not registered' }, { status: 503 });
 
   const tokenRes = await fetchWithTimeout(TOKEN_ENDPOINT, {
+=======
+  const [athleteId, sig] = state.split('.');
+  if (!athleteId || !sig) return Response.json({ error: 'Invalid state' }, { status: 400 });
+  
+  const secretKey = env('COROS_WEBHOOK_SECRET') || env('BASE44_APP_URL') || 'coros-mcp-default-secret';
+  const expected = await hmacBase64Url(athleteId, secretKey);
+  if (expected !== sig) return Response.json({ error: 'Invalid state signature' }, { status: 401 });
+
+  const redirectUri = selfUrl(req);
+  const tokenRes = await fetch('https://mcp.coros.com/mcp/oauth2/token', {
+>>>>>>> Stashed changes
     method: 'POST',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
     body: new URLSearchParams({
       grant_type: 'authorization_code',
       code,
+<<<<<<< Updated upstream
       redirect_uri: REDIRECT_URI,
       client_id: clientId,
       code_verifier: verifier,
+=======
+      redirect_uri: redirectUri,
+>>>>>>> Stashed changes
     }),
   });
   if (!tokenRes.ok) {
@@ -124,14 +144,109 @@ async function handleOAuthCallback(req, base44) {
   return new Response(html, { headers: { 'Content-Type': 'text/html' } });
 }
 
+<<<<<<< Updated upstream
 // App-user action: return the COROS MCP OAuth authorize URL (PKCE) for the browser to redirect to.
 async function handleAuthorize(_req, base44) {
   const clientId = getClientId();
   if (!clientId) return Response.json({ error: 'COROS MCP client not registered. Set the COROS_MCP_CLIENT_ID app secret (DCR-issued client_id).' }, { status: 503 });
+=======
+// Coros → us webhook delivery. No user session; authenticated by X-Coros-Signature == COROS_WEBHOOK_SECRET.
+async function handleWebhook(req, base44) {
+  const webhookSecret = env('COROS_WEBHOOK_SECRET');
+  if (!webhookSecret) return Response.json({ error: 'Webhook secret not configured' }, { status: 503 });
+  const sig = req.headers.get('x-coros-signature');
+  if (!sig || sig !== webhookSecret) return Response.json({ error: 'Unauthorized' }, { status: 401 });
+  const body = await req.json().catch(() => ({}));
+  let athleteId = null;
+  let connection = null;
+  if (body.coros_user_id) {
+    const conns = await base44.asServiceRole.entities.CorosConnection.filter({ coros_user_id: body.coros_user_id });
+    if (conns[0]) { connection = conns[0]; athleteId = connection.athlete_id; }
+  }
+  if (!athleteId && body.athlete_id) athleteId = body.athlete_id;
+  if (!athleteId) return Response.json({ error: 'Could not resolve athlete from webhook payload' }, { status: 400 });
+
+  const activity = body.activity || body.workout || body;
+  let summary = null;
+  let sourceFormat = 'webhook';
+  if (body.fit_file_url || activity.fit_file_url) {
+    try {
+      const r = await fetch(body.fit_file_url || activity.fit_file_url);
+      if (r.ok) {
+        const buf = new Uint8Array(await r.arrayBuffer());
+        summary = parseFitSummary(buf);
+        sourceFormat = 'fit';
+      }
+    } catch (e) { /* fall through to JSON summary */ }
+  }
+  if (!summary) {
+    const dur = Number(activity.duration_seconds ?? activity.duration ?? 0);
+    const distRaw = activity.distance_km ?? (activity.distance_meters ? activity.distance_meters / 1000 : null);
+    summary = {
+      derived_date: activity.date || activity.start_time?.slice(0, 10) || null,
+      sport: normalizeSport(activity.sport || activity.activity_type),
+      duration_seconds: dur,
+      distance_km: distRaw !== null ? Math.round(distRaw * 100) / 100 : Number(activity.distance_km) || null,
+      avg_hr: Number(activity.avg_heart_rate ?? activity.average_heart_rate) || null,
+      max_hr: Number(activity.max_heart_rate) || null,
+    };
+  }
+
+  const date = summary.derived_date;
+  let durationMinutes = summary.duration_seconds ? summary.duration_seconds / 60 : Number(activity.duration_minutes || 0);
+  if (!date || isNaN(Date.parse(date)) || durationMinutes < 1 || durationMinutes > 1440) {
+    return Response.json({ error: 'Invalid activity: missing date or duration out of range' }, { status: 400 });
+  }
+  if (new Date(date) > new Date(Date.now() + 24 * 3600 * 1000)) {
+    return Response.json({ error: 'date cannot be in the future' }, { status: 400 });
+  }
+  const sport = VALID_SPORTS.includes(summary.sport) ? summary.sport : 'running';
+  const distanceKm = summary.distance_km || 0;
+
+  const athlete = await base44.asServiceRole.entities.AthleteProfile.get(athleteId).catch(() => null);
+  if (!athlete) return Response.json({ error: 'Athlete profile not found' }, { status: 404 });
+
+  const existingSessions = await base44.asServiceRole.entities.WorkoutSession.filter({ athlete_id: athleteId, date });
+  const isDuplicate = existingSessions.some((s) =>
+    s.sport === sport && Math.abs((s.duration_minutes || 0) - durationMinutes) < 1 && Math.abs((s.distance_km || 0) - distanceKm) < 0.1
+  );
+  if (isDuplicate) return Response.json({ success: true, skipped: true });
+
+  const restHr = athlete.resting_hr || 60;
+  const maxHr = athlete.max_heart_rate || summary.max_hr || 190;
+  const sessionTrimp = summary.avg_hr ? calcTrimp(durationMinutes, summary.avg_hr, restHr, maxHr, athlete.sex) : 0;
+
+  const session = await base44.asServiceRole.entities.WorkoutSession.create({
+    athlete_id: athleteId,
+    created_by_id: athlete.created_by_id,
+    date,
+    sport,
+    duration_minutes: Math.round(durationMinutes * 100) / 100,
+    duration_seconds: Math.round(durationMinutes * 60),
+    distance_km: distanceKm,
+    avg_hr: summary.avg_hr || undefined,
+    max_hr: summary.max_hr || undefined,
+    source_format: sourceFormat,
+    session_trimp: sessionTrimp,
+  });
+
+  try { await base44.asServiceRole.functions.invoke('calculateDailyTRIMP', { athlete_id: athleteId, date }); } catch (e) { console.warn('calculateDailyTRIMP failed:', e); }
+  try { await base44.asServiceRole.functions.invoke('postWorkoutAIEvaluation', { athlete_id: athleteId, workout_session_id: session.id }); } catch (e) { console.warn('postWorkoutAIEvaluation failed:', e); }
+
+  if (connection) {
+    await base44.asServiceRole.entities.CorosConnection.update(connection.id, { last_sync_at: new Date().toISOString(), last_error: '' });
+  }
+  return Response.json({ success: true, workout_session_id: session.id });
+}
+
+// App-user action: return the COROS MCP OAuth authorize URL + signed state so the browser can redirect.
+async function handleAuthorize(req, base44) {
+>>>>>>> Stashed changes
   const user = await base44.auth.me();
   if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
   const athlete = await getOwnedAthlete(base44, user.id);
   if (!athlete) return Response.json({ error: 'No athlete profile found' }, { status: 404 });
+<<<<<<< Updated upstream
 
   const verifier = randomB64url(32);
   const challenge = await pkceChallenge(verifier);
@@ -146,6 +261,13 @@ async function handleAuthorize(_req, base44) {
     state,
   });
   return Response.json({ authorize_url: `${AUTHORIZE_ENDPOINT}?${params.toString()}` });
+=======
+  const secretKey = env('COROS_WEBHOOK_SECRET') || env('BASE44_APP_URL') || 'coros-mcp-default-secret';
+  const state = `${athlete.id}.${await hmacBase64Url(athlete.id, secretKey)}`;
+  const redirectUri = selfUrl(req);
+  const params = new URLSearchParams({ response_type: 'code', redirect_uri: redirectUri, state });
+  return Response.json({ authorize_url: `https://mcp.coros.com/mcp/oauth2/authorize?${params.toString()}`, redirect_uri: redirectUri });
+>>>>>>> Stashed changes
 }
 
 async function handleStatus(base44) {
@@ -294,6 +416,7 @@ async function handleSyncHistorical(base44) {
   const conn = conns[0];
   if (!conn || !conn.access_token) return Response.json({ error: 'COROS account not connected' }, { status: 409 });
 
+<<<<<<< Updated upstream
   let accessToken;
   try { accessToken = await refreshIfNeeded(conn, base44); }
   catch (e) {
@@ -309,6 +432,84 @@ async function handleSyncHistorical(base44) {
   let result;
   try {
     result = await mcpToolCall(accessToken, 'querySportRecords', { startDate: fmt(start), endDate: fmt(end) });
+=======
+  const now = Date.now();
+  const expiresAt = conn.token_expires_at ? Date.parse(conn.token_expires_at) : 0;
+  let accessToken = conn.access_token;
+  if (expiresAt <= now + 60_000 && conn.refresh_token) {
+    try {
+      const r = await fetch('https://mcp.coros.com/mcp/oauth2/token', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: new URLSearchParams({
+          grant_type: 'refresh_token',
+          refresh_token: conn.refresh_token,
+        }),
+      });
+      if (r.ok) {
+        const tok = await r.json();
+        accessToken = tok.access_token;
+        await base44.asServiceRole.entities.CorosConnection.update(conn.id, {
+          access_token: tok.access_token,
+          refresh_token: tok.refresh_token || conn.refresh_token,
+          token_expires_at: new Date(now + (tok.expires_in || 3600) * 1000).toISOString(),
+        });
+      }
+    } catch (e) { /* keep best-effort */ }
+  }
+
+  let imported = 0;
+  let errors = 0;
+  try {
+    const res = await fetch('https://mcp.coros.com/mcp/v1/activities', { headers: { Authorization: `Bearer ${accessToken}` } });
+    if (!res.ok) {
+      await base44.asServiceRole.entities.CorosConnection.update(conn.id, { last_error: `Historical fetch failed: ${res.status}` });
+      return Response.json({ error: `Historical fetch failed: ${res.status}` }, { status: 502 });
+    }
+    const data = await res.json();
+    const list = Array.isArray(data) ? data : (data.activities || data.items || data.data || []);
+    const restHr = athlete.resting_hr || 60;
+    const maxHr = athlete.max_heart_rate || 190;
+    const toCreate = [];
+    for (const a of list) {
+      const date = a.date || (a.start_time ? a.start_time.slice(0, 10) : null) || (a.timestamp ? a.timestamp.slice(0, 10) : null);
+      const durationSeconds = Number(a.duration_seconds ?? a.duration ?? a.total_duration_seconds ?? 0);
+      const durationMinutes = durationSeconds / 60 || Number(a.duration_minutes || 0);
+      if (!date || isNaN(Date.parse(date)) || durationMinutes < 1 || durationMinutes > 1440) { errors++; continue; }
+      const sport = normalizeSport(a.sport || a.activity_type || a.type);
+      let distanceKm = Number(a.distance_km ?? 0);
+      if (!distanceKm && a.distance_m) distanceKm = a.distance_m / 1000;
+      const existing = await base44.asServiceRole.entities.WorkoutSession.filter({ athlete_id: athlete.id, date });
+      const dup = existing.some((s) => s.sport === sport && Math.abs((s.duration_minutes || 0) - durationMinutes) < 1 && Math.abs((s.distance_km || 0) - distanceKm) < 0.1);
+      if (dup) continue;
+      const avgHr = Number(a.avg_heart_rate ?? a.average_heart_rate) || null;
+      const maxHrRow = Number(a.max_heart_rate) || null;
+      toCreate.push({
+        athlete_id: athlete.id,
+        created_by_id: athlete.created_by_id,
+        date,
+        sport,
+        duration_minutes: Math.round(durationMinutes * 100) / 100,
+        duration_seconds: Math.round(durationMinutes * 60),
+        distance_km: Math.round(distanceKm * 100) / 100,
+        avg_hr: avgHr || undefined,
+        max_hr: maxHrRow || undefined,
+        source_format: 'webhook',
+        session_trimp: avgHr ? calcTrimp(durationMinutes, avgHr, restHr, maxHr, athlete.sex) : 0,
+      });
+    }
+    if (toCreate.length) {
+      for (let i = 0; i < toCreate.length; i += 500) {
+        await base44.asServiceRole.entities.WorkoutSession.bulkCreate(toCreate.slice(i, i + 500));
+      }
+    }
+    imported = toCreate.length;
+    const dates = [...new Set(toCreate.map((s) => s.date))];
+    for (const d of dates) {
+      try { await base44.asServiceRole.functions.invoke('calculateDailyTRIMP', { athlete_id: athlete.id, date: d }); } catch (e) { /* keep going */ }
+    }
+    await base44.asServiceRole.entities.CorosConnection.update(conn.id, { last_sync_at: new Date().toISOString(), last_error: '' });
+>>>>>>> Stashed changes
   } catch (e) {
     await base44.asServiceRole.entities.CorosConnection.update(conn.id, { last_error: e.message });
     return Response.json({ error: e.message }, { status: 502 });
@@ -364,6 +565,13 @@ Deno.serve(async (req) => {
     const body = await req.json().catch(() => ({}));
     const action = body.action || u.searchParams.get('action');
 
+<<<<<<< Updated upstream
+=======
+    if (action === 'webhook' || req.headers.get('x-coros-signature')) {
+      const innerReq = new Request(req.url, { method: 'POST', headers: req.headers, body: JSON.stringify(body) });
+      return await handleWebhook(innerReq, base44);
+    }
+>>>>>>> Stashed changes
     if (action === 'authorize') return await handleAuthorize(req, base44);
     if (action === 'status') return await handleStatus(base44);
     if (action === 'sync_historical') return await handleSyncHistorical(base44);

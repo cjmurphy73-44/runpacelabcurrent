@@ -15,8 +15,7 @@ if lsof -Pi :7860 -sTCP:LISTEN -t >/dev/null; then
     echo "✅ Odysseus AI is already running on port 7860."
 else
     echo "⚡ Starting Odysseus AI on port 7860..."
-    cd ~/odysseus && ./start-macos.sh > /dev/null 2>&1 &
-    cd - > /dev/null
+    (cd ~/odysseus && ./start-macos.sh > /dev/null 2>&1 &)
     
     echo "⏳ Waiting for Odysseus to bind port 7860..."
     for i in {1..15}; do
@@ -28,25 +27,10 @@ else
     done
 fi
 
-# 3. Start Base44 App (guaranteed to see 7860 is taken and land on 7861)
-if lsof -Pi :7861 -sTCP:LISTEN -t >/dev/null || lsof -Pi :5173 -sTCP:LISTEN -t >/dev/null; then
-    echo "✅ Base44 dev server is already active."
-else
-    echo "⚡ Starting Base44 remote dev server on port 7861..."
-    base44 dev --remote &
-    sleep 3
-fi
+# 3. Start Frontend via Base44 CLI with remote backend proxy (port 7861 / default)
+echo "⚡ Starting Base44 remote dev server..."
+base44 dev --remote &
 
-# 4. Automatically open all browser tabs
-echo "🌐 Opening Odysseus, Local App, and Base44 Cloud Editor..."
-sleep 2
-open http://127.0.0.1:7860
-open http://localhost:7861
-open https://app.base44.com/apps/6a504ebe6a5a6d1be058226c/editor/preview
-
-echo ""
 echo "🎉 All systems go!"
 echo "   🔹 Odysseus AI:    http://127.0.0.1:7860"
-echo "   🔹 Base44 Local:   http://localhost:7861"
-echo "   🔹 Base44 Cloud:   https://app.base44.com/apps/6a504ebe6a5a6d1be058226c/editor/preview"
-echo "--------------------------------------------------"
+echo "   🔹 Base44 Cloud:   https://trainpacelab.base44.app"
