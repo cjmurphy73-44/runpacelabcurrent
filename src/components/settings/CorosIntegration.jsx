@@ -30,7 +30,16 @@ export default function CorosIntegration({ athleteId }) {
       const res = await base44.functions.invoke("corosSync", { action: "authorize" });
       const url = res.data?.authorize_url || res.authorize_url;
       if (!url) throw new Error("No authorize URL returned");
-      window.location.href = url;
+      // OAuth cross-site redirects must run in a top-level window so the provider's
+      // SameSite=Lax state cookie survives the redirect back into its callback.
+      // Inside an iframe (builder preview) that cookie is dropped → "Invalid state".
+      if (window.self !== window.top) {
+        window.open(url, "_blank");
+        const onFocus = () => { loadStatus(); setConnecting(false); };
+        window.addEventListener("focus", onFocus, { once: true });
+      } else {
+        window.location.href = url;
+      }
     } catch (e) {
       setError(e?.response?.data?.error || "Could not start COROS connection.");
       setConnecting(false);
