@@ -86,7 +86,7 @@ export default function CorosIntegration({ athleteId }) {
                 : connected
                   ? status?.last_sync_at
                     ? `Last sync ${new Date(status.last_sync_at).toLocaleString()}`
-                    : "Connected — webhooks will auto-sync new activities"
+                    : "Connected — use Sync historical to pull activities"
                   : "Not connected"}
             </p>
             {connected && status?.last_error && (
