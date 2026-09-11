@@ -46,28 +46,26 @@ async function pkceChallenge(verifier: string): Promise<string> {
   return b64url(digest);
 }
 
-// HMAC-signed state carries athleteId + the PKCE verifier so the callback is stateless.
-// Format: <athleteId>.<verifierB64>.<sig>  where sig = HMAC(<athleteId>.<verifierB64>, clientId).
-async function buildState(athleteId: string, verifier: string): Promise<string> {
-  const payload = `${athleteId}.${b64url(new TextEncoder().encode(verifier))}`;
-  const sig = await hmacBase64Url(payload, getClientId());
-  return `${payload}.${sig}`;
+// HMAC-signed state carries ONLY the athleteId; the PKCE verifier is derived
+// deterministically from athleteId + client secret so it never round-trips through
+// the provider. Format: <athleteId>.<sig>  where sig = HMAC(athleteId, clientId).
+async function buildState(athleteId: string): Promise<string> {
+  const sig = await hmacBase64Url(athleteId, getClientId());
+  return `${athleteId}.${sig}`;
 }
-async function parseState(state: string): Promise<{ athleteId: string | null; verifier: string | null; ok: boolean }> {
+async function parseState(state: string): Promise<{ athleteId: string | null; ok: boolean }> {
   const s = state || '';
-  const lastDot = s.lastIndexOf('.');
-  if (lastDot < 0) return { athleteId: null, verifier: null, ok: false };
-  const sig = s.slice(lastDot + 1);
-  const payload = s.slice(0, lastDot);
-  if (!sig || !payload) return { athleteId: null, verifier: null, ok: false };
-  if ((await hmacBase64Url(payload, getClientId())) !== sig) return { athleteId: null, verifier: null, ok: false };
-  const dot = payload.indexOf('.');
-  if (dot < 0) return { athleteId: null, verifier: null, ok: false };
-  const athleteId = payload.slice(0, dot);
-  const verifierB64 = payload.slice(dot + 1);
-  if (!athleteId || !verifierB64) return { athleteId, verifier: null, ok: false };
-  try { return { athleteId, verifier: b64urlDecode(verifierB64), ok: true }; }
-  catch { return { athleteId, verifier: null, ok: false }; }
+  const dot = s.indexOf('.');
+  if (dot < 0) return { athleteId: null, ok: false };
+  const athleteId = s.slice(0, dot);
+  const sig = s.slice(dot + 1);
+  if (!athleteId || !sig) return { athleteId: null, ok: false };
+  if ((await hmacBase64Url(athleteId, getClientId())) !== sig) return { athleteId: null, ok: false };
+  return { athleteId, ok: true };
+}
+// Deterministic PKCE verifier — recomputable in the callback from the athleteId alone.
+async function deriveVerifier(athleteId: string): Promise<string> {
+  return b64url(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(`${athleteId}:pkce:${getClientId()}`)));
 }
 
 async function fetchWithTimeout(url: string, opts: RequestInit, ms = 20000): Promise<Response> {
@@ -87,8 +85,16 @@ async function handleOAuthCallback(req, base44) {
   const code = u.searchParams.get('code');
   const state = u.searchParams.get('state') || '';
   if (!code) return Response.json({ error: 'Missing authorization code' }, { status: 400 });
-  const { athleteId, verifier, ok } = await parseState(state);
-  if (!ok || !athleteId || !verifier) return Response.json({ error: 'Invalid state' }, { status: 400 });
+  const parsed = await parseState(state);
+  if (!parsed.ok || !parsed.athleteId) {
+    // Diagnostic: shows what COROS actually echoes back as state (length / format).
+    return Response.json({
+      error: 'Invalid state',
+      diag: { len: state.length, dots: (state.match(/\./g) || []).length, head: state.slice(0, 30), tail: state.slice(-30) },
+    }, { status: 400 });
+  }
+  const { athleteId } = parsed;
+  const verifier = await deriveVerifier(athleteId);
   const clientId = getClientId();
   if (!clientId) return Response.json({ error: 'COROS MCP client not registered' }, { status: 503 });
 
@@ -141,9 +147,9 @@ async function handleAuthorize(_req, base44) {
   const athlete = await getOwnedAthlete(base44, user.id);
   if (!athlete) return Response.json({ error: 'No athlete profile found' }, { status: 404 });
 
-  const verifier = randomB64url(32);
+  const verifier = await deriveVerifier(athlete.id);
   const challenge = await pkceChallenge(verifier);
-  const state = await buildState(athlete.id, verifier);
+  const state = await buildState(athlete.id);
   const params = new URLSearchParams({
     response_type: 'code',
     client_id: clientId,
