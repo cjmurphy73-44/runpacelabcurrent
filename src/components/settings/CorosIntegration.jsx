@@ -125,10 +125,18 @@ export default function CorosIntegration({ athleteId }) {
       </div>
       {error && <p className="text-sm text-destructive">{error}</p>}
       {info && <p className="text-sm text-primary">{info}</p>}
-      <p className="text-xs text-muted-foreground">
-        Prefer a manual export? Drag exported <span className="font-medium">.fit</span> files from the COROS app
-        (Profile → Workout → Export Data) into the bulk importer on the dashboard.
-      </p>
+      <div className="space-y-1">
+        <p className="text-xs text-muted-foreground">
+          <span className="font-medium text-foreground">Heads up:</span> COROS's authorization window is short
+          (about a minute). For a reliable connection, <span className="font-medium">log into coros.com in this
+          browser first</span>, then click Connect and approve quickly. If it still fails, the manual export
+          below always works.
+        </p>
+        <p className="text-xs text-muted-foreground">
+          Prefer a manual export? Drag exported <span className="font-medium">.fit</span> files from the COROS app
+          (Profile → Workout → Export Data) into the bulk importer on the dashboard.
+        </p>
+      </div>
     </div>
   );
 }
