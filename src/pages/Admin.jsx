@@ -3,7 +3,8 @@ import { base44 } from "@/api/base44Client";
 import { useAuth } from "@/lib/AuthContext";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, DollarSign, Users, Activity as ActivityIcon, TrendingUp, ShieldAlert } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Loader2, DollarSign, Users, Activity as ActivityIcon, TrendingUp, ShieldAlert, Database, RefreshCw } from "lucide-react";
 import PageShell from "@/components/layout/PageShell";
 
 const PLAN_PRICE = { free: 0, pro: 19, team: 49 };
@@ -15,6 +16,21 @@ export default function Admin() {
   const [athletes, setAthletes] = useState([]);
   const [users, setUsers] = useState([]);
   const [error, setError] = useState(null);
+  const [syncing, setSyncing] = useState(false);
+  const [syncMsg, setSyncMsg] = useState(null);
+  const [syncErr, setSyncErr] = useState(null);
+
+  const syncAirtable = async () => {
+    setSyncing(true); setSyncErr(null); setSyncMsg(null);
+    try {
+      const res = await base44.functions.invoke("airtableSync", { action: "sync_business_snapshot" });
+      const d = res.data || res;
+      setSyncMsg(`Pushed snapshot — MRR $${d.snapshot?.mrr_usd ?? 0}, ${d.snapshot?.users ?? 0} users, ${d.snapshot?.athletes ?? 0} athletes. Airtable: ${d.airtable?.system_health?.updated ?? 0} metrics, ${d.airtable?.user_segments?.updated ?? 0} segments updated.`);
+    } catch (e) {
+      setSyncErr(e?.response?.data?.error || e?.message || "Sync failed.");
+    }
+    setSyncing(false);
+  };
 
   useEffect(() => {
     (async () => {
@@ -108,6 +124,23 @@ export default function Admin() {
           </CardContent>
         </Card>
       </div>
+
+      <Card className="mt-4">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2"><Database className="w-4 h-4" /> Airtable sync</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <p className="text-sm text-muted-foreground">
+            Push this snapshot (MRR, plan counts, user/athlete/workout totals) into your Airtable business tracker.
+          </p>
+          <Button onClick={syncAirtable} disabled={syncing}>
+            {syncing ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <RefreshCw className="w-4 h-4 mr-2" />}
+            Sync to Airtable
+          </Button>
+          {syncMsg && <p className="text-sm text-primary">{syncMsg}</p>}
+          {syncErr && <p className="text-sm text-destructive">{syncErr}</p>}
+        </CardContent>
+      </Card>
     </PageShell>
   );
 }
