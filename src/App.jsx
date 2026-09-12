@@ -35,6 +35,11 @@ import CoachWorkspace from '@/pages/CoachWorkspace';
 import Subscribe from '@/pages/Subscribe';
 import AdvancedAnalytics from '@/pages/AdvancedAnalytics';
 import TrainingKanban from '@/pages/TrainingKanban';
+import Landing from '@/pages/Landing';
+import Terms from '@/pages/Terms';
+import Privacy from '@/pages/Privacy';
+import Refund from '@/pages/Refund';
+import Admin from '@/pages/Admin';
 // Add page imports here
 
 const AuthenticatedApp = () => {
@@ -68,7 +73,11 @@ const AuthenticatedApp = () => {
       <Route path="/register" element={<Register />} />
       <Route path="/forgot-password" element={<ForgotPassword />} />
       <Route path="/reset-password" element={<ResetPassword />} />
-      <Route element={<ProtectedRoute unauthenticatedElement={<Navigate to="/login" replace />} />}>
+      <Route path="/landing" element={<Landing />} />
+      <Route path="/terms" element={<Terms />} />
+      <Route path="/privacy" element={<Privacy />} />
+      <Route path="/refund" element={<Refund />} />
+      <Route element={<ProtectedRoute unauthenticatedElement={<Navigate to="/landing" replace />} />}>
         <Route element={<AppLayout />}>
           <Route path="/" element={<PageErrorBoundary><Home /></PageErrorBoundary>} />
           <Route path="/intelligence" element={<PageErrorBoundary><IntelligenceHub /></PageErrorBoundary>} />
@@ -90,6 +99,7 @@ const AuthenticatedApp = () => {
           <Route path="/kanban" element={<PageErrorBoundary><TrainingKanban /></PageErrorBoundary>} />
           <Route path="/roster" element={<PageErrorBoundary><CoachWorkspace /></PageErrorBoundary>} />
           <Route path="/subscribe" element={<PageErrorBoundary><Subscribe /></PageErrorBoundary>} />
+          <Route path="/admin" element={<PageErrorBoundary><Admin /></PageErrorBoundary>} />
         </Route>
       </Route>
       <Route path="*" element={<PageNotFound />} />
