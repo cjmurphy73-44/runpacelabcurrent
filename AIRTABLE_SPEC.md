@@ -118,32 +118,43 @@ Links a coach User to an AthleteProfile in their roster: `coach_user_id`, `athle
 - **Injury-aware caps:** `injury_history` raises prehab frequency and softens load ramps.
 - **Dedup:** inbound webhook events and historical syncs dedupe on `event_id` and fuzzy (date+sport+duration+distance).
 
-## 6. Suggested Airtable base layout
+## 6. Airtable base layout (in use)
 
-Create one base ("TrainPaceLab Ops") with these tables:
+The connected base is **"Telemetry & AI Coaching Business Tracker"**
+(`appPJ0dEgcDt0dSNq`). It is a strategy/business base (not an operational mirror of individual
+subscribers/workouts) — the Airtable connector scopes granted are
+`data.records:read/write`, `schema.bases:read`, `user.email:read` only, so no tables or fields can
+be created; `airtableSync` writes records into the existing 5 tables.
 
-1. **Subscribers** — `user_id` (single line text), `plan` (single select: free/pro/team), `status` (single select:
-   active/trialing/past_due/canceled), `mrr` (formula: plan=pro→19, plan=team→49, else 0), `current_period_end` (date),
-   `stripe_customer_id` (text), `created_date` (date).
-2. **Athletes** — `athlete_id` (text), `name` (text), `role` (single select: athlete/coach), `tier` (single select:
-   conservative/moderate/aggressive), `current_ctl`/`current_atl`/`current_tsb` (number), `last_data_sync` (date).
-3. **Workouts** — `session_id` (text), `athlete_id` (link → Athletes), `date` (date), `sport` (single select),
-   `duration_minutes` (number), `distance_km` (number), `session_trimp` (number), `source_format` (single select).
-4. **Plans** — `plan_id` (text), `athlete_id` (link → Athletes), `status` (single select: draft/active/completed/archived),
-   `tier` (single select), `start_date`/`end_date` (date), `plan_title` (text).
-5. **CoachRoster** — `coach_user_id` (text), `athlete_id` (link → Athletes), `status` (single select: active/archived),
-   `notes` (long text).
-6. **RefData — Plans & Pricing** — a small reference table mirroring section 2 above for stakeholders.
+| Table | Airtable ID | Key field | Purpose in the sync |
+|---|---|---|---|
+| System Health Metrics | `tblbmAUsLIgZ1kt9Q` | `Metric Name` | One row per live KPI (Active Subscribers, Pro/Team counts, Registered Users, Athlete Profiles, Workout Sessions, MRR USD, Airtable Sync). `Current Status` holds the value; `Last Tested Date` stamps the sync row. |
+| User Segments | `tblhdWaxBcAlAJuj9` | `Segment Name` | One row per plan segment — "Free / Community" (`Pricing Tier` = Free), "Pro Athlete" (Pro), "Coach / Team" (Coach/Team). `Projected ARPU` = plan revenue ÷ plan count; `Usage Tier` = `${count} users/subscribers`. |
+| Finances & Unit Economics | `tbl98xAicV8mxRgo0` | `Expense or Revenue Category` | A single "MRR (Monthly Recurring Revenue)" row with `Cost Type` = Revenue and `Estimated Monthly Cost` = current MRR in USD. |
+| Features | `tblcI8ifzkmNlNSYr` | — | Strategy/roadmap table; not written by the sync (manually curated). |
+| Data Assets & Security Governance | `tblKq7SHe036DLwhh` | — | Governance table; not written by the sync (manually curated). |
 
-## 7. Sync plan (app → Airtable)
+`singleSelect` values written by the sync are constrained to the field's configured choices:
+`Cost Type` ∈ {Fixed Monthly, Variable/Usage-Based per User, Revenue, Fixed Cost, Variable Cost, COGS};
+`Pricing Tier` ∈ {Free, Pro, Coach/Team, …}. The sync only writes choices that already exist.
 
-Once the Airtable connector is authorized (shared mode, the builder's Airtable), a backend function `airtableSync`
-will push a read-only business snapshot into the base:
+## 7. Sync implementation (app → Airtable)
 
-- Upsert **Subscribers** from the `Subscription` entity (compute MRR per row).
-- Upsert **Athletes** with current load values from `AthleteProfile`.
-- Append a daily **Workouts** summary row per athlete (count, total minutes, total TRIMP).
-- Refresh **CoachRoster** from `CoachAthleteAssignment`.
+The backend function **`airtableSync`** (`base44/functions/airtableSync/entry.ts`) is admin-only and pushes a
+read-only business snapshot into the three writable tables above.
 
-Recommended cadence: a scheduled workflow running nightly. Record limits: Airtable batches ≤10 records per
-write; paginate with `pageSize=100` on reads. Do not use `totalRecordCount` (Enterprise-only).
+- **Action:** `POST` `{ action: "sync_business_snapshot" }` (invoke via `base44.functions.invoke("airtableSync", { action: "sync_business_snapshot" })`).
+- **Source data:** `Subscription`, `AthleteProfile`, `User`, `WorkoutSession` entities, read as the service role
+  (bypasses RLS). Each is listed up to 500 rows.
+- **Computed metrics:**
+  - `mrr` = Σ `PLAN_PRICE[plan]` over active+trialing subscriptions, where `PLAN_PRICE = { free: 0, pro: 19, team: 49 }` (USD/mo, from the Stripe products).
+  - `plan_counts` = { free: users with no Subscription row, pro: active+trialing pro, team: active+trialing team }.
+  - `arpuPro` / `arpuTeam` = plan revenue ÷ plan count (falls back to list price when there are no subscribers).
+- **Upsert:** existing rows are matched on the table's key field (see table above) and updated in place; new
+  metrics are created. Writes are batched ≤10 records per request and throttled (250 ms between calls) to stay
+  under Airtable's 5-req/sec/base limit. Reads paginate with `pageSize=100`; `totalRecordCount` is not used.
+- **Trigger:** manual, via the **Sync to Airtable** button on the Admin dashboard (`/admin`). A scheduled nightly
+  workflow can be added later by wiring `invoke_backend_function` to a `scheduled` trigger (see
+  `get_capability_guide("workflows")`).
+
+The function returns `{ success, snapshot: { mrr_usd, plan_counts, users, athletes, workouts }, airtable: { system_health, finances, user_segments } }`.
