@@ -11,6 +11,8 @@
     "lint": "eslint . --quiet",
     "lint:fix": "eslint . --fix",
     "typecheck": "tsc -p ./jsconfig.json",
+    "test:report": "node scripts/report-build.js",
+    "test:all": "npm test && npm run test:report",
     "preview": "vite preview"
   },
   "dependencies": {
@@ -49,6 +51,7 @@
     "@stripe/react-stripe-js": "^3.0.0",
     "@stripe/stripe-js": "^5.2.0",
     "@tanstack/react-query": "^5.84.1",
+    "axios": "^1.20.0",
     "canvas-confetti": "^1.9.4",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
