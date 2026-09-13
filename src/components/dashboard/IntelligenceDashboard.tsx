@@ -1,6 +1,7 @@
 import React from 'react';
 import { useTelemetryStore } from '../store/useTelemetryStore';
 import { RecoveryWidget } from '../components/RecoveryWidget';
+import { AICoachingInsightsWidget } from '../components/AICoachingInsightsWidget';
 
 export const IntelligenceDashboard: React.FC = () => {
   const workouts = useTelemetryStore((state) => state.workouts);
@@ -30,6 +31,7 @@ export const IntelligenceDashboard: React.FC = () => {
           {/* Left Column: Recovery Intelligence & Biometrics */}
           <div className="lg:col-span-1 space-y-6 min-w-0">
             <RecoveryWidget />
+            <AICoachingInsightsWidget />
             
             {/* Quick Biometric Status Card */}
             <div className="p-6 rounded-2xl bg-slate-900 border border-slate-800 shadow-xl">
