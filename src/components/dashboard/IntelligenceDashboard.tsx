@@ -2,6 +2,7 @@ import React from 'react';
 import { useTelemetryStore } from '../store/useTelemetryStore';
 import { RecoveryWidget } from '../components/RecoveryWidget';
 import { AICoachingInsightsWidget } from '../components/AICoachingInsightsWidget';
+import { AutoReplanPreviewCard } from '../components/dashboard/AutoReplanPreviewCard';
 
 export const IntelligenceDashboard: React.FC = () => {
   const workouts = useTelemetryStore((state) => state.workouts);
@@ -59,6 +60,7 @@ export const IntelligenceDashboard: React.FC = () => {
 
           {/* Right Columns: Workouts & Load Analysis */}
           <div className="lg:col-span-2 space-y-6 min-w-0">
+            <AutoReplanPreviewCard />
             <div className="p-6 rounded-2xl bg-slate-900 border border-slate-800 shadow-xl">
               <div className="flex justify-between items-center mb-4">
                 <h3 className="text-lg font-semibold tracking-wide">Recent Training Sessions</h3>
