@@ -4,6 +4,7 @@ import { RecoveryWidget } from '../components/RecoveryWidget';
 import { AICoachingInsightsWidget } from '../components/AICoachingInsightsWidget';
 import { AutoReplanPreviewCard } from '../components/dashboard/AutoReplanPreviewCard';
 import RaceStrategyPlanner from './RaceStrategyPlanner';
+import { TierGate } from '../components/TierGate';
 
 export const IntelligenceDashboard: React.FC = () => {
   const workouts = useTelemetryStore((state) => state.workouts);
@@ -33,7 +34,9 @@ export const IntelligenceDashboard: React.FC = () => {
           {/* Left Column: Recovery Intelligence & Biometrics */}
           <div className="lg:col-span-1 space-y-6 min-w-0">
             <RecoveryWidget />
-            <AICoachingInsightsWidget />
+            <TierGate feature="unlimited_sync" title="Advanced Telemetry Sync" description="Upgrade to Pro to access unrestricted historical lookback, multi-stream reconciliation, and deep fatigue forecasting.">
+              <AICoachingInsightsWidget />
+            </TierGate>
             
             {/* Quick Biometric Status Card */}
             <div className="p-6 rounded-2xl bg-slate-900 border border-slate-800 shadow-xl">
@@ -61,7 +64,9 @@ export const IntelligenceDashboard: React.FC = () => {
 
           {/* Right Columns: Workouts & Load Analysis */}
           <div className="lg:col-span-2 space-y-6 min-w-0">
-            <AutoReplanPreviewCard />
+            <TierGate feature="adaptive_replan" title="AI Adaptive Re-Planning" description="Upgrade to Pro to unlock automated workout recalculations and dynamic load re-balancing when schedule deviations occur.">
+              <AutoReplanPreviewCard />
+            </TierGate>
             <RaceStrategyPlanner />
             <div className="p-6 rounded-2xl bg-slate-900 border border-slate-800 shadow-xl">
               <div className="flex justify-between items-center mb-4">
