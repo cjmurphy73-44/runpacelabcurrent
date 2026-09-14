@@ -17,6 +17,7 @@ export default defineConfig({
   server: {
     host: '0.0.0.0',
     port: 7860,
+    strictPort: true,
     allowedHosts: ['connors-macbook-pro.tailcbed5c.ts.net']
   },
   test: {
