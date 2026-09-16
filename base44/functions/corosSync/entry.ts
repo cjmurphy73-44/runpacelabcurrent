@@ -461,8 +461,7 @@ async function handleSyncHistorical(base44) {
   // COROS MCP returns sport records as a formatted text report — parse it; fall back to JSON extraction.
   let contentText = result?.content?.[0]?.text;
   if (typeof contentText === 'string') { try { contentText = JSON.parse(contentText); } catch { /* not JSON-encoded */ } }
-  const isTextReport = typeof contentText === 'string' && /Sport Records\b/.test(contentText);
-  const records = isTextReport
+  const records = (typeof contentText === 'string' && /Sport Records\b/.test(contentText))
     ? parseCorosRecordsText(contentText)
     : extractRecords(result);
   const toCreate = [];
@@ -485,7 +484,7 @@ async function handleSyncHistorical(base44) {
     try { await base44.asServiceRole.functions.invoke('calculateDailyTRIMP', { athlete_id: athlete.id, date: d }); } catch { /* keep going */ }
   }
   await base44.asServiceRole.entities.CorosConnection.update(conn.id, { last_sync_at: new Date().toISOString(), last_error: '' });
-  return Response.json({ success: true, imported: toCreate.length, errors, records_found: records.length, isTextReport, contentTextHead: typeof contentText === 'string' ? contentText.slice(0, 300) : String(contentText), blocks: isTextReport ? contentText.split(/(?=^\s*\d+\.\s+)/m).length : 0, sampleParsed: records[0] || null });
+  return Response.json({ success: true, imported: toCreate.length, errors, records_found: records.length, sampleParsed: records[0] || null });
 }
 
 async function handleSyncRecovery(base44) {
