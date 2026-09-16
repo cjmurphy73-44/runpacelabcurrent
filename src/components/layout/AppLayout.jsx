@@ -9,6 +9,7 @@ import BetaFeedbackModal from "@/components/feedback/BetaFeedbackModal";
 import { Activity, Microscope, Zap, Sparkles, Upload, Users, LayoutDashboard } from "lucide-react";
 import { useCoachAccess } from "@/hooks/useCoachAccess";
 import MobileNav from "@/components/layout/MobileNav";
+import PageErrorBoundary from "@/components/common/PageErrorBoundary";
 import { PRIMARY_NAV } from "@/components/layout/navItems";
 
 export default function AppLayout() {
@@ -91,7 +92,9 @@ export default function AppLayout() {
       </header>
       <BetaFeedbackModal open={feedbackOpen} onClose={() => setFeedbackOpen(false)} />
       <main className="max-w-7xl mx-auto px-4 py-8">
-        <Outlet />
+        <PageErrorBoundary>
+          <Outlet />
+        </PageErrorBoundary>
       </main>
     </div>
   );
