@@ -13,6 +13,11 @@ import WeatherAdjust from '@/pages/WeatherAdjust';
 import Zones from '@/pages/Zones';
 import AdvancedAnalytics from '@/pages/AdvancedAnalytics';
 import TrainingPlan from '@/pages/TrainingPlan';
+import AthleteSettings from '@/pages/AthleteSettings';
+import Imports from '@/pages/Imports';
+import Subscribe from '@/pages/Subscribe';
+import CoachWorkspace from '@/pages/CoachWorkspace';
+import Admin from '@/pages/Admin';
 import AppLayout from '@/components/layout/AppLayout';
 import { AuthProvider } from '@/lib/AuthContext';
 import { UIPreferencesProvider } from '@/context/UIPreferencesContext';
@@ -38,6 +43,11 @@ export default function App() {
               <Route path="/zones" element={<Zones />} />
               <Route path="/analytics" element={<AdvancedAnalytics />} />
               <Route path="/plan" element={<TrainingPlan />} />
+              <Route path="/settings" element={<AthleteSettings />} />
+              <Route path="/import" element={<Imports />} />
+              <Route path="/subscribe" element={<Subscribe />} />
+              <Route path="/roster" element={<CoachWorkspace />} />
+              <Route path="/admin" element={<Admin />} />
             </Route>
             <Route path="*" element={<CoachChat />} />
           </Routes>
