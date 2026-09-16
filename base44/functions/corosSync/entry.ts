@@ -1,7 +1,7 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
 import { VALID_SPORTS, calcTrimp, normalizeSport, getOwnedAthlete } from '../../shared/workoutIngest.ts';
 import { env, hmacBase64Url } from '../../shared/oauth.ts';
-import { normalizeCorosRecovery, ingestRecovery } from '../../shared/recoveryIngest.ts';
+import { ingestRecovery } from '../../shared/recoveryIngest.ts';
 
 // COROS MCP (Model Context Protocol) — OAuth 2.1 self-service integration.
 // No COROS developer-portal application or approval required. Endpoints were
@@ -364,15 +364,21 @@ function corosSportCodeToSport(code: number | null, name: string): string {
 function parseCorosRecordsText(text: string): any[] {
   if (!text || typeof text !== 'string') return [];
   const records: any[] = [];
-  // Each record block starts with "N. SportName — YYYY-MM-DD"
-  const blocks = text.split(/(?=^\s*\d+\.\s+)/m);
-  const headRe = /^\s*\d+\.\s+(.+?)\s+[—–-]\s+(\d{4}-\d{2}-\d{2})\s*$/;
-  for (const block of blocks) {
-    const head = block.match(headRe);
-    if (!head) continue;
-    const sportName = head[1].trim();
-    const date = head[2];
-    const durM = block.match(/Duration:\s*(\d{1,2}:\d{2}(?::\d{2})?)|Sets:\s*(\d+)/);
+  // Each record block starts with "N. SportName — YYYY-MM-DD". Use a global regex to
+  // locate every record header, then slice the text between consecutive headers into
+  // a block and parse its fields. (Splitting on a lookahead with \s* produces empty
+  // blocks when \s* consumes the preceding newlines, so we avoid that approach.)
+  const headRe = /(\d+)\.\s+([^\n]+?)\s+[—–-]\s+(\d{4}-\d{2}-\d{2})/g;
+  const heads: { index: number; sportName: string; date: string }[] = [];
+  let m: RegExpExecArray | null;
+  while ((m = headRe.exec(text)) !== null) {
+    heads.push({ index: m.index, sportName: m[2].trim(), date: m[3] });
+  }
+  for (let i = 0; i < heads.length; i++) {
+    const start = heads[i].index;
+    const end = i + 1 < heads.length ? heads[i + 1].index : text.length;
+    const block = text.slice(start, end);
+    const durM = block.match(/Duration:\s*(\d{1,2}:\d{2}(?::\d{2})?)/);
     const distM = block.match(/Distance:\s*([\d.]+)\s*km/i);
     const hrM = block.match(/Avg HR:\s*(\d+)\s*bpm/i);
     const sportTypeM = block.match(/SportType:\s*(\d+)/);
@@ -386,8 +392,8 @@ function parseCorosRecordsText(text: string): any[] {
       durationSeconds = Number(endM[1]) - Number(startM[1]);
     }
     records.push({
-      date,
-      sport: corosSportCodeToSport(sportTypeM ? Number(sportTypeM[1]) : null, sportName),
+      date: heads[i].date,
+      sport: corosSportCodeToSport(sportTypeM ? Number(sportTypeM[1]) : null, heads[i].sportName),
       duration_seconds: durationSeconds,
       distance_km: distM ? Number(distM[1]) : 0,
       avg_heart_rate: hrM ? Number(hrM[1]) : null,
@@ -487,6 +493,54 @@ async function handleSyncHistorical(base44) {
   return Response.json({ success: true, imported: toCreate.length, errors, records_found: records.length, sampleParsed: records[0] || null });
 }
 
+// COROS MCP returns recovery data as formatted text reports across several tools. Each
+// parser below returns a Map<dateString, partial values>; the caller merges them by date.
+function parseCorosSleepHrvText(text: string): Map<string, number> {
+  const out = new Map<string, number>();
+  if (!text) return out;
+  const re = /(\d{4}-\d{2}-\d{2}):\s*\n\s*HRV Avg:\s*(\d+)\s*ms/g;
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(text)) !== null) out.set(m[1], Number(m[2]));
+  return out;
+}
+
+function parseCorosRestingHrText(text: string): Map<string, number> {
+  const out = new Map<string, number>();
+  if (!text) return out;
+  const re = /(\d{4}-\d{2}-\d{2}):\s*(\d+)\s*bpm/g;
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(text)) !== null) out.set(m[1], Number(m[2]));
+  return out;
+}
+
+function parseCorosSleepDataText(text: string): Map<string, { sleep_score: number | null; sleep_duration_hours: number | null }> {
+  const out = new Map<string, { sleep_score: number | null; sleep_duration_hours: number | null }>();
+  if (!text) return out;
+  const re = /(\d{4}-\d{2}-\d{2})\nSleep Score:\s*(\d+)[\s\S]*?Main Sleep:\s*(?:(\d+)h\s*)?(\d+)min/g;
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(text)) !== null) {
+    const hours = m[3] ? Number(m[3]) : 0;
+    const mins = Number(m[4]);
+    out.set(m[1], { sleep_score: Number(m[2]), sleep_duration_hours: Math.round((hours + mins / 60) * 100) / 100 });
+  }
+  return out;
+}
+
+function parseCorosStressText(text: string): Map<string, number> {
+  const out = new Map<string, number>();
+  if (!text) return out;
+  const re = /(\d{4}-\d{2}-\d{2}):\s*\n\s*Average Stress:\s*(\d+)/g;
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(text)) !== null) out.set(m[1], Number(m[2]));
+  return out;
+}
+
+function parseCorosRecoveryStatusText(text: string): number | null {
+  if (!text) return null;
+  const m = text.match(/Recovery:\s*(\d+)\s*%/);
+  return m ? Number(m[1]) : null;
+}
+
 async function handleSyncRecovery(base44) {
   const user = await base44.auth.me();
   if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
@@ -503,39 +557,63 @@ async function handleSyncRecovery(base44) {
     return Response.json({ error: e.message }, { status: 502 });
   }
 
-  // Recovery is a recent-window pull (last 14 days). COROS MCP tool names for daily/recovery
-  // data vary; try a small set of candidates and use the first that returns records.
   const end = new Date();
   const start = new Date();
   start.setDate(start.getDate() - 14);
-  const fmt = (d) => d.toISOString().slice(0, 10);
+  const fmt = (d: Date) => d.toISOString().slice(0, 10).replace(/-/g, '');
+  const todayKey = new Date().toISOString().slice(0, 10);
 
-  const candidates = ['queryDailySummary', 'queryRecoveryReport', 'queryHealthReport', 'queryDailyReport', 'queryRecovery'];
-  let records: any[] = [];
-  let usedTool = '';
-  let lastErr = '';
-  for (const tool of candidates) {
-    try {
-      const result = await mcpToolCall(accessToken, tool, { startDate: fmt(start), endDate: fmt(end) });
-      const recs = extractRecords(result);
-      if (recs.length) { records = recs; usedTool = tool; break; }
-    } catch (e) { lastErr = e.message; /* try next candidate */ }
+  async function callTool(tool: string, args: any): Promise<string> {
+    const result = await mcpToolCall(accessToken, tool, args);
+    let text = result?.content?.[0]?.text;
+    if (typeof text === 'string') { try { text = JSON.parse(text); } catch { /* not JSON-encoded */ } }
+    return typeof text === 'string' ? text : '';
   }
-  if (!records.length) {
-    await base44.asServiceRole.entities.CorosConnection.update(conn.id, { last_error: lastErr || 'No recovery data tool available on COROS MCP' });
-    return Response.json({ error: lastErr || 'No COROS recovery data tool found', imported: 0 }, { status: 502 });
+
+  // Pull each recovery signal. Tools fail independently — a missing signal doesn't abort the sync.
+  const hrvMap = new Map<string, number>();
+  const rhrMap = new Map<string, number>();
+  const sleepMap = new Map<string, { sleep_score: number | null; sleep_duration_hours: number | null }>();
+  const stressMap = new Map<string, number>();
+  let todayRecovery: number | null = null;
+  const toolErrors: string[] = [];
+  const pulls: [string, any, (t: string) => void][] = [
+    ['querySleepHrv', { startDate: fmt(start), endDate: fmt(end), days: 14 }, (t) => parseCorosSleepHrvText(t).forEach((v, k) => hrvMap.set(k, v))],
+    ['queryRestingHeartRate', { days: 14 }, (t) => parseCorosRestingHrText(t).forEach((v, k) => rhrMap.set(k, v))],
+    ['querySleepData', { startDate: fmt(start), endDate: fmt(end) }, (t) => parseCorosSleepDataText(t).forEach((v, k) => sleepMap.set(k, v))],
+    ['queryStressLevel', { days: 14 }, (t) => parseCorosStressText(t).forEach((v, k) => stressMap.set(k, v))],
+  ];
+  for (const [tool, args, ingest] of pulls) {
+    try { ingest(await callTool(tool, args)); } catch (e) { toolErrors.push(`${tool}: ${e.message}`); }
+  }
+  try { todayRecovery = parseCorosRecoveryStatusText(await callTool('queryRecoveryStatus', {})); } catch (e) { toolErrors.push(`queryRecoveryStatus: ${e.message}`); }
+
+  // Merge all signals by date.
+  const dates = new Set<string>([...hrvMap.keys(), ...rhrMap.keys(), ...sleepMap.keys(), ...stressMap.keys()]);
+  if (todayRecovery != null) dates.add(todayKey);
+  if (dates.size === 0) {
+    await base44.asServiceRole.entities.CorosConnection.update(conn.id, { last_error: toolErrors.join('; ') || 'No COROS recovery data returned' });
+    return Response.json({ error: 'No COROS recovery data returned', toolErrors, imported: 0 }, { status: 502 });
   }
 
   const history = await base44.asServiceRole.entities.DailyMetrics.filter({ athlete_id: athlete.id }, '-date', 30);
   let ingested = 0;
   let errors = 0;
-  for (const r of records) {
-    const normalized = normalizeCorosRecovery(r);
-    if (!normalized) { errors++; continue; }
+  for (const date of dates) {
+    const normalized = {
+      date,
+      hrv: hrvMap.get(date) ?? null,
+      resting_hr: rhrMap.get(date) ?? null,
+      sleep_score: sleepMap.get(date)?.sleep_score ?? null,
+      sleep_duration_hours: sleepMap.get(date)?.sleep_duration_hours ?? null,
+      stress_score: stressMap.get(date) ?? null,
+      provider_readiness_score: date === todayKey ? todayRecovery : null,
+    };
+    if (normalized.hrv == null && normalized.resting_hr == null && normalized.sleep_score == null && normalized.sleep_duration_hours == null && normalized.stress_score == null && normalized.provider_readiness_score == null) continue;
     try { await ingestRecovery(base44, athlete.id, normalized, 'coros', history); ingested++; } catch { errors++; }
   }
   await base44.asServiceRole.entities.CorosConnection.update(conn.id, { last_sync_at: new Date().toISOString(), last_error: '' });
-  return Response.json({ success: true, imported: ingested, errors, tool: usedTool, records_found: records.length });
+  return Response.json({ success: true, imported: ingested, errors, dates_found: dates.size, toolErrors });
 }
 
 async function handleListTools(base44) {
@@ -561,8 +639,13 @@ async function handleListTools(base44) {
     const tools = list.json?.result?.tools || [];
     const names = tools.map((t: any) => t.name);
     const sportRecords = tools.find((t: any) => t.name === 'querySportRecords');
-    const recovery = tools.find((t: any) => t.name === 'queryDailySummary' || t.name === 'queryRecoveryReport' || t.name === 'queryHealthReport' || t.name === 'queryDailyReport' || t.name === 'queryRecovery');
-    return Response.json({ querySportRecordsSchema: sportRecords?.inputSchema || null, recoverySchema: recovery?.inputSchema || null, recoveryName: recovery?.name || null });
+    const recoveryTools = ['queryRecoveryStatus', 'querySleepHrv', 'queryRestingHeartRate', 'querySleepData', 'queryStressLevel', 'queryDailyHealthData'];
+    const schemas: Record<string, any> = {};
+    for (const tn of recoveryTools) {
+      const t = tools.find((x: any) => x.name === tn);
+      schemas[tn] = t?.inputSchema || null;
+    }
+    return Response.json({ allToolNames: names, recoverySchemas: schemas });
   } catch (e) { return Response.json({ error: e.message }, { status: 502 }); }
 }
 
