@@ -1,5 +1,5 @@
 import {
-  Activity, BrainCircuit, LineChart, CalendarRange, MessageCircle,
+  Activity, LineChart, CalendarRange, MessageCircle,
   Gauge, CloudSun, LayoutGrid, Target, Trophy, KanbanSquare,
   FlaskConical, HeartPulse,
 } from "lucide-react";
@@ -9,7 +9,6 @@ import {
 
 export const PRIMARY_NAV = [
   { to: "/", label: "Dashboard", icon: Activity },
-  { to: "/intelligence", label: "Intelligence", icon: BrainCircuit },
   { to: "/analytics", label: "Analytics", icon: LineChart },
   { to: "/plan", label: "Plan", icon: CalendarRange },
   { to: "/coach", label: "Coach", icon: MessageCircle },

@@ -19,6 +19,7 @@ import Subscribe from '@/pages/Subscribe';
 import CoachWorkspace from '@/pages/CoachWorkspace';
 import Admin from '@/pages/Admin';
 import AppLayout from '@/components/layout/AppLayout';
+import PageNotFound from '@/lib/PageNotFound';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { queryClientInstance } from '@/lib/query-client';
 import { AuthProvider } from '@/lib/AuthContext';
@@ -51,8 +52,8 @@ export default function App() {
               <Route path="/subscribe" element={<Subscribe />} />
               <Route path="/roster" element={<CoachWorkspace />} />
               <Route path="/admin" element={<Admin />} />
+              <Route path="*" element={<PageNotFound />} />
             </Route>
-            <Route path="*" element={<CoachChat />} />
           </Routes>
           <Toaster />
         </Router>

@@ -14,8 +14,8 @@ export class ErrorBoundary extends React.Component {
     this.state = { hasError: false };
   }
 
-  static getDerivedStateFromError() {
-    return { hasError: true };
+  static getDerivedStateFromError(error) {
+    return { hasError: true, error };
   }
 
   componentDidCatch(error, info) {
@@ -25,8 +25,15 @@ export class ErrorBoundary extends React.Component {
   render() {
     if (this.state.hasError) {
       return (
-        <div className="rounded-xl border border-dashed border-destructive/40 bg-destructive/5 p-4 text-sm text-muted-foreground">
-          This experimental feature hit an error and has been hidden. The rest of the app is unaffected.
+        <div className="rounded-xl border border-dashed border-destructive/40 bg-destructive/5 p-4 space-y-2">
+          <p className="text-sm text-muted-foreground">
+            This experimental feature hit an error and has been hidden. The rest of the app is unaffected.
+          </p>
+          {this.state.error?.message ? (
+            <p className="text-xs font-mono break-all bg-muted rounded-md p-2 text-muted-foreground">
+              {this.state.error.message}
+            </p>
+          ) : null}
         </div>
       );
     }
