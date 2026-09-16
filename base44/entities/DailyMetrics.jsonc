@@ -36,6 +36,10 @@
       "type": "integer",
       "description": "Sleep quality score for the preceding night"
     },
+    "sleep_duration_hours": {
+      "type": "number",
+      "description": "Total sleep duration in hours for the preceding night, when provided by a wearable"
+    },
     "hrv_score": {
       "type": "integer",
       "description": "Heart Rate Variability score for this day"
@@ -49,9 +53,49 @@
       "minimum": 0,
       "description": "Measured resting heart rate for this day, if provided by a wearable"
     },
+    "body_battery": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Garmin Body Battery (0-100) for this day, when provided by Garmin Health"
+    },
+    "stress_score": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Garmin stress score (0-100, lower is better) for this day, when provided by Garmin Health"
+    },
     "readiness_score": {
       "type": "integer",
-      "description": "Aggregate readiness score for this day"
+      "description": "Holistic TrainPaceLab readiness score (0-100) computed by the readiness engine from ingested recovery signals, rolling baselines, and current TSB (Form). Provider-agnostic and comparable across wearables."
+    },
+    "provider_readiness_score": {
+      "type": "integer",
+      "description": "The wearable vendor's native readiness/recovery score (Garmin Training Readiness, COROS Recovery) stored as-is so athletes can compare it against the holistic TrainPaceLab score."
+    },
+    "provider_readiness_source": {
+      "type": "string",
+      "enum": [
+        "garmin",
+        "coros",
+        "suunto",
+        "apple",
+        "polar",
+        "samsung",
+        "manual"
+      ],
+      "description": "Which wearable produced the provider_readiness_score"
+    },
+    "recovery_source": {
+      "type": "string",
+      "enum": [
+        "garmin",
+        "coros",
+        "suunto",
+        "apple",
+        "polar",
+        "samsung",
+        "manual"
+      ],
+      "description": "Which source last populated the recovery biometric fields (hrv/sleep/resting_hr/etc.), shown as a source badge in the UI"
     },
     "notes": {
       "type": "string",

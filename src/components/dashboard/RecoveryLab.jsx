@@ -4,6 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { useFitness } from "@/context/FitnessContext";
 import RecoveryCsvDropzone from "@/components/dashboard/RecoveryCsvDropzone";
 import BiometricLogForm from "@/components/dashboard/BiometricLogForm";
+import RecoverySourceBadge from "@/components/dashboard/RecoverySourceBadge";
 import moment from "moment";
 
 function buildRows(biometricTelemetry) {
@@ -36,24 +37,26 @@ export default function RecoveryLab({ athleteId }) {
                 <thead>
                   <tr className="text-left text-xs text-muted-foreground border-b border-border">
                     <th className="py-2 pr-3">Date</th>
+                    <th className="py-2 pr-3">Source</th>
                     <th className="py-2 pr-3">HRV (ms)</th>
-                    <th className="py-2 pr-3">Sleep Score</th>
-                    <th className="py-2 pr-3">Sleep (hrs)</th>
-                    <th className="py-2 pr-3">Active Cal</th>
+                    <th className="py-2 pr-3">Sleep</th>
+                    <th className="py-2 pr-3">RHR</th>
+                    <th className="py-2 pr-3">Readiness</th>
                     <th className="py-2 pr-3">Status</th>
                   </tr>
                 </thead>
                 <tbody>
                   {rows.map((r) => (
                     <tr key={r.id} className={`border-b border-border last:border-0 ${r.suppressed ? "bg-destructive/10" : ""}`}>
-                      <td className="py-2 pr-3">{moment(r.date).format("MMM D")}</td>
+                      <td className="py-2 pr-3 whitespace-nowrap">{moment(r.date).format("MMM D")}</td>
+                      <td className="py-2 pr-3">{r.recovery_source ? <RecoverySourceBadge source={r.recovery_source} /> : <span className="text-muted-foreground">-</span>}</td>
                       <td className="py-2 pr-3">{r.hrv_ms ?? "-"}</td>
-                      <td className="py-2 pr-3">{r.sleep_score ?? "-"}</td>
-                      <td className="py-2 pr-3">{r.sleep_duration_hours ?? "-"}</td>
-                      <td className="py-2 pr-3">{r.active_calories ?? "-"}</td>
+                      <td className="py-2 pr-3">{r.sleep_duration_hours != null ? `${r.sleep_duration_hours}h` : (r.sleep_score ?? "-")}</td>
+                      <td className="py-2 pr-3">{r.resting_hr ?? "-"}</td>
+                      <td className="py-2 pr-3 font-medium">{r.readiness_score ?? "-"}</td>
                       <td className="py-2 pr-3">
                         {r.suppressed ? (
-                          <Badge variant="destructive">Suppressed Recovery State</Badge>
+                          <Badge variant="destructive">Suppressed</Badge>
                         ) : (
                           <Badge variant="secondary">Normal</Badge>
                         )}

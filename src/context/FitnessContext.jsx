@@ -12,10 +12,29 @@ async function fetchFitnessData(athleteId) {
     base44.entities.DailyMetrics.filter({ athlete_id: athleteId }, "-date", 180),
     base44.entities.WorkoutSession.filter({ athlete_id: athleteId }, "-date", 180),
   ]);
+  // Map DailyMetrics (now carrying wearable-sourced HRV / sleep / resting HR / readiness) into
+  // the biometricTelemetry shape the recovery cards expect, so automated ingestion from Garmin
+  // Health and COROS lights up the Recovery Lab and Readiness cards without manual logging.
+  const chrono = [...metrics].reverse();
+  const biometricTelemetry = chrono.map((m) => ({
+    id: m.id,
+    date: m.date,
+    hrv_ms: m.hrv ?? null,
+    sleep_score: m.sleep_score ?? null,
+    sleep_duration_hours: m.sleep_duration_hours ?? null,
+    resting_hr: m.resting_hr ?? null,
+    body_battery: m.body_battery ?? null,
+    stress_score: m.stress_score ?? null,
+    readiness_score: m.readiness_score ?? null,
+    provider_readiness_score: m.provider_readiness_score ?? null,
+    provider_readiness_source: m.provider_readiness_source ?? null,
+    recovery_source: m.recovery_source ?? null,
+  }));
+
   return {
-    dailyMetrics: [...metrics].reverse(),
+    dailyMetrics: chrono,
     workoutSessions: sessions,
-    biometricTelemetry: [],
+    biometricTelemetry,
     physiologicalBaselines: [],
   };
 }

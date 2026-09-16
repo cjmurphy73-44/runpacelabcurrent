@@ -8,6 +8,7 @@ export default function CorosIntegration({ athleteId }) {
   const [loading, setLoading] = useState(true);
   const [connecting, setConnecting] = useState(false);
   const [syncing, setSyncing] = useState(false);
+  const [syncingRecovery, setSyncingRecovery] = useState(false);
   const [disconnecting, setDisconnecting] = useState(false);
   const [error, setError] = useState(null);
   const [info, setInfo] = useState(null);
@@ -59,6 +60,23 @@ export default function CorosIntegration({ athleteId }) {
     setSyncing(false);
   };
 
+  const syncRecovery = async () => {
+    setSyncingRecovery(true); setError(null); setInfo(null);
+    try {
+      const res = await base44.functions.invoke("corosSync", { action: "sync_recovery" });
+      const data = res.data || res;
+      if (data.success) {
+        setInfo(`Ingested ${data.imported ?? 0} recovery day(s) from COROS${data.errors ? `, ${data.errors} skipped` : ""}.`);
+      } else {
+        setError(data.error || "Could not pull recovery data from COROS.");
+      }
+      loadStatus();
+    } catch (e) {
+      setError(e?.response?.data?.error || "Recovery sync failed.");
+    }
+    setSyncingRecovery(false);
+  };
+
   const disconnect = async () => {
     if (!window.confirm("Disconnect your COROS account? Auto-sync from COROS will stop until you reconnect.")) return;
     setDisconnecting(true); setError(null);
@@ -108,7 +126,11 @@ export default function CorosIntegration({ athleteId }) {
             <>
               <Button variant="outline" size="sm" onClick={syncHistorical} disabled={syncing}>
                 {syncing ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <RefreshCw className="w-4 h-4 mr-2" />}
-                Sync historical
+                Sync workouts
+              </Button>
+              <Button variant="outline" size="sm" onClick={syncRecovery} disabled={syncingRecovery}>
+                {syncingRecovery ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <RefreshCw className="w-4 h-4 mr-2" />}
+                Sync recovery
               </Button>
               <Button variant="ghost" size="sm" onClick={disconnect} disabled={disconnecting}>
                 {disconnecting ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Unlink className="w-4 h-4 mr-2" />}

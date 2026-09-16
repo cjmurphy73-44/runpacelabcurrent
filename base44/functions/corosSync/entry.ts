@@ -1,6 +1,7 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
 import { VALID_SPORTS, calcTrimp, normalizeSport, getOwnedAthlete } from '../../shared/workoutIngest.ts';
 import { env, hmacBase64Url } from '../../shared/oauth.ts';
+import { normalizeCorosRecovery, ingestRecovery } from '../../shared/recoveryIngest.ts';
 
 // COROS MCP (Model Context Protocol) — OAuth 2.1 self-service integration.
 // No COROS developer-portal application or approval required. Endpoints were
@@ -429,6 +430,57 @@ async function handleSyncHistorical(base44) {
   return Response.json({ success: true, imported: toCreate.length, errors, records_found: records.length });
 }
 
+async function handleSyncRecovery(base44) {
+  const user = await base44.auth.me();
+  if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
+  const athlete = await getOwnedAthlete(base44, user.id);
+  if (!athlete) return Response.json({ error: 'No athlete profile found' }, { status: 404 });
+  const conns = await base44.asServiceRole.entities.CorosConnection.filter({ athlete_id: athlete.id });
+  const conn = conns[0];
+  if (!conn || !conn.access_token) return Response.json({ error: 'COROS account not connected' }, { status: 409 });
+
+  let accessToken;
+  try { accessToken = await refreshIfNeeded(conn, base44); }
+  catch (e) {
+    await base44.asServiceRole.entities.CorosConnection.update(conn.id, { last_error: e.message });
+    return Response.json({ error: e.message }, { status: 502 });
+  }
+
+  // Recovery is a recent-window pull (last 14 days). COROS MCP tool names for daily/recovery
+  // data vary; try a small set of candidates and use the first that returns records.
+  const end = new Date();
+  const start = new Date();
+  start.setDate(start.getDate() - 14);
+  const fmt = (d) => d.toISOString().slice(0, 10);
+
+  const candidates = ['queryDailySummary', 'queryRecoveryReport', 'queryHealthReport', 'queryDailyReport', 'queryRecovery'];
+  let records: any[] = [];
+  let usedTool = '';
+  let lastErr = '';
+  for (const tool of candidates) {
+    try {
+      const result = await mcpToolCall(accessToken, tool, { startDate: fmt(start), endDate: fmt(end) });
+      const recs = extractRecords(result);
+      if (recs.length) { records = recs; usedTool = tool; break; }
+    } catch (e) { lastErr = e.message; /* try next candidate */ }
+  }
+  if (!records.length) {
+    await base44.asServiceRole.entities.CorosConnection.update(conn.id, { last_error: lastErr || 'No recovery data tool available on COROS MCP' });
+    return Response.json({ error: lastErr || 'No COROS recovery data tool found', imported: 0 }, { status: 502 });
+  }
+
+  const history = await base44.asServiceRole.entities.DailyMetrics.filter({ athlete_id: athlete.id }, '-date', 30);
+  let ingested = 0;
+  let errors = 0;
+  for (const r of records) {
+    const normalized = normalizeCorosRecovery(r);
+    if (!normalized) { errors++; continue; }
+    try { await ingestRecovery(base44, athlete.id, normalized, 'coros', history); ingested++; } catch { errors++; }
+  }
+  await base44.asServiceRole.entities.CorosConnection.update(conn.id, { last_sync_at: new Date().toISOString(), last_error: '' });
+  return Response.json({ success: true, imported: ingested, errors, tool: usedTool, records_found: records.length });
+}
+
 async function handleDisconnect(base44) {
   const user = await base44.auth.me();
   if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
@@ -462,6 +514,7 @@ Deno.serve(async (req) => {
     if (action === 'authorize') return await handleAuthorize(req, base44);
     if (action === 'status') return await handleStatus(base44);
     if (action === 'sync_historical') return await handleSyncHistorical(base44);
+    if (action === 'sync_recovery') return await handleSyncRecovery(base44);
     if (action === 'disconnect') return await handleDisconnect(base44);
 
     return Response.json({ error: `Unknown action: ${action || '(none)'}` }, { status: 400 });

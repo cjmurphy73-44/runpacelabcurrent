@@ -1,6 +1,7 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
 import { waitUntil } from 'base44:runtime';
 import { VALID_SPORTS, calcTrimp, normalizeSport, parseFitSummary } from '../../shared/workoutIngest.ts';
+import { isGarminHealthSummary, normalizeGarminRecovery, ingestRecovery } from '../../shared/recoveryIngest.ts';
 
 function env(name) { try { return Deno.env.get(name) || ''; } catch { return ''; } }
 
@@ -27,6 +28,25 @@ Deno.serve(async (req) => {
     }
     if (!athleteId && body.athlete_id) athleteId = body.athlete_id;
     if (!athleteId) return Response.json({ error: 'Could not resolve athlete from Garmin payload' }, { status: 400 });
+
+    // Garmin Health summary payload (sleep / HRV / resting HR / body battery / stress) — distinct
+    // from an activity push. Route to the recovery ingestion path, which auto-overrides manual
+    // entries, computes the holistic TrainPaceLab readiness, and returns within the 2s window
+    // (no CTL/ATL recalc — recovery does not change training load).
+    if (isGarminHealthSummary(body)) {
+      const normalized = normalizeGarminRecovery(body);
+      if (!normalized) return Response.json({ error: 'Could not parse Garmin Health summary' }, { status: 400 });
+      const athlete = await base44.asServiceRole.entities.AthleteProfile.get(athleteId).catch(() => null);
+      if (!athlete) return Response.json({ error: 'Athlete profile not found' }, { status: 404 });
+      const history = await base44.asServiceRole.entities.DailyMetrics.filter({ athlete_id: athleteId }, '-date', 30);
+      try {
+        const result = await ingestRecovery(base44, athleteId, normalized, 'garmin', history);
+        if (connection) await base44.asServiceRole.entities.GarminConnection.update(connection.id, { last_sync_at: new Date().toISOString(), last_error: '' });
+        return Response.json({ success: true, recovery: true, ...result });
+      } catch (e) {
+        return Response.json({ error: e.message }, { status: 500 });
+      }
+    }
 
     const activity = body.activity || body.workout || body;
     let summary = null, sourceFormat = 'webhook';
