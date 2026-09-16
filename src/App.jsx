@@ -19,15 +19,18 @@ import Subscribe from '@/pages/Subscribe';
 import CoachWorkspace from '@/pages/CoachWorkspace';
 import Admin from '@/pages/Admin';
 import AppLayout from '@/components/layout/AppLayout';
+import { QueryClientProvider } from '@tanstack/react-query';
+import { queryClientInstance } from '@/lib/query-client';
 import { AuthProvider } from '@/lib/AuthContext';
 import { UIPreferencesProvider } from '@/context/UIPreferencesContext';
 import { Toaster } from '@/components/ui/toaster';
 
 export default function App() {
   return (
-    <AuthProvider>
-      <UIPreferencesProvider>
-        <Router>
+    <QueryClientProvider client={queryClientInstance}>
+      <AuthProvider>
+        <UIPreferencesProvider>
+          <Router>
           <Routes>
             <Route element={<AppLayout />}>
               <Route path="/" element={<Home />} />
@@ -53,7 +56,8 @@ export default function App() {
           </Routes>
           <Toaster />
         </Router>
-      </UIPreferencesProvider>
-    </AuthProvider>
+        </UIPreferencesProvider>
+      </AuthProvider>
+    </QueryClientProvider>
   );
 }
