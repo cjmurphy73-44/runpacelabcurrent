@@ -23,6 +23,7 @@ import LoadFatigueChart from "@/components/dashboard/LoadFatigueChart";
 import DashboardRangeControls from "@/components/dashboard/DashboardRangeControls";
 import { FitnessProvider } from "@/context/FitnessContext";
 import { useUIPreferences } from "@/context/UIPreferencesContext";
+import { useAuth } from "@/lib/AuthContext";
 import CollapsibleSection from "@/components/ui/CollapsibleSection";
 import PageShell from "@/components/layout/PageShell";
 import SectionHeading from "@/components/layout/SectionHeading";
@@ -36,7 +37,7 @@ import OnboardingEmptyState from "@/components/dashboard/OnboardingEmptyState";
 import PlannedActualReconciliation from "@/components/dashboard/PlannedActualReconciliation";
 import CoachBriefing from "@/components/dashboard/CoachBriefing";
 import PhysiologyStrip from "@/components/dashboard/PhysiologyStrip";
-import { Sun, TrendingUp, Activity, MessageCircle, HeartPulse, ArrowRight, Plus } from "lucide-react";
+import { Sun, TrendingUp, Activity, MessageCircle, HeartPulse, ArrowRight, Plus, LogIn } from "lucide-react";
 
 export default function Home() {
   const [loading, setLoading] = useState(true);
@@ -47,6 +48,7 @@ export default function Home() {
   const [plannedWorkouts, setPlannedWorkouts] = useState([]);
   const [manualOpen, setManualOpen] = useState(false);
   const { showDeepMetrics } = useUIPreferences();
+  const { user, navigateToLogin } = useAuth();
 
   const loadAthleteData = useCallback(async (athleteId) => {
     const [freshAthlete, workoutRows, messageRows, recentWorkouts, planSessions] = await Promise.all([
@@ -68,18 +70,47 @@ export default function Home() {
   }, []);
 
   useEffect(() => {
+    let cancelled = false;
     (async () => {
-      const user = await base44.auth.me();
-      const profiles = await base44.entities.AthleteProfile.filter({ created_by_id: user.id });
-      if (profiles.length > 0) {
-        await loadAthleteData(profiles[0].id);
+      try {
+        if (!user) return; // signed-out — show the sign-in prompt below
+        const profiles = await base44.entities.AthleteProfile.filter({ created_by_id: user.id });
+        if (cancelled) return;
+        if (profiles.length > 0) {
+          await loadAthleteData(profiles[0].id);
+        }
+      } catch (err) {
+        console.error("Dashboard data load failed:", err);
+      } finally {
+        if (!cancelled) setLoading(false);
       }
-      setLoading(false);
     })();
-  }, [loadAthleteData]);
+    return () => { cancelled = true; };
+  }, [loadAthleteData, user]);
 
   if (loading) {
     return <div className="text-center py-20 text-muted-foreground">Loading your dashboard…</div>;
+  }
+
+  if (!user) {
+    return (
+      <div className="flex items-center justify-center py-20">
+        <Card className="max-w-sm text-center">
+          <CardContent className="pt-8 pb-8 space-y-4">
+            <div className="mx-auto w-12 h-12 rounded-full bg-accent flex items-center justify-center">
+              <LogIn className="w-6 h-6 text-accent-foreground" />
+            </div>
+            <h2 className="text-lg font-heading font-semibold">Sign in to view your dashboard</h2>
+            <p className="text-sm text-muted-foreground">
+              Your training, recovery and readiness insights live here. Sign in to load your athlete profile.
+            </p>
+            <Button onClick={navigateToLogin} className="gap-2">
+              <LogIn className="w-4 h-4" /> Sign in
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
   }
 
   if (!athlete) {
