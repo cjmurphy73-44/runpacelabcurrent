@@ -51,8 +51,8 @@ export default function ReadinessScoreCard() {
 
   const providerScore = today?.provider_readiness_score ?? null;
   const providerSource = today?.provider_readiness_source ?? today?.recovery_source ?? null;
-  const delta = (holistic != null && providerScore != null) ? holistic - providerScore : null;
-  const cls = classify(holistic ?? today?.readiness_score ?? null);
+  const delta = (holistic != null && providerScore != null) ? holistic.score - providerScore : null;
+  const cls = classify(holistic != null ? holistic.score : (today?.readiness_score ?? null));
 
   return (
     <Card>
@@ -73,7 +73,7 @@ export default function ReadinessScoreCard() {
         ) : (
           <>
             <div className="flex items-baseline gap-2">
-              <span className="text-3xl font-bold font-heading">{holistic ?? today?.readiness_score}</span>
+              <span className="text-3xl font-bold font-heading">{holistic != null ? holistic.score : today?.readiness_score}</span>
               <span className="text-xs text-muted-foreground">/ 100 holistic</span>
             </div>
             <Badge variant={cls.tone}>{cls.label}</Badge>
