@@ -1,6 +1,7 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
 import { VALID_SPORTS, calcTrimp, normalizeSport, getOwnedAthlete, selfUrl } from '../../shared/workoutIngest.ts';
 import { env, hmacBase64Url } from '../../shared/oauth.ts';
+import { normalizeGarminRecovery, ingestRecovery } from '../../shared/recoveryIngest.ts';
 
 function requireConfig() {
   const clientId = env('GARMIN_CLIENT_ID');
@@ -124,12 +125,37 @@ async function handleSyncHistorical(base44) {
     for (let i = 0; i < toCreate.length; i += 500) await base44.asServiceRole.entities.WorkoutSession.bulkCreate(toCreate.slice(i, i + 500));
     imported = toCreate.length;
     for (const d of [...new Set(toCreate.map((s) => s.date))]) { try { await base44.asServiceRole.functions.invoke('calculateDailyTRIMP', { athlete_id: athlete.id, date: d }); } catch {} }
+
+    // Recovery backfill: pull recent daily summaries (sleep / HRV / resting HR / body battery /
+    // stress / training readiness) through the same normalizer + ingest path used by live
+    // webhook pushes, so newly-connected athletes get rolling baselines immediately instead of
+    // waiting for pushes to accumulate. Best-effort — no-ops if the endpoint is unavailable.
+    let recoveryImported = 0;
+    try {
+      const rRes = await fetch(`${apiBase}/dailies`, { headers: { Authorization: `Bearer ${accessToken}` } });
+      if (rRes.ok) {
+        const rData = await rRes.json();
+        const dailies = Array.isArray(rData) ? rData : (rData.dailies || rData.items || rData.data || []);
+        if (dailies.length) {
+          const history = await base44.asServiceRole.entities.DailyMetrics.filter({ athlete_id: athlete.id }, '-date', 30);
+          for (const d of dailies) {
+            const normalized = normalizeGarminRecovery(d);
+            if (!normalized) continue;
+            try {
+              const result = await ingestRecovery(base44, athlete.id, normalized, 'garmin', history);
+              if (!result?.skipped) recoveryImported++;
+            } catch { /* per-day best-effort */ }
+          }
+        }
+      }
+    } catch { /* recovery backfill is best-effort */ }
+
     await base44.asServiceRole.entities.GarminConnection.update(conn.id, { last_sync_at: new Date().toISOString(), last_error: '' });
   } catch (e) {
     await base44.asServiceRole.entities.GarminConnection.update(conn.id, { last_error: e.message });
     return Response.json({ error: e.message }, { status: 500 });
   }
-  return Response.json({ success: true, imported, errors });
+  return Response.json({ success: true, imported, errors, recovery_imported: recoveryImported });
 }
 
 async function handleDisconnect(base44) {

@@ -36,7 +36,7 @@ export default function GarminIntegration({ athleteId }) {
     try {
       const res = await base44.functions.invoke("garminSync", { action: "sync_historical" });
       const data = res.data || res;
-      setInfo(`Imported ${data.imported ?? 0} workout(s)${data.errors ? `, ${data.errors} skipped` : ""}.`);
+      setInfo(`Imported ${data.imported ?? 0} workout(s)${data.recovery_imported ? `, ${data.recovery_imported} recovery day(s)` : ""}${data.errors ? `, ${data.errors} skipped` : ""}.`);
       loadStatus();
     } catch (e) { setError(e?.response?.data?.error || "Historical sync failed."); }
     setSyncing(false);
