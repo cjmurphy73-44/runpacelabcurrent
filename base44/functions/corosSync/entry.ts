@@ -345,6 +345,57 @@ function extractRecords(result: any): any[] {
   return Array.isArray(result) ? result : [result];
 }
 
+// COROS MCP returns sport records as a formatted text report (not JSON). Parse it.
+function corosSportCodeToSport(code: number | null, name: string): string {
+  if (code != null) {
+    if (code >= 100 && code <= 106) return 'running';
+    if (code >= 200 && code <= 299) return 'cycling';
+    if (code === 300 || code === 301) return 'swimming';
+    if (code >= 400 && code <= 402) return 'strength';
+  }
+  const n = (name || '').toLowerCase();
+  if (n.includes('run')) return 'running';
+  if (n.includes('bike') || n.includes('cycl')) return 'cycling';
+  if (n.includes('swim')) return 'swimming';
+  if (n.includes('strength')) return 'strength';
+  return 'other';
+}
+
+function parseCorosRecordsText(text: string): any[] {
+  if (!text || typeof text !== 'string') return [];
+  const records: any[] = [];
+  // Each record block starts with "N. SportName — YYYY-MM-DD"
+  const blocks = text.split(/(?=^\s*\d+\.\s+)/m);
+  const headRe = /^\s*\d+\.\s+(.+?)\s+[—–-]\s+(\d{4}-\d{2}-\d{2})\s*$/;
+  for (const block of blocks) {
+    const head = block.match(headRe);
+    if (!head) continue;
+    const sportName = head[1].trim();
+    const date = head[2];
+    const durM = block.match(/Duration:\s*(\d{1,2}:\d{2}(?::\d{2})?)|Sets:\s*(\d+)/);
+    const distM = block.match(/Distance:\s*([\d.]+)\s*km/i);
+    const hrM = block.match(/Avg HR:\s*(\d+)\s*bpm/i);
+    const sportTypeM = block.match(/SportType:\s*(\d+)/);
+    const startM = block.match(/startTimestamp=(\d+)/);
+    const endM = block.match(/endTimestamp=(\d+)/);
+    let durationSeconds = 0;
+    if (durM && durM[1]) {
+      const p = durM[1].split(':').map(Number);
+      durationSeconds = p.length === 3 ? p[0] * 3600 + p[1] * 60 + p[2] : p[0] * 60 + p[1];
+    } else if (startM && endM) {
+      durationSeconds = Number(endM[1]) - Number(startM[1]);
+    }
+    records.push({
+      date,
+      sport: corosSportCodeToSport(sportTypeM ? Number(sportTypeM[1]) : null, sportName),
+      duration_seconds: durationSeconds,
+      distance_km: distM ? Number(distM[1]) : 0,
+      avg_heart_rate: hrM ? Number(hrM[1]) : null,
+    });
+  }
+  return records;
+}
+
 function mapRecord(a: any, athlete: any) {
   const date = a.date
     || (a.start_time ? String(a.start_time).slice(0, 10) : null)
@@ -395,29 +446,30 @@ async function handleSyncHistorical(base44) {
 
   const end = new Date();
   const start = new Date();
-  start.setDate(start.getDate() - 7);
-  const fmt = (d: Date) => d.toISOString().slice(0, 10);
+  start.setDate(start.getDate() - 90);
+  // COROS MCP requires yyyyMMdd (no dashes), and sportTypeCodes is mandatory — 65535 = all sports.
+  const fmt = (d: Date) => d.toISOString().slice(0, 10).replace(/-/g, '');
 
   let result;
   try {
-    result = await mcpToolCall(accessToken, 'querySportRecords', { startDate: fmt(start), endDate: fmt(end) });
+    result = await mcpToolCall(accessToken, 'querySportRecords', { startDate: fmt(start), endDate: fmt(end), sportTypeCodes: [65535], limit: 100 });
   } catch (e) {
     await base44.asServiceRole.entities.CorosConnection.update(conn.id, { last_error: e.message });
     return Response.json({ error: e.message }, { status: 502 });
   }
 
-  const records = extractRecords(result);
-  const rawContentText = result?.content?.map?.((c: any) => ({ type: c.type, text: typeof c.text === 'string' ? c.text.slice(0, 800) : c.text })) || null;
+  // COROS MCP returns sport records as a formatted text report — parse it; fall back to JSON extraction.
+  let contentText = result?.content?.[0]?.text;
+  if (typeof contentText === 'string') { try { contentText = JSON.parse(contentText); } catch { /* not JSON-encoded */ } }
+  const isTextReport = typeof contentText === 'string' && /Sport Records\b/.test(contentText);
+  const records = isTextReport
+    ? parseCorosRecordsText(contentText)
+    : extractRecords(result);
   const toCreate = [];
   let errors = 0;
-  let firstRejection: any = null;
   for (const a of records) {
     const mapped = mapRecord(a, athlete);
-    if (!mapped) {
-      errors++;
-      if (!firstRejection) firstRejection = { keys: Object.keys(a || {}), sample: a };
-      continue;
-    }
+    if (!mapped) { errors++; continue; }
     const existing = await base44.asServiceRole.entities.WorkoutSession.filter({ athlete_id: athlete.id, date: mapped.date });
     const dup = existing.some((s) => s.sport === mapped.sport && Math.abs((s.duration_minutes || 0) - mapped.duration_minutes) < 1 && Math.abs((s.distance_km || 0) - mapped.distance_km) < 0.1);
     if (dup) continue;
@@ -433,7 +485,7 @@ async function handleSyncHistorical(base44) {
     try { await base44.asServiceRole.functions.invoke('calculateDailyTRIMP', { athlete_id: athlete.id, date: d }); } catch { /* keep going */ }
   }
   await base44.asServiceRole.entities.CorosConnection.update(conn.id, { last_sync_at: new Date().toISOString(), last_error: '' });
-  return Response.json({ success: true, imported: toCreate.length, errors, records_found: records.length, rawContentText, recordTypes: records.map((r) => typeof r) });
+  return Response.json({ success: true, imported: toCreate.length, errors, records_found: records.length, isTextReport, contentTextHead: typeof contentText === 'string' ? contentText.slice(0, 300) : String(contentText), blocks: isTextReport ? contentText.split(/(?=^\s*\d+\.\s+)/m).length : 0, sampleParsed: records[0] || null });
 }
 
 async function handleSyncRecovery(base44) {
