@@ -3,6 +3,16 @@ import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import CoachChat from '@/pages/CoachChat';
 import Home from '@/pages/Home';
 import RecoveryCenter from '@/pages/RecoveryCenter';
+import RacePrediction from '@/pages/RacePrediction';
+import Pbs from '@/pages/Pbs';
+import Calendar from '@/pages/Calendar';
+import TrainingKanban from '@/pages/TrainingKanban';
+import Physiology from '@/pages/Physiology';
+import Vdot from '@/pages/Vdot';
+import WeatherAdjust from '@/pages/WeatherAdjust';
+import Zones from '@/pages/Zones';
+import AdvancedAnalytics from '@/pages/AdvancedAnalytics';
+import TrainingPlan from '@/pages/TrainingPlan';
 import AppLayout from '@/components/layout/AppLayout';
 import { AuthProvider } from '@/lib/AuthContext';
 import { UIPreferencesProvider } from '@/context/UIPreferencesContext';
@@ -18,6 +28,16 @@ export default function App() {
               <Route path="/" element={<Home />} />
               <Route path="/coach" element={<CoachChat />} />
               <Route path="/recovery" element={<RecoveryCenter />} />
+              <Route path="/predict" element={<RacePrediction />} />
+              <Route path="/pbs" element={<Pbs />} />
+              <Route path="/calendar" element={<Calendar />} />
+              <Route path="/kanban" element={<TrainingKanban />} />
+              <Route path="/physiology" element={<Physiology />} />
+              <Route path="/vdot" element={<Vdot />} />
+              <Route path="/weather" element={<WeatherAdjust />} />
+              <Route path="/zones" element={<Zones />} />
+              <Route path="/analytics" element={<AdvancedAnalytics />} />
+              <Route path="/plan" element={<TrainingPlan />} />
             </Route>
             <Route path="*" element={<CoachChat />} />
           </Routes>
