@@ -395,7 +395,7 @@ async function handleSyncHistorical(base44) {
 
   const end = new Date();
   const start = new Date();
-  start.setDate(start.getDate() - 90);
+  start.setDate(start.getDate() - 7);
   const fmt = (d: Date) => d.toISOString().slice(0, 10);
 
   let result;
@@ -407,11 +407,17 @@ async function handleSyncHistorical(base44) {
   }
 
   const records = extractRecords(result);
+  const rawContentText = result?.content?.map?.((c: any) => ({ type: c.type, text: typeof c.text === 'string' ? c.text.slice(0, 800) : c.text })) || null;
   const toCreate = [];
   let errors = 0;
+  let firstRejection: any = null;
   for (const a of records) {
     const mapped = mapRecord(a, athlete);
-    if (!mapped) { errors++; continue; }
+    if (!mapped) {
+      errors++;
+      if (!firstRejection) firstRejection = { keys: Object.keys(a || {}), sample: a };
+      continue;
+    }
     const existing = await base44.asServiceRole.entities.WorkoutSession.filter({ athlete_id: athlete.id, date: mapped.date });
     const dup = existing.some((s) => s.sport === mapped.sport && Math.abs((s.duration_minutes || 0) - mapped.duration_minutes) < 1 && Math.abs((s.distance_km || 0) - mapped.distance_km) < 0.1);
     if (dup) continue;
@@ -427,7 +433,7 @@ async function handleSyncHistorical(base44) {
     try { await base44.asServiceRole.functions.invoke('calculateDailyTRIMP', { athlete_id: athlete.id, date: d }); } catch { /* keep going */ }
   }
   await base44.asServiceRole.entities.CorosConnection.update(conn.id, { last_sync_at: new Date().toISOString(), last_error: '' });
-  return Response.json({ success: true, imported: toCreate.length, errors, records_found: records.length });
+  return Response.json({ success: true, imported: toCreate.length, errors, records_found: records.length, rawContentText, recordTypes: records.map((r) => typeof r) });
 }
 
 async function handleSyncRecovery(base44) {
@@ -481,6 +487,34 @@ async function handleSyncRecovery(base44) {
   return Response.json({ success: true, imported: ingested, errors, tool: usedTool, records_found: records.length });
 }
 
+async function handleListTools(base44) {
+  const user = await base44.auth.me();
+  if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
+  const athlete = await getOwnedAthlete(base44, user.id);
+  if (!athlete) return Response.json({ error: 'No athlete profile found' }, { status: 404 });
+  const conns = await base44.asServiceRole.entities.CorosConnection.filter({ athlete_id: athlete.id });
+  const conn = conns[0];
+  if (!conn || !conn.access_token) return Response.json({ error: 'COROS account not connected' }, { status: 409 });
+  let accessToken;
+  try { accessToken = await refreshIfNeeded(conn, base44); }
+  catch (e) { return Response.json({ error: e.message }, { status: 502 }); }
+  try {
+    const init = await mcpPost(accessToken, null, {
+      jsonrpc: '2.0', id: 1, method: 'initialize',
+      params: { protocolVersion: MCP_PROTOCOL_VERSION, capabilities: {}, clientInfo: { name: 'TrainPaceLab', version: '1.0' } },
+    });
+    const sid = init.sessionId;
+    if (!init.json || init.json.error) return Response.json({ error: 'MCP initialize failed', raw: init.raw, status: init.status });
+    await mcpPost(accessToken, sid, { jsonrpc: '2.0', method: 'notifications/initialized', params: {} }, false);
+    const list = await mcpPost(accessToken, sid, { jsonrpc: '2.0', id: 2, method: 'tools/list', params: {} });
+    const tools = list.json?.result?.tools || [];
+    const names = tools.map((t: any) => t.name);
+    const sportRecords = tools.find((t: any) => t.name === 'querySportRecords');
+    const recovery = tools.find((t: any) => t.name === 'queryDailySummary' || t.name === 'queryRecoveryReport' || t.name === 'queryHealthReport' || t.name === 'queryDailyReport' || t.name === 'queryRecovery');
+    return Response.json({ querySportRecordsSchema: sportRecords?.inputSchema || null, recoverySchema: recovery?.inputSchema || null, recoveryName: recovery?.name || null });
+  } catch (e) { return Response.json({ error: e.message }, { status: 502 }); }
+}
+
 async function handleDisconnect(base44) {
   const user = await base44.auth.me();
   if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
@@ -514,6 +548,7 @@ Deno.serve(async (req) => {
     if (action === 'authorize') return await handleAuthorize(req, base44);
     if (action === 'status') return await handleStatus(base44);
     if (action === 'sync_historical') return await handleSyncHistorical(base44);
+    if (action === 'list_tools') return await handleListTools(base44);
     if (action === 'sync_recovery') return await handleSyncRecovery(base44);
     if (action === 'disconnect') return await handleDisconnect(base44);
 
