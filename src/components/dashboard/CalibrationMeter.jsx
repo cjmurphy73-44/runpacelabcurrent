@@ -1,7 +1,7 @@
-import React, { useEffect, useState } from "react";
-import { base44 } from "@/api/base44Client";
+import React from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { useUIPreferences } from "@/context/UIPreferencesContext";
+import { useFitness } from "@/context/FitnessContext";
 import { termLabel, termSub } from "@/lib/terminology";
 import { CheckCircle2, Circle, Gauge } from "lucide-react";
 
@@ -17,38 +17,14 @@ function localISO(d) {
 
 export default function CalibrationMeter({ athlete, athleteId }) {
   const { lens } = useUIPreferences();
-  const [sessions, setSessions] = useState([]);
-  const [metrics, setMetrics] = useState([]);
-  const [loaded, setLoaded] = useState(false);
+  const { workoutSessions, dailyMetrics, isFetched } = useFitness();
 
-  useEffect(() => {
-    let active = true;
-    (async () => {
-      try {
-        const cutoff = localISO(new Date(Date.now() - 90 * 86400000));
-        const [s, m] = await Promise.all([
-          base44.entities.WorkoutSession.filter(
-            { athlete_id: athleteId, date: { $gte: cutoff } },
-            "-date",
-            200
-          ),
-          base44.entities.DailyMetrics.filter(
-            { athlete_id: athleteId, date: { $gte: cutoff } },
-            "-date",
-            200
-          ),
-        ]);
-        if (!active) return;
-        setSessions(s || []);
-        setMetrics(m || []);
-      } finally {
-        if (active) setLoaded(true);
-      }
-    })();
-    return () => {
-      active = false;
-    };
-  }, [athleteId]);
+  // Calibration only considers the last 90 days. FitnessProvider already fetches a
+  // 180-day superset of both entities for the dashboard, so we filter client-side
+  // instead of issuing two more network calls on every mount.
+  const cutoff = localISO(new Date(Date.now() - 90 * 86400000));
+  const sessions = (workoutSessions || []).filter((s) => (s.date || "") >= cutoff);
+  const metrics = (dailyMetrics || []).filter((m) => (m.date || "") >= cutoff);
 
   const signals = [];
   // 1. VDOT / aerobic capacity anchored
@@ -100,7 +76,7 @@ export default function CalibrationMeter({ athlete, athleteId }) {
   });
 
   const score = Math.min(100, signals.reduce((a, s) => a + s.score, 0));
-  if (loaded && score >= 100) return null; // hide once fully locked
+  if (isFetched && score >= 100) return null; // hide once fully locked
 
   return (
     <Card>

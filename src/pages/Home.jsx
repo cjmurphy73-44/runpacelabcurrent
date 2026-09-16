@@ -51,15 +51,14 @@ export default function Home() {
   const { user, navigateToLogin } = useAuth();
 
   const loadAthleteData = useCallback(async (athleteId) => {
-    const [freshAthlete, workoutRows, messageRows, recentWorkouts, planSessions] = await Promise.all([
+    const [freshAthlete, recentWorkouts, messageRows, planSessions] = await Promise.all([
       base44.entities.AthleteProfile.get(athleteId),
-      base44.entities.WorkoutSession.filter({ athlete_id: athleteId }, "-date", 10),
-      base44.entities.CoachMessage.filter({ athlete_id: athleteId }, "-created_date", 10),
       base44.entities.WorkoutSession.filter({ athlete_id: athleteId }, "-date", 60),
+      base44.entities.CoachMessage.filter({ athlete_id: athleteId }, "-created_date", 10),
       base44.entities.TrainingPlanSession.filter({ athlete_id: athleteId }, "-date", 60),
     ]);
     setAthlete(freshAthlete);
-    setWorkouts(workoutRows);
+    setWorkouts(recentWorkouts.slice(0, 10));
     setMessages(messageRows);
     setLoadTimelineWorkouts(recentWorkouts);
     const todayKey = new Date().toISOString().split("T")[0];
