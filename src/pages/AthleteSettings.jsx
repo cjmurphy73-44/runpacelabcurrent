@@ -8,10 +8,12 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Loader2, Save, Trash2, ShieldAlert, Zap, Link2, Users } from "lucide-react";
+import HelpLink from "@/components/guide/HelpLink";
 import { Switch } from "@/components/ui/switch";
 import CorosIntegration from "@/components/settings/CorosIntegration";
 import GarminIntegration from "@/components/settings/GarminIntegration";
 import StravaIntegration from "@/components/settings/StravaIntegration";
+import WearableIntegrations from "@/components/settings/WearableIntegrations";
 
 // TIER_CONSTANTS mirrors ProfileSetupForm + updateAthleteProfile so editing the tier in Settings
 // keeps the CTL/ATL time constants consistent with the chosen philosophy.
@@ -332,6 +334,19 @@ export default function AthleteSettings() {
           <GarminIntegration athleteId={athlete.id} />
           <StravaIntegration athleteId={athlete.id} />
           <CorosIntegration athleteId={athlete.id} />
+          <HelpLink section="connect-data" label="Step-by-step export guides for each device" />
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="font-heading flex items-center gap-2">
+            <Link2 className="w-4 h-4 text-primary" /> More wearables
+          </CardTitle>
+          <CardDescription>Free OAuth recovery sources — Oura, Whoop, Withings, Polar, Fitbit, Suunto.</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <WearableIntegrations athleteId={athlete.id} />
         </CardContent>
       </Card>
 

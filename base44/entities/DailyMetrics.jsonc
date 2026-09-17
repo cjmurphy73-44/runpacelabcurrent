@@ -69,7 +69,7 @@
     },
     "provider_readiness_score": {
       "type": "integer",
-      "description": "The wearable vendor's native readiness/recovery score (Garmin Training Readiness, COROS Recovery) stored as-is so athletes can compare it against the holistic TrainPaceLab score."
+      "description": "The wearable vendor's native readiness/recovery score (Garmin Training Readiness, COROS Recovery, Oura Readiness, Whoop Recovery, etc.) stored as-is so athletes can compare it against the holistic TrainPaceLab score."
     },
     "provider_readiness_source": {
       "type": "string",
@@ -80,6 +80,10 @@
         "apple",
         "polar",
         "samsung",
+        "oura",
+        "whoop",
+        "withings",
+        "fitbit",
         "manual"
       ],
       "description": "Which wearable produced the provider_readiness_score"
@@ -93,6 +97,10 @@
         "apple",
         "polar",
         "samsung",
+        "oura",
+        "whoop",
+        "withings",
+        "fitbit",
         "manual"
       ],
       "description": "Which source last populated the recovery biometric fields (hrv/sleep/resting_hr/etc.), shown as a source badge in the UI"

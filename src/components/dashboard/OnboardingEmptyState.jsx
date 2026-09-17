@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Activity, Watch, Plus } from "lucide-react";
+import HelpLink from "@/components/guide/HelpLink";
 
 // Friendly, action-oriented empty state shown to beta testers who have created a
 // profile but logged no workouts yet. Replaces blank charts/spinners with clear CTAs.
@@ -37,6 +38,7 @@ export default function OnboardingEmptyState({ athlete, onAddManual }) {
         <p className="text-xs text-muted-foreground">
           Tip: even a single 30-minute session is enough to light up the dashboard and let you watch the engine work.
         </p>
+        <HelpLink section="getting-started" label="Read the getting-started guide" />
       </CardContent>
     </Card>
   );

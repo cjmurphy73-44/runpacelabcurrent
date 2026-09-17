@@ -1,0 +1,87 @@
+{
+  "name": "WearableConnection",
+  "type": "object",
+  "description": "Per-athlete OAuth connection for any free wearable provider (Oura, Whoop, Withings, Polar, Fitbit, Suunto) backed by the generic wearableOAuthSync function. One row per athlete+provider; tokens drive recovery sync into DailyMetrics via the shared recoveryIngest pipeline.",
+  "properties": {
+    "athlete_id": {
+      "type": "string",
+      "description": "References AthleteProfile.id"
+    },
+    "provider": {
+      "type": "string",
+      "enum": [
+        "oura",
+        "whoop",
+        "withings",
+        "polar",
+        "fitbit",
+        "suunto"
+      ],
+      "description": "Which wearable provider this connection is for"
+    },
+    "provider_user_id": {
+      "type": "string",
+      "description": "Provider-side user id returned with the access token, when available"
+    },
+    "access_token": {
+      "type": "string",
+      "description": "Current OAuth access token"
+    },
+    "refresh_token": {
+      "type": "string",
+      "description": "OAuth refresh token used to re-authorize after the access token expires"
+    },
+    "token_expires_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When the current access token expires"
+    },
+    "scopes": {
+      "type": "string",
+      "description": "Space-separated scopes granted on this connection"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "connected",
+        "error",
+        "disconnected",
+        "expired"
+      ],
+      "default": "connected"
+    },
+    "connected_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "last_sync_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Last successful recovery sync"
+    },
+    "last_error": {
+      "type": "string",
+      "description": "Last error message from a failed sync or token refresh"
+    }
+  },
+  "required": [
+    "athlete_id",
+    "provider"
+  ],
+  "rls": {
+    "create": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "read": {
+      "created_by_id": "{{user.id}}"
+    },
+    "update": {
+      "created_by_id": "{{user.id}}"
+    },
+    "delete": {
+      "created_by_id": "{{user.id}}"
+    }
+  }
+}

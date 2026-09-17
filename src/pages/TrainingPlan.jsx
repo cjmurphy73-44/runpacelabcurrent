@@ -3,6 +3,7 @@ import { base44 } from "@/api/base44Client";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 import { Sparkles, ShieldAlert } from "lucide-react";
+import HelpLink from "@/components/guide/HelpLink";
 import { useCoachInjurySignal } from "@/hooks/useCoachInjurySignal";
 import TrainingPlanGenerator from "@/components/trainingplan/TrainingPlanGenerator";
 import TrainingPlanTimeline from "@/components/trainingplan/TrainingPlanTimeline";
@@ -98,6 +99,7 @@ export default function TrainingPlan() {
       <TrainingPlanTimeline plan={plan} />
       <TrainingPlanWeeklyBreakdown weeklyPlans={plan.weekly_plans} />
       <TrainingPlanExtras plan={plan} />
+      <div><HelpLink section="plans" label="How training plans work" /></div>
     </div>
   );
 }

@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import ToolsDropdown from "@/components/layout/ToolsDropdown";
 import AccountMenu from "@/components/layout/AccountMenu";
 import BetaFeedbackModal from "@/components/feedback/BetaFeedbackModal";
-import { Activity, Microscope, Zap, Sparkles, Upload, Users, LayoutDashboard } from "lucide-react";
+import { Activity, Microscope, Zap, Sparkles, Upload, Users, LayoutDashboard, HelpCircle } from "lucide-react";
 import { useCoachAccess } from "@/hooks/useCoachAccess";
 import MobileNav from "@/components/layout/MobileNav";
 import PageErrorBoundary from "@/components/common/PageErrorBoundary";
@@ -87,6 +87,9 @@ export default function AppLayout() {
                 <span className="hidden lg:inline">Simplified</span>
               </button>
             </div>
+            <Link to="/guide" title="User Guide" className="flex items-center justify-center h-9 w-9 rounded-md text-muted-foreground hover:bg-accent">
+              <HelpCircle className="w-4 h-4" />
+            </Link>
             <Link to="/import" title="Imports" className="hidden lg:flex items-center justify-center h-9 w-9 rounded-md text-muted-foreground hover:bg-accent">
               <Upload className="w-4 h-4" />
             </Link>
