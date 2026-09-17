@@ -2,6 +2,11 @@ import React from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { AlertTriangle } from "lucide-react";
+import { base44 } from "@/api/base44Client";
+
+// Crash signatures already reported this session — prevents a render loop from
+// flooding Airtable with duplicate User Error Reports rows.
+const reportedCrashes = new Set();
 
 // Wraps a major view (Dashboard, Recovery Center, Settings) so that an unexpected
 // runtime error renders a polite recovery card instead of a white screen of death.
@@ -18,6 +23,27 @@ export default class PageErrorBoundary extends React.Component {
   componentDidCatch(error, info) {
     // eslint-disable-next-line no-console
     console.error("[PageErrorBoundary]", error, info);
+    const route = typeof window !== "undefined" ? window.location.pathname : "";
+    const sig = `${error?.message || "unknown"}|${route}`;
+    if (reportedCrashes.has(sig)) return;
+    reportedCrashes.add(sig);
+    const payload = {
+      message: error?.message || String(error),
+      stack: error?.stack || (info?.componentStack ? String(info.componentStack) : ""),
+      route,
+      severity: "High",
+    };
+    // Fire-and-forget: a reporting failure must never block recovery.
+    (async () => {
+      try {
+        let userEmail = "anonymous";
+        try {
+          const me = await base44.auth.me();
+          if (me?.email) userEmail = me.email;
+        } catch {}
+        await base44.functions.invoke("logErrorToAirtable", { ...payload, userEmail });
+      } catch {}
+    })();
   }
 
   handleReset = () => this.setState({ error: null });

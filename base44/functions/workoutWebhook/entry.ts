@@ -11,6 +11,7 @@ import { VALID_SPORTS, calcTrimp, normalizeSport, getOwnedAthlete, selfUrl, pars
 import { assertSafeFileUrl } from '../../shared/urlGuard.ts';
 import { recomputeCTLATLTSB } from '../../shared/ctlRecalc.ts';
 import { runPostWorkoutEvaluation } from '../../shared/postWorkoutAI.ts';
+import { reportError } from '../../shared/errorReport.ts';
 
 function randomKey() {
   const bytes = new Uint8Array(24);
@@ -244,8 +245,9 @@ async function handleSubscribeStrava(req, base44) {
 }
 
 Deno.serve(async (req) => {
+  let base44;
   try {
-    const base44 = createClientFromRequest(req);
+    base44 = createClientFromRequest(req);
     const u = new URL(req.url);
 
     // Strava subscription verification handshake (no key needed; Strava sends GET with hub.challenge).
@@ -277,6 +279,7 @@ Deno.serve(async (req) => {
     if (action === 'subscribe_strava') return await handleSubscribeStrava(req, base44);
     return Response.json({ error: `Unknown action: ${action || '(none)'}` }, { status: 400 });
   } catch (error) {
+    try { if (base44) await reportError(base44, { source: 'workoutWebhook', message: error.message, stack: error.stack, severity: 'High' }); } catch (e) { console.warn('reportError failed:', e); }
     return Response.json({ error: error.message }, { status: 500 });
   }
 });
