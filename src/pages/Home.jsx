@@ -227,21 +227,21 @@ export default function Home() {
           deep
         >
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
-            <WipWrapper isWip featureName="Readiness Score">
+            <WipWrapper featureName="Readiness Score">
               <ReadinessScoreCard />
             </WipWrapper>
-            <WipWrapper isWip featureName="Sleep & Energy">
+            <WipWrapper featureName="Sleep & Energy">
               <SleepEnergyCard />
             </WipWrapper>
-            <WipWrapper isWip featureName="Autonomic Stress">
+            <WipWrapper featureName="Autonomic Stress">
               <AutonomicStressCard />
             </WipWrapper>
           </div>
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <WipWrapper isWip featureName="Recovery Lab">
+            <WipWrapper featureName="Recovery Lab">
               <RecoveryLab athleteId={athlete.id} />
             </WipWrapper>
-            <WipWrapper isWip featureName="Holistic Factors">
+            <WipWrapper featureName="Holistic Factors">
               <HolisticFactorsLog athleteId={athlete.id} />
             </WipWrapper>
           </div>
