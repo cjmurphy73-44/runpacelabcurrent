@@ -2,6 +2,8 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
 import { waitUntil } from 'base44:runtime';
 import { VALID_SPORTS, calcTrimp, normalizeSport, parseFitSummary } from '../../shared/workoutIngest.ts';
 import { isGarminHealthSummary, normalizeGarminRecovery, ingestRecovery } from '../../shared/recoveryIngest.ts';
+import { recomputeCTLATLTSB } from '../../shared/ctlRecalc.ts';
+import { runPostWorkoutEvaluation } from '../../shared/postWorkoutAI.ts';
 
 function env(name) { try { return Deno.env.get(name) || ''; } catch { return ''; } }
 
@@ -101,8 +103,8 @@ Deno.serve(async (req) => {
     });
 
     try { await base44.asServiceRole.entities.WebhookEvent.create({ event_id: eventId, provider: 'generic', athlete_id: athleteId, workout_session_id: session.id, outcome: 'created' }); } catch {}
-    try { await base44.asServiceRole.functions.invoke('recalculateCTLATLTSB', { athlete_id: athleteId }); } catch {}
-    try { waitUntil(base44.asServiceRole.functions.invoke('postWorkoutAIEvaluation', { workout_id: session.id, athlete_id: athleteId })); } catch {}
+    try { await recomputeCTLATLTSB(base44, athleteId); } catch {}
+    try { waitUntil(runPostWorkoutEvaluation(base44, session.id, athleteId)); } catch {}
     if (connection) await base44.asServiceRole.entities.GarminConnection.update(connection.id, { last_sync_at: new Date().toISOString(), last_error: '' });
 
     return Response.json({ success: true, workout_session_id: session.id });

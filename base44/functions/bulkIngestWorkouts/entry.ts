@@ -1,6 +1,7 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
 import fitParser from 'npm:fit-file-parser';
 import { TelemetryParser } from '../../shared/telemetryParser.ts';
+import { assertSafeFileUrl } from '../../shared/urlGuard.ts';
 
 const GARMIN_EPOCH_OFFSET_SEC = 631065600; // seconds between Unix epoch and FIT/Garmin epoch (1989-12-31)
 const VALID_SPORTS = ['running', 'cycling', 'swimming', 'strength', 'triathlon', 'other'];
@@ -434,6 +435,11 @@ Deno.serve(async (req) => {
         const { file_url, file_name, sport } = f;
         if (!file_url || !file_name) {
           errors.push({ file_name: file_name || 'unknown', error: 'file_url and file_name are required' });
+          continue;
+        }
+        const urlCheck = assertSafeFileUrl(file_url);
+        if (!urlCheck.ok) {
+          errors.push({ file_name, error: 'file_url not allowed' });
           continue;
         }
         const fileRes = await fetch(file_url);

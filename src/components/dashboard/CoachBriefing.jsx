@@ -106,8 +106,7 @@ export default function CoachBriefing({ athlete }) {
     setBusy(true);
     setError(null);
     try {
-      const result = await base44.integrations.Core.InvokeLLM({
-        prompt: `You are an elite, plainspoken endurance coach giving the athlete a brief, honest read on their last couple of weeks.
+      const prompt = `You are an elite, plainspoken endurance coach giving the athlete a brief, honest read on their last couple of weeks.
 
 Use ONLY the data below. Do not invent sessions or metrics that aren't present. If a signal is missing, say so briefly rather than guessing.
 
@@ -121,10 +120,9 @@ Cover:
 Keep the assessment to 2–4 sentences. Then give 3–5 highlights as short bullets, each tagged positive / neutral / warning.
 
 Athlete data (JSON):
-${JSON.stringify(payload)}`,
-        response_json_schema: RESPONSE_SCHEMA,
-      });
-      setBriefing(result);
+${JSON.stringify(payload)}`;
+      const response = await base44.functions.invoke('coachBriefing', { athlete_id: athlete?.id, prompt, response_json_schema: RESPONSE_SCHEMA });
+      setBriefing(response.data.result);
       ranSignature.current = sig;
     } catch (e) {
       setError(e?.message || "Couldn't generate your briefing right now.");

@@ -1,4 +1,5 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
+import { runPostWorkoutEvaluation } from '../../shared/postWorkoutAI.ts';
 
 function calcTrimp(durationMin, avgHr, restHr, maxHr, sex) {
   if (!durationMin || !avgHr || !maxHr || maxHr <= restHr) return 0;
@@ -253,7 +254,7 @@ Deno.serve(async (req) => {
     });
 
     await base44.asServiceRole.functions.invoke('calculateDailyTRIMP', { athlete_id, date });
-    await base44.asServiceRole.functions.invoke('postWorkoutAIEvaluation', { athlete_id, workout_session_id: session.id });
+    await runPostWorkoutEvaluation(base44, session.id, athlete_id);
 
     return Response.json({ success: true, workout_session: session });
   } catch (error) {

@@ -8,6 +8,9 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
 import { waitUntil } from 'base44:runtime';
 import { VALID_SPORTS, calcTrimp, normalizeSport, getOwnedAthlete, selfUrl, parseFitSummary } from '../../shared/workoutIngest.ts';
+import { assertSafeFileUrl } from '../../shared/urlGuard.ts';
+import { recomputeCTLATLTSB } from '../../shared/ctlRecalc.ts';
+import { runPostWorkoutEvaluation } from '../../shared/postWorkoutAI.ts';
 
 function randomKey() {
   const bytes = new Uint8Array(24);
@@ -56,6 +59,8 @@ async function handleIngest(req, base44, apiKey, parsedBody) {
     } catch { summary = null; }
   } else if (body.fit_url) {
     try {
+      const urlCheck = assertSafeFileUrl(body.fit_url);
+      if (!urlCheck.ok) return Response.json({ error: 'fit_url not allowed' }, { status: 400 });
       const r = await fetch(body.fit_url);
       if (r.ok) { const buf = new Uint8Array(await r.arrayBuffer()); summary = parseFitSummary(buf); sourceFormat = 'fit'; }
     } catch { /* fall through to JSON */ }
@@ -113,14 +118,14 @@ async function handleIngest(req, base44, apiKey, parsedBody) {
   try { await base44.asServiceRole.entities.WebhookEvent.create({ event_id: eventId, provider: 'generic', athlete_id: athlete.id, workout_session_id: session.id, outcome: 'created' }); } catch (e) { console.warn('WebhookEvent log failed:', e); }
 
   // Recompute CTL/ATL/TSB across all days so dashboard metrics update automatically.
-  try { await base44.asServiceRole.functions.invoke('recalculateCTLATLTSB', { athlete_id: athlete.id }); } catch (e) { console.warn('recalculateCTLATLTSB failed:', e); }
+  try { await recomputeCTLATLTSB(base44, athlete.id); } catch (e) { console.warn('recalculateCTLATLTSB failed:', e); }
 
   // Post-Workout Insight Engine: dispatch the AI coach to generate + persist a
   // WorkoutFeedback insight record (with intensity) for this session. Fire and
   // forget — the webhook returns immediately; the insight is linked back to the
   // session by postWorkoutAIEvaluation and surfaces in real time via ActivityDetail.
   try {
-    waitUntil(base44.asServiceRole.functions.invoke('postWorkoutAIEvaluation', { workout_id: session.id, athlete_id: athlete.id }));
+    waitUntil(runPostWorkoutEvaluation(base44, session.id, athlete.id));
   } catch (e) { console.warn('postWorkoutAIEvaluation dispatch failed:', e); }
 
   return Response.json({ success: true, workout_session_id: session.id });
@@ -217,8 +222,8 @@ async function handleStravaEvent(base44, body) {
   });
 
   try { await base44.asServiceRole.entities.WebhookEvent.create({ event_id: eventId, provider: 'strava', athlete_id: conn.athlete_id, workout_session_id: session.id, outcome: 'created' }); } catch {}
-  try { await base44.asServiceRole.functions.invoke('recalculateCTLATLTSB', { athlete_id: conn.athlete_id }); } catch {}
-  try { waitUntil(base44.asServiceRole.functions.invoke('postWorkoutAIEvaluation', { workout_id: session.id, athlete_id: conn.athlete_id })); } catch {}
+  try { await recomputeCTLATLTSB(base44, conn.athlete_id); } catch {}
+  try { waitUntil(runPostWorkoutEvaluation(base44, session.id, conn.athlete_id)); } catch {}
   await base44.asServiceRole.entities.StravaConnection.update(conn.id, { last_sync_at: new Date().toISOString(), last_error: '', status: 'connected' });
   return Response.json({ success: true, workout_session_id: session.id });
 }

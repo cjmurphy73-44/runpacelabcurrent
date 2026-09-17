@@ -15,11 +15,10 @@ export default function AIDeepDiveCard({ athleteId }) {
     setLoading(true);
     const lifestyleFactors = await base44.entities.LifestyleFactor.filter({ athlete_id: athleteId }, "-date", 30);
 
-    const result = await base44.integrations.Core.InvokeLLM({
-      prompt: `You are an elite sports scientist analyzing an athlete's unified training and recovery telemetry. Here is their CTL/ATL/TSB trend history (most recent last): ${JSON.stringify(dailyMetrics.slice(-30))}. Here is their recovery telemetry (HRV, sleep, active calories): ${JSON.stringify(biometricTelemetry.slice(0, 30))}. Here are their self-reported lifestyle/life-stress factors: ${JSON.stringify(lifestyleFactors)}. Write a detailed performance report that explicitly correlates physiological recovery cost (HRV, sleep, lifestyle stressors) with recent training stress (CTL/ATL/TSB trends), and outlines concrete, actionable physiological suggestions for the athlete going forward.`,
-    });
+    const prompt = `You are an elite sports scientist analyzing an athlete's unified training and recovery telemetry. Here is their CTL/ATL/TSB trend history (most recent last): ${JSON.stringify(dailyMetrics.slice(-30))}. Here is their recovery telemetry (HRV, sleep, active calories): ${JSON.stringify(biometricTelemetry.slice(0, 30))}. Here are their self-reported lifestyle/life-stress factors: ${JSON.stringify(lifestyleFactors)}. Write a detailed performance report that explicitly correlates physiological recovery cost (HRV, sleep, lifestyle stressors) with recent training stress (CTL/ATL/TSB trends), and outlines concrete, actionable physiological suggestions for the athlete going forward.`;
+    const response = await base44.functions.invoke('aiDeepDive', { athlete_id: athleteId, prompt });
 
-    setReport(result);
+    setReport(response.data.result);
     setLoading(false);
   };
 

@@ -2,6 +2,7 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
 import { parseFitWithLaps, parseTcx, parseCsv, tryParseSummaryCsv, summarizeStream, SOURCE_PRIORITY, parseAssetFile } from '../../shared/workoutParsers.ts';
 import { calcTrimp, calcRTSS, computeNgpSeries, computeDecouplingAndEF } from '../../shared/physiology.ts';
 import { reconcileStreams, recomputePhysiology, dominantFileType } from '../../shared/streamReconcile.ts';
+import { assertSafeFileUrl } from '../../shared/urlGuard.ts';
 
 const MAX_STREAM_SAMPLES = 3600; // cap stored streams (~1hr @1Hz) to avoid oversized records
 
@@ -25,6 +26,8 @@ Deno.serve(async (req) => {
       return Response.json({ error: 'date cannot be in the future' }, { status: 400 });
     }
 
+    const urlCheck = assertSafeFileUrl(file_url);
+    if (!urlCheck.ok) return Response.json({ error: 'file_url not allowed' }, { status: 400 });
     const fileRes = await fetch(file_url);
     if (!fileRes.ok) return Response.json({ error: 'Could not fetch uploaded file' }, { status: 400 });
 
