@@ -18,6 +18,17 @@ export default async function(req) {
 
     const origin = new URL(req.url).origin;
     const params = new URLSearchParams();
+    // fixed_by_ui (Checkout Studio) parameters
+    params.append("ui_mode", "hosted");
+    params.append("billing_address_collection", "auto");
+    params.append("phone_number_collection[enabled]", "false");
+    params.append("automatic_tax[enabled]", "false");
+    params.append("allow_promotion_codes", "false");
+    params.append("payment_method_collection", "always");
+    params.append("submit_type", "auto");
+    params.append("integration_identifier", "hosted_web_0001");
+    params.append("origin_context", "web");
+    // sample_only (existing real values preserved)
     params.append("mode", "subscription");
     params.append("line_items[0][price]", priceId);
     params.append("line_items[0][quantity]", "1");
