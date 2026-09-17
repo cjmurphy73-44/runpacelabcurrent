@@ -16,6 +16,7 @@ import AutonomicStressCard from "@/components/dashboard/AutonomicStressCard";
 import SleepEnergyCard from "@/components/dashboard/SleepEnergyCard";
 import HolisticFactorsLog from "@/components/dashboard/HolisticFactorsLog";
 import TodaySessionCard from "@/components/dashboard/TodaySessionCard";
+import DashboardGreeting from "@/components/dashboard/DashboardGreeting";
 
 import HorizonStrip from "@/components/dashboard/HorizonStrip";
 import LoadFatigueChart from "@/components/dashboard/LoadFatigueChart";
@@ -88,7 +89,21 @@ export default function Home() {
   }, [loadAthleteData, user]);
 
   if (loading) {
-    return <div className="text-center py-20 text-muted-foreground">Loading your dashboard…</div>;
+    return (
+      <PageShell maxWidth="max-w-7xl">
+        <div className="space-y-6">
+          <div className="h-9 w-72 rounded-md bg-muted animate-pulse" />
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            {[0, 1, 2].map((i) => <div key={i} className="h-28 rounded-lg border border-border bg-card animate-pulse" />)}
+          </div>
+          <div className="h-64 rounded-lg border border-border bg-card animate-pulse" />
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            <div className="h-40 rounded-lg border border-border bg-card animate-pulse" />
+            <div className="h-40 rounded-lg border border-border bg-card animate-pulse" />
+          </div>
+        </div>
+      </PageShell>
+    );
   }
 
   if (!user) {
@@ -136,6 +151,8 @@ export default function Home() {
           </section>
         ) : (
           <>
+          <DashboardGreeting athlete={athlete} />
+          <div className="space-y-8">
         {/* 1 — Today's snapshot */}
         <section className="space-y-4">
           <SectionHeading index="01" title="Today's snapshot" description="Your form, readiness and prescribed session for today." icon={Sun} />
@@ -160,7 +177,7 @@ export default function Home() {
           <SectionHeading
             index="03"
             title="Recent activity"
-            description="Drop a workout screenshot or review your latest sessions."
+            description="Review your latest sessions and add new ones."
             icon={Activity}
             action={
               <div className="flex items-center gap-2">
@@ -182,7 +199,7 @@ export default function Home() {
 
         {/* 3b — Planned vs. Actual (collapsible) */}
         <CollapsibleSection
-          title="Planned vs. Actual"
+          title="04 · Planned vs. Actual"
           subtitle="Reconciliation across your recent sessions"
           deep
         >
@@ -191,7 +208,7 @@ export default function Home() {
 
         {/* 4 — Coach notes (collapsible) */}
         <CollapsibleSection
-          title="04 · Coach notes"
+          title="05 · Coach notes"
           subtitle="Briefings & AI messages tuned to your trend"
           icon={MessageCircle}
           deep
@@ -204,7 +221,7 @@ export default function Home() {
 
         {/* 5 — Recovery & Readiness (collapsible) */}
         <CollapsibleSection
-          title="05 · Recovery & Readiness"
+          title="06 · Recovery & Readiness"
           subtitle="Sleep, HRV, autonomic stress & lifestyle"
           icon={HeartPulse}
           deep
@@ -230,6 +247,7 @@ export default function Home() {
           </div>
         </CollapsibleSection>
 
+          </div>
           </>
         )}
         {/* 6 — Advanced metrics (geek mode only, collapsible) */}

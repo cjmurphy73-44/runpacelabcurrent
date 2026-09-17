@@ -10,6 +10,7 @@ const LABELS = {
   adaptive_replan: "Adaptive re-planning is a Pro feature",
   structured_export: "Structured workout export is a Pro feature",
   coach_workspace: "The Coach Workspace is a Coach Pro feature",
+  ocr_import: "Screenshot OCR import is a Pro feature",
 };
 
 export default function FeatureGate({ feature, plan, children, compact = false }) {

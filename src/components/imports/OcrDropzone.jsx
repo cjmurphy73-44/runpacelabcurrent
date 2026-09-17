@@ -3,6 +3,8 @@ import { base44 } from "@/api/base44Client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Loader2, UploadCloud, Image as ImageIcon, CheckCircle2, AlertTriangle, ChevronRight, X } from "lucide-react";
 import OcrVerificationModal from "@/components/imports/OcrVerificationModal";
+import { useSubscription } from "@/hooks/useSubscription";
+import FeatureGate from "@/components/billing/FeatureGate";
 
 // Monotonic id for queue items (stable across re-renders).
 let uid = 0;
@@ -12,6 +14,7 @@ export default function OcrDropzone({ athleteId, onSaved }) {
   // Each item: { id, name, image_url?, status: uploading|reading|ready|saved|error, parsed?, error? }
   const [queue, setQueue] = useState([]);
   const [activeId, setActiveId] = useState(null);
+  const { plan } = useSubscription();
 
   async function processFile(file) {
     const id = ++uid;
@@ -55,7 +58,7 @@ export default function OcrDropzone({ athleteId, onSaved }) {
   }
 
   return (
-    <>
+    <FeatureGate feature="ocr_import" plan={plan}>
       <Card>
         <CardHeader>
           <CardTitle className="text-sm font-heading">Quick OCR Import</CardTitle>
@@ -129,6 +132,6 @@ export default function OcrDropzone({ athleteId, onSaved }) {
           onSaved={handleModalSaved}
         />
       )}
-    </>
+    </FeatureGate>
   );
 }

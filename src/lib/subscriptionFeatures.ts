@@ -5,7 +5,7 @@ export const PLAN_TIERS = ["free", "pro", "unlimited", "coach_pro"] as const;
 export type PlanTier = (typeof PLAN_TIERS)[number];
 
 // Gated advanced features named in Task D-22.
-export const GATED_FEATURES = ["unlimited_sync", "adaptive_replan", "structured_export", "coach_workspace"] as const;
+export const GATED_FEATURES = ["unlimited_sync", "adaptive_replan", "structured_export", "ocr_import", "coach_workspace"] as const;
 export type GatedFeature = (typeof GATED_FEATURES)[number];
 
 export const FREE_LIMITS = {
@@ -16,11 +16,11 @@ export const FREE_LIMITS = {
 
 const FEATURE_BY_PLAN: Record<string, GatedFeature[]> = {
   free: [],
-  pro: ["unlimited_sync", "adaptive_replan", "structured_export"],
-  unlimited: ["unlimited_sync", "adaptive_replan", "structured_export"],
-  coach_pro: ["unlimited_sync", "adaptive_replan", "structured_export", "coach_workspace"],
+  pro: ["unlimited_sync", "adaptive_replan", "structured_export", "ocr_import"],
+  unlimited: ["unlimited_sync", "adaptive_replan", "structured_export", "ocr_import"],
+  coach_pro: ["unlimited_sync", "adaptive_replan", "structured_export", "ocr_import", "coach_workspace"],
   // legacy
-  team: ["unlimited_sync", "adaptive_replan", "structured_export", "coach_workspace"],
+  team: ["unlimited_sync", "adaptive_replan", "structured_export", "ocr_import", "coach_workspace"],
 };
 
 export function isPro(plan: string | null | undefined): boolean {
