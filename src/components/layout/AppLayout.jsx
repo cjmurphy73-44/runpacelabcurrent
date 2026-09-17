@@ -11,7 +11,7 @@ import { useCoachAccess } from "@/hooks/useCoachAccess";
 import MobileNav from "@/components/layout/MobileNav";
 import PageErrorBoundary from "@/components/common/PageErrorBoundary";
 import { PRIMARY_NAV } from "@/components/layout/navItems";
-import { OfflineSyncProvider, NetworkStatusBadge, SyncErrorBoundary } from "@/services/offlineSyncQueue";
+import { OfflineSyncProvider, NetworkStatusBadge, SyncErrorBoundary } from "@/components/layout/offlineSyncAdapters";
 
 export default function AppLayout() {
   const { user, logout } = useAuth();
