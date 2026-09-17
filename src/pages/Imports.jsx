@@ -5,6 +5,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Loader2, Upload, Webhook, Plus, ArrowLeft } from "lucide-react";
+import HelpLink from "@/components/guide/HelpLink";
 import BulkWorkoutImport from "@/components/dashboard/BulkWorkoutImport";
 import WebhookSyncPanel from "@/components/imports/WebhookSyncPanel";
 import ManualWorkoutModal from "@/components/workout/ManualWorkoutModal";
@@ -48,11 +49,14 @@ export default function Imports() {
 
   return (
     <div className="max-w-3xl mx-auto space-y-6">
-      <div>
-        <h1 className="text-2xl font-heading font-bold">Imports & Sync</h1>
-        <p className="text-sm text-muted-foreground">
-          Add workouts via bulk file upload or automated webhooks.
-        </p>
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-heading font-bold">Imports & Sync</h1>
+          <p className="text-sm text-muted-foreground">
+            Add workouts via bulk file upload or automated webhooks.
+          </p>
+        </div>
+        <HelpLink section="connect-data" label="How to export from your watch" />
       </div>
 
       <Card className="border-dashed bg-muted/30">

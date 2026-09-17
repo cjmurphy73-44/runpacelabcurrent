@@ -5,6 +5,7 @@ import SectionHeading from "@/components/layout/SectionHeading";
 import RecoveryCenterView from "@/components/RecoveryCenterView";
 import { FitnessProvider } from "@/context/FitnessContext";
 import { HeartPulse, Loader2 } from "lucide-react";
+import HelpLink from "@/components/guide/HelpLink";
 
 export default function RecoveryCenter() {
   const [athlete, setAthlete] = useState(null);
@@ -52,6 +53,7 @@ export default function RecoveryCenter() {
           icon={HeartPulse}
         />
         <RecoveryCenterView athleteId={athlete.id} />
+        <div className="mt-4"><HelpLink section="recovery" label="How recovery data works" /></div>
       </PageShell>
     </FitnessProvider>
   );
