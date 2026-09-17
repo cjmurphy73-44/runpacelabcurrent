@@ -1,7 +1,7 @@
 {
   "name": "Subscription",
   "type": "object",
-  "description": "Per-user subscription plan used to gate premium features. Provisioned by the stripeWebhook function from Stripe events (asServiceRole bypasses RLS). A missing record means the user is on the free tier.",
+  "description": "Per-user subscription plan used to gate premium features. Provisioned by the stripeWebhook function from Stripe events, or by the redeemAccessCode function for beta testers (asServiceRole bypasses RLS). A missing record means the user is on the free tier.",
   "properties": {
     "user_id": {
       "type": "string",
@@ -12,10 +12,12 @@
       "enum": [
         "free",
         "pro",
+        "unlimited",
+        "coach_pro",
         "team"
       ],
       "default": "free",
-      "description": "Entitlement tier: free (limited), pro (unlocks gated features), team (pro + coach roster seats)"
+      "description": "Entitlement tier: free (limited), pro (gated features), unlimited (pro + uncapped AI), coach_pro (unlimited + coach roster). 'team' is a legacy value kept for backward compatibility with old records; new flows use 'coach_pro'."
     },
     "status": {
       "type": "string",
@@ -38,7 +40,7 @@
     "current_period_end": {
       "type": "string",
       "format": "date-time",
-      "description": "End of the current billing period from Stripe"
+      "description": "End of the current billing period from Stripe, or the access-code expiry for tester-provisioned plans"
     }
   },
   "required": [

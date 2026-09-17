@@ -6,8 +6,9 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Loader2, DollarSign, Users, Activity as ActivityIcon, TrendingUp, ShieldAlert, Database, RefreshCw } from "lucide-react";
 import PageShell from "@/components/layout/PageShell";
+import AccessCodeManager from "@/components/admin/AccessCodeManager";
 
-const PLAN_PRICE = { free: 0, pro: 19, team: 49 };
+const PLAN_PRICE = { free: 0, pro: 9, unlimited: 15, coach_pro: 29, team: 29 };
 
 export default function Admin() {
   const { user } = useAuth();
@@ -72,7 +73,7 @@ export default function Admin() {
 
   const activeSubs = subs.filter((s) => s.status === "active" || s.status === "trialing");
   const mrr = activeSubs.reduce((sum, s) => sum + (PLAN_PRICE[s.plan] || 0), 0);
-  const planCounts = { free: 0, pro: 0, team: 0 };
+  const planCounts = { free: 0, pro: 0, unlimited: 0, coach_pro: 0, team: 0 };
   subs.forEach((s) => { if (planCounts[s.plan] !== undefined) planCounts[s.plan]++; });
 
   const stats = [
@@ -124,6 +125,8 @@ export default function Admin() {
           </CardContent>
         </Card>
       </div>
+
+      <AccessCodeManager className="mt-4" />
 
       <Card className="mt-4">
         <CardHeader>

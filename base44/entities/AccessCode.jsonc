@@ -1,0 +1,67 @@
+{
+  "name": "AccessCode",
+  "type": "object",
+  "description": "Admin-generated access code granting beta testers full access to a paid plan without Stripe checkout. Redeemed via the redeemAccessCode backend function, which sets the caller's Subscription to granted_plan with status active and current_period_end set to the code's expires_at. Admin-only via RLS.",
+  "properties": {
+    "code": {
+      "type": "string",
+      "description": "Unique redeemable code string, e.g. TPL-ABCD-EFGH-JKLM"
+    },
+    "granted_plan": {
+      "type": "string",
+      "enum": [
+        "pro",
+        "unlimited",
+        "coach_pro"
+      ],
+      "description": "Plan tier this code grants when redeemed"
+    },
+    "max_uses": {
+      "type": "integer",
+      "default": 1,
+      "minimum": 1,
+      "description": "How many times this code can be redeemed"
+    },
+    "used_count": {
+      "type": "integer",
+      "default": 0,
+      "minimum": 0,
+      "description": "How many times this code has been redeemed so far"
+    },
+    "expires_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When this code stops being redeemable, and the granted access expires"
+    },
+    "notes": {
+      "type": "string",
+      "description": "Admin note, e.g. who this code is for"
+    }
+  },
+  "required": [
+    "code",
+    "granted_plan"
+  ],
+  "rls": {
+    "create": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "read": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "update": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "delete": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
+}

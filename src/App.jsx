@@ -1,5 +1,5 @@
 import React from 'react';
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import CoachChat from '@/pages/CoachChat';
 import Home from '@/pages/Home';
 import Login from '@/pages/Login';
@@ -23,6 +23,7 @@ import Subscribe from '@/pages/Subscribe';
 import CoachWorkspace from '@/pages/CoachWorkspace';
 import Admin from '@/pages/Admin';
 import UserGuide from '@/pages/UserGuide';
+import Landing from '@/pages/Landing';
 import AppLayout from '@/components/layout/AppLayout';
 import PageNotFound from '@/lib/PageNotFound';
 import { QueryClientProvider } from '@tanstack/react-query';
@@ -42,8 +43,10 @@ export default function App() {
             <Route path="/register" element={<Register />} />
             <Route path="/forgot-password" element={<ForgotPassword />} />
             <Route path="/reset-password" element={<ResetPassword />} />
+            <Route path="/landing" element={<Navigate to="/" replace />} />
+            <Route path="/" element={<Landing />} />
             <Route element={<AppLayout />}>
-              <Route path="/" element={<Home />} />
+              <Route path="/app" element={<Home />} />
               <Route path="/coach" element={<CoachChat />} />
               <Route path="/recovery" element={<RecoveryCenter />} />
               <Route path="/predict" element={<RacePrediction />} />

@@ -9,7 +9,7 @@ const LABELS = {
   unlimited_sync: "Unlimited wearable sync is a Pro feature",
   adaptive_replan: "Adaptive re-planning is a Pro feature",
   structured_export: "Structured workout export is a Pro feature",
-  coach_workspace: "The Coach Workspace is a Team feature",
+  coach_workspace: "The Coach Workspace is a Coach Pro feature",
 };
 
 export default function FeatureGate({ feature, plan, children, compact = false }) {
@@ -23,8 +23,8 @@ export default function FeatureGate({ feature, plan, children, compact = false }
     );
   }
 
-  const target = feature === "coach_workspace" ? PLAN_DETAILS.team : PLAN_DETAILS.pro;
-  const cta = feature === "coach_workspace" ? "Upgrade to Team" : "Upgrade to Pro";
+  const target = feature === "coach_workspace" ? PLAN_DETAILS.coach_pro : PLAN_DETAILS.pro;
+  const cta = feature === "coach_workspace" ? "Upgrade to Coach Pro" : "Upgrade to Pro";
   return (
     <Card className="border-dashed">
       <CardContent className="flex items-center justify-between gap-4 p-5">

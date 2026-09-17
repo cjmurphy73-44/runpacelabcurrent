@@ -8,7 +8,7 @@ import {
 // slide-out menu, so the two stay in sync without duplication.
 
 export const PRIMARY_NAV = [
-  { to: "/", label: "Dashboard", icon: Activity },
+  { to: "/app", label: "Dashboard", icon: Activity },
   { to: "/analytics", label: "Analytics", icon: LineChart },
   { to: "/plan", label: "Plan", icon: CalendarRange },
   { to: "/coach", label: "Coach", icon: MessageCircle },

@@ -7,26 +7,29 @@ import { useToast } from "@/components/ui/use-toast";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Check, Sparkles, ArrowLeft } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Check, Sparkles, ArrowLeft, Ticket } from "lucide-react";
 import PageShell from "@/components/layout/PageShell";
 import { PLAN_DETAILS, PLAN_TIERS } from "@/lib/subscriptionFeatures";
 
 export default function Subscribe() {
   const { user } = useAuth();
-  const { plan: currentPlan, isPro } = useSubscription();
+  const { plan: currentPlan, isPro, refresh } = useSubscription();
   const { toast } = useToast();
   const [busy, setBusy] = useState(null);
   const [params] = useSearchParams();
+  const [code, setCode] = useState("");
+  const [redeeming, setRedeeming] = useState(false);
 
   React.useEffect(() => {
     const status = params.get("status");
-    if (status === "success") toast({ title: "Subscription active 🎉", description: "Your Pro features are unlocked." });
+    if (status === "success") toast({ title: "Subscription active 🎉", description: "Your plan is unlocked." });
     if (status === "canceled") toast({ title: "Checkout canceled", variant: "destructive" });
   }, [params]);
 
   const subscribe = async (tier) => {
     if (window.self !== window.top) {
-      alert("Checkout only works from the published app — open run-pace-logic.base44.app in a new tab to subscribe.");
+      alert("Checkout only works from the published app — open trainpacelab.base44.app in a new tab to subscribe.");
       return;
     }
     setBusy(tier);
@@ -42,16 +45,38 @@ export default function Subscribe() {
     }
   };
 
+  const redeem = async () => {
+    if (!code.trim()) return;
+    setRedeeming(true);
+    try {
+      const res = await base44.functions.invoke("redeemAccessCode", { action: "redeem", code: code.trim() });
+      const ok = res?.data?.success || res?.success;
+      if (ok) {
+        const plan = res?.data?.plan || res?.plan;
+        const exp = res?.data?.expires_at || res?.expires_at;
+        toast({ title: "Access unlocked 🎉", description: `You're on ${PLAN_DETAILS[plan]?.label || "Pro"}${exp ? ` until ${new Date(exp).toLocaleDateString()}` : ""}.` });
+        setCode("");
+        await refresh();
+      } else {
+        toast({ title: res?.data?.error || res?.error || "Could not redeem code", variant: "destructive" });
+      }
+    } catch (e) {
+      toast({ title: e?.message || "Could not redeem code", variant: "destructive" });
+    } finally {
+      setRedeeming(false);
+    }
+  };
+
   return (
     <PageShell title="Plans & billing" description="Upgrade to unlock unlimited sync, adaptive re-planning, and structured workout export.">
-      <div className="flex items-center gap-2 mb-2">
+      <div className="flex items-center gap-2 mb-2 flex-wrap">
         <Badge variant={isPro ? "default" : "outline"}>Current plan: {PLAN_DETAILS[currentPlan]?.label ?? "Free"}</Badge>
         {isPro && <span className="text-xs text-muted-foreground">Manage billing in your Stripe customer portal.</span>}
       </div>
-      <div className="grid gap-4 md:grid-cols-3 items-start">
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4 items-start">
         {PLAN_TIERS.map((tier) => {
           const d = PLAN_DETAILS[tier];
-          const isCurrent = currentPlan === tier || (tier === "free" && currentPlan === "free");
+          const isCurrent = currentPlan === tier || (tier === "free" && (!currentPlan || currentPlan === "free"));
           return (
             <Card key={tier} className={`relative ${d.highlighted ? "border-primary shadow-md" : ""}`}>
               {d.highlighted && <span className="absolute -top-2.5 left-1/2 -translate-x-1/2 bg-primary text-primary-foreground text-[10px] font-semibold px-2 py-0.5 rounded-full">Most popular</span>}
@@ -87,8 +112,31 @@ export default function Subscribe() {
           );
         })}
       </div>
+
+      <Card className="mt-6 border-dashed">
+        <CardContent className="p-5">
+          <div className="flex items-center gap-2 mb-3">
+            <Ticket className="w-4 h-4 text-primary" />
+            <h3 className="font-heading font-semibold text-sm">Have an access code?</h3>
+          </div>
+          <p className="text-sm text-muted-foreground mb-3">Beta testers and coaches can redeem a code for instant access — no checkout required.</p>
+          <div className="flex flex-col sm:flex-row gap-2">
+            <Input
+              placeholder="TPL-XXXX-XXXX-XXXX"
+              value={code}
+              onChange={(e) => setCode(e.target.value)}
+              className="sm:max-w-xs"
+              onKeyDown={(e) => e.key === "Enter" && redeem()}
+            />
+            <Button onClick={redeem} disabled={redeeming || !code.trim()}>
+              {redeeming ? "Redeeming…" : "Redeem code"}
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+
       <div className="mt-6">
-        <Button asChild variant="ghost" size="sm"><Link to="/"><ArrowLeft className="w-4 h-4" />Back to dashboard</Link></Button>
+        <Button asChild variant="ghost" size="sm"><Link to="/app"><ArrowLeft className="w-4 h-4" />Back to dashboard</Link></Button>
       </div>
     </PageShell>
   );

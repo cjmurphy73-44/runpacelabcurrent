@@ -23,7 +23,9 @@ async function verifySignature(body, sigHeader, secret) {
 function planFromPrice(sub, priceIds) {
   const priceId = sub?.items?.data?.[0]?.price?.id;
   if (priceId === priceIds.pro) return "pro";
-  if (priceId === priceIds.team) return "team";
+  if (priceId === priceIds.unlimited) return "unlimited";
+  if (priceId === priceIds.coach_pro) return "coach_pro";
+  if (priceId === priceIds.team) return "coach_pro"; // legacy Team → Coach Pro
   return null;
 }
 
@@ -46,7 +48,7 @@ export default async function(req) {
     const event = JSON.parse(body);
     const base44 = createClientFromRequest(req);
     const sr = base44.asServiceRole;
-    const priceIds = { pro: secrets.get("PRO_PRICE_ID"), team: secrets.get("TEAM_PRICE_ID") };
+    const priceIds = { pro: secrets.get("PRO_PRICE_ID"), unlimited: secrets.get("UNLIMITED_PRICE_ID"), coach_pro: secrets.get("COACH_PRO_PRICE_ID"), team: secrets.get("TEAM_PRICE_ID") };
 
     const provision = async (userId, plan, status, customer, subId, periodEnd) => {
       const existing = await sr.entities.Subscription.filter({ user_id: userId }, "-created_date", 5);
