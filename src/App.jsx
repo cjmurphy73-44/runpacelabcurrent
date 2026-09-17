@@ -2,6 +2,10 @@ import React from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import CoachChat from '@/pages/CoachChat';
 import Home from '@/pages/Home';
+import Login from '@/pages/Login';
+import Register from '@/pages/Register';
+import ForgotPassword from '@/pages/ForgotPassword';
+import ResetPassword from '@/pages/ResetPassword';
 import RecoveryCenter from '@/pages/RecoveryCenter';
 import RacePrediction from '@/pages/RacePrediction';
 import Pbs from '@/pages/Pbs';
@@ -34,6 +38,10 @@ export default function App() {
         <UIPreferencesProvider>
           <Router>
           <Routes>
+            <Route path="/login" element={<Login />} />
+            <Route path="/register" element={<Register />} />
+            <Route path="/forgot-password" element={<ForgotPassword />} />
+            <Route path="/reset-password" element={<ResetPassword />} />
             <Route element={<AppLayout />}>
               <Route path="/" element={<Home />} />
               <Route path="/coach" element={<CoachChat />} />

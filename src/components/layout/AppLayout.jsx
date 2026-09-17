@@ -108,6 +108,8 @@ export default function AppLayout() {
           <Outlet />
         </PageErrorBoundary>
       </main>
-    </div>
+        </div>
+      </OfflineSyncProvider>
+    </SyncErrorBoundary>
   );
 }

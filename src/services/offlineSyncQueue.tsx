@@ -61,7 +61,7 @@ class OfflineSyncQueueService {
   async enqueue(action, payload) {
     const queue = this.getQueue();
     const newItem = {
-      id: 'sync_' + Date.now() + '_' + Math.random().toString(36.substring(2, 9)),
+      id: 'sync_' + Date.now() + '_' + Math.random().toString(36).substring(2, 9),
       action,
       payload,
       timestamp: Date.now(),
