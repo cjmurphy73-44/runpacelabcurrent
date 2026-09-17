@@ -11,6 +11,7 @@ import { useCoachAccess } from "@/hooks/useCoachAccess";
 import MobileNav from "@/components/layout/MobileNav";
 import PageErrorBoundary from "@/components/common/PageErrorBoundary";
 import { PRIMARY_NAV } from "@/components/layout/navItems";
+import { OfflineSyncProvider, NetworkStatusBadge, SyncErrorBoundary } from "@/services/offlineSyncQueue";
 
 export default function AppLayout() {
   const { user, logout } = useAuth();
@@ -34,29 +35,37 @@ export default function AppLayout() {
   );
 
   return (
-    <div className="min-h-screen bg-background">
-      <header className="border-b border-border sticky top-0 bg-background/80 backdrop-blur z-30">
-        <div className="max-w-7xl mx-auto flex items-center justify-between gap-4 px-4 py-3">
-          <div className="flex items-center gap-6 min-w-0">
-            <Link to="/" className="flex items-center gap-2 font-heading font-bold text-lg shrink-0">
-              <Activity className="w-5 h-5 text-primary" />
-              <span className="flex flex-col leading-none">
-                <span>Trainpacelab</span>
-                <span className="hidden sm:block text-[10px] font-normal font-body text-muted-foreground tracking-wide uppercase">Multi-Sport Endurance</span>
-              </span>
-            </Link>
-            <nav className="hidden lg:flex items-center gap-1 min-w-0">
-              {PRIMARY_NAV.map((n) => navLink(n.to, n.label, n.icon))}
-              {isCoach && navLink("/roster", "Roster", Users)}
-              {user?.role === "admin" && navLink("/admin", "Admin", LayoutDashboard)}
-              <ToolsDropdown />
-            </nav>
-            <div className="lg:hidden">
-              <MobileNav />
-            </div>
-          </div>
-          <div className="flex items-center gap-1 shrink-0">
-            <div className="hidden lg:flex items-center rounded-md border border-border p-0.5 mr-1" title="Switch between Scientific and Simplified mode">
+    <SyncErrorBoundary>
+      <OfflineSyncProvider>
+        <div className="min-h-screen bg-background">
+          <header className="border-b border-border sticky top-0 bg-background/85 backdrop-blur z-30">
+            <div className="max-w-7xl mx-auto flex items-center justify-between gap-4 px-4 py-3">
+              <div className="flex items-center gap-6 min-w-0">
+                <Link to="/" className="flex items-center gap-2 font-heading font-bold text-lg shrink-0">
+                  <Activity className="w-5 h-5 text-primary" />
+                  <span className="flex flex-col leading-none">
+                    <span>Trainpacelab</span>
+                    <span className="hidden sm:block text-[10px] font-normal font-body text-muted-foreground tracking-wide uppercase">Multi-Sport Endurance</span>
+                  </span>
+                </Link>
+                <div className="hidden sm:block shrink-0">
+                  <NetworkStatusBadge />
+                </div>
+                <nav className="hidden lg:flex items-center gap-1 min-w-0">
+                  {PRIMARY_NAV.map((n) => navLink(n.to, n.label, n.icon))}
+                  {isCoach && navLink("/roster", "Roster", Users)}
+                  {user?.role === "admin" && navLink("/admin", "Admin", LayoutDashboard)}
+                  <ToolsDropdown />
+                </nav>
+                <div className="lg:hidden">
+                  <MobileNav />
+                </div>
+              </div>
+              <div className="flex items-center gap-2 shrink-0">
+                <div className="sm:hidden">
+                  <NetworkStatusBadge />
+                </div>
+                <div className="hidden lg:flex items-center rounded-md border border-border p-0.5 mr-1" title="Switch between Scientific and Simplified mode">
               <button
                 type="button"
                 onClick={() => setLens("scientific")}
