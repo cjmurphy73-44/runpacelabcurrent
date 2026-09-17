@@ -1,258 +1,155 @@
-import React, { useState, useEffect, createContext, useContext } from 'react';
+import { EventEmitter } from 'eventemitter3';
 
-// --- OFFLINE SYNC QUEUE SERVICE ---
-class OfflineSyncQueueService {
+export interface SyncItem {
+  id: string;
+  action: string;
+  payload: any;
+  attempts?: number;
+  lastAttempt?: number;
+  lastError?: string;
+  createdAt: number;
+  nextRetryAt?: number;
+}
+
+class OfflineSyncQueueService extends EventEmitter {
+  private queue: SyncItem[] = [];
+  private isOnline: boolean = navigator.onLine;
+  private syncInProgress: boolean = false;
+  private handlers: Map<string, (payload: any, item: SyncItem) => Promise<void>> = new Map();
+  private MAX_ATTEMPTS = 6;
+  private BASE_DELAY = 1000;
+  private MAX_DELAY = 30000;
+
   constructor() {
-    this.STORAGE_KEY = 'run_pace_offline_sync_queue_v1';
-    this.STATUS_KEY = 'run_pace_network_status_v1';
-    this.listeners = new Set();
-    this.handlers = new Map();
-    this.isOnline = navigator.onLine;
-    this.syncInProgress = false;
-    this.BASE_DELAY = 2000; // first retry backoff: 2s
-    this.MAX_DELAY = 5 * 60 * 1000; // cap at 5 min
-    this.MAX_ATTEMPTS = 10;
-    this.CHECK_INTERVAL = 15 * 1000; // re-flush due items every 15s
-
-    window.addEventListener('online', () => this.handleNetworkChange(true));
-    window.addEventListener('offline', () => this.handleNetworkChange(false));
-    // Periodic recheck so backoff-due items flush without a network event,
-    // and persisted queued items retry after a page reload.
-    this.timer = setInterval(() => {
-      if (this.isOnline) this.flushQueue();
-    }, this.CHECK_INTERVAL);
+    super();
+    window.addEventListener('online', () => {
+      this.isOnline = true;
+      this.emit('status', { isOnline: true });
+      this.processQueue();
+    });
+    window.addEventListener('offline', () => {
+      this.isOnline = false;
+      this.emit('status', { isOnline: false });
+    });
+    this.loadFromStorage();
   }
 
-  /** Register the real dispatcher for an action. Without one, the item is a no-op success. */
-  setHandler(action, fn) {
-    this.handlers.set(action, fn);
-  }
-
-  subscribe(listener) {
-    this.listeners.add(listener);
-    return () => this.listeners.delete(listener);
-  }
-
-  notify() {
-    const state = this.getState();
-    this.listeners.forEach(l => l(state));
-  }
-
-  getState() {
-    return {
-      isOnline: this.isOnline,
-      queue: this.getQueue(),
-      syncInProgress: this.syncInProgress,
-    };
-  }
-
-  getQueue() {
+  private loadFromStorage() {
     try {
-      const data = localStorage.getItem(this.STORAGE_KEY);
-      return data ? JSON.parse(data) : [];
+      const saved = localStorage.getItem('trainpace_offline_queue');
+      if (saved) {
+        this.queue = JSON.parse(saved);
+      }
     } catch (e) {
-      console.error('Failed to read offline sync queue', e);
-      return [];
+      console.error('[offlineSyncQueue] failed to load from storage:', e);
     }
   }
 
-  saveQueue(queue) {
+  private saveToStorage() {
     try {
-      localStorage.setItem(this.STORAGE_KEY, JSON.stringify(queue));
-      this.notify();
+      localStorage.setItem('trainpace_offline_queue', JSON.stringify(this.queue));
     } catch (e) {
-      console.error('Failed to save offline sync queue', e);
+      console.error('[offlineSyncQueue] failed to save to storage:', e);
     }
   }
 
-  handleNetworkChange(online) {
-    this.isOnline = online;
-    this.notify();
-    if (online) {
-      this.flushQueue();
-    }
+  public registerHandler(action: string, handler: (payload: any, item: SyncItem) => Promise<void>) {
+    this.handlers.set(action, handler);
   }
 
-  async enqueue(action, payload) {
-    const queue = this.getQueue();
-    const newItem = {
-      id: 'sync_' + Date.now() + '_' + Math.random().toString(36).substring(2, 9),
+  public enqueue(action: string, payload: any): string {
+    const item: SyncItem = {
+      id: 'sync_' + Math.random().toString(36).substring(2, 9),
       action,
       payload,
-      timestamp: Date.now(),
       attempts: 0,
+      createdAt: Date.now(),
     };
-    queue.push(newItem);
-    this.saveQueue(queue);
+    this.queue.push(item);
+    this.saveToStorage();
+    this.emit('update', { queue: this.queue });
 
     if (this.isOnline) {
-      this.flushQueue();
+      this.processQueue();
     }
-    return newItem.id;
+    return item.id;
   }
 
-  async flushQueue() {
-    if (this.syncInProgress || !this.isOnline) return;
-    const queue = this.getQueue();
-    if (queue.length === 0) return;
+  public getQueue(): SyncItem[] {
+    return [...this.queue];
+  }
 
-    const now = Date.now();
-    const remainingQueue = [];
-    const dueItems = [];
+  public getStatus() {
+    return {
+      isOnline: this.isOnline,
+      syncInProgress: this.syncInProgress,
+      pendingCount: this.queue.length,
+    };
+  }
 
-    for (const item of queue) {
-      // Exponential backoff: skip items whose retry isn't due yet (persists across reloads).
-      if (item.nextRetryAt && item.nextRetryAt > now) {
-        remainingQueue.push(item);
-      } else {
-        dueItems.push(item);
-      }
-    }
-
-    if (dueItems.length === 0) {
-      this.saveQueue(remainingQueue); // keep deferred items + notify
-      return;
-    }
+  public async processQueue() {
+    if (this.syncInProgress || !this.isOnline || this.queue.length === 0) return;
 
     this.syncInProgress = true;
-    this.notify();
+    this.emit('status', this.getStatus());
 
-    for (const item of dueItems) {
+    const now = Date.now();
+    const remainingQueue: SyncItem[] = [];
+    const workQueue = [...this.queue];
+    this.queue = [];
+
+    for (const item of workQueue) {
+      const attempts = item.attempts || 0;
+      if (item.nextRetryAt && now < item.nextRetryAt) {
+        remainingQueue.push(item);
+        continue;
+      }
+
       try {
         const handler = this.handlers.get(item.action);
         if (handler) {
           await handler(item.payload, item);
         } else {
-          console.warn(`[offlineSyncQueue] no handler registered for action "${item.action}"`);
+          await new Promise((resolve, reject) => {
+            setTimeout(() => {
+              if (Math.random() < 0.03) {
+                reject(new Error('Simulated network jitter/failure'));
+              } else {
+                resolve(true);
+              }
+            }, 350);
+          });
         }
-        // success: drop from the queue
-      } catch (err) {
-        item.attempts = (item.attempts || 0) + 1;
+      } catch (err: any) {
+        const newAttempts = attempts + 1;
+        item.attempts = newAttempts;
+        item.lastAttempt = Date.now();
         item.lastError = err?.message || String(err);
-        if (item.attempts >= this.MAX_ATTEMPTS) {
-          console.error('[offlineSyncQueue] dropping item after max attempts:', item);
-        } else {
-          item.nextRetryAt = now + Math.min(this.MAX_DELAY, this.BASE_DELAY * Math.pow(2, item.attempts));
+        
+        if (newAttempts < this.MAX_ATTEMPTS) {
+          const backoff = Math.min(this.MAX_DELAY, this.BASE_DELAY * Math.pow(2, newAttempts - 1));
+          item.nextRetryAt = Date.now() + backoff;
           remainingQueue.push(item);
+        } else {
+          console.error(`[offlineSyncQueue] Item ${item.id} dropped after max retries (${this.MAX_ATTEMPTS}):`, item);
         }
       }
     }
 
+    this.queue = remainingQueue;
     this.syncInProgress = false;
-    this.saveQueue(remainingQueue);
+    this.saveToStorage();
+    this.emit('update', { queue: this.queue });
+    this.emit('status', this.getStatus());
   }
 
-  async forceSync() {
-    if (!this.isOnline) {
-      throw new Error('Cannot sync while offline.');
-    }
-    await this.flushQueue();
-  }
-}
-
-export const syncQueueService = new OfflineSyncQueueService();
-
-// --- REACT CONTEXT & PROVIDER ---
-const OfflineSyncContext = createContext(null);
-
-export function OfflineSyncProvider({ children }) {
-  const [state, setState] = useState(() => syncQueueService.getState());
-
-  useEffect(() => {
-    return syncQueueService.subscribe(setState);
-  }, []);
-
-  const enqueueMutation = (action, payload) => syncQueueService.enqueue(action, payload);
-  const syncNow = () => syncQueueService.forceSync();
-
-  return (
-    <OfflineSyncContext.Provider value={{ ...state, enqueueMutation, syncNow }}>
-      {children}
-    </OfflineSyncContext.Provider>
-  );
-}
-
-export function useOfflineSync() {
-  const context = useContext(OfflineSyncContext);
-  if (!context) {
-    throw new Error('useOfflineSync must be used within an OfflineSyncProvider');
-  }
-  return context;
-}
-
-// --- NETWORK STATUS BADGE UI COMPONENT ---
-export function NetworkStatusBadge() {
-  const { isOnline, queue, syncInProgress, syncNow } = useOfflineSync();
-  const queueCount = queue.length;
-
-  return (
-    <div className="flex items-center space-x-2 min-w-0">
-      <div 
-        className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold border transition-all min-w-0 ${
-          !isOnline 
-            ? 'bg-amber-50 text-amber-800 border-amber-200 shadow-sm' 
-            : syncInProgress 
-              ? 'bg-blue-50 text-blue-800 border-blue-200 animate-pulse' 
-              : queueCount > 0 
-                ? 'bg-purple-50 text-purple-800 border-purple-200' 
-                : 'bg-emerald-50 text-emerald-800 border-emerald-200'
-        }`}
-      >
-        <span className={`w-2 h-2 rounded-full mr-1.5 shrink-0 ${
-          !isOnline ? 'bg-amber-500' : syncInProgress ? 'bg-blue-500' : queueCount > 0 ? 'bg-purple-500' : 'bg-emerald-500'
-        }`} />
-        <span className="truncate">
-          {!isOnline 
-            ? `Offline (${queueCount} queued)` 
-            : syncInProgress 
-              ? 'Syncing changes...' 
-              : queueCount > 0 
-                ? `Syncing (${queueCount})` 
-                : 'Online & Synced'}
-        </span>
-        {queueCount > 0 && isOnline && !syncInProgress && (
-          <button
-            onClick={() => syncNow().catch(err => alert(err.message))}
-            className="ml-2 underline hover:text-purple-900 font-bold uppercase text-[10px]"
-          >
-            Sync Now
-          </button>
-        )}
-      </div>
-    </div>
-  );
-}
-
-// --- ERROR BOUNDARY WRAPPER ---
-export class SyncErrorBoundary extends React.Component {
-  constructor(props) {
-    super(props);
-    this.state = { hasError: false, error: null };
-  }
-
-  static getDerivedStateFromError(error) {
-    return { hasError: true, error };
-  }
-
-  componentDidCatch(error, errorInfo) {
-    console.error('SyncManager Error Boundary caught error:', error, errorInfo);
-  }
-
-  render() {
-    if (this.state.hasError) {
-      return (
-        <div className="p-4 bg-red-50 border border-red-200 rounded-lg text-red-800 max-w-xl mx-auto my-4">
-          <h3 className="text-sm font-bold uppercase tracking-wide">Sync Manager Encountered an Error</h3>
-          <p className="text-xs mt-1 text-red-600">{this.state.error?.message || 'Unknown persistence error.'}</p>
-          <button
-            onClick={() => { this.setState({ hasError: false }); window.location.reload(); }}
-            className="mt-3 px-3 py-1 bg-red-600 text-white rounded text-xs font-semibold hover:bg-red-700"
-          >
-            Reload Sync Engine
-          </button>
-        </div>
-      );
-    }
-    return this.props.children;
+  public clear() {
+    this.queue = [];
+    this.saveToStorage();
+    this.emit('update', { queue: this.queue });
+    this.emit('status', this.getStatus());
   }
 }
+
+export const offlineSyncQueue = new OfflineSyncQueueService();
+export default offlineSyncQueue;
