@@ -80,6 +80,111 @@ export function normalizeCorosRecovery(r: any): NormalizedRecovery | null {
   };
 }
 
+// ---- Additional provider normalizers (free OAuth wearables) ----
+// Each maps that provider's daily recovery JSON into NormalizedRecovery, defensively
+// harvesting known field names so a missing signal becomes null rather than a crash.
+
+// Oura Ring (v2): daily_hrv, daily_sleep, daily_readiness, daily_activity documents.
+export function normalizeOuraRecovery(hrvDoc: any, sleepDoc: any, readinessDoc: any, activityDoc?: any): NormalizedRecovery | null {
+  const date = hrvDoc?.day || sleepDoc?.day || readinessDoc?.day || hrvDoc?.summary_date || sleepDoc?.summary_date;
+  if (!date) return null;
+  const hrv = Number(hrvDoc?.hrv?.average_rmssd ?? hrvDoc?.average_hrv ?? hrvDoc?.hrv_avg ?? 0) || null;
+  const sleepScore = Number(sleepDoc?.score ?? sleepDoc?.sleep_score ?? 0) || null;
+  const sleepHours = sleepDoc?.total_sleep_duration ? Number(sleepDoc.total_sleep_duration) / 3600 : null;
+  const readiness = Number(readinessDoc?.score ?? readinessDoc?.readiness_score ?? 0) || null;
+  const restingHr = Number(activityDoc?.resting_heart_rate ?? sleepDoc?.resting_heart_rate ?? 0) || null;
+  return {
+    date: String(date).slice(0, 10),
+    hrv: hrv || null,
+    sleep_score: sleepScore || null,
+    sleep_duration_hours: sleepHours ? Math.round(sleepHours * 100) / 100 : null,
+    resting_hr: restingHr || null,
+    provider_readiness_score: readiness || null,
+  };
+}
+
+// Whoop: recovery document. Whoop scores recovery 0-100 and reports HRV + RHR in the same payload.
+export function normalizeWhoopRecovery(rec: any, cycleDate?: string): NormalizedRecovery | null {
+  const date = cycleDate || rec?.created_at?.slice(0, 10) || rec?.date || rec?.sleep?.created_at?.slice(0, 10);
+  if (!date) return null;
+  const score = rec?.score ?? rec?.recovery_score ?? rec?.recovery?.score;
+  const hrv = Number(rec?.hrv ?? rec?.heart_rate_variability ?? rec?.score?.hrv ?? 0) || null;
+  const rhr = Number(rec?.resting_heart_rate ?? rec?.score?.resting_heart_rate ?? 0) || null;
+  const sleepScore = Number(rec?.sleep_quality ?? rec?.score?.sleep_quality ?? 0) || null;
+  return {
+    date: String(date).slice(0, 10),
+    hrv: hrv || null,
+    resting_hr: rhr || null,
+    sleep_score: sleepScore || null,
+    provider_readiness_score: (typeof score === 'number' && score > 0) ? score : null,
+  };
+}
+
+// Withings: HRV (heart getum), sleep, RHR (measure getmeas). Responses are nested.
+export function normalizeWithingsRecovery(date: string, hrvMs?: number | null, sleepScore?: number | null, sleepHours?: number | null, rhr?: number | null): NormalizedRecovery | null {
+  if (!date) return null;
+  return {
+    date: String(date).slice(0, 10),
+    hrv: hrvMs || null,
+    sleep_score: sleepScore || null,
+    sleep_duration_hours: sleepHours ? Math.round(sleepHours * 100) / 100 : null,
+    resting_hr: rhr || null,
+  };
+}
+
+// Polar AccessLink: nightly_recharge + sleep. Recovery score 0-100.
+export function normalizePolarRecovery(recharge: any, sleep: any): NormalizedRecovery | null {
+  const date = recharge?.date || sleep?.date || recharge?.polar_user?.date;
+  if (!date) return null;
+  const recovery = Number(recharge?.nightly_recharge?.recharge_status?.score ?? recharge?.score ?? 0) || null;
+  const hrv = Number(recharge?.heart_rate?.average_rr ?? recharge?.hrv ?? 0) || null;
+  const rhr = Number(recharge?.breathing_rate?.average_rr ?? recharge?.resting_hr ?? sleep?.resting_heart_rate ?? 0) || null;
+  const sleepScore = Number(sleep?.sleep_score ?? sleep?.sleep_summary?.sleep_score ?? 0) || null;
+  const sleepHours = sleep?.total_sleep_time ? Number(sleep.total_sleep_time) / 3600 : null;
+  return {
+    date: String(date).slice(0, 10),
+    hrv: hrv || null,
+    resting_hr: rhr || null,
+    sleep_score: sleepScore || null,
+    sleep_duration_hours: sleepHours ? Math.round(sleepHours * 100) / 100 : null,
+    provider_readiness_score: recovery || null,
+  };
+}
+
+// Fitbit: hrv, sleep, profile/RHR. HRV from hrv/date.json -> value.nightlyRmssd; sleep -> summary.score.
+export function normalizeFitbitRecovery(date: string, hrvDoc: any, sleepDoc: any, rhr?: number | null): NormalizedRecovery | null {
+  if (!date) return null;
+  const hrv = Number(hrvDoc?.value?.nightlyRmssd ?? hrvDoc?.nightlyRmssd ?? 0) || null;
+  const sleepScore = Number(sleepDoc?.summary?.score ?? sleepDoc?.score ?? 0) || null;
+  const sleepMs = sleepDoc?.summary?.totalTimeInBed ? Number(sleepDoc.summary.totalTimeInBed) * 60000 : (sleepDoc?.summary?.totalMinutesAsleep ? Number(sleepDoc.summary.totalMinutesAsleep) * 60000 : null);
+  return {
+    date: String(date).slice(0, 10),
+    hrv: hrv || null,
+    sleep_score: sleepScore || null,
+    sleep_duration_hours: sleepMs ? Math.round((sleepMs / 3600000) * 100) / 100 : null,
+    resting_hr: rhr || null,
+  };
+}
+
+// Suunto: daily activity / sleep summary. Thin recovery data; harvest what's available.
+export function normalizeSuuntoRecovery(r: any): NormalizedRecovery | null {
+  const date = r.date || r.day || (r.startTime ? String(r.startTime).slice(0, 10) : null);
+  if (!date) return null;
+  const hrv = Number(r.hrv ?? r.hrvMs ?? r.rmssd ?? 0) || null;
+  const rhr = Number(r.restingHeartRate ?? r.resting_hr ?? 0) || null;
+  const sleepScore = Number(r.sleepScore ?? r.sleep_quality ?? 0) || null;
+  const sleepHours = Number(r.sleepDurationHours ?? r.sleep_hours ?? 0) || null;
+  const recovery = Number(r.recovery ?? r.recoveryScore ?? r.readiness ?? 0) || null;
+  return {
+    date: String(date).slice(0, 10),
+    hrv: hrv || null,
+    resting_hr: rhr || null,
+    sleep_score: sleepScore || null,
+    sleep_duration_hours: sleepHours || null,
+    provider_readiness_score: recovery || null,
+  };
+}
+
 // Upsert DailyMetrics with auto-override + holistic readiness; log idempotency.
 // `history` = recent DailyMetrics (any order) used to derive rolling baselines.
 export async function ingestRecovery(base44: any, athleteId: string, normalized: NormalizedRecovery, source: string, history: any[] = []) {
