@@ -6,11 +6,26 @@ class OfflineSyncQueueService {
     this.STORAGE_KEY = 'run_pace_offline_sync_queue_v1';
     this.STATUS_KEY = 'run_pace_network_status_v1';
     this.listeners = new Set();
+    this.handlers = new Map();
     this.isOnline = navigator.onLine;
     this.syncInProgress = false;
+    this.BASE_DELAY = 2000; // first retry backoff: 2s
+    this.MAX_DELAY = 5 * 60 * 1000; // cap at 5 min
+    this.MAX_ATTEMPTS = 10;
+    this.CHECK_INTERVAL = 15 * 1000; // re-flush due items every 15s
 
     window.addEventListener('online', () => this.handleNetworkChange(true));
     window.addEventListener('offline', () => this.handleNetworkChange(false));
+    // Periodic recheck so backoff-due items flush without a network event,
+    // and persisted queued items retry after a page reload.
+    this.timer = setInterval(() => {
+      if (this.isOnline) this.flushQueue();
+    }, this.CHECK_INTERVAL);
+  }
+
+  /** Register the real dispatcher for an action. Without one, the item is a no-op success. */
+  setHandler(action, fn) {
+    this.handlers.set(action, fn);
   }
 
   subscribe(listener) {
@@ -81,30 +96,44 @@ class OfflineSyncQueueService {
     const queue = this.getQueue();
     if (queue.length === 0) return;
 
+    const now = Date.now();
+    const remainingQueue = [];
+    const dueItems = [];
+
+    for (const item of queue) {
+      // Exponential backoff: skip items whose retry isn't due yet (persists across reloads).
+      if (item.nextRetryAt && item.nextRetryAt > now) {
+        remainingQueue.push(item);
+      } else {
+        dueItems.push(item);
+      }
+    }
+
+    if (dueItems.length === 0) {
+      this.saveQueue(remainingQueue); // keep deferred items + notify
+      return;
+    }
+
     this.syncInProgress = true;
     this.notify();
 
-    const remainingQueue = [];
-
-    for (const item of queue) {
+    for (const item of dueItems) {
       try {
-        // Simulate network API call dispatch based on action type
-        await new Promise((resolve, reject) => {
-          setTimeout(() => {
-            if (Math.random() < 0.05) {
-              reject(new Error('Simulated network jitter/failure'));
-            } else {
-              resolve(true);
-            }
-          }, 400);
-        });
-        // Success: do not add back to remainingQueue
+        const handler = this.handlers.get(item.action);
+        if (handler) {
+          await handler(item.payload, item);
+        } else {
+          console.warn(`[offlineSyncQueue] no handler registered for action "${item.action}"`);
+        }
+        // success: drop from the queue
       } catch (err) {
         item.attempts = (item.attempts || 0) + 1;
-        if (item.attempts < 5) {
-          remainingQueue.push(item);
+        item.lastError = err?.message || String(err);
+        if (item.attempts >= this.MAX_ATTEMPTS) {
+          console.error('[offlineSyncQueue] dropping item after max attempts:', item);
         } else {
-          console.error('Sync item dropped after max retries:', item);
+          item.nextRetryAt = now + Math.min(this.MAX_DELAY, this.BASE_DELAY * Math.pow(2, item.attempts));
+          remainingQueue.push(item);
         }
       }
     }
