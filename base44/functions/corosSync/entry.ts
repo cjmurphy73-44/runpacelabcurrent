@@ -31,6 +31,22 @@ function selfUrl(req: Request): string {
   return `${url.origin}${url.pathname}`;
 }
 
+// Friendly HTML callback page shown on the OAuth landing — surfaces COROS's real
+// failure reason (invalid_grant, etc.) instead of raw JSON, with a link back to settings.
+function escapeHtml(s: string): string {
+  return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+function callbackPage(kind: 'success' | 'error', title: string, detail: string, origin: string): Response {
+  const color = kind === 'success' ? '#16a34a' : '#dc2626';
+  const heading = kind === 'success' ? 'COROS connected' : escapeHtml(title);
+  const refresh = kind === 'success' ? '2' : '15';
+  const html = `<!doctype html><meta charset="utf-8"><meta http-equiv="refresh" content="${refresh};url=${escapeHtml(origin)}/settings"><body style="font-family:system-ui;padding:3rem;max-width:520px;margin:auto">
+<h2 style="color:${color}">${heading}</h2>
+<p style="color:#374151;white-space:pre-wrap">${escapeHtml(detail)}</p>
+<p style="margin-top:1.5rem"><a href="${escapeHtml(origin)}/settings">Back to settings</a></p></body>`;
+  return new Response(html, { status: 200, headers: { 'Content-Type': 'text/html' } });
+}
+
 // ---- base64url + PKCE helpers ----
 function b64url(buf: ArrayBuffer | Uint8Array): string {
   const bytes = buf instanceof Uint8Array ? buf : new Uint8Array(buf);
@@ -81,11 +97,18 @@ async function fetchWithTimeout(url: string, opts: RequestInit, ms = 20000): Pro
 // from the athlete profile's created_by_id.
 async function handleOAuthCallback(req, base44) {
   const u = new URL(req.url);
+  const origin = u.origin;
   const code = u.searchParams.get('code');
   const state = u.searchParams.get('state') || '';
-  if (!code) return Response.json({ error: 'Missing authorization code' }, { status: 400 });
+  if (!code) {
+    console.error('COROS callback: missing authorization code');
+    return callbackPage('error', 'Connection failed', 'COROS did not return an authorization code. Please try connecting again.', origin);
+  }
   const { athleteId, verifier, ok } = await parseState(state);
-  if (!ok || !athleteId || !verifier) return Response.json({ error: 'Invalid state' }, { status: 400 });
+  if (!ok || !athleteId || !verifier) {
+    console.error('COROS callback: invalid state');
+    return callbackPage('error', 'Connection failed', 'The security state from COROS did not verify. This usually means the link expired or was opened in a different browser. Please try connecting again.', origin);
+  }
 
   const tokenRes = await fetchWithTimeout(TOKEN_ENDPOINT, {
     method: 'POST',
@@ -100,12 +123,24 @@ async function handleOAuthCallback(req, base44) {
   });
   if (!tokenRes.ok) {
     const txt = await tokenRes.text();
-    return Response.json({ error: `Token exchange failed: ${tokenRes.status}`, details: txt }, { status: 502 });
+    console.error('COROS token exchange failed:', tokenRes.status, txt);
+    // Map the common COROS reasons to plain language for the athlete.
+    let reason = txt;
+    try { const j = JSON.parse(txt); reason = j.error_description || j.error || txt; } catch { /* not JSON */ }
+    const hint = /invalid_grant/i.test(reason)
+      ? ' The authorization code expired (COROS allows only about a minute) or was already used. Log into coros.com first, then connect and approve quickly.'
+      : /redirect_uri/i.test(reason)
+        ? ' The redirect address did not match what COROS has registered. Contact support.'
+        : '';
+    return callbackPage('error', 'COROS connection failed', `COROS rejected the token exchange (${tokenRes.status}).${hint} Reason: ${reason}`, origin);
   }
   const tok = await tokenRes.json();
 
   const athlete = await base44.asServiceRole.entities.AthleteProfile.get(athleteId).catch(() => null);
-  if (!athlete) return Response.json({ error: 'Athlete profile not found' }, { status: 404 });
+  if (!athlete) {
+    console.error('COROS callback: athlete profile not found', athleteId);
+    return callbackPage('error', 'Connection failed', 'Your athlete profile could not be found. Complete your profile in TrainPaceLab, then try again.', origin);
+  }
 
   const now = new Date();
   const existing = await base44.asServiceRole.entities.CorosConnection.filter({ athlete_id: athleteId });
@@ -123,8 +158,7 @@ async function handleOAuthCallback(req, base44) {
     last_sync_at: null,
   });
 
-  const html = `<!doctype html><meta http-equiv="refresh" content="2;url=${u.origin}/settings"><body style="font-family:system-ui;padding:3rem"><h2>COROS connected</h2><p>Redirecting to your settings…</p></body>`;
-  return new Response(html, { headers: { 'Content-Type': 'text/html' } });
+  return callbackPage('success', '', 'Redirecting to your settings…', origin);
 }
 
 // Coros → us webhook delivery. No user session; authenticated by X-Coros-Signature == COROS_WEBHOOK_SECRET.
@@ -434,35 +468,16 @@ function mapRecord(a: any, athlete: any) {
   };
 }
 
-async function handleSyncHistorical(base44) {
-  const user = await base44.auth.me();
-  if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
-  const athlete = await getOwnedAthlete(base44, user.id);
-  if (!athlete) return Response.json({ error: 'No athlete profile found' }, { status: 404 });
-  const conns = await base44.asServiceRole.entities.CorosConnection.filter({ athlete_id: athlete.id });
-  const conn = conns[0];
-  if (!conn || !conn.access_token) return Response.json({ error: 'COROS account not connected' }, { status: 409 });
-
-  let accessToken;
-  try { accessToken = await refreshIfNeeded(conn, base44); }
-  catch (e) {
-    await base44.asServiceRole.entities.CorosConnection.update(conn.id, { last_error: e.message });
-    return Response.json({ error: e.message }, { status: 502 });
-  }
-
+// Service-role core: pulls 90 days of sport records for one athlete. Shared by the
+// user-scoped on-demand sync and the scheduled sync_all loop.
+async function syncHistoricalFor(athlete: any, accessToken: string, base44): Promise<{ imported: number; errors: number; records_found: number }> {
   const end = new Date();
   const start = new Date();
   start.setDate(start.getDate() - 90);
   // COROS MCP requires yyyyMMdd (no dashes), and sportTypeCodes is mandatory — 65535 = all sports.
   const fmt = (d: Date) => d.toISOString().slice(0, 10).replace(/-/g, '');
 
-  let result;
-  try {
-    result = await mcpToolCall(accessToken, 'querySportRecords', { startDate: fmt(start), endDate: fmt(end), sportTypeCodes: [65535], limit: 100 });
-  } catch (e) {
-    await base44.asServiceRole.entities.CorosConnection.update(conn.id, { last_error: e.message });
-    return Response.json({ error: e.message }, { status: 502 });
-  }
+  const result = await mcpToolCall(accessToken, 'querySportRecords', { startDate: fmt(start), endDate: fmt(end), sportTypeCodes: [65535], limit: 100 });
 
   // COROS MCP returns sport records as a formatted text report — parse it; fall back to JSON extraction.
   let contentText = result?.content?.[0]?.text;
@@ -489,8 +504,33 @@ async function handleSyncHistorical(base44) {
   for (const d of dates) {
     try { await base44.asServiceRole.functions.invoke('calculateDailyTRIMP', { athlete_id: athlete.id, date: d }); } catch { /* keep going */ }
   }
-  await base44.asServiceRole.entities.CorosConnection.update(conn.id, { last_sync_at: new Date().toISOString(), last_error: '' });
-  return Response.json({ success: true, imported: toCreate.length, errors, records_found: records.length, sampleParsed: records[0] || null });
+  return { imported: toCreate.length, errors, records_found: records.length };
+}
+
+async function handleSyncHistorical(base44) {
+  const user = await base44.auth.me();
+  if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
+  const athlete = await getOwnedAthlete(base44, user.id);
+  if (!athlete) return Response.json({ error: 'No athlete profile found' }, { status: 404 });
+  const conns = await base44.asServiceRole.entities.CorosConnection.filter({ athlete_id: athlete.id });
+  const conn = conns[0];
+  if (!conn || !conn.access_token) return Response.json({ error: 'COROS account not connected' }, { status: 409 });
+
+  let accessToken;
+  try { accessToken = await refreshIfNeeded(conn, base44); }
+  catch (e) {
+    await base44.asServiceRole.entities.CorosConnection.update(conn.id, { last_error: e.message });
+    return Response.json({ error: e.message }, { status: 502 });
+  }
+
+  try {
+    const out = await syncHistoricalFor(athlete, accessToken, base44);
+    await base44.asServiceRole.entities.CorosConnection.update(conn.id, { last_sync_at: new Date().toISOString(), last_error: '' });
+    return Response.json({ success: true, ...out });
+  } catch (e) {
+    await base44.asServiceRole.entities.CorosConnection.update(conn.id, { last_error: e.message });
+    return Response.json({ error: e.message }, { status: 502 });
+  }
 }
 
 // COROS MCP returns recovery data as formatted text reports across several tools. Each
@@ -541,22 +581,9 @@ function parseCorosRecoveryStatusText(text: string): number | null {
   return m ? Number(m[1]) : null;
 }
 
-async function handleSyncRecovery(base44) {
-  const user = await base44.auth.me();
-  if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
-  const athlete = await getOwnedAthlete(base44, user.id);
-  if (!athlete) return Response.json({ error: 'No athlete profile found' }, { status: 404 });
-  const conns = await base44.asServiceRole.entities.CorosConnection.filter({ athlete_id: athlete.id });
-  const conn = conns[0];
-  if (!conn || !conn.access_token) return Response.json({ error: 'COROS account not connected' }, { status: 409 });
-
-  let accessToken;
-  try { accessToken = await refreshIfNeeded(conn, base44); }
-  catch (e) {
-    await base44.asServiceRole.entities.CorosConnection.update(conn.id, { last_error: e.message });
-    return Response.json({ error: e.message }, { status: 502 });
-  }
-
+// Service-role core: pulls 14 days of recovery signals for one athlete. Shared by the
+// user-scoped on-demand sync and the scheduled sync_all loop.
+async function syncRecoveryFor(athlete: any, accessToken: string, base44): Promise<{ imported: number; errors: number; dates_found: number; toolErrors: string[] }> {
   const end = new Date();
   const start = new Date();
   start.setDate(start.getDate() - 14);
@@ -591,10 +618,7 @@ async function handleSyncRecovery(base44) {
   // Merge all signals by date.
   const dates = new Set<string>([...hrvMap.keys(), ...rhrMap.keys(), ...sleepMap.keys(), ...stressMap.keys()]);
   if (todayRecovery != null) dates.add(todayKey);
-  if (dates.size === 0) {
-    await base44.asServiceRole.entities.CorosConnection.update(conn.id, { last_error: toolErrors.join('; ') || 'No COROS recovery data returned' });
-    return Response.json({ error: 'No COROS recovery data returned', toolErrors, imported: 0 }, { status: 502 });
-  }
+  if (dates.size === 0) throw new Error(toolErrors.join('; ') || 'No COROS recovery data returned');
 
   const history = await base44.asServiceRole.entities.DailyMetrics.filter({ athlete_id: athlete.id }, '-date', 30);
   let ingested = 0;
@@ -612,8 +636,64 @@ async function handleSyncRecovery(base44) {
     if (normalized.hrv == null && normalized.resting_hr == null && normalized.sleep_score == null && normalized.sleep_duration_hours == null && normalized.stress_score == null && normalized.provider_readiness_score == null) continue;
     try { await ingestRecovery(base44, athlete.id, normalized, 'coros', history); ingested++; } catch { errors++; }
   }
-  await base44.asServiceRole.entities.CorosConnection.update(conn.id, { last_sync_at: new Date().toISOString(), last_error: '' });
-  return Response.json({ success: true, imported: ingested, errors, dates_found: dates.size, toolErrors });
+  return { imported: ingested, errors, dates_found: dates.size, toolErrors };
+}
+
+async function handleSyncRecovery(base44) {
+  const user = await base44.auth.me();
+  if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
+  const athlete = await getOwnedAthlete(base44, user.id);
+  if (!athlete) return Response.json({ error: 'No athlete profile found' }, { status: 404 });
+  const conns = await base44.asServiceRole.entities.CorosConnection.filter({ athlete_id: athlete.id });
+  const conn = conns[0];
+  if (!conn || !conn.access_token) return Response.json({ error: 'COROS account not connected' }, { status: 409 });
+
+  let accessToken;
+  try { accessToken = await refreshIfNeeded(conn, base44); }
+  catch (e) {
+    await base44.asServiceRole.entities.CorosConnection.update(conn.id, { last_error: e.message });
+    return Response.json({ error: e.message }, { status: 502 });
+  }
+
+  try {
+    const out = await syncRecoveryFor(athlete, accessToken, base44);
+    await base44.asServiceRole.entities.CorosConnection.update(conn.id, { last_sync_at: new Date().toISOString(), last_error: '' });
+    return Response.json({ success: true, ...out });
+  } catch (e) {
+    await base44.asServiceRole.entities.CorosConnection.update(conn.id, { last_error: e.message });
+    return Response.json({ error: e.message }, { status: 502 });
+  }
+}
+
+// Scheduled (workflow) entry point: refresh tokens + sync every connected athlete. No user
+// session — runs entirely as service role. Per-athlete try/catch so one bad connection never
+// aborts the loop; refresh-token rotation is persisted by refreshIfNeeded.
+async function handleSyncAll(base44) {
+  const conns = await base44.asServiceRole.entities.CorosConnection.filter({ status: 'connected' });
+  const results: any[] = [];
+  for (const conn of conns) {
+    if (!conn.access_token) continue;
+    const athlete = await base44.asServiceRole.entities.AthleteProfile.get(conn.athlete_id).catch(() => null);
+    if (!athlete) { results.push({ athlete_id: conn.athlete_id, skipped: 'athlete not found' }); continue; }
+
+    const r: any = { athlete_id: conn.athlete_id };
+    let accessToken: string;
+    try { accessToken = await refreshIfNeeded(conn, base44); }
+    catch (e) {
+      await base44.asServiceRole.entities.CorosConnection.update(conn.id, { last_error: e.message });
+      results.push({ athlete_id: conn.athlete_id, error: e.message });
+      continue;
+    }
+    try { r.historical = await syncHistoricalFor(athlete, accessToken, base44); } catch (e) { r.historical_error = e.message; }
+    try { r.recovery = await syncRecoveryFor(athlete, accessToken, base44); } catch (e) { r.recovery_error = e.message; }
+    const errMsg = [r.historical_error, r.recovery_error].filter(Boolean).join('; ');
+    await base44.asServiceRole.entities.CorosConnection.update(conn.id, {
+      last_sync_at: new Date().toISOString(),
+      last_error: errMsg || '',
+    });
+    results.push(r);
+  }
+  return Response.json({ success: true, processed: results.length, results });
 }
 
 async function handleListTools(base44) {
@@ -684,6 +764,7 @@ Deno.serve(async (req) => {
     if (action === 'sync_historical') return await handleSyncHistorical(base44);
     if (action === 'list_tools') return await handleListTools(base44);
     if (action === 'sync_recovery') return await handleSyncRecovery(base44);
+    if (action === 'sync_all') return await handleSyncAll(base44);
     if (action === 'disconnect') return await handleDisconnect(base44);
 
     return Response.json({ error: `Unknown action: ${action || '(none)'}` }, { status: 400 });
