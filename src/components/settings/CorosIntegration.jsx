@@ -26,6 +26,7 @@ export default function CorosIntegration({ athleteId }) {
   useEffect(() => { loadStatus(); }, [loadStatus]);
 
   const connect = async () => {
+    if (!window.confirm("Before we open COROS: make sure you're already logged into coros.com in this browser and ready to approve quickly — COROS's authorization window is only about a minute. Continue?")) return;
     setConnecting(true); setError(null);
     try {
       const res = await base44.functions.invoke("corosSync", { action: "authorize" });
