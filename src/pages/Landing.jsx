@@ -47,15 +47,15 @@ export default function Landing() {
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
-      <header className="sticky top-0 z-30 border-b border-border bg-background/80 backdrop-blur">
+      <header className="sticky top-0 z-30 border-b border-black bg-white">
         <div className="max-w-6xl mx-auto flex items-center justify-between px-4 py-3">
-          <Link to="/" className="flex items-center gap-2 font-heading font-bold text-lg">
-            <Activity className="w-5 h-5 text-primary" />
+          <Link to="/" className="flex items-center gap-2 font-heading font-bold text-lg text-black">
+            <Activity className="w-5 h-5 text-blue-700" />
             <span>TrainPaceLab</span>
           </Link>
           <div className="flex items-center gap-2">
-            {!user && <Button asChild variant="ghost" size="sm"><Link to="/login">Sign in</Link></Button>}
-            <Button asChild size="sm"><Link to={cta.to}>{cta.label}</Link></Button>
+            {!user && <Button asChild variant="ghost" size="sm" className="text-black hover:bg-slate-100"><Link to="/login">Sign in</Link></Button>}
+            <Button asChild size="sm" className="bg-blue-700 text-white hover:bg-blue-800 rounded-none font-bold"><Link to={cta.to}>{cta.label}</Link></Button>
           </div>
         </div>
       </header>
