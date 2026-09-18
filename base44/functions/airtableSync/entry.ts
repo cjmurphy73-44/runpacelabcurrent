@@ -15,7 +15,7 @@ import { reportError } from '../../shared/errorReport.ts';
 //     plus the finance/segment snapshot so one run keeps the whole base current.
 // Airtable has no table/field create scope, so we upsert into existing tables.
 
-const PLAN_PRICE: Record<string, number> = { free: 0, pro: 19, team: 49 };
+const PLAN_PRICE: Record<string, number> = { free: 0, pro: 9, unlimited: 15, coach_pro: 29, team: 29 };
 
 // Entity sport → Airtable Workouts.sport singleSelect (strength maps to "other").
 const SPORT_MAP: Record<string, string> = {
@@ -113,7 +113,7 @@ function buildPlanRows(plans: any[], athleteIdMap: Record<string, string>): any[
 function buildSubscriberRows(subscriptions: any[]): any[] {
   return subscriptions.map((s) => ({
     'user_id': s.user_id,
-    'plan': safeSelect(s.plan, ['free', 'pro', 'team']),
+    'plan': safeSelect(s.plan, ['free', 'pro', 'unlimited', 'coach_pro', 'team']),
     'status': safeSelect(s.status, ['active', 'trialing', 'past_due', 'canceled']),
     'current_period_end': toDateOnly(s.current_period_end),
     'stripe_customer_id': s.stripe_customer_id || undefined,
@@ -175,8 +175,8 @@ async function syncCoachRoster(
 
 function computeBusiness(subscriptions: any[], users: any[]) {
   let mrr = 0;
-  const planCounts: Record<string, number> = { free: 0, pro: 0, team: 0 };
-  const planRev: Record<string, number> = { pro: 0, team: 0 };
+  const planCounts: Record<string, number> = { free: 0, pro: 0, unlimited: 0, coach_pro: 0, team: 0 };
+  const planRev: Record<string, number> = { pro: 0, unlimited: 0, coach_pro: 0, team: 0 };
   for (const s of subscriptions) {
     if (s.status !== 'active' && s.status !== 'trialing') continue;
     const p = (s.plan || 'free') as string;
@@ -190,6 +190,8 @@ function computeBusiness(subscriptions: any[], users: any[]) {
   return {
     mrr, planCounts, planRev,
     arpuPro: planCounts.pro ? planRev.pro / planCounts.pro : PLAN_PRICE.pro,
+    arpuUnlimited: planCounts.unlimited ? planRev.unlimited / planCounts.unlimited : PLAN_PRICE.unlimited,
+    arpuCoachPro: planCounts.coach_pro ? planRev.coach_pro / planCounts.coach_pro : PLAN_PRICE.coach_pro,
     arpuTeam: planCounts.team ? planRev.team / planCounts.team : PLAN_PRICE.team,
   };
 }
@@ -197,9 +199,10 @@ function computeBusiness(subscriptions: any[], users: any[]) {
 function buildSystemRows(biz: any, counts: { users: number; athletes: number; workouts: number }) {
   const now = toISO(new Date().toISOString());
   return [
-    { 'Metric Name': 'Active Subscribers', 'Current Status': String(biz.planCounts.pro + biz.planCounts.team), 'Target Threshold': '>= 50' },
+    { 'Metric Name': 'Active Subscribers', 'Current Status': String(biz.planCounts.pro + biz.planCounts.unlimited + biz.planCounts.coach_pro + biz.planCounts.team), 'Target Threshold': '>= 50' },
     { 'Metric Name': 'Pro Subscribers', 'Current Status': String(biz.planCounts.pro), 'Target Threshold': '>= 30' },
-    { 'Metric Name': 'Team Subscribers', 'Current Status': String(biz.planCounts.team), 'Target Threshold': '>= 10' },
+    { 'Metric Name': 'Unlimited Subscribers', 'Current Status': String(biz.planCounts.unlimited), 'Target Threshold': '>= 20' },
+    { 'Metric Name': 'Coach Pro Subscribers', 'Current Status': String(biz.planCounts.coach_pro), 'Target Threshold': '>= 10' },
     { 'Metric Name': 'Registered Users', 'Current Status': String(counts.users), 'Target Threshold': '>= 100' },
     { 'Metric Name': 'Athlete Profiles', 'Current Status': String(counts.athletes), 'Target Threshold': '>= 100' },
     { 'Metric Name': 'Workout Sessions', 'Current Status': String(counts.workouts), 'Target Threshold': '>= 1000' },
@@ -216,7 +219,8 @@ function buildSegmentRows(biz: any) {
   return [
     { 'Segment Name': 'Free / Community', 'Pricing Tier': 'Free', 'Projected ARPU': 0, 'Usage Tier': `${biz.planCounts.free} users` },
     { 'Segment Name': 'Pro Athlete', 'Pricing Tier': 'Pro', 'Projected ARPU': biz.arpuPro, 'Usage Tier': `${biz.planCounts.pro} subscribers` },
-    { 'Segment Name': 'Coach / Team', 'Pricing Tier': 'Coach/Team', 'Projected ARPU': biz.arpuTeam, 'Usage Tier': `${biz.planCounts.team} subscribers` },
+    { 'Segment Name': 'Unlimited Athlete', 'Pricing Tier': 'Unlimited', 'Projected ARPU': biz.arpuUnlimited, 'Usage Tier': `${biz.planCounts.unlimited} subscribers` },
+    { 'Segment Name': 'Coach Pro', 'Pricing Tier': 'Coach Pro', 'Projected ARPU': biz.arpuCoachPro, 'Usage Tier': `${biz.planCounts.coach_pro} subscribers` },
   ];
 }
 
@@ -234,9 +238,10 @@ function buildLinkedSystemRows(
     { 'Metric Name': 'Workout Sessions', 'Current Status': String(counts.workouts), 'Target Threshold': '>= 1000', 'Last Tested Date': now, 'Linked Features': link('ingestWorkoutFile', 'workoutWebhook', 'bulkIngestWorkouts', 'webhookWearableSync') },
     { 'Metric Name': 'Athlete Profiles', 'Current Status': String(counts.athletes), 'Target Threshold': '>= 100', 'Last Tested Date': now, 'Linked Features': link('fetchAthleteProfile', 'updateAthleteProfile') },
     { 'Metric Name': 'Training Plans', 'Current Status': String(counts.plans), 'Target Threshold': '>= 50', 'Last Tested Date': now, 'Linked Features': link('generateTrainingPlan', 'commitTrainingPlan', 'autoReplanOnDeviation') },
-    { 'Metric Name': 'Active Subscribers', 'Current Status': String(biz.planCounts.pro + biz.planCounts.team), 'Target Threshold': '>= 50', 'Last Tested Date': now, 'Linked Features': link('stripeWebhook', 'stripeCheckout') },
+    { 'Metric Name': 'Active Subscribers', 'Current Status': String(biz.planCounts.pro + biz.planCounts.unlimited + biz.planCounts.coach_pro + biz.planCounts.team), 'Target Threshold': '>= 50', 'Last Tested Date': now, 'Linked Features': link('stripeWebhook', 'stripeCheckout') },
     { 'Metric Name': 'Pro Subscribers', 'Current Status': String(biz.planCounts.pro), 'Target Threshold': '>= 30', 'Last Tested Date': now, 'Linked Features': link('stripeWebhook', 'stripeCheckout') },
-    { 'Metric Name': 'Team Subscribers', 'Current Status': String(biz.planCounts.team), 'Target Threshold': '>= 10', 'Last Tested Date': now, 'Linked Features': link('stripeWebhook', 'stripeCheckout') },
+    { 'Metric Name': 'Unlimited Subscribers', 'Current Status': String(biz.planCounts.unlimited), 'Target Threshold': '>= 20', 'Last Tested Date': now, 'Linked Features': link('stripeWebhook', 'stripeCheckout') },
+    { 'Metric Name': 'Coach Pro Subscribers', 'Current Status': String(biz.planCounts.coach_pro), 'Target Threshold': '>= 10', 'Last Tested Date': now, 'Linked Features': link('stripeWebhook', 'stripeCheckout') },
     { 'Metric Name': 'Registered Users', 'Current Status': String(counts.users), 'Target Threshold': '>= 100', 'Last Tested Date': now },
     { 'Metric Name': 'MRR (USD)', 'Current Status': `$${biz.mrr.toFixed(2)}`, 'Target Threshold': '>= $1000', 'Last Tested Date': now, 'Linked Features': link('stripeWebhook', 'stripeCheckout') },
     { 'Metric Name': 'Airtable Sync', 'Current Status': 'OK', 'Last Tested Date': now, 'Linked Features': link('airtableSync') },
