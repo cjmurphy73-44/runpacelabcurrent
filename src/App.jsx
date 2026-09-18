@@ -24,6 +24,9 @@ import CoachWorkspace from '@/pages/CoachWorkspace';
 import Admin from '@/pages/Admin';
 import UserGuide from '@/pages/UserGuide';
 import Landing from '@/pages/Landing';
+import Terms from '@/pages/Terms';
+import Privacy from '@/pages/Privacy';
+import Refund from '@/pages/Refund';
 import AppLayout from '@/components/layout/AppLayout';
 import PageNotFound from '@/lib/PageNotFound';
 import { QueryClientProvider } from '@tanstack/react-query';
@@ -45,6 +48,9 @@ export default function App() {
             <Route path="/reset-password" element={<ResetPassword />} />
             <Route path="/landing" element={<Navigate to="/" replace />} />
             <Route path="/" element={<Landing />} />
+            <Route path="/terms" element={<Terms />} />
+            <Route path="/privacy" element={<Privacy />} />
+            <Route path="/refund" element={<Refund />} />
             <Route element={<AppLayout />}>
               <Route path="/app" element={<Home />} />
               <Route path="/coach" element={<CoachChat />} />
