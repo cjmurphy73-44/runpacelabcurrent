@@ -1,21 +1,47 @@
-import React, { createContext, useContext, useState } from "react";
+import React, { createContext, useContext, useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { base44 } from "@/api/base44Client";
+import { useServices } from "../services/providers/ServiceContext";
 
 const FitnessContext = createContext(null);
 
-async function fetchFitnessData(athleteId) {
-  // BiometricTelemetry / PhysiologicalBaselines were superseded by DailyMetrics (which now carries
-  // hrv / sleep_score / resting_hr / readiness_score). Those entity reads 404'd on every dashboard
-  // mount and — because Promise.all rejects on any failure — also blocked dailyMetrics/workoutSessions.
-  const [metrics, sessions] = await Promise.all([
-    base44.entities.DailyMetrics.filter({ athlete_id: athleteId }, "-date", 180),
-    base44.entities.WorkoutSession.filter({ athlete_id: athleteId }, "-date", 180),
-  ]);
-  // Map DailyMetrics (now carrying wearable-sourced HRV / sleep / resting HR / readiness) into
-  // the biometricTelemetry shape the recovery cards expect, so automated ingestion from Garmin
-  // Health and COROS lights up the Recovery Lab and Readiness cards without manual logging.
+export function FitnessProvider({ athleteId, children }) {
+  const [visibleRange, setVisibleRange] = useState(() => {
+    const saved = localStorage.getItem("fitness_visible_range");
+    return saved ? parseInt(saved, 10) : (athleteId ? 30 : 14);
+  });
+
+  useEffect(() => {
+    localStorage.setItem("fitness_visible_range", visibleRange.toString());
+  }, [visibleRange]);
+
+  const { dailyMetricsRepo, workoutSessionRepo } = useServices();
+  
+  const { data: metricsData, isLoading: metricsLoading, isFetched: metricsFetched, refetch: refetchMetrics } = useQuery({
+    queryKey: ["dailyMetrics", athleteId],
+    queryFn: () => dailyMetricsRepo.list({ athlete_id: athleteId }),
+    enabled: !!athleteId,
+    staleTime: 60 * 1000,
+    placeholderData: (prev) => prev,
+  });
+
+  const { data: sessionData, isLoading: sessionLoading, isFetched: sessionFetched, refetch: refetchSessions } = useQuery({
+    queryKey: ["workoutSessions", athleteId],
+    queryFn: () => workoutSessionRepo.list({ athlete_id: athleteId }),
+    enabled: !!athleteId,
+    staleTime: 60 * 1000,
+    placeholderData: (prev) => prev,
+  });
+
+  const isLoading = metricsLoading || sessionLoading;
+  const isFetched = metricsFetched && sessionFetched;
+  const refetch = async () => {
+    await Promise.all([refetchMetrics(), refetchSessions()]);
+  };
+
+  const metrics = metricsData || [];
+  const sessions = sessionData || [];
   const chrono = [...metrics].reverse();
+
   const biometricTelemetry = chrono.map((m) => ({
     id: m.id,
     date: m.date,
@@ -31,31 +57,24 @@ async function fetchFitnessData(athleteId) {
     recovery_source: m.recovery_source ?? null,
   }));
 
-  return {
+  const data = {
     dailyMetrics: chrono,
     workoutSessions: sessions,
     biometricTelemetry,
     physiologicalBaselines: [],
   };
-}
 
-export function FitnessProvider({ athleteId, children }) {
-  const [visibleRange, setVisibleRange] = useState(30);
-
-  const { data, isLoading, isFetched, refetch } = useQuery({
-    queryKey: ["fitnessData", athleteId],
-    queryFn: () => fetchFitnessData(athleteId),
-    enabled: !!athleteId,
-    staleTime: 60 * 1000,
-    placeholderData: (prev) => prev,
-  });
+  const isInitialLoading = isLoading && !data?.dailyMetrics?.length;
+  const isRefetching = isLoading && !!data?.dailyMetrics?.length;
 
   const value = {
     dailyMetrics: data?.dailyMetrics || [],
     workoutSessions: data?.workoutSessions || [],
     biometricTelemetry: data?.biometricTelemetry || [],
     physiologicalBaselines: data?.physiologicalBaselines || [],
-    loading: isLoading && !data,
+    loading: isInitialLoading,
+    isInitialLoading,
+    isRefetching,
     isFetched,
     visibleRange,
     setVisibleRange,
