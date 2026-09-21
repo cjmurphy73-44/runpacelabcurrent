@@ -41,6 +41,7 @@ const COLUMNS = [
 
 export default function RosterDashboard({ assignments, profiles, workouts, plans, onChanged }) {
   const [query, setQuery] = useState("");
+  const [statusFilter, setStatusFilter] = useState("all");
   const [sortKey, setSortKey] = useState("name");
   const [sortDir, setSortDir] = useState("asc");
   const [selected, setSelected] = useState(null);
@@ -73,6 +74,11 @@ export default function RosterDashboard({ assignments, profiles, workouts, plans
           (x.category || "").toLowerCase().includes(q)
       );
     }
+    r = r.filter((x) => {
+      if (statusFilter === "active") return x.status === "active";
+      if (statusFilter === "review") return x.status === "review";
+      return true;
+    });
     r = [...r].sort((a, b) => {
       const av = a[sortKey] ?? "";
       const bv = b[sortKey] ?? "";
@@ -80,7 +86,7 @@ export default function RosterDashboard({ assignments, profiles, workouts, plans
       return sortDir === "asc" ? cmp : -cmp;
     });
     return r;
-  }, [rows, query, sortKey, sortDir]);
+  }, [rows, query, statusFilter, sortKey, sortDir]);
 
   const total = rows.length;
   const active = rows.filter((r) => r.status === "active").length;
@@ -113,16 +119,22 @@ export default function RosterDashboard({ assignments, profiles, workouts, plans
   };
 
   const kpis = [
-    { label: "Total athletes", value: total, icon: Users, tone: "text-primary" },
-    { label: "Active plan", value: active, icon: CheckCircle2, tone: "text-emerald-600" },
-    { label: "Needs review", value: review, icon: AlertTriangle, tone: "text-amber-600" },
+    { label: "Total athletes", value: total, icon: Users, tone: "text-primary", filter: "all" },
+    { label: "Active plan", value: active, icon: CheckCircle2, tone: "text-emerald-600", filter: "active" },
+    { label: "Needs review", value: review, icon: AlertTriangle, tone: "text-amber-600", filter: "review" },
   ];
 
   return (
     <div className="space-y-4">
       <div className="grid grid-cols-3 gap-3">
         {kpis.map((k) => (
-          <Card key={k.label}>
+          <Card
+            key={k.label}
+            onClick={() => setStatusFilter(k.filter)}
+            className={`cursor-pointer transition-all hover:border-primary/50 ${
+              statusFilter === k.filter ? "ring-2 ring-primary/30 border-primary" : ""
+            }`}
+          >
             <CardContent className="p-4 flex items-center gap-3">
               <k.icon className={`w-5 h-5 ${k.tone}`} />
               <div>
