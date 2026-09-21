@@ -18,6 +18,29 @@ function createEntityRepo(entityName: string) {
       const res = await entity.list(filters);
       return res?.data || res || [];
     },
+    async filter(filters = {}, sort?: string, limit?: number) {
+      if (!entity) return [];
+      if (typeof entity.filter === 'function') {
+        const res = await entity.filter(filters, sort, limit);
+        return res?.data || res || [];
+      }
+      // Fallback to list if entity doesn't have native filter method
+      const res = await entity.list(filters);
+      let items = res?.data || res || [];
+      if (sort && typeof sort === 'string' && items.length > 0) {
+        const desc = sort.startsWith('-');
+        const field = desc ? sort.slice(1) : sort;
+        items = [...items].sort((a, b) => {
+          if (a[field] < b[field]) return desc ? 1 : -1;
+          if (a[field] > b[field]) return desc ? -1 : 1;
+          return 0;
+        });
+      }
+      if (typeof limit === 'number' && limit > 0) {
+        items = items.slice(0, limit);
+      }
+      return items;
+    },
     async get(id: string) {
       if (!entity) return null;
       const res = await entity.get(id);

@@ -1,5 +1,6 @@
 export interface BaseRepository<T> {
   list(filters?: Record<string, any>): Promise<T[]>;
+  filter(filters?: Record<string, any>, sort?: string, limit?: number): Promise<T[]>;
   get(id: string): Promise<T | null>;
   create(data: Partial<T>): Promise<T>;
   update(id: string, data: Partial<T>): Promise<T>;
