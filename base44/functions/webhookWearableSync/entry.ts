@@ -241,6 +241,7 @@ Deno.serve(async (req) => {
 
     const session = await base44.asServiceRole.entities.WorkoutSession.create({
       athlete_id,
+      created_by_id: athlete.created_by_id,
       date,
       sport: sessionSport,
       duration_minutes: durationMinutes,

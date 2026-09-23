@@ -8,6 +8,17 @@
         "coach",
         "user"
       ]
+    },
+    "athlete_profile_id": {
+      "type": "string",
+      "description": "The AthleteProfile.id this user owns (set at onboarding, when the profile is created). Drives health-data confidentiality RLS: athlete-keyed entities (WorkoutSession, DailyMetrics, TrainingPlan, TrainingPlanSession, WorkoutFeedback, CoachMessage) scope reads to records whose data.athlete_id matches this id. Null for pure coaches who do not have their own athlete profile."
+    },
+    "coached_athletes": {
+      "type": "array",
+      "description": "Denormalized cache of AthleteProfile ids this coach is assigned to (sourced from CoachAthleteAssignment rows with status 'active'). Maintained on coach add/remove athlete so RLS can scope reads without a cross-entity join. Empty for athletes who are not coaching anyone.",
+      "items": {
+        "type": "string"
+      }
     }
   },
   "required": [

@@ -78,6 +78,13 @@ export default function CoachWorkspace() {
         athlete_name_snapshot: `${profile.first_name} ${profile.last_name}`,
         status: "active",
       });
+      // S5: keep the coach's coached_athletes cache in sync so RLS can scope reads
+      // without a cross-entity join. Merge (de-dup) so repeated adds are idempotent.
+      try {
+        const current = Array.isArray(user.coached_athletes) ? user.coached_athletes : [];
+        const merged = [...new Set([...current, profile.id])];
+        await base44.auth.updateMe({ coached_athletes: merged });
+      } catch (e) { console.warn("updateMe coached_athletes (add) failed:", e); }
       setPickerOpen(false);
       toast({ title: `${profile.first_name} ${profile.last_name} added to roster` });
       loadRoster();
@@ -89,6 +96,13 @@ export default function CoachWorkspace() {
   const removeAthlete = async (assignment) => {
     try {
       await base44.entities.CoachAthleteAssignment.update(assignment.id, { status: "archived" });
+      // S5: drop the archived athlete from the coach's coached_athletes cache so RLS
+      // stops exposing their data the moment they leave the roster.
+      try {
+        const current = Array.isArray(user.coached_athletes) ? user.coached_athletes : [];
+        const filtered = current.filter((id) => id !== assignment.athlete_profile_id);
+        await base44.auth.updateMe({ coached_athletes: filtered });
+      } catch (e) { console.warn("updateMe coached_athletes (remove) failed:", e); }
       setCompareIds((s) => { const n = new Set(s); n.delete(assignment.athlete_profile_id); return n; });
       toast({ title: "Removed from roster" });
       loadRoster();

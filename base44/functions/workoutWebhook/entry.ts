@@ -105,6 +105,7 @@ async function handleIngest(req, base44, apiKey, parsedBody) {
 
   const session = await base44.asServiceRole.entities.WorkoutSession.create({
     athlete_id: athlete.id,
+    created_by_id: athlete.created_by_id,
     date,
     sport,
     duration_minutes: Math.round(durationMinutes * 100) / 100,
@@ -216,7 +217,7 @@ async function handleStravaEvent(base44, body) {
   const restHr = athlete.resting_hr || 60, maxHr = athlete.max_heart_rate || 190;
   const avgHr = act.average_heartrate || null;
   const session = await base44.asServiceRole.entities.WorkoutSession.create({
-    athlete_id: conn.athlete_id, date, sport: VALID_SPORTS.includes(sport) ? sport : 'running',
+    athlete_id: conn.athlete_id, created_by_id: athlete.created_by_id, date, sport: VALID_SPORTS.includes(sport) ? sport : 'running',
     duration_minutes: Math.round(durationMinutes * 100) / 100, duration_seconds: Math.round(durationMinutes * 60),
     distance_km: distanceKm, avg_hr: avgHr || undefined, max_hr: act.max_heartrate || undefined,
     source_format: 'webhook', session_trimp: avgHr ? calcTrimp(durationMinutes, avgHr, restHr, maxHr, athlete.sex) : 0,

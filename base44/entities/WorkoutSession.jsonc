@@ -180,11 +180,11 @@
     "read": {
       "$or": [
         {
-          "created_by_id": "{{user.id}}"
+          "data.athlete_id": "{{user.data.athlete_profile_id}}"
         },
         {
-          "user_condition": {
-            "role": "coach"
+          "data.athlete_id": {
+            "$in": "{{user.data.coached_athletes}}"
           }
         },
         {

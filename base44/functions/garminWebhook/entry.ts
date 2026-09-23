@@ -97,7 +97,7 @@ Deno.serve(async (req) => {
     const restHr = athlete.resting_hr || 60, maxHr = athlete.max_heart_rate || summary.max_hr || 190;
     const session = await base44.asServiceRole.entities.WorkoutSession.create({
       athlete_id: athleteId,
-      created_by_id: athleteId,
+      created_by_id: athlete.created_by_id,
       date,
       sport,
       duration_minutes: Math.round(durationMinutes * 100) / 100,
