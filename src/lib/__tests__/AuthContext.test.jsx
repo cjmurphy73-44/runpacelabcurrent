@@ -1,27 +1,60 @@
 // @vitest-environment happy-dom
 import { renderHook, waitFor } from '@testing-library/react';
-import { AuthProvider, useAuth } from '../AuthContext';
-import { authService } from '@/services/authService';
-import { vi } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 
-// Mock the authService
-vi.mock('@/services/authService', () => ({
+// Shared mutable mocks — vi.hoisted ensures they exist before the hoisted
+// vi.mock factories run, so the test can reconfigure them per case.
+const mocks = vi.hoisted(() => ({
   authService: {
-    getAppPublicSettings: vi.fn().mockResolvedValue({ name: 'Test App' }),
-    getMe: vi.fn().mockResolvedValue({ id: 1, name: 'Test User' }),
+    getMe: vi.fn(),
+    getAppPublicSettings: vi.fn(),
+    logout: vi.fn(),
+    redirectToLogin: vi.fn(),
+  },
+  appParams: {
+    appId: 'test-app',
+    token: null, // mutated per test to simulate authenticated vs anonymous
+    fromUrl: '/',
+    functionsVersion: '',
+    appBaseUrl: '',
   },
 }));
 
+vi.mock('@/services/authService', () => ({ authService: mocks.authService }));
+vi.mock('@/lib/app-params', () => ({ appParams: mocks.appParams }));
+
+import { AuthProvider, useAuth } from '../AuthContext';
+
 describe('AuthContext', () => {
-  it('should initialize and load user', async () => {
+  beforeEach(() => {
+    mocks.authService.getMe.mockReset();
+    mocks.authService.getAppPublicSettings.mockReset();
+    mocks.authService.getAppPublicSettings.mockResolvedValue({ id: 'test-app', public_settings: {} });
+    mocks.appParams.token = null;
+  });
+
+  it('loads public settings and stays unauthenticated when no token is present', async () => {
+    mocks.appParams.token = null;
     const wrapper = ({ children }) => <AuthProvider>{children}</AuthProvider>;
     const { result } = renderHook(() => useAuth(), { wrapper });
 
-    expect(result.current.isLoadingAuth).toBe(true);
+    await waitFor(() => expect(result.current.authChecked).toBe(true));
+
+    expect(result.current.isAuthenticated).toBe(false);
+    expect(result.current.user).toBeNull();
+    expect(mocks.authService.getMe).not.toHaveBeenCalled();
+  });
+
+  it('loads the authenticated user when a token is present', async () => {
+    mocks.appParams.token = 'fake-token';
+    mocks.authService.getMe.mockResolvedValue({ id: 'u1', name: 'Test User' });
+    const wrapper = ({ children }) => <AuthProvider>{children}</AuthProvider>;
+    const { result } = renderHook(() => useAuth(), { wrapper });
 
     await waitFor(() => expect(result.current.authChecked).toBe(true));
 
-    expect(result.current.user.name).toBe('Test User');
     expect(result.current.isAuthenticated).toBe(true);
+    expect(result.current.user).toEqual({ id: 'u1', name: 'Test User' });
+    expect(mocks.authService.getMe).toHaveBeenCalledTimes(1);
   });
 });

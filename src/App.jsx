@@ -33,12 +33,14 @@ import { QueryClientProvider } from '@tanstack/react-query';
 import { queryClientInstance } from '@/lib/query-client';
 import { AuthProvider } from '@/lib/AuthContext';
 import { UIPreferencesProvider } from '@/context/UIPreferencesContext';
+import { ServiceProvider } from '@/services/providers/ServiceContext';
 import { Toaster } from '@/components/ui/toaster';
 
 export default function App() {
   return (
     <QueryClientProvider client={queryClientInstance}>
       <AuthProvider>
+        <ServiceProvider>
         <UIPreferencesProvider>
           <Router>
           <Routes>
@@ -77,6 +79,7 @@ export default function App() {
           <Toaster />
         </Router>
         </UIPreferencesProvider>
+        </ServiceProvider>
       </AuthProvider>
     </QueryClientProvider>
   );

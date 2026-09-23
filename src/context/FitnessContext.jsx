@@ -1,6 +1,7 @@
-import React, { createContext, useContext, useState, useEffect } from "react";
+import React, { createContext, useContext, useState, useEffect, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useServices } from "../services/providers/ServiceContext";
+import { computeHolisticReadiness } from "@/science/readiness";
 
 const FitnessContext = createContext(null);
 
@@ -15,18 +16,18 @@ export function FitnessProvider({ athleteId, children }) {
   }, [visibleRange]);
 
   const { dailyMetricsRepo, workoutSessionRepo } = useServices();
-  
+
   const { data: metricsData, isLoading: metricsLoading, isFetched: metricsFetched, refetch: refetchMetrics } = useQuery({
-    queryKey: ["dailyMetrics", athleteId],
-    queryFn: () => dailyMetricsRepo.list({ athlete_id: athleteId }),
+    queryKey: ["dailyMetrics", athleteId, visibleRange],
+    queryFn: () => dailyMetricsRepo.filter({ athlete_id: athleteId }, "-date", visibleRange),
     enabled: !!athleteId,
     staleTime: 60 * 1000,
     placeholderData: (prev) => prev,
   });
 
   const { data: sessionData, isLoading: sessionLoading, isFetched: sessionFetched, refetch: refetchSessions } = useQuery({
-    queryKey: ["workoutSessions", athleteId],
-    queryFn: () => workoutSessionRepo.list({ athlete_id: athleteId }),
+    queryKey: ["workoutSessions", athleteId, visibleRange],
+    queryFn: () => workoutSessionRepo.filter({ athlete_id: athleteId }, "-date", visibleRange),
     enabled: !!athleteId,
     staleTime: 60 * 1000,
     placeholderData: (prev) => prev,
@@ -57,6 +58,28 @@ export function FitnessProvider({ athleteId, children }) {
     recovery_source: m.recovery_source ?? null,
   }));
 
+  // readinessForecast — resolves the contract DashboardMetricBanner already reads.
+  // currentReadiness is the holistic score for the most recent day with biometric
+  // signal (using a trailing baseline from the visible window). projectedReadiness
+  // mirrors current until a forward load model is wired in. null when no signal.
+  const readinessForecast = useMemo(() => {
+    if (!chrono.length) return null;
+    const latest = chrono[chrono.length - 1];
+    const hrvValues = chrono.map((m) => m.hrv).filter((v) => typeof v === "number" && v > 0);
+    const rhrValues = chrono.map((m) => m.resting_hr).filter((v) => typeof v === "number" && v > 0);
+    const hrvMean = hrvValues.length ? hrvValues.reduce((a, b) => a + b, 0) / hrvValues.length : null;
+    const hrvStdDev = hrvValues.length > 1
+      ? Math.sqrt(hrvValues.reduce((s, v) => s + (v - hrvMean) ** 2, 0) / hrvValues.length)
+      : null;
+    const restingHrMean = rhrValues.length ? rhrValues.reduce((a, b) => a + b, 0) / rhrValues.length : null;
+    const result = computeHolisticReadiness(
+      { hrvMs: latest.hrv ?? null, sleepScore: latest.sleep_score ?? null, restingHr: latest.resting_hr ?? null },
+      { hrvMean, hrvStdDev, restingHrMean }
+    );
+    if (result.status === "Insufficient Data") return null;
+    return { currentReadiness: result.score, projectedReadiness: result.score };
+  }, [chrono]);
+
   const data = {
     dailyMetrics: chrono,
     workoutSessions: sessions,
@@ -72,6 +95,7 @@ export function FitnessProvider({ athleteId, children }) {
     workoutSessions: data?.workoutSessions || [],
     biometricTelemetry: data?.biometricTelemetry || [],
     physiologicalBaselines: data?.physiologicalBaselines || [],
+    readinessForecast,
     loading: isInitialLoading,
     isInitialLoading,
     isRefetching,

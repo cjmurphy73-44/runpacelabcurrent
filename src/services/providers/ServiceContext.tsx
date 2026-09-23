@@ -59,18 +59,7 @@ export function ServiceProvider({ children, providerType = 'base44' }: { childre
 export function useServices(): ServiceContextType {
   const context = useContext(ServiceContext);
   if (!context) {
-    // Fallback default for un-wrapped components during incremental migration
-    return {
-      workoutSessionRepo: base44WorkoutSessionRepo,
-      dailyMetricsRepo: base44DailyMetricsRepo,
-      trainingPlanRepo: base44TrainingPlanRepo,
-      athleteProfileRepo: base44AthleteProfileRepo,
-      subscriptionRepo: base44SubscriptionRepo,
-      functionGateway: base44FunctionGateway,
-      authService: base44AuthService,
-      integrationsService: base44IntegrationsService,
-      connectorGateway: base44ConnectorGateway,
-    };
+    throw new Error('useServices must be used within a ServiceProvider');
   }
   return context;
 }
