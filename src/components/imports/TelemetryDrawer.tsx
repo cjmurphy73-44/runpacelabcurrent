@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useTelemetryIngestion } from '../hooks/useTelemetryIngestion';
+import { useTelemetryIngestion } from '@/hooks/useTelemetryIngestion';
 import { Button } from '@/components/ui/button';
 import { X, Upload, File } from 'lucide-react';
 
