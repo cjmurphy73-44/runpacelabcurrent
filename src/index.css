@@ -58,24 +58,24 @@
   }
 
   .dark {
-    --background: 220 33% 97%;
-    --foreground: 0 0% 10%;
-    --card: 0 0% 100%;
-    --card-foreground: 0 0% 10%;
-    --popover: 0 0% 100%;
-    --popover-foreground: 0 0% 10%;
+    --background: 222 47% 11%;
+    --foreground: 210 20% 98%;
+    --card: 222 47% 6%;
+    --card-foreground: 210 20% 98%;
+    --popover: 222 47% 8%;
+    --popover-foreground: 210 20% 98%;
     --primary: 211 100% 50%;
     --primary-foreground: 0 0% 100%;
-    --secondary: 220 29% 95%;
-    --secondary-foreground: 0 0% 10%;
-    --muted: 220 29% 95%;
-    --muted-foreground: 220 9% 47%;
-    --accent: 216 100% 96%;
-    --accent-foreground: 211 100% 50%;
-    --destructive: 2 100% 59%;
+    --secondary: 222 30% 18%;
+    --secondary-foreground: 210 20% 98%;
+    --muted: 222 30% 16%;
+    --muted-foreground: 215 20% 65%;
+    --accent: 222 40% 20%;
+    --accent-foreground: 211 100% 65%;
+    --destructive: 0 72% 51%;
     --destructive-foreground: 0 0% 100%;
-    --border: 220 14% 85%;
-    --input: 220 24% 92%;
+    --border: 222 30% 20%;
+    --input: 222 30% 18%;
     --ring: 211 100% 50%;
     --chart-1: 211 72% 59%;
     --chart-2: 211 100% 50%;
@@ -87,14 +87,48 @@
     --zone-3: 180 100% 33%;
     --zone-4: 33 92% 50%;
     --zone-5: 2 100% 59%;
-    --sidebar-background: 0 0% 100%;
-    --sidebar-foreground: 0 0% 10%;
+    --sidebar-background: 222 47% 8%;
+    --sidebar-foreground: 210 20% 98%;
     --sidebar-primary: 211 100% 50%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 216 100% 96%;
-    --sidebar-accent-foreground: 211 100% 50%;
-    --sidebar-border: 220 14% 85%;
+    --sidebar-accent: 222 40% 16%;
+    --sidebar-accent-foreground: 211 100% 65%;
+    --sidebar-border: 222 30% 20%;
     --sidebar-ring: 211 100% 50%;
+  }
+
+  /* Auto-enable the dark token palette when the OS prefers dark, unless an
+     explicit .light class override is present on the document. */
+  @media (prefers-color-scheme: dark) {
+    :root:not(.light) {
+      --background: 222 47% 11%;
+      --foreground: 210 20% 98%;
+      --card: 222 47% 6%;
+      --card-foreground: 210 20% 98%;
+      --popover: 222 47% 8%;
+      --popover-foreground: 210 20% 98%;
+      --primary: 211 100% 50%;
+      --primary-foreground: 0 0% 100%;
+      --secondary: 222 30% 18%;
+      --secondary-foreground: 210 20% 98%;
+      --muted: 222 30% 16%;
+      --muted-foreground: 215 20% 65%;
+      --accent: 222 40% 20%;
+      --accent-foreground: 211 100% 65%;
+      --destructive: 0 72% 51%;
+      --destructive-foreground: 0 0% 100%;
+      --border: 222 30% 20%;
+      --input: 222 30% 18%;
+      --ring: 211 100% 50%;
+      --sidebar-background: 222 47% 8%;
+      --sidebar-foreground: 210 20% 98%;
+      --sidebar-primary: 211 100% 50%;
+      --sidebar-primary-foreground: 0 0% 100%;
+      --sidebar-accent: 222 40% 16%;
+      --sidebar-accent-foreground: 211 100% 65%;
+      --sidebar-border: 222 30% 20%;
+      --sidebar-ring: 211 100% 50%;
+    }
   }
 }
 
@@ -102,6 +136,15 @@
   .bg-grid-dots {
     background-image: radial-gradient(hsl(var(--border)) 1px, transparent 1px);
     background-size: 16px 16px;
+  }
+  /* iOS safe-area helpers so fixed bars and content respect the notch / home indicator. */
+  .pt-safe { padding-top: env(safe-area-inset-top); }
+  .pb-safe { padding-bottom: env(safe-area-inset-bottom); }
+  /* Prevents the iOS long-press callout and accidental text highlight on interactive surfaces. */
+  .no-touch {
+    -webkit-touch-callout: none;
+    -webkit-user-select: none;
+    user-select: none;
   }
 }
 
@@ -112,5 +155,12 @@
 
   body {
     @apply bg-background text-foreground font-body antialiased;
+    overscroll-behavior-y: none;
+  }
+
+  button, [role="button"], a, summary, label {
+    -webkit-touch-callout: none;
+    -webkit-user-select: none;
+    user-select: none;
   }
 }

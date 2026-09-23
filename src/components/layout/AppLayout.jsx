@@ -9,6 +9,7 @@ import BetaFeedbackModal from "@/components/feedback/BetaFeedbackModal";
 import { Activity, Microscope, Zap, Sparkles, Upload, Users, LayoutDashboard, HelpCircle } from "lucide-react";
 import { useCoachAccess } from "@/hooks/useCoachAccess";
 import MobileNav from "@/components/layout/MobileNav";
+import MobileTabBar from "@/components/layout/MobileTabBar";
 import PageErrorBoundary from "@/components/common/PageErrorBoundary";
 import { PRIMARY_NAV } from "@/components/layout/navItems";
 import { OfflineSyncProvider, NetworkStatusBadge, SyncErrorBoundary } from "@/components/layout/offlineSyncAdapters";
@@ -38,7 +39,7 @@ export default function AppLayout() {
     <SyncErrorBoundary>
       <OfflineSyncProvider>
         <div className="min-h-screen bg-background">
-          <header className="border-b border-border sticky top-0 bg-background/85 backdrop-blur z-30">
+          <header className="border-b border-border sticky top-0 bg-background/85 backdrop-blur z-30 pt-safe">
             <div className="max-w-7xl mx-auto flex items-center justify-between gap-4 px-4 py-3">
               <div className="flex items-center gap-6 min-w-0">
                 <Link to="/app" className="flex items-center gap-2 font-heading font-bold text-lg shrink-0">
@@ -103,11 +104,12 @@ export default function AppLayout() {
         </div>
       </header>
       <BetaFeedbackModal open={feedbackOpen} onClose={() => setFeedbackOpen(false)} />
-      <main className="max-w-7xl mx-auto px-4 py-8">
+      <main className="max-w-7xl mx-auto px-4 py-8 pb-24 md:pb-8">
         <PageErrorBoundary>
           <Outlet />
         </PageErrorBoundary>
       </main>
+          <MobileTabBar />
         </div>
       </OfflineSyncProvider>
     </SyncErrorBoundary>

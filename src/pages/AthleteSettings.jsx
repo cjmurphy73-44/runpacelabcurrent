@@ -7,7 +7,11 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Loader2, Save, Trash2, ShieldAlert, Zap, Link2, Users } from "lucide-react";
+import {
+  AlertDialog, AlertDialogTrigger, AlertDialogContent, AlertDialogHeader,
+  AlertDialogTitle, AlertDialogDescription, AlertDialogFooter, AlertDialogCancel, AlertDialogAction,
+} from "@/components/ui/alert-dialog";
+import { Loader2, Save, Trash2, ShieldAlert, Zap, Link2, Users, UserX } from "lucide-react";
 import HelpLink from "@/components/guide/HelpLink";
 import { Switch } from "@/components/ui/switch";
 import CorosIntegration from "@/components/settings/CorosIntegration";
@@ -40,6 +44,8 @@ export default function AthleteSettings() {
   const [resetting, setResetting] = useState(false);
   const [message, setMessage] = useState(null);
   const [togglingCoach, setTogglingCoach] = useState(false);
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   const handleToggleCoach = async (checked) => {
     const next = checked ? "coach" : "athlete";
@@ -144,6 +150,20 @@ export default function AthleteSettings() {
       setMessage({ type: "error", text: err?.response?.data?.error || "Could not reset your data." });
     }
     setResetting(false);
+  };
+
+  const handleDeleteAccount = async () => {
+    setDeleting(true);
+    setMessage(null);
+    try {
+      await base44.functions.invoke("deleteAccount", {});
+      setDeleteOpen(false);
+      await base44.auth.logout();
+      window.location.href = "/";
+    } catch (err) {
+      setMessage({ type: "error", text: err?.response?.data?.error || "Could not delete your account." });
+      setDeleting(false);
+    }
   };
 
   if (loading) {
@@ -357,7 +377,7 @@ export default function AthleteSettings() {
           </CardTitle>
           <CardDescription>Irreversible. Your profile is kept; everything else is deleted.</CardDescription>
         </CardHeader>
-        <CardContent>
+        <CardContent className="space-y-4">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
             <p className="text-sm text-muted-foreground">
               Permanently deletes all workouts, training plans, plan sessions, and telemetry for this profile.
@@ -366,6 +386,39 @@ export default function AthleteSettings() {
               {resetting ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Trash2 className="w-4 h-4 mr-2" />}
               Reset all data
             </Button>
+          </div>
+          <div className="border-t border-border pt-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+            <div className="space-y-1">
+              <p className="text-sm font-medium text-destructive">Delete account</p>
+              <p className="text-xs text-muted-foreground">Permanently deletes your user account and all associated data. This cannot be undone.</p>
+            </div>
+            <AlertDialog open={deleteOpen} onOpenChange={setDeleteOpen}>
+              <AlertDialogTrigger asChild>
+                <Button variant="destructive" disabled={deleting}>
+                  {deleting ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <UserX className="w-4 h-4 mr-2" />}
+                  Delete account
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Delete your account?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    This permanently deletes your TrainPaceLab user account along with all workouts, plans, recovery data, and connections. The action is irreversible and you'll be signed out immediately.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel disabled={deleting}>Cancel</AlertDialogCancel>
+                  <AlertDialogAction
+                    onClick={(e) => { e.preventDefault(); handleDeleteAccount(); }}
+                    disabled={deleting}
+                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                  >
+                    {deleting && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                    Yes, delete forever
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
           </div>
         </CardContent>
       </Card>
