@@ -21,12 +21,22 @@ function createEntityRepo(entityName: string) {
     async filter(filters = {}, sort?: string, limit?: number) {
       if (!entity) return [];
       if (typeof entity.filter === 'function') {
-        const res = await entity.filter(filters, sort, limit);
-        return res?.data || res || [];
+        try {
+          const res = await entity.filter(filters, sort, limit);
+          return res?.data || res || [];
+        } catch (err) {
+          console.warn(`Native entity.filter failed for ${entityName}, falling back to list:`, err);
+        }
       }
-      // Fallback to list if entity doesn't have native filter method
+      // Fallback to list if entity doesn't have native filter method or it threw
       const res = await entity.list(filters);
       let items = res?.data || res || [];
+      // Client-side filtering if entity.list ignores filters
+      if (filters && Object.keys(filters).length > 0 && items.length > 0) {
+        items = items.filter(item => {
+          return Object.entries(filters).every(([key, val]) => item[key] === val);
+        });
+      }
       if (sort && typeof sort === 'string' && items.length > 0) {
         const desc = sort.startsWith('-');
         const field = desc ? sort.slice(1) : sort;
@@ -137,28 +147,41 @@ export const base44AuthService: AuthService = {
       return false;
     }
   },
-  async login(credentials) {
-    if (base44.auth && typeof base44.auth.login === 'function') {
-      return base44.auth.login(credentials);
+  async loginViaEmailPassword(credentials) {
+    if (base44.auth && typeof base44.auth.loginViaEmailPassword === 'function') {
+      return base44.auth.loginViaEmailPassword(credentials);
     }
-    throw new Error('Auth login not supported by SDK');
+    throw new Error('Auth loginViaEmailPassword not supported by SDK');
+  },
+  async loginWithProvider(provider, fromUrl) {
+    if (base44.auth && typeof base44.auth.loginWithProvider === 'function') {
+      return base44.auth.loginWithProvider(provider, fromUrl);
+    }
+    throw new Error('Auth loginWithProvider not supported by SDK');
   },
   async logout() {
     if (base44.auth && typeof base44.auth.logout === 'function') {
       return base44.auth.logout();
     }
   },
-  async register(credentials) {
-    if (base44.auth && typeof base44.auth.register === 'function') {
-      return base44.auth.register(credentials);
-    }
-    throw new Error('Auth register not supported by SDK');
-  },
   async verifyOtp(payload) {
     if (base44.auth && typeof base44.auth.verifyOtp === 'function') {
       return base44.auth.verifyOtp(payload);
     }
     throw new Error('Auth verifyOtp not supported by SDK');
+  },
+  async resendOtp(email) {
+    if (base44.auth && typeof base44.auth.resendOtp === 'function') {
+      return base44.auth.resendOtp(email);
+    }
+    throw new Error('Auth resendOtp not supported by SDK');
+  },
+
+  async resetPasswordRequest(email) {
+    if (base44.auth && typeof base44.auth.resetPasswordRequest === 'function') {
+      return base44.auth.resetPasswordRequest(email);
+    }
+    throw new Error('Auth resetPasswordRequest not supported by SDK');
   },
   async resetPassword(payload) {
     if (base44.auth && typeof base44.auth.resetPassword === 'function') {

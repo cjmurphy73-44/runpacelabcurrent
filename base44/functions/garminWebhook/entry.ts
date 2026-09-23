@@ -96,10 +96,17 @@ Deno.serve(async (req) => {
 
     const restHr = athlete.resting_hr || 60, maxHr = athlete.max_heart_rate || summary.max_hr || 190;
     const session = await base44.asServiceRole.entities.WorkoutSession.create({
-      athlete_id: athleteId, date, sport,
-      duration_minutes: Math.round(durationMinutes * 100) / 100, duration_seconds: Math.round(durationMinutes * 60),
-      distance_km: distanceKm, avg_hr: summary.avg_hr || undefined, max_hr: summary.max_hr || undefined,
-      source_format: sourceFormat, session_trimp: summary.avg_hr ? calcTrimp(durationMinutes, summary.avg_hr, restHr, maxHr, athlete.sex) : 0,
+      athlete_id: athleteId,
+      created_by_id: athleteId,
+      date,
+      sport,
+      duration_minutes: Math.round(durationMinutes * 100) / 100,
+      duration_seconds: Math.round(durationMinutes * 60),
+      distance_km: distanceKm,
+      avg_hr: summary.avg_hr || undefined,
+      max_hr: summary.max_hr || undefined,
+      source_format: sourceFormat,
+      session_trimp: summary.avg_hr ? calcTrimp(durationMinutes, summary.avg_hr, restHr, maxHr, athlete.sex) : 0,
     });
 
     try { await base44.asServiceRole.entities.WebhookEvent.create({ event_id: eventId, provider: 'generic', athlete_id: athleteId, workout_session_id: session.id, outcome: 'created' }); } catch {}

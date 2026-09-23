@@ -1,6 +1,7 @@
 import React, { useMemo } from "react";
-import { Activity, Zap, Gauge, Target } from "lucide-react";
+import { Activity, Zap, Gauge, Target, TrendingUp } from "lucide-react";
 import { calculateHistoricalAndProjectedLoad } from "@/lib/loadForecasting";
+import { useFitness } from "@/context/FitnessContext";
 
 // Pro-athlete metric banner. Uses the SAME computed CTL/ATL/TSB model as the hero
 // PMC chart (calculateHistoricalAndProjectedLoad from workouts) rather than the
@@ -8,6 +9,8 @@ import { calculateHistoricalAndProjectedLoad } from "@/lib/loadForecasting";
 // stale/NaN figures. Quantum Polar styling: hairline cards, tabular-mono numerics,
 // uppercase tracked labels, and a thin goal bar.
 export default function DashboardMetricBanner({ athlete, workouts = [] }) {
+  const { readinessForecast } = useFitness();
+
   const { ctl, atl, tsb } = useMemo(() => {
     const timeline = calculateHistoricalAndProjectedLoad(workouts, [], 0);
     if (timeline.length === 0) return { ctl: 0, atl: 0, tsb: 0 };
@@ -29,10 +32,17 @@ export default function DashboardMetricBanner({ athlete, workouts = [] }) {
     { label: "ATL · Fatigue", value: Math.round(atl), icon: Zap },
     { label: "TSB · Form", value: Math.round(tsb), icon: Gauge, tone: tsb >= 0 ? "pos" : "neg" },
     { label: "Wk TSS · Goal", value: `${Math.round(weeklyTss)} / ${weeklyGoal}`, icon: Target, bar: goalPct },
+    ...(readinessForecast ? [{
+      label: "Readiness Forecast",
+      value: `${Math.round(readinessForecast.projectedReadiness)}%`,
+      sub: `Current: ${Math.round(readinessForecast.currentReadiness)}%`,
+      icon: TrendingUp,
+      tone: "pos"
+    }] : []),
   ];
 
   return (
-    <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+    <div className={`grid grid-cols-2 ${readinessForecast ? 'lg:grid-cols-5' : 'lg:grid-cols-4'} gap-3`}>
       {cards.map((c) => (
         <div key={c.label} className="rounded-md border border-border bg-card p-4 shadow-sm">
           <div className="flex items-center gap-1.5 text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
@@ -45,6 +55,11 @@ export default function DashboardMetricBanner({ athlete, workouts = [] }) {
           >
             {c.value}
           </div>
+          {c.sub && (
+            <div className="mt-1 text-xs text-muted-foreground font-mono">
+              {c.sub}
+            </div>
+          )}
           {typeof c.bar === "number" && (
             <div className="mt-3 h-1 w-full rounded-full bg-secondary">
               <div className="h-1 rounded-full bg-primary" style={{ width: `${c.bar}%` }} />
