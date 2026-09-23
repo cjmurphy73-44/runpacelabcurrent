@@ -164,6 +164,9 @@ export const base44AuthService: AuthService = {
       return base44.auth.logout();
     }
   },
+  async register(credentials: Record<string, any>): Promise<any> {
+    throw new Error('register not supported');
+  },
   async verifyOtp(payload) {
     if (base44.auth && typeof base44.auth.verifyOtp === 'function') {
       return base44.auth.verifyOtp(payload);
@@ -199,65 +202,65 @@ export const base44AuthService: AuthService = {
 
 export const base44IntegrationsService: IntegrationsService = {
   async invokeLLM(payload) {
-    if (base44.integrations?.Core?.invokeLLM) {
-      return base44.integrations.Core.invokeLLM(payload);
+    if (base44.integrations?.Core?.InvokeLLM) {
+      return base44.integrations.Core.InvokeLLM(payload);
     }
-    throw new Error('invokeLLM not available');
+    throw new Error('InvokeLLM not available');
   },
   async uploadPublicFile(file, options) {
-    if (base44.integrations?.Core?.uploadPublicFile) {
-      return base44.integrations.Core.uploadPublicFile(file, options);
+    if (base44.integrations?.Core?.UploadPublicFile) {
+      return base44.integrations.Core.UploadPublicFile(file, options);
     }
-    throw new Error('uploadPublicFile not available');
+    throw new Error('UploadPublicFile not available');
   },
   async uploadPrivateFile(file, options) {
-    if (base44.integrations?.Core?.uploadPrivateFile) {
-      return base44.integrations.Core.uploadPrivateFile(file, options);
+    if (base44.integrations?.Core?.UploadPrivateFile) {
+      return base44.integrations.Core.UploadPrivateFile(file, options);
     }
-    throw new Error('uploadPrivateFile not available');
+    throw new Error('UploadPrivateFile not available');
   },
   async generateImage(payload) {
-    if (base44.integrations?.Core?.generateImage) {
-      return base44.integrations.Core.generateImage(payload);
+    if (base44.integrations?.Core?.GenerateImage) {
+      return base44.integrations.Core.GenerateImage(payload);
     }
-    throw new Error('generateImage not available');
+    throw new Error('GenerateImage not available');
   },
   async generateSpeech(payload) {
-    if (base44.integrations?.Core?.generateSpeech) {
-      return base44.integrations.Core.generateSpeech(payload);
+    if (base44.integrations?.Core?.GenerateSpeech) {
+      return base44.integrations.Core.GenerateSpeech(payload);
     }
-    throw new Error('generateSpeech not available');
+    throw new Error('GenerateSpeech not available');
   },
   async sendEmail(payload) {
-    if (base44.integrations?.Core?.sendEmail) {
-      return base44.integrations.Core.sendEmail(payload);
+    if (base44.integrations?.Core?.SendEmail) {
+      return base44.integrations.Core.SendEmail(payload);
     }
-    throw new Error('sendEmail not available');
+    throw new Error('SendEmail not available');
   },
   async createFileSignedUrl(payload) {
-    if (base44.integrations?.Core?.createFileSignedUrl) {
-      return base44.integrations.Core.createFileSignedUrl(payload);
+    if (base44.integrations?.Core?.CreateFileSignedUrl) {
+      return base44.integrations.Core.CreateFileSignedUrl(payload);
     }
-    throw new Error('createFileSignedUrl not available');
+    throw new Error('CreateFileSignedUrl not available');
   },
   async extractDataFromUploadedFile(payload) {
-    if (base44.integrations?.Core?.extractDataFromUploadedFile) {
-      return base44.integrations.Core.extractDataFromUploadedFile(payload);
+    if (base44.integrations?.Core?.ExtractDataFromUploadedFile) {
+      return base44.integrations.Core.ExtractDataFromUploadedFile(payload);
     }
-    throw new Error('extractDataFromUploadedFile not available');
+    throw new Error('ExtractDataFromUploadedFile not available');
   }
 };
 
 export const base44ConnectorGateway: ConnectorGateway = {
   async airtable(action, payload) {
-    if (base44.connectors?.airtable) {
-      return base44.connectors.airtable(action, payload);
+    if (base44.connectors?.Airtable) {
+      return base44.connectors.Airtable(action, payload);
     }
     throw new Error('Airtable connector not available');
   },
   async github(action, payload) {
-    if (base44.connectors?.github) {
-      return base44.connectors.github(action, payload);
+    if (base44.connectors?.Github) {
+      return base44.connectors.Github(action, payload);
     }
     throw new Error('GitHub connector not available');
   }
