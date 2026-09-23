@@ -4,10 +4,12 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Activity, Watch, Plus } from "lucide-react";
 import HelpLink from "@/components/guide/HelpLink";
+import WearableSyncGuide from "@/components/dashboard/WearableSyncGuide";
 
 // Friendly, action-oriented empty state shown to beta testers who have created a
 // profile but logged no workouts yet. Replaces blank charts/spinners with clear CTAs.
 export default function OnboardingEmptyState({ athlete, onAddManual }) {
+  const wearables = athlete?.primary_wearables ?? [];
   const name = athlete?.first_name ? `, ${athlete.first_name}` : "";
   return (
     <Card className="border-dashed border-2 shadow-none">
@@ -38,6 +40,11 @@ export default function OnboardingEmptyState({ athlete, onAddManual }) {
         <p className="text-xs text-muted-foreground">
           Tip: even a single 30-minute session is enough to light up the dashboard and let you watch the engine work.
         </p>
+        {wearables.length > 0 && (
+          <div className="text-left max-w-lg mx-auto pt-2">
+            <WearableSyncGuide selectedWearables={wearables} />
+          </div>
+        )}
         <HelpLink section="getting-started" label="Read the getting-started guide" />
       </CardContent>
     </Card>

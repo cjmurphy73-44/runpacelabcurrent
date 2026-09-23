@@ -57,6 +57,23 @@
       "default": "athlete",
       "description": "Whether this account uses TrainPaceLab as an athlete only, or also as a coach. Setting to 'coach' reveals the Coach Workspace (roster & multi-athlete tools) in the nav; the workspace itself is gated by the Team plan."
     },
+    "primary_wearables": {
+      "type": "array",
+      "description": "The wearables/tracking ecosystems the athlete uses, captured during onboarding. Drives tailored dashboard sync instructions and onboarding guidance. Keys match src/lib/wearableCatalog.js.",
+      "items": {
+        "type": "string",
+        "enum": [
+          "garmin",
+          "coros",
+          "apple_watch",
+          "polar",
+          "whoop",
+          "oura",
+          "strava",
+          "apple_health"
+        ]
+      }
+    },
     "max_heart_rate": {
       "type": "integer",
       "minimum": 0,

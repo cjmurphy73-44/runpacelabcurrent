@@ -6,9 +6,10 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from "@/components/ui/accordion";
-import { Activity, Gauge, HeartPulse, Sparkles } from "lucide-react";
+import { Activity, Gauge, HeartPulse, Sparkles, Watch } from "lucide-react";
 import { deriveOnboardingProfile, RACE_DISTANCES } from "@/science/daniels";
 import { deriveNoviceBaseline } from "@/science/noviceBaseline";
+import WearableStep from "@/components/onboarding/WearableStep";
 
 const TIER_CONSTS = {
   conservative: { ctl: 10, atl: 12 },
@@ -27,6 +28,7 @@ export default function OnboardingFlow({ onCreated }) {
     first_name: "", last_name: "", sex: "male", dob: "", age: "",
     raceDistance: "5k", raceMinutes: "", raceSeconds: "", weeklyMileage: "", tier: "moderate",
     noviceMode: false, easyDistance: "", easyMinutes: "", effort: "easy",
+    wearables: [],
   });
   const [overrides, setOverrides] = useState({});
   const [saving, setSaving] = useState(false);
@@ -86,6 +88,7 @@ export default function OnboardingFlow({ onCreated }) {
         vdot_estimate: Number(eff("vdot")) || undefined,
         current_ctl: Number(eff("seedCtl")) || 0, current_atl: Number(eff("seedAtl")) || 0, current_tsb: Number(eff("seedTsb")) || 0,
         ctl_time_constant_days: consts.ctl, atl_time_constant_days: consts.atl,
+        primary_wearables: form.wearables.length ? form.wearables : undefined,
       });
       onCreated(profile);
     } catch (e) { setError(e?.response?.data?.error || "Could not create profile."); }
@@ -201,6 +204,13 @@ export default function OnboardingFlow({ onCreated }) {
               </AccordionContent>
             </AccordionItem>
           </Accordion>
+
+          <div className="rounded-lg border border-border p-4 space-y-3 bg-muted/20">
+            <div className="flex items-center gap-2 text-sm font-medium">
+              <Watch className="w-4 h-4 text-primary" /> Your hardware stack
+            </div>
+            <WearableStep selected={form.wearables} onToggle={(keys) => setForm((f) => ({ ...f, wearables: keys }))} />
+          </div>
 
           <div>
             <Label>Training philosophy</Label>

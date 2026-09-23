@@ -38,6 +38,7 @@ import OnboardingEmptyState from "@/components/dashboard/OnboardingEmptyState";
 import PlannedActualReconciliation from "@/components/dashboard/PlannedActualReconciliation";
 import CoachBriefing from "@/components/dashboard/CoachBriefing";
 import PhysiologyStrip from "@/components/dashboard/PhysiologyStrip";
+import AnomalyAlertBanner from "@/components/dashboard/AnomalyAlertBanner";
 import { Sun, TrendingUp, Activity, MessageCircle, HeartPulse, ArrowRight, Plus, LogIn } from "lucide-react";
 
 export default function Home() {
@@ -153,6 +154,7 @@ export default function Home() {
           <>
           <DashboardGreeting athlete={athlete} />
           <div className="space-y-8">
+        <AnomalyAlertBanner />
         {/* 1 — Today's snapshot */}
         <section className="space-y-4">
           <SectionHeading index="01" title="Today's snapshot" description="Your form, readiness and prescribed session for today." icon={Sun} />

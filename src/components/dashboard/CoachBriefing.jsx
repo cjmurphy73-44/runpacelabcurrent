@@ -1,10 +1,10 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { base44 } from "@/api/base44Client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Sparkles, RefreshCw } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import { useFitness } from "@/context/FitnessContext";
+import { useServices } from "@/services/providers/ServiceContext";
 
 const WINDOW_DAYS = 14;
 
@@ -92,6 +92,7 @@ const RESPONSE_SCHEMA = {
 
 export default function CoachBriefing({ athlete }) {
   const { dailyMetrics, workoutSessions, loading } = useFitness();
+  const { functionGateway } = useServices();
   const [briefing, setBriefing] = useState(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState(null);
@@ -121,7 +122,7 @@ Keep the assessment to 2–4 sentences. Then give 3–5 highlights as short bull
 
 Athlete data (JSON):
 ${JSON.stringify(payload)}`;
-      const response = await base44.functions.invoke('coachBriefing', { athlete_id: athlete?.id, prompt, response_json_schema: RESPONSE_SCHEMA });
+      const response = await functionGateway.invoke('coachBriefing', { athlete_id: athlete?.id, prompt, response_json_schema: RESPONSE_SCHEMA });
       setBriefing(response.data.result);
       ranSignature.current = sig;
     } catch (e) {
