@@ -41,9 +41,12 @@ interface ServiceContextType {
 
 const ServiceContext = createContext<ServiceContextType | null>(null);
 
-export function ServiceProvider({ children, providerType = 'base44' }: { children: React.ReactNode; providerType?: string }) {
-  // Currently wiring the Base44 adapter set; future providers can be selected via providerType
-  const services: ServiceContextType = {
+// Base44 is the production provider. An optional `services` override lets tests
+// (and any future alternate runtime) inject a different adapter set — e.g. the
+// in-memory adapter in src/services/adapters/memory — without touching the
+// production path. When omitted, the Base44 adapter set is used.
+export function ServiceProvider({ children, services: override }: { children: React.ReactNode; services?: ServiceContextType }) {
+  const services: ServiceContextType = override ?? {
     workoutSessionRepo: base44WorkoutSessionRepo,
     dailyMetricsRepo: base44DailyMetricsRepo,
     trainingPlanRepo: base44TrainingPlanRepo,

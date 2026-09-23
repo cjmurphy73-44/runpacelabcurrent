@@ -1,3 +1,5 @@
+// @vitest-environment happy-dom
+import React from 'react';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { TelemetryDrawer } from './TelemetryDrawer';
 import { describe, it, expect, vi } from 'vitest';
@@ -16,7 +18,7 @@ describe('TelemetryDrawer', () => {
   it('calls onClose when close button is clicked', () => {
     const onClose = vi.fn();
     render(<TelemetryDrawer isOpen={true} onClose={onClose} sessionId="test-session" />);
-    fireEvent.click(screen.getByRole('button', { name: /x/i }));
+    fireEvent.click(screen.getByRole('button', { name: /close/i }));
     expect(onClose).toHaveBeenCalled();
   });
 });
