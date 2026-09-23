@@ -5,6 +5,8 @@ import {
   base44TrainingPlanRepo, 
   base44AthleteProfileRepo, 
   base44SubscriptionRepo,
+  base44CoachMessageRepo,
+  base44TrainingPlanSessionRepo,
   base44FunctionGateway,
   base44AuthService,
   base44IntegrationsService,
@@ -15,7 +17,9 @@ import {
   DailyMetricsRepository, 
   TrainingPlanRepository, 
   AthleteProfileRepository, 
-  SubscriptionRepository 
+  SubscriptionRepository,
+  CoachMessageRepository,
+  TrainingPlanSessionRepository
 } from '../contracts/repositories';
 import { BackendFunctionGateway } from '../contracts/gateway';
 import { AuthService } from '../contracts/auth';
@@ -27,6 +31,8 @@ interface ServiceContextType {
   trainingPlanRepo: TrainingPlanRepository;
   athleteProfileRepo: AthleteProfileRepository;
   subscriptionRepo: SubscriptionRepository;
+  coachMessageRepo: CoachMessageRepository;
+  trainingPlanSessionRepo: TrainingPlanSessionRepository;
   functionGateway: BackendFunctionGateway;
   authService: AuthService;
   integrationsService: IntegrationsService;
@@ -43,6 +49,8 @@ export function ServiceProvider({ children, providerType = 'base44' }: { childre
     trainingPlanRepo: base44TrainingPlanRepo,
     athleteProfileRepo: base44AthleteProfileRepo,
     subscriptionRepo: base44SubscriptionRepo,
+    coachMessageRepo: base44CoachMessageRepo,
+    trainingPlanSessionRepo: base44TrainingPlanSessionRepo,
     functionGateway: base44FunctionGateway,
     authService: base44AuthService,
     integrationsService: base44IntegrationsService,

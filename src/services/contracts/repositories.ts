@@ -18,3 +18,5 @@ export interface DailyMetricsRepository extends BaseRepository<any> {}
 export interface TrainingPlanRepository extends BaseRepository<any> {}
 export interface AthleteProfileRepository extends BaseRepository<any> {}
 export interface SubscriptionRepository extends BaseRepository<any> {}
+export interface CoachMessageRepository extends BaseRepository<any> {}
+export interface TrainingPlanSessionRepository extends BaseRepository<any> {}

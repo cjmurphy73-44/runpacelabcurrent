@@ -39,8 +39,8 @@ import { Toaster } from '@/components/ui/toaster';
 export default function App() {
   return (
     <QueryClientProvider client={queryClientInstance}>
-      <AuthProvider>
-        <ServiceProvider>
+      <ServiceProvider>
+        <AuthProvider>
         <UIPreferencesProvider>
           <Router>
           <Routes>
@@ -79,8 +79,8 @@ export default function App() {
           <Toaster />
         </Router>
         </UIPreferencesProvider>
-        </ServiceProvider>
-      </AuthProvider>
+        </AuthProvider>
+      </ServiceProvider>
     </QueryClientProvider>
   );
 }

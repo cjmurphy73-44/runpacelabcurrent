@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback } from "react";
-import { base44 } from "@/api/base44Client";
+import { useServices } from "@/services/providers/ServiceContext";
 import { adjustPaceForEnvironment, calculateDewPoint } from "@/math/environmental";
 import { computeInjurySignal } from "@/lib/coachInjurySignal";
 
@@ -19,6 +19,7 @@ import { computeInjurySignal } from "@/lib/coachInjurySignal";
  *   coachingFeedback:      string | null
  */
 export function useCoachingInsights() {
+  const { authService, athleteProfileRepo, dailyMetricsRepo, coachMessageRepo } = useServices();
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -116,8 +117,8 @@ export function useCoachingInsights() {
     async function load() {
       try {
         setLoading(true);
-        const user = await base44.auth.me();
-        const profiles = await base44.entities.AthleteProfile.filter({ created_by_id: user.id });
+        const user = await authService.me();
+        const profiles = await athleteProfileRepo.filter({ created_by_id: user.id });
         if (!profiles.length) {
           if (!cancelled) {
             setData(null);
@@ -130,12 +131,12 @@ export function useCoachingInsights() {
         const todayKey = new Date().toISOString().split("T")[0];
 
         const [dailyMetrics, recentMessages] = await Promise.all([
-          base44.entities.DailyMetrics.filter(
+          dailyMetricsRepo.filter(
             { athlete_id: athlete.id, date: { $lte: todayKey } },
             "-date",
             1
           ),
-          base44.entities.CoachMessage.filter({ athlete_id: athlete.id }, "-created_date", 30),
+          coachMessageRepo.filter({ athlete_id: athlete.id }, "-created_date", 30),
         ]);
 
         // --- Readiness ---
@@ -217,7 +218,7 @@ export function useCoachingInsights() {
     return () => {
       cancelled = true;
     };
-  }, [loadWeather]);
+  }, [loadWeather, authService, athleteProfileRepo, dailyMetricsRepo, coachMessageRepo]);
 
   const [weatherRefreshing, setWeatherRefreshing] = useState(false);
 

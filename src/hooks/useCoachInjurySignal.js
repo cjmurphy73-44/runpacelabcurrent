@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { base44 } from "@/api/base44Client";
+import { useServices } from "@/services/providers/ServiceContext";
 import { computeInjurySignal } from "@/lib/coachInjurySignal";
 
 /**
@@ -16,6 +16,7 @@ import { computeInjurySignal } from "@/lib/coachInjurySignal";
  *   holdReason: string | null  (set only when level === 'hold')
  */
 export function useCoachInjurySignal(athleteId) {
+  const { coachMessageRepo } = useServices();
   const [state, setState] = useState({
     loading: true,
     level: "none",
@@ -33,7 +34,7 @@ export function useCoachInjurySignal(athleteId) {
     let cancelled = false;
     (async () => {
       try {
-        const msgs = await base44.entities.CoachMessage.filter(
+        const msgs = await coachMessageRepo.filter(
           { athlete_id: athleteId },
           "-created_date",
           30
@@ -56,7 +57,7 @@ export function useCoachInjurySignal(athleteId) {
     return () => {
       cancelled = true;
     };
-  }, [athleteId]);
+  }, [athleteId, coachMessageRepo]);
 
   return state;
 }

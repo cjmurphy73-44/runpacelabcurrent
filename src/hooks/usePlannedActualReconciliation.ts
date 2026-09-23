@@ -9,7 +9,7 @@
 // actual-to-prescribed duration ratio.
 
 import { useEffect, useState, useCallback } from 'react';
-import { base44 } from '@/api/base44Client';
+import { useServices } from '@/services/providers/ServiceContext';
 import { workoutMatchingEngine } from '@/services/workoutMatchingEngine';
 import { useSubscription } from '@/hooks/useSubscription';
 
@@ -32,6 +32,7 @@ function statusForMatch(match) {
 }
 
 export function usePlannedActualReconciliation(athleteId) {
+  const { workoutSessionRepo, trainingPlanSessionRepo, functionGateway } = useServices();
   const { isPro } = useSubscription();
   const [matches, setMatches] = useState([]);
   const [autoLinked, setAutoLinked] = useState([]); // pending user verification
@@ -61,14 +62,14 @@ export function usePlannedActualReconciliation(athleteId) {
     }
     setAdjustingId(sessionId);
     try {
-      const res = await base44.functions.invoke('autoReplanOnDeviation', { session_id: sessionId });
+      const res = await functionGateway.invoke('autoReplanOnDeviation', { session_id: sessionId });
       setLastAdjustment({ sessionId, summary: res?.summary || 'Your coach is adjusting the rest of your week.', ok: !res?.error });
     } catch (e) {
       setLastAdjustment({ sessionId, summary: 'Coach adjustment is running in the background.', ok: false });
     } finally {
       setAdjustingId(null);
     }
-  }, [isPro]);
+  }, [isPro, functionGateway]);
 
   const load = useCallback(async () => {
     if (!athleteId) return;
@@ -76,8 +77,8 @@ export function usePlannedActualReconciliation(athleteId) {
     setError(null);
     try {
       const [sessions, planned] = await Promise.all([
-        base44.entities.WorkoutSession.filter({ athlete_id: athleteId }, '-date', 60),
-        base44.entities.TrainingPlanSession.filter({ athlete_id: athleteId }, '-date', 200),
+        workoutSessionRepo.filter({ athlete_id: athleteId }, '-date', 60),
+        trainingPlanSessionRepo.filter({ athlete_id: athleteId }, '-date', 200),
       ]);
 
       const ingested = (sessions || [])
@@ -115,8 +116,8 @@ export function usePlannedActualReconciliation(athleteId) {
         const canAuto = m.matchStatus === 'EXACT' && m.confidenceScore >= AUTO_CONFIDENCE && !linkedScheduled.has(m.scheduledWorkoutId);
         if (!canAuto) { reviewable.push(m); continue; }
         try {
-          await base44.entities.TrainingPlanSession.update(m.scheduledWorkoutId, { status: 'completed' });
-          await base44.entities.WorkoutSession.update(m.sessionId, { training_plan_session_id: m.scheduledWorkoutId });
+          await trainingPlanSessionRepo.update(m.scheduledWorkoutId, { status: 'completed' });
+          await workoutSessionRepo.update(m.sessionId, { training_plan_session_id: m.scheduledWorkoutId });
           linkedScheduled.add(m.scheduledWorkoutId);
           autoLinkedRows.push(m);
         } catch {
@@ -166,7 +167,7 @@ export function usePlannedActualReconciliation(athleteId) {
     } finally {
       setLoading(false);
     }
-  }, [athleteId]);
+  }, [athleteId, workoutSessionRepo, trainingPlanSessionRepo]);
 
   useEffect(() => { load(); }, [load]);
 
@@ -175,8 +176,8 @@ export function usePlannedActualReconciliation(athleteId) {
     setConfirmingId(match.sessionId);
     const newStatus = statusForMatch(match);
     try {
-      await base44.entities.TrainingPlanSession.update(match.scheduledWorkoutId, { status: newStatus });
-      await base44.entities.WorkoutSession.update(match.sessionId, {
+      await trainingPlanSessionRepo.update(match.scheduledWorkoutId, { status: newStatus });
+      await workoutSessionRepo.update(match.sessionId, {
         training_plan_session_id: match.scheduledWorkoutId,
       });
       setLastConfirmed(match.sessionId);
@@ -189,7 +190,7 @@ export function usePlannedActualReconciliation(athleteId) {
     } finally {
       setConfirmingId(null);
     }
-  }, [confirmingId, load, triggerReplan]);
+  }, [confirmingId, load, triggerReplan, trainingPlanSessionRepo, workoutSessionRepo]);
 
   // Acknowledge an auto-link — no DB write (already linked); just dismiss from the verify queue.
   const confirmAutoLink = useCallback((match) => {
@@ -202,8 +203,8 @@ export function usePlannedActualReconciliation(athleteId) {
     if (!match || rejectingId) return false;
     setRejectingId(match.sessionId);
     try {
-      await base44.entities.WorkoutSession.update(match.sessionId, { training_plan_session_id: null });
-      await base44.entities.TrainingPlanSession.update(match.scheduledWorkoutId, { status: 'pending' });
+      await workoutSessionRepo.update(match.sessionId, { training_plan_session_id: null });
+      await trainingPlanSessionRepo.update(match.scheduledWorkoutId, { status: 'pending' });
       setLastRejected(match.sessionId);
       setAutoLinked((prev) => prev.filter((m) => m.sessionId !== match.sessionId));
       await load();
@@ -214,13 +215,13 @@ export function usePlannedActualReconciliation(athleteId) {
     } finally {
       setRejectingId(null);
     }
-  }, [rejectingId, load]);
+  }, [rejectingId, load, workoutSessionRepo, trainingPlanSessionRepo]);
 
   const markSkipped = useCallback(async (sessionId) => {
     if (!sessionId || skippingId) return false;
     setSkippingId(sessionId);
     try {
-      await base44.entities.TrainingPlanSession.update(sessionId, { status: 'skipped' });
+      await trainingPlanSessionRepo.update(sessionId, { status: 'skipped' });
       setLastSkipped(sessionId);
       setOverdue((prev) => prev.filter((s) => s.id !== sessionId));
       setTodaySessions((prev) => prev.filter((s) => s.id !== sessionId));
@@ -232,7 +233,7 @@ export function usePlannedActualReconciliation(athleteId) {
     } finally {
       setSkippingId(null);
     }
-  }, [skippingId, triggerReplan]);
+  }, [skippingId, triggerReplan, trainingPlanSessionRepo]);
 
   // Quick "mark off" for today's planned sessions — marks the plan session completed
   // without linking an uploaded activity (user did the session, no file needed).
@@ -240,7 +241,7 @@ export function usePlannedActualReconciliation(athleteId) {
     if (!sessionId || markingId) return false;
     setMarkingId(sessionId);
     try {
-      await base44.entities.TrainingPlanSession.update(sessionId, { status: 'completed' });
+      await trainingPlanSessionRepo.update(sessionId, { status: 'completed' });
       setLastMarkedDone(sessionId);
       setTodaySessions((prev) => prev.filter((s) => s.id !== sessionId));
       return true;
@@ -250,7 +251,7 @@ export function usePlannedActualReconciliation(athleteId) {
     } finally {
       setMarkingId(null);
     }
-  }, [markingId]);
+  }, [markingId, trainingPlanSessionRepo]);
 
   return {
     matches,

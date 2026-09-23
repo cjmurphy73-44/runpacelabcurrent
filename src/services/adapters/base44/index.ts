@@ -4,7 +4,9 @@ import {
   DailyMetricsRepository, 
   TrainingPlanRepository, 
   AthleteProfileRepository, 
-  SubscriptionRepository 
+  SubscriptionRepository,
+  CoachMessageRepository,
+  TrainingPlanSessionRepository
 } from '../../contracts/repositories';
 import { BackendFunctionGateway } from '../../contracts/gateway';
 import { AuthService } from '../../contracts/auth';
@@ -113,6 +115,8 @@ export const base44DailyMetricsRepo: DailyMetricsRepository = createEntityRepo('
 export const base44TrainingPlanRepo: TrainingPlanRepository = createEntityRepo('TrainingPlan');
 export const base44AthleteProfileRepo: AthleteProfileRepository = createEntityRepo('AthleteProfile');
 export const base44SubscriptionRepo: SubscriptionRepository = createEntityRepo('Subscription');
+export const base44CoachMessageRepo: CoachMessageRepository = createEntityRepo('CoachMessage');
+export const base44TrainingPlanSessionRepo: TrainingPlanSessionRepository = createEntityRepo('TrainingPlanSession');
 
 export const base44FunctionGateway: BackendFunctionGateway = {
   async invoke(functionName: string, payload = {}) {
@@ -159,13 +163,34 @@ export const base44AuthService: AuthService = {
     }
     throw new Error('Auth loginWithProvider not supported by SDK');
   },
-  async logout() {
+  async logout(redirectUrl?: string) {
     if (base44.auth && typeof base44.auth.logout === 'function') {
-      return base44.auth.logout();
+      return base44.auth.logout(redirectUrl);
     }
   },
   async register(credentials: Record<string, any>): Promise<any> {
+    if (base44.auth && typeof base44.auth.register === 'function') {
+      return base44.auth.register(credentials);
+    }
     throw new Error('register not supported');
+  },
+  async redirectToLogin(nextUrl?: string) {
+    if (base44.auth && typeof base44.auth.redirectToLogin === 'function') {
+      return base44.auth.redirectToLogin(nextUrl || (typeof window !== 'undefined' ? window.location.href : '/'));
+    }
+    throw new Error('Auth redirectToLogin not supported by SDK');
+  },
+  async getAppPublicSettings(_appId?: string) {
+    if (base44.app && typeof base44.app.getPublicSettings === 'function') {
+      return base44.app.getPublicSettings();
+    }
+    return { id: _appId || '', public_settings: 'public_without_login' };
+  },
+  async updateMe(data: Record<string, any>) {
+    if (base44.auth && typeof base44.auth.updateMe === 'function') {
+      return base44.auth.updateMe(data);
+    }
+    throw new Error('Auth updateMe not supported by SDK');
   },
   async verifyOtp(payload) {
     if (base44.auth && typeof base44.auth.verifyOtp === 'function') {

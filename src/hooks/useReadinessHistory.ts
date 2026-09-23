@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { base44 } from "@/api/base44Client";
+import { useServices } from "@/services/providers/ServiceContext";
 
 export interface ReadinessDay {
   date: string; // YYYY-MM-DD
@@ -52,6 +52,7 @@ function statusForScore(score: number): ReadinessDay["status"] {
  * first). Throws into `error` on auth/profile failure; surfaces `loading`.
  */
 export const useReadinessHistory = (days = 35) => {
+  const { authService, athleteProfileRepo, dailyMetricsRepo } = useServices();
   const [data, setData] = useState<ReadinessDay[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
@@ -62,8 +63,8 @@ export const useReadinessHistory = (days = 35) => {
     async function load() {
       try {
         setLoading(true);
-        const user = await base44.auth.me();
-        const profiles = await base44.entities.AthleteProfile.filter({ created_by_id: user.id });
+        const user = await authService.me();
+        const profiles = await athleteProfileRepo.filter({ created_by_id: user.id });
         if (!profiles.length) {
           if (!cancelled) setData([]);
           return;
@@ -72,7 +73,7 @@ export const useReadinessHistory = (days = 35) => {
         const restingBaseline = athlete.resting_hr || 60;
 
         // Fetch a few extra records to hedge against timezone edge effects.
-        const metrics = await base44.entities.DailyMetrics.filter(
+        const metrics = await dailyMetricsRepo.filter(
           { athlete_id: athlete.id },
           "-date",
           days + 5
@@ -109,7 +110,7 @@ export const useReadinessHistory = (days = 35) => {
     return () => {
       cancelled = true;
     };
-  }, [days]);
+  }, [days, authService, athleteProfileRepo, dailyMetricsRepo]);
 
   return { data, loading, error };
 };

@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { base44 } from '@/api/base44Client';
+import { useServices } from '@/services/providers/ServiceContext';
 
 type Calibration = {
   status: 'needs_adjustment' | 'ok';
@@ -13,6 +13,7 @@ type Calibration = {
  * the app re-anchor from the new threshold.
  */
 export function usePaceCalibration() {
+  const { authService, athleteProfileRepo } = useServices();
   const [calibration, setCalibration] = useState<Calibration | null>(null);
   const [loading, setLoading] = useState(true);
   const [accepting, setAccepting] = useState(false);
@@ -34,15 +35,15 @@ export function usePaceCalibration() {
     if (!adj || accepting || accepted) return;
     setAccepting(true);
     try {
-      const user = await base44.auth.me();
-      const profiles = await base44.entities.AthleteProfile.filter({ created_by_id: user.id });
+      const user = await authService.me();
+      const profiles = await athleteProfileRepo.filter({ created_by_id: user.id });
       if (!profiles.length) throw new Error('No athlete profile found.');
       const athlete = profiles[0];
       const current = athlete.functional_threshold_pace_ms || 0;
       if (current > 0) {
         // Fitness gained -> threshold pace (m/s) increases by the suggested fraction.
         const next = Math.round(current * (1 + adj) * 1000) / 1000;
-        await base44.entities.AthleteProfile.update(athlete.id, {
+        await athleteProfileRepo.update(athlete.id, {
           functional_threshold_pace_ms: next,
         });
       }
@@ -51,7 +52,7 @@ export function usePaceCalibration() {
     } finally {
       setAccepting(false);
     }
-  }, [calibration, accepting, accepted]);
+  }, [calibration, accepting, accepted, authService, athleteProfileRepo]);
 
   return { calibration, loading, acceptAdjustment, accepting, accepted };
 }
