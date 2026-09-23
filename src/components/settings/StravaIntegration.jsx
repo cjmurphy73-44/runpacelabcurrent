@@ -2,6 +2,7 @@ import React, { useEffect, useState, useCallback } from "react";
 import { base44 } from "@/api/base44Client";
 import { Button } from "@/components/ui/button";
 import { Loader2, CheckCircle2, RefreshCw, Unlink, Activity } from "lucide-react";
+import WipBadge from "@/components/common/WipBadge";
 
 export default function StravaIntegration({ athleteId }) {
   const [status, setStatus] = useState(null);
@@ -67,7 +68,7 @@ export default function StravaIntegration({ athleteId }) {
         <div className="flex items-center gap-3">
           <div className="bg-muted p-2 rounded text-muted-foreground"><Activity className="w-5 h-5" /></div>
           <div>
-            <p className="text-sm font-medium flex items-center gap-2">Strava{connected && <span className="inline-flex items-center gap-1 text-xs font-medium text-primary"><CheckCircle2 className="w-3.5 h-3.5" /> Connected</span>}</p>
+            <p className="text-sm font-medium flex items-center gap-2">Strava<WipBadge label="Beta" />{connected && <span className="inline-flex items-center gap-1 text-xs font-medium text-primary"><CheckCircle2 className="w-3.5 h-3.5" /> Connected</span>}</p>
             <p className="text-xs text-muted-foreground">
               {loading ? "Checking…" : connected ? (status?.last_sync_at ? `Last sync ${new Date(status.last_sync_at).toLocaleString()}` : "Connected — new activities auto-sync via webhook") : "Not connected"}
             </p>

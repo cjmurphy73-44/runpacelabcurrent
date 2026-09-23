@@ -1,77 +1,42 @@
-import React, { useEffect, useState, useCallback } from "react";
-import { base44 } from "@/api/base44Client";
+import React from "react";
+import { Watch } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Loader2, CheckCircle2, RefreshCw, Unlink, Watch } from "lucide-react";
+import WipBadge from "@/components/common/WipBadge";
 
+// Garmin Connect direct OAuth/sync is not production-ready yet (the Garmin Partner
+// API approval path was deprioritized). This card is intentionally a non-interactive
+// "Coming Soon" surface so users don't hit dead buttons — manual .fit upload via the
+// dashboard bulk importer is the working path for Garmin users today.
 export default function GarminIntegration({ athleteId }) {
-  const [status, setStatus] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [connecting, setConnecting] = useState(false);
-  const [syncing, setSyncing] = useState(false);
-  const [disconnecting, setDisconnecting] = useState(false);
-  const [error, setError] = useState(null);
-  const [info, setInfo] = useState(null);
-
-  const loadStatus = useCallback(async () => {
-    try {
-      const res = await base44.functions.invoke("garminSync", { action: "status" });
-      setStatus(res.data || res);
-    } catch (e) { setError(e?.response?.data?.error || "Could not check Garmin connection."); }
-    setLoading(false);
-  }, []);
-
-  useEffect(() => { loadStatus(); }, [loadStatus]);
-
-  const connect = async () => {
-    setConnecting(true); setError(null);
-    try {
-      const res = await base44.functions.invoke("garminSync", { action: "authorize" });
-      const url = res.data?.authorize_url || res.authorize_url;
-      if (!url) throw new Error("No authorize URL returned");
-      window.location.href = url;
-    } catch (e) { setError(e?.response?.data?.error || "Could not start Garmin connection."); setConnecting(false); }
-  };
-  const syncHistorical = async () => {
-    setSyncing(true); setError(null); setInfo(null);
-    try {
-      const res = await base44.functions.invoke("garminSync", { action: "sync_historical" });
-      const data = res.data || res;
-      setInfo(`Imported ${data.imported ?? 0} workout(s)${data.recovery_imported ? `, ${data.recovery_imported} recovery day(s)` : ""}${data.errors ? `, ${data.errors} skipped` : ""}.`);
-      loadStatus();
-    } catch (e) { setError(e?.response?.data?.error || "Historical sync failed."); }
-    setSyncing(false);
-  };
-  const disconnect = async () => {
-    if (!window.confirm("Disconnect your Garmin account? Future Garmin pushes will stop syncing until you reconnect.")) return;
-    setDisconnecting(true); setError(null);
-    try { await base44.functions.invoke("garminSync", { action: "disconnect" }); setStatus(null); } catch (e) { setError(e?.response?.data?.error || "Could not disconnect."); }
-    setDisconnecting(false);
-  };
-
-  const connected = status?.connected;
-
   return (
-    <div className="flex items-center justify-between p-3 border border-border rounded-md">
-      <div className="flex items-center gap-3">
-        <div className="bg-muted p-2 rounded text-muted-foreground"><Watch className="w-5 h-5" /></div>
-        <div>
-          <p className="text-sm font-medium flex items-center gap-2">Garmin Connect{connected && <span className="inline-flex items-center gap-1 text-xs font-medium text-primary"><CheckCircle2 className="w-3.5 h-3.5" /> Connected</span>}</p>
-          <p className="text-xs text-muted-foreground">
-            {loading ? "Checking…" : connected ? (status?.last_sync_at ? `Last sync ${new Date(status.last_sync_at).toLocaleString()}` : "Connected — Garmin Health pushes will auto-sync new activities") : "Not connected"}
-          </p>
-          {connected && status?.last_error && <p className="text-xs text-destructive mt-0.5">{status.last_error}</p>}
+    <div className="flex flex-col gap-2 p-3 border border-border rounded-md">
+      <div className="flex items-center justify-between gap-3">
+        <div className="flex items-center gap-3 min-w-0">
+          <div className="bg-muted p-2 rounded text-muted-foreground shrink-0">
+            <Watch className="w-5 h-5" />
+          </div>
+          <div className="min-w-0">
+            <p className="text-sm font-medium flex items-center gap-2">
+              Garmin Connect
+              <WipBadge label="Coming Soon" />
+            </p>
+            <p className="text-xs text-muted-foreground">Direct Garmin sync is in development.</p>
+          </div>
         </div>
+        <Button
+          size="sm"
+          disabled
+          title="Garmin direct sync is coming soon — use manual .fit upload for now."
+        >
+          <Watch className="w-4 h-4 mr-1" /> Connect
+        </Button>
       </div>
-      <div className="flex items-center gap-2">
-        {connected ? (
-          <>
-            <Button variant="outline" size="sm" onClick={syncHistorical} disabled={syncing}>{syncing ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <RefreshCw className="w-4 h-4 mr-2" />}Sync historical</Button>
-            <Button variant="ghost" size="sm" onClick={disconnect} disabled={disconnecting}>{disconnecting ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Unlink className="w-4 h-4 mr-2" />}Disconnect</Button>
-          </>
-        ) : (
-          <Button size="sm" onClick={connect} disabled={connecting}>{connecting ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Watch className="w-4 h-4 mr-2" />}Connect Garmin</Button>
-        )}
-      </div>
+      <p className="text-xs text-muted-foreground">
+        <span className="font-medium text-foreground">Today:</span> export{" "}
+        <span className="font-medium">.fit</span> files from Garmin Connect
+        (Activity → ⋯ → Export Original) and drop them into the dashboard bulk importer —
+        they ingest just like COROS exports.
+      </p>
     </div>
   );
 }

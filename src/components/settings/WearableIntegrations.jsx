@@ -2,6 +2,7 @@ import React, { useEffect, useState, useCallback } from "react";
 import { base44 } from "@/api/base44Client";
 import { Button } from "@/components/ui/button";
 import { Loader2, Link2, CheckCircle2, RefreshCw, Unlink } from "lucide-react";
+import WipBadge from "@/components/common/WipBadge";
 
 // Metadata for each free OAuth wearable. icon: a lucide icon name string rendered below.
 const PROVIDERS = [
@@ -94,6 +95,7 @@ function ProviderCard({ provider, athleteId }) {
           <div className="min-w-0">
             <p className="text-sm font-medium flex items-center gap-2">
               {label}
+              <WipBadge label="Setup required" />
               {connected && (
                 <span className="inline-flex items-center gap-1 text-xs font-medium text-primary">
                   <CheckCircle2 className="w-3.5 h-3.5" /> Connected
