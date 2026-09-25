@@ -1,5 +1,6 @@
 import { createClientFromRequest } from "npm:@base44/sdk@0.8.44";
 import { secrets } from "base44:runtime";
+import { constantTimeEqual } from "../../shared/crypto.ts";
 
 async function verifySignature(body, sigHeader, secret) {
   if (!sigHeader || !secret) return { ok: false };
@@ -17,7 +18,7 @@ async function verifySignature(body, sigHeader, secret) {
   const key = await crypto.subtle.importKey("raw", enc.encode(secret), { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
   const sigBuf = await crypto.subtle.sign("HMAC", key, enc.encode(`${t}.${body}`));
   const computed = [...new Uint8Array(sigBuf)].map((b) => b.toString(16).padStart(2, "0")).join("");
-  return { ok: computed === v1 };
+  return { ok: constantTimeEqual(computed, v1) };
 }
 
 function planFromPrice(sub, priceIds) {

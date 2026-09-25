@@ -11,13 +11,24 @@ Deno.serve(async (req) => {
 
     const athlete = await base44.entities.AthleteProfile.get(athlete_id);
     if (!athlete) return Response.json({ error: 'Athlete profile not found' }, { status: 404 });
-    if (athlete.created_by_id !== user.id) return Response.json({ error: 'Forbidden' }, { status: 403 });
+    if (athlete.created_by_id !== user.id && user.role !== 'admin') return Response.json({ error: 'Forbidden' }, { status: 403 });
 
+    // asServiceRole bypasses RLS so coach-/system-created rows (WorkoutFeedback,
+    // CoachMessage, WebhookEvent, OAuth connections) are cleared too.
+    const e = base44.asServiceRole.entities;
     await Promise.all([
-      base44.entities.WorkoutSession.deleteMany({ athlete_id }),
-      base44.entities.TrainingPlanSession.deleteMany({ athlete_id }),
-      base44.entities.TrainingPlan.deleteMany({ athlete_id }),
-      base44.entities.BiometricTelemetry.deleteMany({ athlete_id }),
+      e.WorkoutSession.deleteMany({ athlete_id }),
+      e.WorkoutAsset.deleteMany({ athlete_id }),
+      e.DailyMetrics.deleteMany({ athlete_id }),
+      e.TrainingPlan.deleteMany({ athlete_id }),
+      e.TrainingPlanSession.deleteMany({ athlete_id }),
+      e.WorkoutFeedback.deleteMany({ athlete_id }),
+      e.CoachMessage.deleteMany({ athlete_id }),
+      e.WebhookEvent.deleteMany({ athlete_id }),
+      e.GarminConnection.deleteMany({ athlete_id }),
+      e.StravaConnection.deleteMany({ athlete_id }),
+      e.CorosConnection.deleteMany({ athlete_id }),
+      e.WearableConnection.deleteMany({ athlete_id }),
     ]);
 
     return Response.json({ success: true });

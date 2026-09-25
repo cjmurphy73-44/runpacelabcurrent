@@ -30,6 +30,10 @@ export default async function(req) {
       () => e.CorosConnection.deleteMany(owned),
       () => e.WearableConnection.deleteMany(owned),
       () => e.CoachAthleteAssignment.deleteMany({ coach_user_id: user.id }),
+      // Also remove roster entries where THIS user is the athlete, so coaches
+      // don't keep a dangling reference to a deleted profile.
+      ...(user.data?.athlete_profile_id ? [() => e.CoachAthleteAssignment.deleteMany({ athlete_profile_id: user.data.athlete_profile_id })] : []),
+      () => e.Subscription.deleteMany({ user_id: user.id }),
     ];
     for (const del of cleanup) {
       try { await del(); } catch (err) { /* best-effort; continue */ }

@@ -3,6 +3,7 @@ import { VALID_SPORTS, calcTrimp, normalizeSport, getOwnedAthlete } from '../../
 import { env, hmacBase64Url } from '../../shared/oauth.ts';
 import { ingestRecovery } from '../../shared/recoveryIngest.ts';
 import { assertSafeFileUrl } from '../../shared/urlGuard.ts';
+import { constantTimeEqual } from '../../shared/crypto.ts';
 
 // COROS MCP (Model Context Protocol) — OAuth 2.1 self-service integration.
 // No COROS developer-portal application or approval required. Endpoints were
@@ -71,13 +72,15 @@ async function pkceChallenge(verifier: string): Promise<string> {
 // HMAC-signed state carries athleteId + the PKCE verifier so the callback is stateless.
 async function buildState(athleteId: string, verifier: string): Promise<string> {
   const payload = `${athleteId}.${b64url(new TextEncoder().encode(verifier))}`;
-  const sig = await hmacBase64Url(payload, getClientId() || 'coros-mcp-default-secret');
+  const sig = await hmacBase64Url(payload, getClientId() || '');
   return `${payload}.${sig}`;
 }
 async function parseState(state: string): Promise<{ athleteId: string | null; verifier: string | null; ok: boolean }> {
   const [payload, sig] = (state || '').split('.');
   if (!payload || !sig) return { athleteId: null, verifier: null, ok: false };
-  if ((await hmacBase64Url(payload, getClientId() || 'coros-mcp-default-secret')) !== sig) return { athleteId: null, verifier: null, ok: false };
+  const clientId = getClientId();
+  if (!clientId) return { athleteId: null, verifier: null, ok: false };
+  if ((await hmacBase64Url(payload, clientId)) !== sig) return { athleteId: null, verifier: null, ok: false };
   const [athleteId, verifierB64] = payload.split('.');
   if (!athleteId || !verifierB64) return { athleteId, verifier: null, ok: false };
   try { return { athleteId, verifier: b64urlDecode(verifierB64), ok: true }; }
@@ -167,7 +170,7 @@ async function handleWebhook(req, base44) {
   const webhookSecret = env('COROS_WEBHOOK_SECRET');
   if (!webhookSecret) return Response.json({ error: 'Webhook secret not configured' }, { status: 503 });
   const sig = req.headers.get('x-coros-signature');
-  if (!sig || sig !== webhookSecret) return Response.json({ error: 'Unauthorized' }, { status: 401 });
+  if (!sig || !constantTimeEqual(sig, webhookSecret)) return Response.json({ error: 'Unauthorized' }, { status: 401 });
   const body = await req.json().catch(() => ({}));
   let athleteId = null;
   let connection = null;

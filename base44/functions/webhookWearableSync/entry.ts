@@ -1,5 +1,6 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
 import { runPostWorkoutEvaluation } from '../../shared/postWorkoutAI.ts';
+import { constantTimeEqual } from '../../shared/crypto.ts';
 
 function calcTrimp(durationMin, avgHr, restHr, maxHr, sex) {
   if (!durationMin || !avgHr || !maxHr || maxHr <= restHr) return 0;
@@ -181,7 +182,7 @@ Deno.serve(async (req) => {
     const body = await req.json();
     const { secret, athlete_id, date, sport, file_name, file_text, file_base64 } = body;
 
-    if (secret !== Deno.env.get('WEBHOOK_SYNC_SECRET')) {
+    if (!constantTimeEqual(String(secret || ''), Deno.env.get('WEBHOOK_SYNC_SECRET') || '')) {
       return Response.json({ error: 'Unauthorized' }, { status: 401 });
     }
     if (!athlete_id || !file_name || !date) {

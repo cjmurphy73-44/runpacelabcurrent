@@ -64,6 +64,21 @@ export default async function (req) {
       if (entry.expires_at && Date.parse(entry.expires_at) < Date.now()) return Response.json({ error: 'This code has expired' }, { status: 410 });
       if (entry.used_count >= entry.max_uses) return Response.json({ error: 'This code has reached its use limit' }, { status: 410 });
 
+      // Optimistic-lock the claim: increment only if used_count is still what we
+      // read, so two concurrent redeems can't both pass the limit check and
+      // over-grant a code past its max_uses.
+      const before = entry.used_count;
+      await base44.asServiceRole.entities.AccessCode.updateMany({ id: entry.id, used_count: before }, { $inc: { used_count: 1 } });
+      const after = await base44.asServiceRole.entities.AccessCode.filter({ code });
+      const usedNow = after[0]?.used_count;
+      if (usedNow === before) {
+        return Response.json({ error: 'Code is being redeemed, please retry.' }, { status: 409 });
+      }
+      if (usedNow > entry.max_uses) {
+        await base44.asServiceRole.entities.AccessCode.update(entry.id, { used_count: usedNow - 1 });
+        return Response.json({ error: 'This code has reached its use limit' }, { status: 410 });
+      }
+
       const payload = {
         user_id: user.id,
         plan: entry.granted_plan,
@@ -74,7 +89,6 @@ export default async function (req) {
       if (existing[0]) await base44.asServiceRole.entities.Subscription.update(existing[0].id, payload);
       else await base44.asServiceRole.entities.Subscription.create(payload);
 
-      await base44.asServiceRole.entities.AccessCode.update(entry.id, { used_count: entry.used_count + 1 });
       return Response.json({ success: true, plan: entry.granted_plan, expires_at: entry.expires_at });
     }
 

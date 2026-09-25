@@ -3,6 +3,7 @@ import { waitUntil } from 'base44:runtime';
 import { VALID_SPORTS, calcTrimp, normalizeSport, parseFitSummary } from '../../shared/workoutIngest.ts';
 import { isGarminHealthSummary, normalizeGarminRecovery, ingestRecovery } from '../../shared/recoveryIngest.ts';
 import { assertSafeFileUrl } from '../../shared/urlGuard.ts';
+import { constantTimeEqual } from '../../shared/crypto.ts';
 import { recomputeCTLATLTSB } from '../../shared/ctlRecalc.ts';
 import { runPostWorkoutEvaluation } from '../../shared/postWorkoutAI.ts';
 
@@ -18,7 +19,7 @@ Deno.serve(async (req) => {
     const webhookSecret = env('GARMIN_WEBHOOK_SECRET');
     if (!webhookSecret) return Response.json({ error: 'GARMIN_WEBHOOK_SECRET not configured' }, { status: 503 });
     const sig = req.headers.get('x-garmin-signature') || req.headers.get('x-garmin-health-signature');
-    if (!sig || sig !== webhookSecret) return Response.json({ error: 'Unauthorized' }, { status: 401 });
+    if (!sig || !constantTimeEqual(sig, webhookSecret)) return Response.json({ error: 'Unauthorized' }, { status: 401 });
 
     const body = await req.json().catch(() => ({}));
 
