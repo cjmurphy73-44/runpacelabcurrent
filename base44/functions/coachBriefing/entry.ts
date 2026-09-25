@@ -5,12 +5,16 @@
 
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
 import { assertOwnsAthlete } from '../../shared/ownership.ts';
+import { assertPaidPlan } from '../../shared/planGate.ts';
 
 export default async function (req: Request) {
   try {
     const base44 = createClientFromRequest(req);
     const user = await base44.auth.me();
     if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
+
+    const gate = await assertPaidPlan(base44, user);
+    if (!gate.ok) return Response.json({ error: 'Coach Briefing requires a Pro plan.', plan: gate.plan }, { status: 402 });
 
     const { athlete_id, prompt, response_json_schema } = await req.json().catch(() => ({}));
     if (!athlete_id || !prompt) {

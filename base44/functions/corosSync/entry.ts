@@ -2,6 +2,7 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
 import { VALID_SPORTS, calcTrimp, normalizeSport, getOwnedAthlete } from '../../shared/workoutIngest.ts';
 import { env, hmacBase64Url } from '../../shared/oauth.ts';
 import { ingestRecovery } from '../../shared/recoveryIngest.ts';
+import { assertSafeFileUrl } from '../../shared/urlGuard.ts';
 
 // COROS MCP (Model Context Protocol) — OAuth 2.1 self-service integration.
 // No COROS developer-portal application or approval required. Endpoints were
@@ -182,7 +183,10 @@ async function handleWebhook(req, base44) {
   let sourceFormat = 'webhook';
   if (body.fit_file_url || activity.fit_file_url) {
     try {
-      const r = await fetch(body.fit_file_url || activity.fit_file_url);
+      const fitUrl = body.fit_file_url || activity.fit_file_url;
+      const urlCheck = assertSafeFileUrl(fitUrl);
+      if (!urlCheck.ok) return Response.json({ error: 'fit_file_url not allowed' }, { status: 400 });
+      const r = await fetch(fitUrl);
       if (r.ok) {
         const buf = new Uint8Array(await r.arrayBuffer());
         summary = parseFitSummary(buf);

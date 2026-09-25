@@ -2,6 +2,7 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
 import { waitUntil } from 'base44:runtime';
 import { VALID_SPORTS, calcTrimp, normalizeSport, parseFitSummary } from '../../shared/workoutIngest.ts';
 import { isGarminHealthSummary, normalizeGarminRecovery, ingestRecovery } from '../../shared/recoveryIngest.ts';
+import { assertSafeFileUrl } from '../../shared/urlGuard.ts';
 import { recomputeCTLATLTSB } from '../../shared/ctlRecalc.ts';
 import { runPostWorkoutEvaluation } from '../../shared/postWorkoutAI.ts';
 
@@ -54,7 +55,10 @@ Deno.serve(async (req) => {
     let summary = null, sourceFormat = 'webhook';
     if (body.fit_file_url || activity.fit_file_url) {
       try {
-        const r = await fetch(body.fit_file_url || activity.fit_file_url);
+        const fitUrl = body.fit_file_url || activity.fit_file_url;
+        const urlCheck = assertSafeFileUrl(fitUrl);
+        if (!urlCheck.ok) return Response.json({ error: 'fit_file_url not allowed' }, { status: 400 });
+        const r = await fetch(fitUrl);
         if (r.ok) { summary = parseFitSummary(new Uint8Array(await r.arrayBuffer())); sourceFormat = 'fit'; }
       } catch { /* fall through to JSON summary */ }
     }

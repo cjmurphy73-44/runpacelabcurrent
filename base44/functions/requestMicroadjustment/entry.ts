@@ -1,10 +1,14 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
+import { assertPaidPlan } from '../../shared/planGate.ts';
 
 Deno.serve(async (req) => {
   try {
     const base44 = createClientFromRequest(req);
     const user = await base44.auth.me();
     if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
+
+    const gate = await assertPaidPlan(base44, user);
+    if (!gate.ok) return Response.json({ error: 'Micro-adjustments require a Pro plan.', plan: gate.plan }, { status: 402 });
 
     const { athlete_id, current_tsb } = await req.json();
     if (!athlete_id) return Response.json({ error: 'athlete_id is required' }, { status: 400 });

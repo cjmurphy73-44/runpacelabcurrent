@@ -232,6 +232,8 @@ async function handleStravaEvent(base44, body) {
 
 // Strava push-subscription registration manager (one subscription per app, uses STRAVA_VERIFY_TOKEN).
 async function handleSubscribeStrava(req, base44) {
+  const user = await base44.auth.me();
+  if (!user || user.role !== 'admin') return Response.json({ error: 'Admin only' }, { status: 403 });
   const clientId = env('STRAVA_CLIENT_ID'), clientSecret = env('STRAVA_CLIENT_SECRET'), verifyToken = env('STRAVA_VERIFY_TOKEN');
   if (!clientId || !clientSecret || !verifyToken) return Response.json({ error: 'STRAVA_CLIENT_ID, STRAVA_CLIENT_SECRET and STRAVA_VERIFY_TOKEN must be set' }, { status: 503 });
   const callbackUrl = selfUrl(req).split('?')[0];
