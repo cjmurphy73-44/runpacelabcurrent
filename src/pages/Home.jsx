@@ -39,6 +39,7 @@ import PlannedActualReconciliation from "@/components/dashboard/PlannedActualRec
 import CoachBriefing from "@/components/dashboard/CoachBriefing";
 import PhysiologyStrip from "@/components/dashboard/PhysiologyStrip";
 import AnomalyAlertBanner from "@/components/dashboard/AnomalyAlertBanner";
+import AISynthesisCard from "@/components/dashboard/AISynthesisCard";
 import { Sun, TrendingUp, Activity, MessageCircle, HeartPulse, ArrowRight, Plus, LogIn } from "lucide-react";
 
 export default function Home() {
@@ -228,6 +229,7 @@ export default function Home() {
           icon={HeartPulse}
           deep
         >
+          <AISynthesisCard athleteId={athlete.id} />
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
             <WipWrapper featureName="Readiness Score">
               <ReadinessScoreCard />

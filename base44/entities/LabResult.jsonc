@@ -1,0 +1,119 @@
+{
+  "name": "LabResult",
+  "type": "object",
+  "description": "Periodic lab / blood-panel result normalized into the canonical telemetry layer. One row per metric per date (e.g. ferritin, hemoglobin, lactate-at-threshold, VO2max). Sparse by nature \u2014 feeds the timeline reconciler and AI synthesis alongside wearable/sleep data without being interpolated across days. Scoped under the same athlete RLS pattern as WorkoutSession / DailyMetrics.",
+  "properties": {
+    "athlete_id": {
+      "type": "string",
+      "description": "References AthleteProfile.id"
+    },
+    "date": {
+      "type": "string",
+      "format": "date",
+      "description": "Date the sample was drawn / measured"
+    },
+    "test_type": {
+      "type": "string",
+      "enum": [
+        "blood_panel",
+        "lactate_threshold",
+        "vo2max",
+        "ferritin",
+        "hemoglobin",
+        "iron",
+        "vitamin_d",
+        "cortisol",
+        "other"
+      ],
+      "description": "Category of lab test"
+    },
+    "metric_name": {
+      "type": "string",
+      "description": "Specific metric name, e.g. 'ferritin', 'lactate_at_threshold', 'vo2max_ml_kg_min'"
+    },
+    "value": {
+      "type": "number",
+      "description": "Measured value in the given unit"
+    },
+    "unit": {
+      "type": "string",
+      "description": "Unit of measure, e.g. 'ng/mL', 'mmol/L', 'mL/kg/min'"
+    },
+    "reference_low": {
+      "type": "number",
+      "description": "Lower bound of the reference range, if known"
+    },
+    "reference_high": {
+      "type": "number",
+      "description": "Upper bound of the reference range, if known"
+    },
+    "notes": {
+      "type": "string",
+      "description": "Freeform notes (lab name, fasting state, etc.)"
+    },
+    "source": {
+      "type": "string",
+      "enum": [
+        "manual",
+        "csv",
+        "lab_portal"
+      ],
+      "default": "manual",
+      "description": "How this result entered the system"
+    }
+  },
+  "required": [
+    "athlete_id",
+    "date",
+    "test_type",
+    "metric_name",
+    "value",
+    "unit"
+  ],
+  "rls": {
+    "create": {
+      "created_by_id": "{{user.id}}"
+    },
+    "read": {
+      "$or": [
+        {
+          "data.athlete_id": "{{user.data.athlete_profile_id}}"
+        },
+        {
+          "data.athlete_id": {
+            "$in": "{{user.data.coached_athletes}}"
+          }
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    },
+    "update": {
+      "$or": [
+        {
+          "created_by_id": "{{user.id}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    },
+    "delete": {
+      "$or": [
+        {
+          "created_by_id": "{{user.id}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    }
+  }
+}
