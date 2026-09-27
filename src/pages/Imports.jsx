@@ -10,6 +10,7 @@ import BulkWorkoutImport from "@/components/dashboard/BulkWorkoutImport";
 import WebhookSyncPanel from "@/components/imports/WebhookSyncPanel";
 import LabResultsImport from "@/components/imports/LabResultsImport";
 import ManualWorkoutModal from "@/components/workout/ManualWorkoutModal";
+import OnboardingFlow from "@/components/dashboard/OnboardingFlow";
 
 export default function Imports() {
   const navigate = useNavigate();
@@ -39,11 +40,14 @@ export default function Imports() {
 
   if (!athlete) {
     return (
-      <div className="max-w-2xl mx-auto space-y-2">
-        <h1 className="text-2xl font-heading font-bold">Imports & Sync</h1>
-        <p className="text-sm text-muted-foreground">
-          Create your athlete profile on the dashboard first, then return here to import workouts.
-        </p>
+      <div className="max-w-2xl mx-auto py-8 space-y-4">
+        <div className="space-y-1">
+          <h1 className="text-2xl font-heading font-bold">Imports & Sync</h1>
+          <p className="text-sm text-muted-foreground">
+            Let's set up your athlete profile first — then you can connect devices and import workouts here.
+          </p>
+        </div>
+        <OnboardingFlow onCreated={(profile) => setAthlete(profile)} />
       </div>
     );
   }
