@@ -1,7 +1,7 @@
 import { secrets } from "base44:runtime";
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
 
-const PRICE_BY_PLAN = { pro: "PRO_PRICE_ID", unlimited: "UNLIMITED_PRICE_ID", coach_pro: "COACH_PRO_PRICE_ID", team: "TEAM_PRICE_ID" };
+const PRICE_BY_PLAN = { pro: "PRO_PRICE_ID" };
 
 export default async function(req) {
   try {

@@ -73,13 +73,14 @@ export default function Subscribe() {
         <Badge variant={isPro ? "default" : "outline"}>Current plan: {PLAN_DETAILS[currentPlan]?.label ?? "Free"}</Badge>
         {isPro && <span className="text-xs text-muted-foreground">Manage billing in your Stripe customer portal.</span>}
       </div>
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4 items-start">
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 items-start">
         {PLAN_TIERS.map((tier) => {
           const d = PLAN_DETAILS[tier];
           const isCurrent = currentPlan === tier || (tier === "free" && (!currentPlan || currentPlan === "free"));
           return (
             <Card key={tier} className={`relative ${d.highlighted ? "border-primary shadow-md" : ""}`}>
               {d.highlighted && <span className="absolute -top-2.5 left-1/2 -translate-x-1/2 bg-primary text-primary-foreground text-[10px] font-semibold px-2 py-0.5 rounded-full">Most popular</span>}
+              {d.comingSoon && <span className="absolute -top-2.5 left-1/2 -translate-x-1/2 bg-muted text-muted-foreground text-[10px] font-semibold px-2 py-0.5 rounded-full border border-border">Coming Soon</span>}
               <CardHeader>
                 <div className="flex items-center justify-between">
                   <CardTitle className="text-lg">{d.label}</CardTitle>
@@ -102,6 +103,8 @@ export default function Subscribe() {
                 </ul>
                 {tier === "free" ? (
                   <Button variant="outline" className="w-full" disabled={isCurrent}>{isCurrent ? "Your current plan" : "Downgrade"}</Button>
+                ) : d.comingSoon ? (
+                  <Button variant="outline" className="w-full" disabled>Coming Soon</Button>
                 ) : (
                   <Button className="w-full" disabled={isCurrent || busy !== null} onClick={() => subscribe(tier)}>
                     {busy === tier ? "Redirecting…" : isCurrent ? "Current plan" : `Upgrade to ${d.label}`}

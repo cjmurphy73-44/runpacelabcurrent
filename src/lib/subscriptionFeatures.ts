@@ -1,6 +1,6 @@
 // Central subscription feature map. Edit plan tiers / gated features here only.
 
-export const PLAN_TIERS = ["free", "pro", "unlimited", "coach_pro"] as const;
+export const PLAN_TIERS = ["free", "pro", "coach_pro"] as const;
 
 export type PlanTier = (typeof PLAN_TIERS)[number];
 
@@ -38,34 +38,28 @@ export function hasFeature(plan: string | null | undefined, feature: GatedFeatur
 // difference is price + "light AI" vs "unlimited AI" copy. Coach Pro remains uncapped.
 export const PRO_FAIR_USE_INTENDED = { planGenerationsPerWeek: 1, deepDivesPerWeek: 1 };
 
-export const PLAN_DETAILS: Record<PlanTier, { label: string; tagline: string; price: string; cadence: string; features: string[]; highlighted?: boolean }> = {
+export const PLAN_DETAILS: Record<PlanTier, { label: string; tagline: string; price: string; cadence: string; features: string[]; highlighted?: boolean; comingSoon?: boolean }> = {
   free: {
     label: "Free",
-    tagline: "TrainPaceLab essentials",
-    price: "$0",
+    tagline: "The Essential Tracker",
+    price: "A$0",
     cadence: "forever",
-    features: ["Dashboard & physiology lab", "Manual + single wearable sync (30-day lookback)", "AI coach — 5 messages / week", "Race pacing & VDOT tools"],
+    features: ["Manual & synced activity logging", "Basic calendar view & historical run log", "Standard PR tracking"],
   },
   pro: {
     label: "Pro",
-    tagline: "For the data-driven athlete",
+    tagline: "The Advanced Athlete",
     price: "A$9",
     cadence: "per month",
     highlighted: true,
-    features: ["Unlimited wearable sync — full history", "Adaptive re-planning on deviation", "Structured .fit workout export to watch", "AI coach — post-workout insights & race strategy"],
-  },
-  unlimited: {
-    label: "Unlimited",
-    tagline: "For the serious athlete",
-    price: "A$15",
-    cadence: "per month",
-    features: ["Everything in Pro", "Unlimited AI coach — plans, deep-dives & strategy", "Full race strategy planner", "Priority data processing"],
+    features: ["Advanced VDOT & training-load zones", "Weather-adjusted pace calculators (heat, humidity, altitude)", "Deep performance trends & metric graphs", "Algorithmic race pacing tools"],
   },
   coach_pro: {
     label: "Coach Pro",
-    tagline: "For coaches & squads",
+    tagline: "The Roster Manager",
     price: "A$29",
     cadence: "per month",
-    features: ["Everything in Unlimited", "Multi-athlete coach roster", "Side-by-side comparison & plan assignment", "Priority support"],
+    comingSoon: true,
+    features: ["Multi-athlete roster dashboard & athlete linking", "Training compliance heatmaps", "Client monitoring tools", "Advanced batch data review across athletes"],
   },
 };
