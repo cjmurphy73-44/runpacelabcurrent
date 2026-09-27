@@ -2,6 +2,7 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
 import { VALID_SPORTS, calcTrimp, normalizeSport, getOwnedAthlete, selfUrl } from '../../shared/workoutIngest.ts';
 import { env, hmacBase64Url } from '../../shared/oauth.ts';
 import { normalizeGarminRecovery, ingestRecovery } from '../../shared/recoveryIngest.ts';
+import { getSyncLookbackDays } from '../../shared/syncLookback.ts';
 
 function requireConfig() {
   const clientId = env('GARMIN_CLIENT_ID');
@@ -102,12 +103,18 @@ async function handleSyncHistorical(base44) {
     } catch { /* best-effort */ }
   }
 
+  const lookbackDays = await getSyncLookbackDays(base44, user.id);
+  const lookbackCutoff = lookbackDays === Infinity ? null : new Date(Date.now() - lookbackDays * 86400000);
   let imported = 0, errors = 0;
   try {
     const res = await fetch(`${apiBase}/activities`, { headers: { Authorization: `Bearer ${accessToken}` } });
     if (!res.ok) { await base44.asServiceRole.entities.GarminConnection.update(conn.id, { last_error: `Historical fetch failed: ${res.status}` }); return Response.json({ error: `Historical fetch failed: ${res.status}` }, { status: 502 }); }
     const data = await res.json();
-    const list = Array.isArray(data) ? data : (data.activities || data.items || data.data || []);
+    let list = Array.isArray(data) ? data : (data.activities || data.items || data.data || []);
+    if (lookbackCutoff) list = list.filter((a) => {
+      const d = a.date || (a.start_time ? a.start_time.slice(0, 10) : null) || (a.timestamp ? a.timestamp.slice(0, 10) : null);
+      return d && new Date(d) >= lookbackCutoff;
+    });
     const restHr = athlete.resting_hr || 60, maxHr = athlete.max_heart_rate || 190;
     const toCreate = [];
     for (const a of list) {
