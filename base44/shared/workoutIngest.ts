@@ -35,10 +35,20 @@ export function selfUrl(req) {
   return u.origin + u.pathname;
 }
 
-// Find the AthleteProfile owned by a user (created_by_id match).
+// Find the AthleteProfile owned by a user. Prefer the profile explicitly linked on the
+// user (set by onboarding / backfill / self-heal) so connect & sync resolve deterministically
+// even when a user owns several profiles; fall back to the most recently updated owned one.
+// The old arbitrary `.find()` first-match bound COROS connections to a random duplicate when
+// a user retried onboarding multiple times.
 export async function getOwnedAthlete(base44, userId) {
-  const athletes = await base44.asServiceRole.entities.AthleteProfile.filter({});
-  return athletes.find((a) => a.created_by_id === userId) || null;
+  if (!userId) return null;
+  const me = await base44.asServiceRole.entities.User.get(userId).catch(() => null);
+  if (me?.athlete_profile_id) {
+    const linked = await base44.asServiceRole.entities.AthleteProfile.get(me.athlete_profile_id).catch(() => null);
+    if (linked && linked.created_by_id === userId) return linked;
+  }
+  const athletes = await base44.asServiceRole.entities.AthleteProfile.filter({ created_by_id: userId }, '-updated_date', 50);
+  return athletes[0] || null;
 }
 
 // Compact FIT summary parser (trimmed from bulkIngestWorkouts). Returns a session-level summary
