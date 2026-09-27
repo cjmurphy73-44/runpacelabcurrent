@@ -27,23 +27,30 @@ export default function CorosIntegration({ athleteId }) {
 
   const connect = async () => {
     if (!window.confirm("Before we open COROS: make sure you're already logged into coros.com in this browser and ready to approve quickly — COROS's authorization window is only about a minute. Continue?")) return;
-    setConnecting(true); setError(null);
+    setConnecting(true); setError(null); setInfo(null);
     try {
       const res = await base44.functions.invoke("corosSync", { action: "authorize" });
-      const url = res.data?.authorize_url || res.authorize_url;
-      if (!url) throw new Error("No authorize URL returned");
+      const url = res?.data?.authorize_url || res?.authorize_url;
+      if (!url) throw new Error(res?.data?.error || res?.error || "No authorize URL returned");
       // OAuth cross-site redirects must run in a top-level window so the provider's
       // SameSite=Lax state cookie survives the redirect back into its callback.
       // Inside an iframe (builder preview) that cookie is dropped → "Invalid state".
       if (window.self !== window.top) {
-        window.open(url, "_blank");
+        const popup = window.open(url, "_blank");
+        if (!popup) {
+          // Pop-up was blocked (common after an async await in an iframe). Surface the
+          // URL so the athlete can open it manually instead of the button doing nothing.
+          setInfo(`Pop-up was blocked. Open COROS manually: ${url}`);
+          setConnecting(false);
+          return;
+        }
         const onFocus = () => { loadStatus(); setConnecting(false); };
         window.addEventListener("focus", onFocus, { once: true });
       } else {
         window.location.href = url;
       }
     } catch (e) {
-      setError(e?.response?.data?.error || "Could not start COROS connection.");
+      setError(e?.response?.data?.error || e?.data?.error || e?.message || "Could not start COROS connection.");
       setConnecting(false);
     }
   };
