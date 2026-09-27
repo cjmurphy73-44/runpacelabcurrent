@@ -46,6 +46,7 @@ import { Sun, TrendingUp, Activity, MessageCircle, HeartPulse, ArrowRight, Plus,
 export default function Home() {
   const [loading, setLoading] = useState(true);
   const [athlete, setAthlete] = useState(null);
+  const [profileExists, setProfileExists] = useState(false);
   const [workouts, setWorkouts] = useState([]);
   const [messages, setMessages] = useState([]);
   const [loadTimelineWorkouts, setLoadTimelineWorkouts] = useState([]);
@@ -77,10 +78,16 @@ export default function Home() {
     (async () => {
       try {
         if (!user) return; // signed-out — show the sign-in prompt below
-        const profiles = await base44.entities.AthleteProfile.filter({ created_by_id: user.id });
+        // Prefer the profile explicitly linked on the user, fall back to the most recently
+        // updated owned one. Deterministic selection prevents the dashboard binding to a
+        // random duplicate stub (the same bug class that hit COROS sync) and stops a
+        // transient load error from re-showing the onboarding wall (which created duplicates).
+        const profiles = await base44.entities.AthleteProfile.filter({ created_by_id: user.id }, "-updated_date", 50);
         if (cancelled) return;
-        if (profiles.length > 0) {
-          const profile = profiles[0];
+        const linked = user.data?.athlete_profile_id ? profiles.find((p) => p.id === user.data.athlete_profile_id) : null;
+        const profile = linked || profiles[0];
+        if (profile) {
+          setProfileExists(true);
           await ensureProfileLinked(user, profile);
           await loadAthleteData(profile.id);
         }
@@ -133,9 +140,27 @@ export default function Home() {
   }
 
   if (!athlete) {
+    if (profileExists) {
+      // A profile exists but failed to load (transient RLS/network error). Show a retry
+      // instead of the onboarding wall — the wall would let the user create a duplicate.
+      return (
+        <div className="py-8 max-w-md mx-auto">
+          <Card className="border-dashed text-center">
+            <CardContent className="pt-8 pb-8 space-y-4">
+              <div className="mx-auto w-12 h-12 rounded-full bg-accent flex items-center justify-center">
+                <Activity className="w-6 h-6 text-accent-foreground" />
+              </div>
+              <h2 className="text-lg font-heading font-semibold">Couldn't load your profile</h2>
+              <p className="text-sm text-muted-foreground">Your athlete profile exists but the dashboard hit a snag loading it. This is usually a momentary blip — try again.</p>
+              <Button onClick={() => window.location.reload()}>Retry</Button>
+            </CardContent>
+          </Card>
+        </div>
+      );
+    }
     return (
       <div className="py-8">
-        <OnboardingFlow onCreated={(profile) => setAthlete(profile)} />
+        <OnboardingFlow onCreated={(profile) => { setProfileExists(true); setAthlete(profile); }} />
       </div>
     );
   }

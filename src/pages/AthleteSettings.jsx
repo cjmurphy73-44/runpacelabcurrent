@@ -19,8 +19,8 @@ import GarminIntegration from "@/components/settings/GarminIntegration";
 import StravaIntegration from "@/components/settings/StravaIntegration";
 import WearableIntegrations from "@/components/settings/WearableIntegrations";
 
-// TIER_CONSTANTS mirrors ProfileSetupForm + updateAthleteProfile so editing the tier in Settings
-// keeps the CTL/ATL time constants consistent with the chosen philosophy.
+// TIER_CONSTANTS mirrors updateAthleteProfile so editing the tier in Settings keeps the
+// CTL/ATL time constants consistent with the chosen philosophy.
 const TIER_CONSTANTS = {
   conservative: { ctl: 10, atl: 12 },
   moderate: { ctl: 42, atl: 7 },
@@ -294,13 +294,13 @@ export default function AthleteSettings() {
               >
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="conservative">Conservative (τc=10, τa=12)</SelectItem>
-                  <SelectItem value="moderate">Moderate (τc=42, τa=7)</SelectItem>
-                  <SelectItem value="aggressive">Aggressive (τc=20, τa=5)</SelectItem>
+                  <SelectItem value="conservative">Conservative</SelectItem>
+                  <SelectItem value="moderate">Moderate</SelectItem>
+                  <SelectItem value="aggressive">Aggressive</SelectItem>
                 </SelectContent>
               </Select>
               <p className="text-xs text-muted-foreground mt-1">
-                Sets the CTL/ATL time constants used to compute your fitness and fatigue.
+                Sets how quickly your fitness (CTL) and fatigue (ATL) models respond to training. The science behind each tier is explained during onboarding.
               </p>
             </div>
 

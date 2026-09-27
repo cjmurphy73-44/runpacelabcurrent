@@ -10,12 +10,8 @@ import { Activity, Gauge, HeartPulse, Sparkles, Watch } from "lucide-react";
 import { deriveOnboardingProfile, RACE_DISTANCES } from "@/science/daniels";
 import { deriveNoviceBaseline } from "@/science/noviceBaseline";
 import WearableStep from "@/components/onboarding/WearableStep";
-
-const TIER_CONSTS = {
-  conservative: { ctl: 10, atl: 12 },
-  moderate: { ctl: 42, atl: 7 },
-  aggressive: { ctl: 20, atl: 5 },
-};
+import { useAuth } from "@/lib/AuthContext";
+import { TIER_CONSTS, TIER_OPTIONS, TIER_EXPLAINER } from "@/lib/trainingTiers";
 
 function ageFromDob(dob) {
   if (!dob) return null;
@@ -24,6 +20,7 @@ function ageFromDob(dob) {
 }
 
 export default function OnboardingFlow({ onCreated }) {
+  const { user } = useAuth();
   const [form, setForm] = useState({
     first_name: "", last_name: "", sex: "male", dob: "", age: "",
     raceDistance: "5k", raceMinutes: "", raceSeconds: "", weeklyMileage: "", tier: "moderate",
@@ -76,6 +73,17 @@ export default function OnboardingFlow({ onCreated }) {
     if (!form.first_name || !form.last_name) { setError("First and last name are required."); return; }
     setSaving(true); setError("");
     try {
+      // Duplicate guard: if a profile already exists for this user (e.g. a prior onboarding
+      // succeeded but the dashboard errored and re-showed this form), re-link to it instead
+      // of creating a second profile. This is the exact path that previously produced
+      // half a dozen duplicate stubs for one athlete.
+      const existing = user?.id ? await base44.entities.AthleteProfile.filter({ created_by_id: user.id }, "-updated_date", 50) : [];
+      const owned = existing.find((p) => p.created_by_id === user?.id) || existing[0];
+      if (owned) {
+        try { await base44.auth.updateMe({ athlete_profile_id: owned.id }); } catch (e) { console.warn("updateMe athlete_profile_id failed:", e); }
+        onCreated(owned);
+        return;
+      }
       const consts = TIER_CONSTS[form.tier];
       const age = form.age ? Number(form.age) : ageFromDob(form.dob);
       const profile = await base44.entities.AthleteProfile.create({
@@ -220,11 +228,12 @@ export default function OnboardingFlow({ onCreated }) {
             <Select value={form.tier} onValueChange={(v) => setForm((f) => ({ ...f, tier: v }))}>
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
-                <SelectItem value="conservative">Conservative (τc=10, τa=12)</SelectItem>
-                <SelectItem value="moderate">Moderate (τc=42, τa=7)</SelectItem>
-                <SelectItem value="aggressive">Aggressive (τc=20, τa=5)</SelectItem>
+                {TIER_OPTIONS.map((t) => <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>)}
               </SelectContent>
             </Select>
+            <p className="text-xs text-muted-foreground mt-2 leading-relaxed font-mono">
+              {TIER_EXPLAINER[form.tier]}
+            </p>
           </div>
 
           {error && <p className="text-sm text-destructive">{error}</p>}
