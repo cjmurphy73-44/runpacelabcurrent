@@ -11,7 +11,7 @@ export default function LoadStatusCards({ workouts }) {
     return calculateTrainingLoads(workouts, timeRange);
   }, [workouts, timeRange]);
 
-  if (!loads) return null;
+  if (!loads || [loads.ctl, loads.atl, loads.tsb].some((v) => typeof v !== "number" || isNaN(v))) return null;
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-3 gap-4 p-4 border rounded-lg bg-card">

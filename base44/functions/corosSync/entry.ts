@@ -4,6 +4,7 @@ import { env, hmacBase64Url } from '../../shared/oauth.ts';
 import { ingestRecovery } from '../../shared/recoveryIngest.ts';
 import { assertSafeFileUrl } from '../../shared/urlGuard.ts';
 import { constantTimeEqual } from '../../shared/crypto.ts';
+import { getSyncLookbackDays } from '../../shared/syncLookback.ts';
 
 // COROS MCP (Model Context Protocol) — OAuth 2.1 self-service integration.
 // No COROS developer-portal application or approval required. Endpoints were
@@ -477,10 +478,10 @@ function mapRecord(a: any, athlete: any) {
 
 // Service-role core: pulls 90 days of sport records for one athlete. Shared by the
 // user-scoped on-demand sync and the scheduled sync_all loop.
-async function syncHistoricalFor(athlete: any, accessToken: string, base44): Promise<{ imported: number; errors: number; records_found: number }> {
+async function syncHistoricalFor(athlete: any, accessToken: string, base44, lookbackDays = 90): Promise<{ imported: number; errors: number; records_found: number }> {
   const end = new Date();
   const start = new Date();
-  start.setDate(start.getDate() - 90);
+  start.setDate(start.getDate() - Math.min(90, lookbackDays));
   // COROS MCP requires yyyyMMdd (no dashes), and sportTypeCodes is mandatory — 65535 = all sports.
   const fmt = (d: Date) => d.toISOString().slice(0, 10).replace(/-/g, '');
 
@@ -531,7 +532,8 @@ async function handleSyncHistorical(base44) {
   }
 
   try {
-    const out = await syncHistoricalFor(athlete, accessToken, base44);
+    const lookbackDays = await getSyncLookbackDays(base44, user.id);
+    const out = await syncHistoricalFor(athlete, accessToken, base44, lookbackDays);
     await base44.asServiceRole.entities.CorosConnection.update(conn.id, { last_sync_at: new Date().toISOString(), last_error: '' });
     return Response.json({ success: true, ...out });
   } catch (e) {

@@ -20,16 +20,21 @@ export default function TrainingPlan() {
 
   const load = useCallback(async () => {
     setLoading(true);
-    const user = await base44.auth.me();
-    const profiles = await base44.entities.AthleteProfile.filter({ created_by_id: user.id });
-    if (profiles.length > 0) {
-      const activeAthlete = profiles[0];
-      setAthlete(activeAthlete);
-      const [drafts, activePlans] = await Promise.all([
-        base44.entities.TrainingPlan.filter({ athlete_id: activeAthlete.id, status: "draft" }, "-created_date", 1),
-        base44.entities.TrainingPlan.filter({ athlete_id: activeAthlete.id, status: "active" }, "-created_date", 1),
-      ]);
-      setPlan(drafts[0] || activePlans[0] || null);
+    try {
+      const user = await base44.auth.me();
+      if (!user) { setLoading(false); return; }
+      const profiles = await base44.entities.AthleteProfile.filter({ created_by_id: user.id });
+      if (profiles.length > 0) {
+        const activeAthlete = profiles[0];
+        setAthlete(activeAthlete);
+        const [drafts, activePlans] = await Promise.all([
+          base44.entities.TrainingPlan.filter({ athlete_id: activeAthlete.id, status: "draft" }, "-created_date", 1).catch(() => []),
+          base44.entities.TrainingPlan.filter({ athlete_id: activeAthlete.id, status: "active" }, "-created_date", 1).catch(() => []),
+        ]);
+        setPlan(drafts[0] || activePlans[0] || null);
+      }
+    } catch (e) {
+      console.error("TrainingPlan load failed", e);
     }
     setLoading(false);
   }, []);
@@ -97,7 +102,7 @@ export default function TrainingPlan() {
         </Alert>
       )}
       <TrainingPlanTimeline plan={plan} />
-      <TrainingPlanWeeklyBreakdown weeklyPlans={plan.weekly_plans} />
+      <TrainingPlanWeeklyBreakdown weeklyPlans={plan.weekly_plans || []} />
       <TrainingPlanExtras plan={plan} />
       <div><HelpLink section="plans" label="How training plans work" /></div>
     </div>

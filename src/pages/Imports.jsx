@@ -4,10 +4,11 @@ import { base44 } from "@/api/base44Client";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Loader2, Upload, Webhook, Plus, ArrowLeft } from "lucide-react";
+import { Loader2, Upload, Webhook, Plus, ArrowLeft, FlaskConical } from "lucide-react";
 import HelpLink from "@/components/guide/HelpLink";
 import BulkWorkoutImport from "@/components/dashboard/BulkWorkoutImport";
 import WebhookSyncPanel from "@/components/imports/WebhookSyncPanel";
+import LabResultsImport from "@/components/imports/LabResultsImport";
 import ManualWorkoutModal from "@/components/workout/ManualWorkoutModal";
 
 export default function Imports() {
@@ -74,12 +75,15 @@ export default function Imports() {
       </Card>
 
       <Tabs defaultValue="bulk" className="w-full">
-        <TabsList className="grid w-full grid-cols-2">
+        <TabsList className="grid w-full grid-cols-3">
           <TabsTrigger value="bulk" className="flex items-center gap-2">
-            <Upload className="w-4 h-4" /> Bulk File Upload
+            <Upload className="w-4 h-4" /> <span className="hidden sm:inline">Bulk Upload</span>
+          </TabsTrigger>
+          <TabsTrigger value="lab" className="flex items-center gap-2">
+            <FlaskConical className="w-4 h-4" /> <span className="hidden sm:inline">Lab Results</span>
           </TabsTrigger>
           <TabsTrigger value="webhook" className="flex items-center gap-2">
-            <Webhook className="w-4 h-4" /> Automated Webhooks
+            <Webhook className="w-4 h-4" /> <span className="hidden sm:inline">Webhooks</span>
           </TabsTrigger>
         </TabsList>
 
@@ -89,6 +93,18 @@ export default function Imports() {
             Supports <span className="font-medium">.fit</span> and <span className="font-medium">.csv</span> exports from
             Strava, COROS, Garmin and others. <span className="font-medium">.gpx</span> support is on the roadmap — for now,
             convert GPX to FIT/CSV or use the webhook tab.
+          </p>
+        </TabsContent>
+
+        <TabsContent value="lab" className="mt-4">
+          <Card>
+            <CardContent className="pt-5">
+              <LabResultsImport athleteId={athlete.id} />
+            </CardContent>
+          </Card>
+          <p className="text-xs text-muted-foreground mt-2">
+            Lab results (ferritin, hemoglobin, VO₂max, lactate-at-threshold, etc.) feed your
+            recovery baselines and AI synthesis alongside wearable data — one row per metric per date.
           </p>
         </TabsContent>
 
