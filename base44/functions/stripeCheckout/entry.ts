@@ -1,11 +1,19 @@
 import { secrets } from "base44:runtime";
+import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
 
 const PRICE_BY_PLAN = { pro: "PRO_PRICE_ID", unlimited: "UNLIMITED_PRICE_ID", coach_pro: "COACH_PRO_PRICE_ID", team: "TEAM_PRICE_ID" };
 
 export default async function(req) {
   try {
+    // Resolve the authenticated caller so subscriptions can never be attributed
+    // to an arbitrary or nonexistent account. The frontend Subscribe page is
+    // behind AppLayout (auth-gated), so the caller's session is expected here.
+    const base44 = createClientFromRequest(req);
+    const user = await base44.auth.me();
+    if (!user) return Response.json({ error: "Authentication required to start checkout." }, { status: 401 });
+
     const body = await req.json();
-    const { plan, user_id } = body || {};
+    const { plan } = body || {};
     const priceSecret = PRICE_BY_PLAN[plan];
     if (!priceSecret) return Response.json({ error: "Invalid plan" }, { status: 400 });
 
@@ -32,14 +40,16 @@ export default async function(req) {
     params.append("mode", "subscription");
     params.append("line_items[0][price]", priceId);
     params.append("line_items[0][quantity]", "1");
-    params.append("client_reference_id", user_id || "");
+    params.append("client_reference_id", user.id);
     params.append("success_url", `${origin}/subscribe?status=success`);
     params.append("cancel_url", `${origin}/subscribe?status=canceled`);
     const appId = Deno.env.get("BASE44_APP_ID") || "";
     params.append("metadata[base44_app_id]", appId);
     params.append("metadata[plan]", plan);
+    params.append("metadata[user_id]", user.id);
     params.append("subscription_data[metadata][base44_app_id]", appId);
     params.append("subscription_data[metadata][plan]", plan);
+    params.append("subscription_data[metadata][user_id]", user.id);
 
     const res = await fetch("https://api.stripe.com/v1/checkout/sessions", {
       method: "POST",

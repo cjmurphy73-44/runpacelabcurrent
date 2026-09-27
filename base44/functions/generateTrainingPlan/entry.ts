@@ -1,5 +1,6 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.38';
 import { assertPaidPlan } from '../../shared/planGate.ts';
+import { claimRateLimit } from '../../shared/rateLimit.ts';
 
 Deno.serve(async (req) => {
   try {
@@ -9,6 +10,12 @@ Deno.serve(async (req) => {
 
     const gate = await assertPaidPlan(base44, user);
     if (!gate.ok) return Response.json({ error: 'Plan generation requires a Pro plan.', plan: gate.plan }, { status: 402 });
+
+    // Plan generation is the most expensive single call (long LLM run + plan write).
+    // Tight per-user cap prevents a single subscriber from burning through credits.
+    if (!claimRateLimit(`plan:${user.id}`, 5, 24 * 3600 * 1000)) {
+      return Response.json({ error: 'Rate limit reached for plan generation. Try again later.' }, { status: 429 });
+    }
 
     const { athlete_id, race_goals, long_term_goal } = await req.json();
     if (!athlete_id) return Response.json({ error: 'athlete_id is required' }, { status: 400 });

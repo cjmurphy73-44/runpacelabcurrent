@@ -28,6 +28,7 @@ import Terms from '@/pages/Terms';
 import Privacy from '@/pages/Privacy';
 import Refund from '@/pages/Refund';
 import AppLayout from '@/components/layout/AppLayout';
+import ProtectedRoute from '@/components/ProtectedRoute';
 import PageNotFound from '@/lib/PageNotFound';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { queryClientInstance } from '@/lib/query-client';
@@ -53,8 +54,9 @@ export default function App() {
             <Route path="/terms" element={<Terms />} />
             <Route path="/privacy" element={<Privacy />} />
             <Route path="/refund" element={<Refund />} />
-            <Route element={<AppLayout />}>
-              <Route path="/app" element={<Home />} />
+            <Route element={<ProtectedRoute unauthenticatedElement={<Navigate to="/login" replace />} />}>
+              <Route element={<AppLayout />}>
+                <Route path="/app" element={<Home />} />
               <Route path="/coach" element={<CoachChat />} />
               <Route path="/recovery" element={<RecoveryCenter />} />
               <Route path="/predict" element={<RacePrediction />} />
@@ -74,6 +76,7 @@ export default function App() {
               <Route path="/admin" element={<Admin />} />
               <Route path="/guide" element={<UserGuide />} />
               <Route path="*" element={<PageNotFound />} />
+              </Route>
             </Route>
           </Routes>
           <Toaster />
