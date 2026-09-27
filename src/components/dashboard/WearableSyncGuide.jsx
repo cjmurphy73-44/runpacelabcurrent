@@ -22,7 +22,7 @@ export default function WearableSyncGuide({ selectedWearables = [], compact = fa
       <div className="space-y-2">
         {guide.map((g) => (
           <div key={g.key} className="flex gap-2.5 items-start">
-            <span className={`text-[10px] uppercase tracking-wider font-semibold px-1.5 py-0.5 rounded shrink-0 ${g.status === "manual_only" ? "bg-amber-500/15 text-amber-700" : "bg-primary/10 text-primary"}`}>
+            <span className={`text-[10px] uppercase tracking-wider font-semibold px-1.5 py-0.5 rounded shrink-0 ${g.status === "manual_only" || g.status === "coming_soon" ? "bg-amber-500/15 text-amber-700" : "bg-primary/10 text-primary"}`}>
               {g.label}
             </span>
             <p className="text-xs text-muted-foreground leading-snug">{g.instructions}</p>
@@ -50,8 +50,8 @@ export default function WearableSyncGuide({ selectedWearables = [], compact = fa
                 <div className="min-w-0 space-y-0.5">
                   <div className="flex items-center gap-2 flex-wrap">
                     <span className="text-sm font-medium">{g.label}</span>
-                    <span className={`text-[10px] uppercase tracking-wider font-semibold px-1.5 py-0.5 rounded ${g.status === "manual_only" ? "bg-amber-500/15 text-amber-700" : "bg-emerald-500/15 text-emerald-700"}`}>
-                      {g.status === "manual_only" ? "Manual upload" : "Auto-sync"}
+                    <span className={`text-[10px] uppercase tracking-wider font-semibold px-1.5 py-0.5 rounded ${g.status === "manual_only" || g.status === "coming_soon" ? "bg-amber-500/15 text-amber-700" : "bg-emerald-500/15 text-emerald-700"}`}>
+                      {g.status === "manual_only" ? "Manual upload" : g.status === "coming_soon" ? "Coming soon" : "Auto-sync"}
                     </span>
                   </div>
                   <p className="text-xs text-muted-foreground leading-snug">{g.instructions}</p>

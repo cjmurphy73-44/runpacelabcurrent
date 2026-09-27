@@ -12,12 +12,12 @@ export const WEARABLES = [
     label: "Garmin",
     category: "watch",
     icon: "Watch",
-    syncMethod: "oauth",
-    status: "available",
-    dataFlow: "Garmin Connect → TrainPaceLab (activities + recovery via Garmin Health)",
+    syncMethod: "manual",
+    status: "coming_soon",
+    dataFlow: "Garmin Connect → export .fit → upload (direct sync in development)",
     syncInstructions:
-      "Connect your Garmin account under Settings → Data Connections. Activities, HRV, sleep and resting HR sync automatically every few hours.",
-    coverage: ["workouts", "hrv", "sleep", "resting_hr", "readiness"],
+      "Direct Garmin sync is coming soon. For now, export .fit files from Garmin Connect (Activity → ⋯ → Export Original) and drop them into the Import page — they ingest just like any other workout file.",
+    coverage: ["workouts"],
   },
   {
     key: "coros",
@@ -84,11 +84,11 @@ export const WEARABLES = [
     label: "Strava",
     category: "platform",
     icon: "Share2",
-    syncMethod: "oauth",
-    status: "available",
-    dataFlow: "Strava → TrainPaceLab (activities with streams via webhook push)",
+    syncMethod: "manual",
+    status: "coming_soon",
+    dataFlow: "Strava → export .fit/.gpx → upload (direct sync in development)",
     syncInstructions:
-      "Connect Strava under Settings → Data Connections. New activities push automatically to RunPaceLab through a webhook, with full telemetry streams.",
+      "Direct Strava sync is coming soon. For now, export activities from Strava as .fit and upload them on the Import page, or connect a COROS watch for automatic sync today.",
     coverage: ["workouts"],
   },
   {

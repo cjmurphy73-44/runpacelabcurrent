@@ -1,93 +1,43 @@
-import React, { useEffect, useState, useCallback } from "react";
-import { base44 } from "@/api/base44Client";
+import React from "react";
+import { Activity } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Loader2, CheckCircle2, RefreshCw, Unlink, Activity } from "lucide-react";
 import WipBadge from "@/components/common/WipBadge";
 
+// Direct Strava OAuth/webhook sync is not production-ready yet (Strava API
+// approval + webhook subscription wiring is still in progress). This card is
+// intentionally a non-interactive "Coming Soon" surface so users don't hit dead
+// buttons — manual .fit upload via the Import page is the working path today,
+// or automatic sync via a connected COROS watch.
 export default function StravaIntegration({ athleteId }) {
-  const [status, setStatus] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [connecting, setConnecting] = useState(false);
-  const [syncing, setSyncing] = useState(false);
-  const [disconnecting, setDisconnecting] = useState(false);
-  const [error, setError] = useState(null);
-  const [info, setInfo] = useState(null);
-
-  const loadStatus = useCallback(async () => {
-    try {
-      const res = await base44.functions.invoke("stravaSync", { action: "status" });
-      setStatus(res.data || res);
-    } catch (e) { 
-      console.error("Status load failed:", e);
-      setError(e?.response?.data?.error || e.message || "Could not check Strava connection."); 
-    }
-    setLoading(false);
-  }, []);
-
-  useEffect(() => { loadStatus(); }, [loadStatus]);
-
-  const connect = async () => {
-    console.log("Connect Strava clicked");
-    setConnecting(true); setError(null);
-    try {
-      const res = await base44.functions.invoke("stravaSync", { action: "authorize" });
-      console.log("Authorize response:", res);
-      const url = res.data?.authorize_url || res.authorize_url;
-      if (!url) throw new Error("No authorize URL returned");
-      window.location.href = url;
-    } catch (e) { 
-      console.error("Connect failed:", e);
-      setError(e?.response?.data?.error || e.message || "Could not start Strava connection."); 
-      setConnecting(false); 
-    }
-  };
-
-  const syncHistorical = async () => {
-    setSyncing(true); setError(null); setInfo(null);
-    try {
-      const res = await base44.functions.invoke("stravaSync", { action: "sync_historical" });
-      const data = res.data || res;
-      setInfo(`Imported ${data.imported ?? 0} workout(s)${data.errors ? `, ${data.errors} skipped` : ""}.`);
-      loadStatus();
-    } catch (e) { setError(e?.response?.data?.error || "Historical sync failed."); }
-    setSyncing(false);
-  };
-
-  const disconnect = async () => {
-    if (!window.confirm("Disconnect your Strava account? Future Strava webhook events will stop syncing until you reconnect.")) return;
-    setDisconnecting(true); setError(null);
-    try { await base44.functions.invoke("stravaSync", { action: "disconnect" }); setStatus(null); } catch (e) { setError(e?.response?.data?.error || "Could not disconnect."); }
-    setDisconnecting(false);
-  };
-
-  const connected = status?.connected;
-
   return (
-    <div className="flex flex-col gap-2">
-      <div className="flex items-center justify-between p-3 border border-border rounded-md">
-        <div className="flex items-center gap-3">
-          <div className="bg-muted p-2 rounded text-muted-foreground"><Activity className="w-5 h-5" /></div>
-          <div>
-            <p className="text-sm font-medium flex items-center gap-2">Strava<WipBadge label="Beta" />{connected && <span className="inline-flex items-center gap-1 text-xs font-medium text-primary"><CheckCircle2 className="w-3.5 h-3.5" /> Connected</span>}</p>
-            <p className="text-xs text-muted-foreground">
-              {loading ? "Checking…" : connected ? (status?.last_sync_at ? `Last sync ${new Date(status.last_sync_at).toLocaleString()}` : "Connected — new activities auto-sync via webhook") : "Not connected"}
+    <div className="flex flex-col gap-2 p-3 border border-border rounded-md">
+      <div className="flex items-center justify-between gap-3">
+        <div className="flex items-center gap-3 min-w-0">
+          <div className="bg-muted p-2 rounded text-muted-foreground shrink-0">
+            <Activity className="w-5 h-5" />
+          </div>
+          <div className="min-w-0">
+            <p className="text-sm font-medium flex items-center gap-2">
+              Strava
+              <WipBadge label="Coming Soon" />
             </p>
-            {connected && status?.last_error && <p className="text-xs text-destructive mt-0.5">{status.last_error}</p>}
+            <p className="text-xs text-muted-foreground">Direct Strava sync is in development.</p>
           </div>
         </div>
-        <div className="flex items-center gap-2">
-          {connected ? (
-            <>
-              <Button variant="outline" size="sm" onClick={syncHistorical} disabled={syncing}>{syncing ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <RefreshCw className="w-4 h-4 mr-2" />}Sync historical</Button>
-              <Button variant="ghost" size="sm" onClick={disconnect} disabled={disconnecting}>{disconnecting ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Unlink className="w-4 h-4 mr-2" />}Disconnect</Button>
-            </>
-          ) : (
-            <Button size="sm" onClick={connect} disabled={connecting}>{connecting ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Activity className="w-4 h-4 mr-2" />}Connect Strava</Button>
-          )}
-        </div>
+        <Button
+          size="sm"
+          disabled
+          title="Direct Strava sync is coming soon — export .fit files for now."
+        >
+          <Activity className="w-4 h-4 mr-1" /> Connect
+        </Button>
       </div>
-      {error && <p className="text-xs text-destructive px-1">{error}</p>}
-      {info && <p className="text-xs text-muted-foreground px-1">{info}</p>}
+      <p className="text-xs text-muted-foreground">
+        <span className="font-medium text-foreground">Today:</span> export
+        <span className="font-medium"> .fit</span> files from Strava
+        (Activity → ⋯ → Export original) and upload them on the Import page —
+        or connect a COROS watch for automatic sync right now.
+      </p>
     </div>
   );
 }
