@@ -1,16 +1,20 @@
 import React, { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 import { useNavigate } from "react-router-dom";
 import { base44 } from "@/api/base44Client";
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Loader2, Upload, Webhook, Plus, ArrowLeft, FlaskConical } from "lucide-react";
+import { Loader2, Plus, ArrowRight, Watch, Upload, FlaskConical, Webhook, Settings } from "lucide-react";
 import HelpLink from "@/components/guide/HelpLink";
 import BulkWorkoutImport from "@/components/dashboard/BulkWorkoutImport";
 import WebhookSyncPanel from "@/components/imports/WebhookSyncPanel";
 import LabResultsImport from "@/components/imports/LabResultsImport";
 import ManualWorkoutModal from "@/components/workout/ManualWorkoutModal";
 import OnboardingFlow from "@/components/dashboard/OnboardingFlow";
+import GarminIntegration from "@/components/settings/GarminIntegration";
+import StravaIntegration from "@/components/settings/StravaIntegration";
+import CorosIntegration from "@/components/settings/CorosIntegration";
+import SectionHeading from "@/components/layout/SectionHeading";
 
 export default function Imports() {
   const navigate = useNavigate();
@@ -53,23 +57,24 @@ export default function Imports() {
   }
 
   return (
-    <div className="max-w-3xl mx-auto space-y-6">
+    <div className="max-w-3xl mx-auto space-y-8">
       <div className="flex items-start justify-between gap-3">
         <div>
           <h1 className="text-2xl font-heading font-bold">Imports & Sync</h1>
           <p className="text-sm text-muted-foreground">
-            Add workouts via bulk file upload or automated webhooks.
+            Get your training and recovery data into TrainPaceLab, in this order.
           </p>
         </div>
         <HelpLink section="connect-data" label="How to export from your watch" />
       </div>
 
+      {/* Quick manual log — for users with no device yet */}
       <Card className="border-dashed bg-muted/30">
         <CardContent className="pt-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
           <div>
-            <p className="font-heading font-semibold">No device? No problem.</p>
+            <p className="font-heading font-semibold">No device handy? Log one manually.</p>
             <p className="text-sm text-muted-foreground">
-              Log a quick workout manually and watch your CTL / ATL / TSB refresh instantly.
+              Add a quick session and your CTL / ATL / TSB refresh instantly — no file needed.
             </p>
           </div>
           <Button onClick={() => setManualOpen(true)}>
@@ -78,44 +83,53 @@ export default function Imports() {
         </CardContent>
       </Card>
 
-      <Tabs defaultValue="bulk" className="w-full">
-        <TabsList className="grid w-full grid-cols-3">
-          <TabsTrigger value="bulk" className="flex items-center gap-2">
-            <Upload className="w-4 h-4" /> <span className="hidden sm:inline">Bulk Upload</span>
-          </TabsTrigger>
-          <TabsTrigger value="lab" className="flex items-center gap-2">
-            <FlaskConical className="w-4 h-4" /> <span className="hidden sm:inline">Lab Results</span>
-          </TabsTrigger>
-          <TabsTrigger value="webhook" className="flex items-center gap-2">
-            <Webhook className="w-4 h-4" /> <span className="hidden sm:inline">Webhooks</span>
-          </TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="bulk" className="mt-4 space-y-3">
-          <BulkWorkoutImport athleteId={athlete.id} onUploaded={() => {}} />
-          <p className="text-xs text-muted-foreground">
-            Supports <span className="font-medium">.fit</span> and <span className="font-medium">.csv</span> exports from
-            Strava, COROS, Garmin and others. <span className="font-medium">.gpx</span> support is on the roadmap — for now,
-            convert GPX to FIT/CSV or use the webhook tab.
-          </p>
-        </TabsContent>
-
-        <TabsContent value="lab" className="mt-4">
-          <Card>
-            <CardContent className="pt-5">
-              <LabResultsImport athleteId={athlete.id} />
+      {/* 1 — Connect a device (automated sync) */}
+      <section className="space-y-3">
+        <SectionHeading index="01" title="Connect a device" description="Automated sync — new activities and recovery flow in without you lifting a finger." icon={Watch} />
+        <div className="space-y-3">
+          <CorosIntegration athleteId={athlete.id} />
+          <GarminIntegration athleteId={athlete.id} />
+          <StravaIntegration athleteId={athlete.id} />
+          <Card className="border-dashed">
+            <CardContent className="pt-4 flex items-center justify-between gap-3">
+              <div>
+                <p className="text-sm font-medium">More recovery wearables</p>
+                <p className="text-xs text-muted-foreground">Oura, Whoop, Withings, Polar, Fitbit, Suunto — connect them in Settings.</p>
+              </div>
+              <Button asChild variant="outline" size="sm">
+                <Link to="/settings"><Settings className="w-4 h-4" /> Open Settings</Link>
+              </Button>
             </CardContent>
           </Card>
-          <p className="text-xs text-muted-foreground mt-2">
-            Lab results (ferritin, hemoglobin, VO₂max, lactate-at-threshold, etc.) feed your
-            recovery baselines and AI synthesis alongside wearable data — one row per metric per date.
-          </p>
-        </TabsContent>
+        </div>
+      </section>
 
-        <TabsContent value="webhook" className="mt-4">
-          <WebhookSyncPanel athleteId={athlete.id} />
-        </TabsContent>
-      </Tabs>
+      {/* 2 — Import workout files */}
+      <section className="space-y-3">
+        <SectionHeading index="02" title="Import workout files" description="Bulk-upload .fit or .csv exports from your watch or training platform." icon={Upload} />
+        <BulkWorkoutImport athleteId={athlete.id} onUploaded={() => {}} />
+        <p className="text-xs text-muted-foreground">
+          Supports <span className="font-medium">.fit</span> and <span className="font-medium">.csv</span> from Strava, COROS, Garmin and others.
+          {" "}<span className="font-medium">.gpx</span> isn't supported yet — convert it to FIT/CSV or use a device connection above.
+        </p>
+      </section>
+
+      {/* 3 — Lab results */}
+      <section className="space-y-3">
+        <SectionHeading index="03" title="Lab results" description="Blood panels, VO₂max, lactate-at-threshold — feed your recovery baselines and AI synthesis." icon={FlaskConical} />
+        <Card>
+          <CardContent className="pt-5">
+            <LabResultsImport athleteId={athlete.id} />
+          </CardContent>
+        </Card>
+        <p className="text-xs text-muted-foreground">One row per metric per date.</p>
+      </section>
+
+      {/* 4 — Advanced webhook / API */}
+      <section className="space-y-3">
+        <SectionHeading index="04" title="Webhook & API" description="Advanced — push workout summaries from your own scripts, Zapier, or Make." icon={Webhook} />
+        <WebhookSyncPanel athleteId={athlete.id} />
+      </section>
 
       <ManualWorkoutModal
         open={manualOpen}
@@ -123,6 +137,10 @@ export default function Imports() {
         athleteId={athlete.id}
         onSaved={() => navigate("/")}
       />
+
+      <div className="pt-2">
+        <Button asChild variant="ghost" size="sm"><Link to="/app"><ArrowRight className="w-4 h-4" />Back to dashboard</Link></Button>
+      </div>
     </div>
   );
 }
