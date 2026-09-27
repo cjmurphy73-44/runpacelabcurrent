@@ -20,7 +20,7 @@ export default function OnboardingEmptyState({ athlete, onAddManual }) {
         <div className="space-y-1.5">
           <h2 className="text-xl font-heading font-bold">Welcome to your training log{name}!</h2>
           <p className="text-sm text-muted-foreground">
-            You don't have any activities yet. Connect your training device (Coros, Garmin, Strava…) or add a
+            You don't have any activities yet. Connect COROS (or sync recovery from Oura, WHOOP, or Polar), or add a
             manual session and we'll start tracking your fitness{" "}
             <span className="font-medium text-foreground">CTL</span>, fatigue{" "}
             <span className="font-medium text-foreground">ATL</span> and form{" "}
