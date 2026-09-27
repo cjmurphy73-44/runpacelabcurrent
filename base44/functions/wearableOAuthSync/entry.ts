@@ -214,6 +214,9 @@ async function handleAuthorize(req: Request, base44: any) {
   const provider = (body.provider || '') as ProviderKey;
   const cfg = PROVIDERS[provider];
   if (!cfg) return Response.json({ error: `Unsupported provider: ${provider}` }, { status: 400 });
+  if (!env(cfg.client_id_env) || !env(cfg.client_secret_env)) {
+    return Response.json({ error: `${provider} is not configured yet. Add ${cfg.client_id_env} and ${cfg.client_secret_env} as app secrets, then retry.` }, { status: 503 });
+  }
   const user = await base44.auth.me();
   if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
   const athlete = await getOwnedAthlete(base44, user.id);
@@ -294,6 +297,9 @@ async function handleStatus(base44: any, provider: ProviderKey) {
 async function handleSync(base44: any, provider: ProviderKey) {
   const cfg = PROVIDERS[provider];
   if (!cfg) return Response.json({ error: `Unsupported provider: ${provider}` }, { status: 400 });
+  if (!env(cfg.client_id_env) || !env(cfg.client_secret_env)) {
+    return Response.json({ error: `${provider} is not configured yet. Add ${cfg.client_id_env} and ${cfg.client_secret_env} as app secrets, then retry.` }, { status: 503 });
+  }
   const user = await base44.auth.me();
   if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
   const athlete = await getOwnedAthlete(base44, user.id);

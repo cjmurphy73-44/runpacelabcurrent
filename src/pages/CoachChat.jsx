@@ -4,7 +4,9 @@ import MessageBubble from "@/components/coach/MessageBubble";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/components/ui/use-toast";
-import { Send, Loader2 } from "lucide-react";
+import { Send, Loader2, Lock } from "lucide-react";
+import { Link } from "react-router-dom";
+import { useCoachMessageLimit } from "@/hooks/useCoachMessageLimit";
 
 const AGENT_NAME = "early_version_ai_coach";
 
@@ -17,6 +19,7 @@ export default function CoachChat() {
   const [sending, setSending] = useState(false);
   const [awaitingReply, setAwaitingReply] = useState(false);
   const bottomRef = useRef(null);
+  const { usedThisWeek, remaining, limitReached, isPro } = useCoachMessageLimit(messages);
 
   useEffect(() => {
     (async () => {
@@ -52,7 +55,7 @@ export default function CoachChat() {
 
   const handleSend = async (e) => {
     e.preventDefault();
-    if (!input.trim() || !conversation) return;
+    if (!input.trim() || !conversation || limitReached) return;
     setSending(true);
     const text = input;
     setInput("");
@@ -103,10 +106,25 @@ export default function CoachChat() {
           placeholder="Message your coach..."
           disabled={sending}
         />
-        <Button type="submit" size="icon" disabled={sending || !input.trim()}>
+        <Button type="submit" size="icon" disabled={sending || !input.trim() || limitReached}>
           <Send className="w-4 h-4" />
         </Button>
       </form>
+      {!isPro && (
+        <div className="text-xs text-center text-muted-foreground pt-2">
+          {limitReached ? (
+            <span className="text-destructive">
+              {usedThisWeek}/5 coach messages used this week —{' '}
+              <Link to="/subscribe" className="text-primary font-medium inline-flex items-center gap-1">
+                <Lock className="w-3 h-3" />Upgrade to Pro
+              </Link>{' '}
+              for unlimited.
+            </span>
+          ) : (
+            <span>{usedThisWeek}/5 free coach messages used this week.</span>
+          )}
+        </div>
+      )}
     </div>
   );
 }
