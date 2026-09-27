@@ -1,6 +1,8 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.38';
 import { assertPaidPlan } from '../../shared/planGate.ts';
 import { claimRateLimit } from '../../shared/rateLimit.ts';
+import { getTrainingPaces, getEquivalentTimes, formatPaceFromMs } from '../../shared/vdot.ts';
+import { deriveRunningThresholdPace } from '../../shared/thresholdPace.ts';
 
 Deno.serve(async (req) => {
   try {
@@ -38,6 +40,19 @@ Deno.serve(async (req) => {
     const totalKm = recentSessions.reduce((sum, s) => sum + (s.distance_km || 0), 0);
     const oldestDate = totalSessions > 0 ? recentSessions[recentSessions.length - 1].date : null;
     const weeksOfData = oldestDate ? Math.max(1, Math.round((Date.now() - new Date(oldestDate).getTime()) / (7 * 86400000))) : 0;
+
+    // Derive VDOT training paces, equivalent race times, and the reconciled
+    // running threshold pace server-side from the authoritative shared science
+    // modules so the LLM receives validated numbers rather than guessing.
+    let trainingPaces = null, equivalentTimes = null, thresholdPace = null;
+    try {
+      const vdot = athlete.vdot_estimate;
+      if (vdot && vdot > 0) {
+        trainingPaces = getTrainingPaces(vdot);
+        equivalentTimes = getEquivalentTimes(vdot);
+      }
+      thresholdPace = deriveRunningThresholdPace(recentSessions, vdot, athlete.functional_threshold_pace_ms, athlete.lactate_threshold_hr);
+    } catch (_e) { /* best-effort enrichment */ }
 
     const goals = Array.isArray(race_goals) ? race_goals.filter((g) => g && g.date) : [];
     const sortedGoals = [...goals].sort((a, b) => a.date.localeCompare(b.date));
@@ -84,6 +99,9 @@ ATHLETE PROFILE:
 - Injury history: ${athlete.injury_history || 'none reported'}
 ${latestBaseline ? `- Latest baseline test (${latestBaseline.recorded_date}): VO2Max ${latestBaseline.vo2max_ml_kg_min || 'n/a'} ml/kg/min, FTP ${latestBaseline.functional_threshold_power_watts || 'n/a'}W, LTHR ${latestBaseline.lactate_threshold_hr_bpm || 'n/a'} bpm` : '- No baseline test on file'}
 - Training history on file: ${totalSessions} sessions / ${totalKm.toFixed(0)}km / ~${weeksOfData} weeks of data
+${trainingPaces ? `- Daniels training paces (server-derived) — Easy: ${trainingPaces.easy.formatted}, Marathon: ${trainingPaces.marathon.formatted}, Threshold: ${trainingPaces.threshold.formatted}, Interval: ${trainingPaces.interval.formatted}, Repetition: ${trainingPaces.repetition.formatted}` : '- Daniels training paces: unknown (set a VDOT estimate on the profile)'}
+${equivalentTimes ? `- Equivalent race times (server-derived) — 5K: ${equivalentTimes.fiveKm.formatted}, 10K: ${equivalentTimes.tenKm.formatted}, Half: ${equivalentTimes.halfMarathon.formatted}, Marathon: ${equivalentTimes.marathon.formatted}` : ''}
+${thresholdPace && thresholdPace.paceMs ? `- Derived running threshold pace: ${formatPaceFromMs(thresholdPace.paceMs)}/km (${thresholdPace.source}; ${thresholdPace.observedRunCount} qualifying runs in last 42 days)` : '- Derived running threshold pace: unknown — set a VDOT or log threshold-intensity runs'}
 
 RACE GOALS (chronological): ${sortedGoals.length > 0 ? JSON.stringify(sortedGoals) : 'None specified — build a general fitness-building block'}
 LONG-TERM GOAL: ${long_term_goal || 'Not specified'}

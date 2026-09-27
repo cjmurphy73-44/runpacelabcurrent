@@ -1,5 +1,7 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
 import { assertPaidPlan } from '../../shared/planGate.ts';
+import { formatPaceFromMs } from '../../shared/vdot.ts';
+import { deriveRunningThresholdPace } from '../../shared/thresholdPace.ts';
 
 Deno.serve(async (req) => {
   try {
@@ -18,6 +20,15 @@ Deno.serve(async (req) => {
 
     const baselines = await base44.entities.PhysiologicalBaselines.filter({ athlete_id }, '-recorded_date', 1);
     const latestBaseline = baselines[0] || null;
+
+    // Derive the reconciled running threshold pace server-side so race-day
+    // HR/pace caps map to a validated current threshold rather than a stale
+    // stored value.
+    let thresholdPace = null;
+    try {
+      const recentSessions = await base44.entities.WorkoutSession.filter({ athlete_id }, '-date', 200);
+      thresholdPace = deriveRunningThresholdPace(recentSessions, athlete.vdot_estimate, athlete.functional_threshold_pace_ms, athlete.lactate_threshold_hr);
+    } catch (_e) { /* best-effort enrichment */ }
 
     // Taper length and emphasis scale with event category — a mile taper is short and sharpening-focused,
     // an ultra taper is long and recovery-focused. This keeps the plan physiologically appropriate to distance.
@@ -41,6 +52,7 @@ Athlete current state:
 - FTP: ${athlete.ftp_watts || 'unknown'} watts
 - Max HR: ${athlete.max_heart_rate || 'unknown'} bpm
 ${latestBaseline ? `- Latest baseline test (${latestBaseline.recorded_date}): VO2Max ${latestBaseline.vo2max_ml_kg_min || 'n/a'} ml/kg/min, FTP ${latestBaseline.functional_threshold_power_watts || 'n/a'}W, LTHR ${latestBaseline.lactate_threshold_hr_bpm || 'n/a'} bpm, Resting HR ${latestBaseline.resting_hr_bpm || 'n/a'} bpm` : '- No baseline test on file'}
+${thresholdPace && thresholdPace.paceMs ? `- Derived running threshold pace (server-derived): ${formatPaceFromMs(thresholdPace.paceMs)}/km (${thresholdPace.source})` : '- Derived running threshold pace: unknown'}
 
 Target event: ${event_type}
 
