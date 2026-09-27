@@ -12,20 +12,20 @@
     --card-foreground: 0 0% 100%;
     --popover: 0 0% 10%;
     --popover-foreground: 0 0% 100%;
-    --primary: 291 100% 50%;
+    --primary: 217 91% 60%;
     --primary-foreground: 0 0% 100%;
     --secondary: 0 0% 12%;
     --secondary-foreground: 0 0% 100%;
     --muted: 0 0% 11%;
     --muted-foreground: 0 0% 63%;
-    --accent: 291 40% 16%;
-    --accent-foreground: 291 100% 70%;
+    --accent: 221 50% 16%;
+    --accent-foreground: 217 91% 72%;
     --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 100%;
     --border: 0 0% 18%;
     --input: 0 0% 18%;
-    --ring: 291 100% 50%;
-    --chart-1: 291 100% 60%;
+    --ring: 217 91% 60%;
+    --chart-1: 217 91% 62%;
     --chart-2: 190 95% 55%;
     --chart-3: 38 92% 58%;
     --chart-4: 152 60% 50%;
@@ -49,12 +49,12 @@
     --font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
     --sidebar-background: 0 0% 9%;
     --sidebar-foreground: 0 0% 100%;
-    --sidebar-primary: 291 100% 50%;
+    --sidebar-primary: 217 91% 60%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 291 40% 16%;
-    --sidebar-accent-foreground: 291 100% 70%;
+    --sidebar-accent: 221 50% 16%;
+    --sidebar-accent-foreground: 217 91% 72%;
     --sidebar-border: 0 0% 18%;
-    --sidebar-ring: 291 100% 50%;
+    --sidebar-ring: 217 91% 60%;
   }
 
   .dark {
@@ -64,20 +64,20 @@
     --card-foreground: 0 0% 100%;
     --popover: 0 0% 10%;
     --popover-foreground: 0 0% 100%;
-    --primary: 291 100% 50%;
+    --primary: 217 91% 60%;
     --primary-foreground: 0 0% 100%;
     --secondary: 0 0% 12%;
     --secondary-foreground: 0 0% 100%;
     --muted: 0 0% 11%;
     --muted-foreground: 0 0% 63%;
-    --accent: 291 40% 16%;
-    --accent-foreground: 291 100% 70%;
+    --accent: 221 50% 16%;
+    --accent-foreground: 217 91% 72%;
     --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 100%;
     --border: 0 0% 18%;
     --input: 0 0% 18%;
-    --ring: 291 100% 50%;
-    --chart-1: 291 100% 60%;
+    --ring: 217 91% 60%;
+    --chart-1: 217 91% 62%;
     --chart-2: 190 95% 55%;
     --chart-3: 38 92% 58%;
     --chart-4: 152 60% 50%;
@@ -89,12 +89,12 @@
     --zone-5: 0 84% 62%;
     --sidebar-background: 0 0% 9%;
     --sidebar-foreground: 0 0% 100%;
-    --sidebar-primary: 291 100% 50%;
+    --sidebar-primary: 217 91% 60%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 291 40% 16%;
-    --sidebar-accent-foreground: 291 100% 70%;
+    --sidebar-accent: 221 50% 16%;
+    --sidebar-accent-foreground: 217 91% 72%;
     --sidebar-border: 0 0% 18%;
-    --sidebar-ring: 291 100% 50%;
+    --sidebar-ring: 217 91% 60%;
   }
 
   /* The app ships a dark carbon aesthetic by default. Respect an explicit
@@ -108,27 +108,27 @@
       --card-foreground: 0 0% 100%;
       --popover: 0 0% 10%;
       --popover-foreground: 0 0% 100%;
-      --primary: 291 100% 50%;
+      --primary: 217 91% 60%;
       --primary-foreground: 0 0% 100%;
       --secondary: 0 0% 12%;
       --secondary-foreground: 0 0% 100%;
       --muted: 0 0% 11%;
       --muted-foreground: 0 0% 63%;
-      --accent: 291 40% 16%;
-      --accent-foreground: 291 100% 70%;
+      --accent: 221 50% 16%;
+      --accent-foreground: 217 91% 72%;
       --destructive: 0 84% 60%;
       --destructive-foreground: 0 0% 100%;
       --border: 0 0% 18%;
       --input: 0 0% 18%;
-      --ring: 291 100% 50%;
+      --ring: 217 91% 60%;
       --sidebar-background: 0 0% 9%;
       --sidebar-foreground: 0 0% 100%;
-      --sidebar-primary: 291 100% 50%;
+      --sidebar-primary: 217 91% 60%;
       --sidebar-primary-foreground: 0 0% 100%;
-      --sidebar-accent: 291 40% 16%;
-      --sidebar-accent-foreground: 291 100% 70%;
+      --sidebar-accent: 221 50% 16%;
+      --sidebar-accent-foreground: 217 91% 72%;
       --sidebar-border: 0 0% 18%;
-      --sidebar-ring: 291 100% 50%;
+      --sidebar-ring: 217 91% 60%;
     }
   }
 }
