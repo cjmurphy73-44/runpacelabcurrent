@@ -1,0 +1,138 @@
+# TrainPaceLab — Roadmap to Beta → Production
+
+_A detailed, sequenced plan from the current published-but-beta state through a closed beta cohort to a public production launch._
+
+---
+
+## Current state snapshot
+
+**Already live:** published at `trainpacelab.base44.app`; Stripe live mode accepting real payments (Pro A$9/mo, active price `PRO_PRICE_ID`); beta access-code provisioning (`redeemAccessCode`); core physiology engine (VDOT, threshold pace, CTL/ATL/TSB via EWMA); workout ingestion (`workoutIngest`, multi-file `streamReconcile`); AI coach agent + plan generation / micro-adjustments / post-workout eval / race strategy; COROS OAuth + webhook ingest; Oura/WHOOP/Polar recovery OAuth; tiered gating (Free/Pro/Coach-Pro-coming-soon); Terms/Privacy/Refund pages.
+
+**Known gaps (evidence-based):**
+- TrainingPlan page 500 (Axios) on load.
+- Dashboard widgets can crash to blank screens (no per-widget error boundary).
+- `LoadStatusCards` NaN warnings.
+- Tools dropdown → Physiology Lab link not firing on mobile/nested nav.
+- Service-layer adapter runtime errors (SDK method mappings, connector accessors).
+- Orphaned E2E test conversation in AI Coach dashboard.
+- Builder-plan backend-function limit (HTTP 403 deploying a 5th function).
+- Health data is readable by any authenticated user (S5 not shipped); coach picker enumerates the whole athlete directory.
+- Crown-jewel science engines ship to the browser as client JS (S6).
+- Stripe: archived A$19 Pro price + deactivated A$49 Team product left in the account.
+- Garmin/Strava direct sync unconfigured (kept Coming Soon); COROS not yet validated on the published domain.
+- Preview-sandbox 403 blocks automated E2E (platform issue).
+
+_Status legend: ✅ done · 🟡 in progress · 🔴 open · ⛔ blocked._
+
+---
+
+# Horizon 1 — BETA
+
+**Goal:** a closed cohort of invited athletes can onboard, sync/log, get an adaptive plan, and pay — without critical crashes or privacy leaks — while we collect structured feedback.
+
+## Beta Phase 0 — Stabilize the core (gate before inviting anyone)
+
+_Land before any tester is invited. Every item is a launch blocker._
+
+- 🔴 **B0.1 Fix TrainingPlan 500.** Reproduce on the live `/plan` route; read the failing request/response in `TrainingPlan.jsx`; fix the data shape or backend call. **Acceptance:** `/plan` loads for an athlete with and without an existing plan.
+- 🔴 **B0.2 Per-widget error boundaries.** Wrap each dashboard widget in `PageErrorBoundary`/`WipWrapper` so one bad card never blanks the dashboard; surface the exception via `logErrorToAirtable`. **Acceptance:** a forced widget throw shows a graceful fallback card, not a blank screen.
+- 🔴 **B0.3 `LoadStatusCards` NaN.** Guard divide-by-zero and missing fields; render real numbers or `—`. **Acceptance:** no `NaN` in console or UI for a fresh athlete with zero history.
+- 🔴 **B0.4 Mobile Physiology Lab nav.** Fix the Tools dropdown nested-trigger tap target on mobile. **Acceptance:** Physiology Lab opens from the Tools menu on a 390px viewport.
+- 🟡 **B0.5 Service-layer adapter audit.** Reconcile `src/services/adapters/base44/index.ts` with the live SDK method shapes and the connector `getConnection` accessor; fix runtime errors. **Acceptance:** no adapter runtime errors in console across Home, Imports, Settings.
+- 🟡 **B0.6 Remove orphaned E2E test conversation.** Delete the leftover test thread from the AI Coach dashboard data. **Acceptance:** no test conversation renders for a real user.
+- ⛔ **B0.7 Builder-plan function-limit decision.** Decide: upgrade the workspace plan, or consolidate backend functions under the limit. **Acceptance:** no 403 when deploying a needed function.
+
+**Beta Phase 0 exit:** smoke pass on the published app — onboard → log/sync a workout → CTL recalc → generate plan → AI coach message → checkout → subscription provisioned.
+
+## Beta Phase 1 — Data privacy & billing integrity
+
+- 🟡 **B1.1 S4 — ownership stamp across all ingest paths.** Stamp `created_by_id` on `WorkoutSession`/`WorkoutAsset` in `ingestWorkoutFile`, `webhookWearableSync`, `workoutWebhook`, `garminWebhook`, `bulkIngestWorkouts`. Additive, no lockout. **Acceptance:** every new session/asset record carries the athlete's user id.
+- 🔴 **B1.2 S5 — health-data RLS + roster scoping.** Ship `athlete_profile_id` + `coached_athletes` user fields; apply read RLS on athlete-keyed entities (`WorkoutSession`, `DailyMetrics`, `TrainingPlan`, `TrainingPlanSession`, `WorkoutFeedback`, `CoachMessage`, `AthleteProfile`); scope coach picker to own roster; run the backfill (`athlete_profile_id` from `AthleteProfile.created_by_id`) **before** RLS publishes. **Acceptance:** user A cannot read user B's health data; coach sees only roster athletes; admin bypass holds; no blank dashboards after publish.
+- 🟡 **B1.3 Stripe cleanup + provisioning verify.** (a) Confirm no subscriptions are grandfathered on the archived A$19 price (`price_1UK8g9…`); if none, delete it. (b) Delete the deactivated Team product (`prod_VAQch6BqM0xP8K`) + A$49 price. (c) Verify `PRO_PRICE_ID` = active A$9. (d) Confirm `stripeWebhook` endpoint registered to `https://trainpacelab.base44.app/functions/stripeWebhook` with valid `STRIPE_WEBHOOK_SECRET`; test checkout → `subscription` event → `Subscription` row → `useSubscription` unlock. **Acceptance:** checkout at $9 provisions Pro; cancel/downgrade reflect correctly.
+- 🟡 **B1.4 Beta access-code flow.** Admin creates code (`AccessCode`) → tester redeems → `Subscription` provisioned with `granted_plan` + `expires_at` → features unlock → expiry enforced. **Acceptance:** redeem grants access; expired code rejected; `used_count`/`max_uses` enforced.
+
+**Beta Phase 1 exit:** privacy isolation proven (two test accounts), billing provisions the correct plan, access codes work.
+
+## Beta Phase 2 — Integration honesty & COROS validation
+
+- 🔴 **B2.1 COROS live-domain validation.** Run connect → historical sync → recovery sync → webhook ingest on `trainpacelab.base44.app` (not preview). **Acceptance:** a real COROS workout appears, recovery populates `DailyMetrics`, a webhook push dedups.
+- 🟡 **B2.2 Wearable-honesty sweep.** Audit every surface (onboarding, settings, emails, share copy) against `src/lib/wearableCatalog.js` statuses; no claim of Garmin/Strava direct sync being available today. **Acceptance:** no misleading sync claim anywhere.
+- 🟡 **B2.3 Oura/WHOOP/Polar recovery sync.** Confirm `wearableOAuthSync` live + tested per provider; token refresh; `last_sync_at`/`last_error` populated. **Acceptance:** recovery data syncs for each provider; expired tokens refresh.
+- 🟡 **B2.4 Garmin/Strava stay Coming Soon.** Keep gated in catalog + UI; do not re-enable until credentials configured and QA'd. **Acceptance:** no live "Connect Garmin/Strava" button that fails.
+
+**Beta Phase 2 exit:** every sync surface tells the truth; COROS round-trips on the prod domain.
+
+## Beta Phase 3 — Observability & feedback loop
+
+- 🟡 **B3.1 Error logging.** Wire `logErrorToAirtable` for frontend (global error handler + widget boundaries) and backend (function catch blocks) with severity. **Acceptance:** a forced error is logged with stack + context.
+- 🟡 **B3.2 Analytics funnels.** Instrument `onboarding_complete`, `workout_ingested`, `plan_generated`, `checkout_started`, `subscription_active` via `base44.analytics.track`. **Acceptance:** events appear for a real flow.
+- 🟡 **B3.3 Beta feedback channel.** Surface the in-app feedback modal prominently during beta; collect into a triage list. **Acceptance:** testers can submit feedback in ≤2 taps.
+- 🟡 **B3.4 Wearable sync health view.** Admin view of `*Connection` `last_sync_at`/`last_error`/`status`. **Acceptance:** admin can see which athletes' syncs are failing.
+
+### Beta exit criteria
+- All Beta Phase 0–2 items ✅; observability live.
+- 10 invited testers onboarded; **no critical crash for 7 consecutive days**; error rate < 2% of sessions.
+- Privacy isolation holds; billing correct; COROS validated on prod domain.
+
+---
+
+# Horizon 2 — PRODUCTION (public launch)
+
+**Goal:** a polished, secure, observable public launch with marketing push.
+
+## Prod Phase 1 — Hardening
+
+- 🔴 **P1.1 S6 — crown-jewel IP to backend.** Move threshold-pace, VDOT auto-derivation, and race-pacing derivations behind backend functions; keep real-time UI helpers client-side. **Acceptance:** proprietary formulas not readable in the client bundle; latency acceptable.
+- ⛔ **P1.2 CI gate on science tests.** Move vitest suite into `.github/workflows/ci.yml` failing the build (one manual commit). **Acceptance:** CI red on a broken test, green otherwise.
+- 🟡 **P1.3 Rate-limit & credit budget.** Tune sliding-window limits on `aiDeepDive`, `coachBriefing`, `generateTrainingPlan` and the free-tier 5-msg/week cap against beta usage; monitor `InvokeLLM`/`GenerateImage` credit burn. **Acceptance:** free-tier caps enforced; no credit surprise.
+- 🟡 **P1.4 Dashboard load profile.** Load-test `Home` (4 parallel entity filters) with large history; add pagination/suspense if slow. **Acceptance:** dashboard loads < 2s at p95 with 500 sessions.
+- ⛔ **P1.5 Full E2E QA.** Once preview-sandbox 403 clears, automate: onboarding, ingestion, CTL recalc, plan gen, checkout, webhook→subscription, RLS isolation, access-code redeem, COROS round-trip. **Acceptance:** all critical paths green.
+
+**Prod Phase 1 exit:** CI green; science suite green; load test passed; E2E critical paths green; S6 shipped.
+
+## Prod Phase 2 — Launch assets
+
+- 🟡 **P2.1 Custom domain.** Ask the builder for the connected domain; point user-facing links/SEO at it. **Acceptance:** custom domain serves the app; redirects correct.
+- 🟡 **P2.2 SEO.** Finalize `index.html` (title, description, OG image, canonical), sitemap; run the in-platform SEO checklist + AI-search score. **Acceptance:** SEO score acceptable; OG preview correct.
+- 🟡 **P2.3 Legal review.** Final review of Terms/Privacy/Refund for a paid health-data product (wearable data, athlete health info, payments, refunds). **Acceptance:** legally signed off.
+- 🟡 **P2.4 Pricing copy consistency.** Pro = A$9/mo everywhere (landing, Subscribe, Stripe, access codes); Coach Pro = A$29 Coming Soon. **Acceptance:** no price discrepancy across surfaces.
+- 🟡 **P2.5 Support/contact route.** Define the support path; add a reachable contact link in the landing footer. **Acceptance:** users can reach support.
+- 🟡 **P2.6 Onboarding & empty-state polish.** Clean onboarding, empty states, and error states for first-time users. **Acceptance:** new user reaches the dashboard with no dead end.
+
+**Prod Phase 2 exit:** domain + SEO + legal + pricing + support all production-ready.
+
+## Prod Phase 3 — Launch & post-launch
+
+- 🟡 **P3.1 Soft launch to waitlist.** Invite the waitlist in batches; watch error/billing/sync dashboards. **Acceptance:** stable for 2 weeks at batch volume.
+- 🟡 **P3.2 Monitor health.** Track error rate, billing transitions (`past_due`/churn), wearable sync `error`/`expired`, credit burn. **Acceptance:** dashboards reviewed daily; alerts on spikes.
+- 🟡 **P3.3 Iterate on top feedback.** Triage beta/soft-launch feedback; ship the top fixes. **Acceptance:** top-3 issues addressed.
+- 🟡 **P3.4 Public launch / marketing push.** Enable Google Ads (in-platform Marketing flow) + social posts; remove any remaining "beta" framing. **Acceptance:** public launch live; metrics stable.
+
+**Prod Phase 3 exit:** 2 weeks stable at public volume; error rate < 1%; churn monitored; marketing live.
+
+---
+
+## Critical path
+
+```
+Beta Phase 0 (stability)
+   └─► Beta Phase 1 (S5 RLS + Stripe cleanup + access codes)
+         └─► Beta Phase 2 (COROS prod validation + honesty sweep)
+               └─► Beta exit (10 testers, 7 crash-free days)
+                     └─► Prod Phase 1 (S6 IP, CI gate, E2E QA)
+                           └─► Prod Phase 2 (domain, SEO, legal, pricing)
+                                 └─► Prod Phase 3 (soft launch → public launch)
+```
+
+S4 ownership stamp, observability (B3), and CI gate (P1.2) run in parallel and can trail the critical path by one phase. **S5 (health-data RLS + backfill) must land before any broad marketing push** — it's the single biggest privacy gap.
+
+## Risk register
+
+| Risk | Impact | Mitigation |
+|---|---|---|
+| Preview-sandbox 403 blocks automated E2E | QA slows | QA by hand on published app; retry platform tooling each turn |
+| Builder-plan function limit (403) | Can't ship new backend functions | Upgrade plan or consolidate functions (B0.7) |
+| Grandfathered $19 subscribers | Incorrect billing | Check active subscriptions before deleting the archived price (B1.3) |
+| Garmin/Strava credential dependency | Sync features stay gated | Keep Coming Soon; no promise of availability (B2.4) |
+| RLS backfill race on publish | Blank dashboards | Backfill before publish; admin bypass guarantees owner access (B1.2) |
+| Crown-jewel IP exposed in client bundle | Competitor copy | Move to backend functions (P1.1) |
