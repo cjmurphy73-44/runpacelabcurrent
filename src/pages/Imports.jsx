@@ -11,6 +11,8 @@ import WebhookSyncPanel from "@/components/imports/WebhookSyncPanel";
 import LabResultsImport from "@/components/imports/LabResultsImport";
 import ManualWorkoutModal from "@/components/workout/ManualWorkoutModal";
 import OnboardingFlow from "@/components/dashboard/OnboardingFlow";
+import { useAuth } from "@/lib/AuthContext";
+import { ensureProfileLinked } from "@/lib/profileLinkage";
 import GarminIntegration from "@/components/settings/GarminIntegration";
 import StravaIntegration from "@/components/settings/StravaIntegration";
 import CorosIntegration from "@/components/settings/CorosIntegration";
@@ -18,6 +20,7 @@ import SectionHeading from "@/components/layout/SectionHeading";
 
 export default function Imports() {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [athlete, setAthlete] = useState(null);
   const [loading, setLoading] = useState(true);
   const [manualOpen, setManualOpen] = useState(false);
@@ -26,13 +29,15 @@ export default function Imports() {
     (async () => {
       try {
         const res = await base44.functions.invoke("fetchAthleteProfile", {});
-        setAthlete(res.data?.athlete || null);
+        const profile = res.data?.athlete || null;
+        if (profile) await ensureProfileLinked(user, profile);
+        setAthlete(profile);
       } catch {
         setAthlete(null);
       }
       setLoading(false);
     })();
-  }, []);
+  }, [user]);
 
   if (loading) {
     return (

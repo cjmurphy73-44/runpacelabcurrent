@@ -2,6 +2,7 @@ import React, { useEffect, useState, useCallback } from "react";
 import { Link } from "react-router-dom";
 import { base44 } from "@/api/base44Client";
 import OnboardingFlow from "@/components/dashboard/OnboardingFlow";
+import { ensureProfileLinked } from "@/lib/profileLinkage";
 import FitnessStats from "@/components/dashboard/FitnessStats";
 import OcrDropzone from "@/components/imports/OcrDropzone";
 import RecentWorkouts from "@/components/dashboard/RecentWorkouts";
@@ -79,7 +80,9 @@ export default function Home() {
         const profiles = await base44.entities.AthleteProfile.filter({ created_by_id: user.id });
         if (cancelled) return;
         if (profiles.length > 0) {
-          await loadAthleteData(profiles[0].id);
+          const profile = profiles[0];
+          await ensureProfileLinked(user, profile);
+          await loadAthleteData(profile.id);
         }
       } catch (err) {
         console.error("Dashboard data load failed:", err);

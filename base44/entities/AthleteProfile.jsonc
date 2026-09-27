@@ -158,6 +158,9 @@
     "read": {
       "$or": [
         {
+          "created_by_id": "{{user.id}}"
+        },
+        {
           "id": "{{user.data.athlete_profile_id}}"
         },
         {
