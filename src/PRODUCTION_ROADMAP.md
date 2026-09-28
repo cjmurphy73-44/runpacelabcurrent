@@ -35,7 +35,7 @@ _Status legend: ✅ done · 🟡 in progress · 🔴 open · ⛔ blocked._
 _Land before any tester is invited. Every item is a launch blocker._
 
 - 🔴 **B0.1 Fix TrainingPlan 500.** Reproduce on the live `/plan` route; read the failing request/response in `TrainingPlan.jsx`; fix the data shape or backend call. **Acceptance:** `/plan` loads for an athlete with and without an existing plan.
-- 🔴 **B0.2 Per-widget error boundaries.** Wrap each dashboard widget in `PageErrorBoundary`/`WipWrapper` so one bad card never blanks the dashboard; surface the exception via `logErrorToAirtable`. **Acceptance:** a forced widget throw shows a graceful fallback card, not a blank screen.
+- 🟡 **B0.2 Per-widget error boundaries.** ✅ Implemented — added `WidgetBoundary` (`src/components/common/WidgetBoundary.jsx`) and wrapped the 12 unguarded dashboard widgets in `Home.jsx`; each crash is reported to `logErrorToAirtable` keyed by widget name. Pending: live forced-throw verification (preview sandbox 403). **Acceptance:** a forced widget throw shows a graceful fallback card, not a blank screen.
 - 🔴 **B0.3 `LoadStatusCards` NaN.** Guard divide-by-zero and missing fields; render real numbers or `—`. **Acceptance:** no `NaN` in console or UI for a fresh athlete with zero history.
 - 🔴 **B0.4 Mobile Physiology Lab nav.** Fix the Tools dropdown nested-trigger tap target on mobile. **Acceptance:** Physiology Lab opens from the Tools menu on a 390px viewport.
 - 🟡 **B0.5 Service-layer adapter audit.** Reconcile `src/services/adapters/base44/index.ts` with the live SDK method shapes and the connector `getConnection` accessor; fix runtime errors. **Acceptance:** no adapter runtime errors in console across Home, Imports, Settings.

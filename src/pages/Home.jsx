@@ -33,6 +33,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from "@/components/ui/accordion";
 import WipWrapper from "@/components/common/WipWrapper";
+import WidgetBoundary from "@/components/common/WidgetBoundary";
 import WorkoutLogWizard from "@/components/workout/WorkoutLogWizard";
 import CalibrationMeter from "@/components/dashboard/CalibrationMeter";
 import OnboardingEmptyState from "@/components/dashboard/OnboardingEmptyState";
@@ -187,9 +188,9 @@ export default function Home() {
         {/* 1 — Today's snapshot */}
         <section className="space-y-4">
           <SectionHeading index="01" title="Today's snapshot" description="Your form, readiness and prescribed session for today." icon={Sun} />
-          <PhysiologyStrip athlete={athlete} />
-          <CalibrationMeter athlete={athlete} athleteId={athlete.id} />
-          <TodaySessionCard athleteId={athlete.id} />
+          <WidgetBoundary name="Physiology strip"><PhysiologyStrip athlete={athlete} /></WidgetBoundary>
+          <WidgetBoundary name="Calibration meter"><CalibrationMeter athlete={athlete} athleteId={athlete.id} /></WidgetBoundary>
+          <WidgetBoundary name="Today's session"><TodaySessionCard athleteId={athlete.id} /></WidgetBoundary>
         </section>
 
         {/* 2 — Load & Form (deep — collapses in Simplified mode) */}
@@ -199,8 +200,8 @@ export default function Home() {
           icon={TrendingUp}
           deep
         >
-          <LoadFatigueChart completedSessions={loadTimelineWorkouts} plannedWorkouts={plannedWorkouts} />
-          <HorizonStrip athleteId={athlete.id} />
+          <WidgetBoundary name="Load & fatigue chart"><LoadFatigueChart completedSessions={loadTimelineWorkouts} plannedWorkouts={plannedWorkouts} /></WidgetBoundary>
+          <WidgetBoundary name="Horizon strip"><HorizonStrip athleteId={athlete.id} /></WidgetBoundary>
         </CollapsibleSection>
 
         {/* 3 — Recent activity */}
@@ -221,10 +222,10 @@ export default function Home() {
               </div>
             }
           />
-          <CoachBriefing athlete={athlete} />
+          <WidgetBoundary name="Coach briefing"><CoachBriefing athlete={athlete} /></WidgetBoundary>
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <OcrDropzone athleteId={athlete.id} onSaved={() => loadAthleteData(athlete.id)} />
-            <RecentWorkouts workouts={workouts} athlete={athlete} />
+            <WidgetBoundary name="Quick import"><OcrDropzone athleteId={athlete.id} onSaved={() => loadAthleteData(athlete.id)} /></WidgetBoundary>
+            <WidgetBoundary name="Recent workouts"><RecentWorkouts workouts={workouts} athlete={athlete} /></WidgetBoundary>
           </div>
         </section>
 
@@ -234,7 +235,7 @@ export default function Home() {
           subtitle="Reconciliation across your recent sessions"
           deep
         >
-          <PlannedActualReconciliation athleteId={athlete.id} />
+          <WidgetBoundary name="Planned vs actual"><PlannedActualReconciliation athleteId={athlete.id} /></WidgetBoundary>
         </CollapsibleSection>
 
         {/* 4 — Coach notes (collapsible) */}
@@ -245,8 +246,8 @@ export default function Home() {
           deep
         >
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
-            <CoachAdvice />
-            <CoachMessageFeed messages={messages} />
+            <WidgetBoundary name="Coach advice"><CoachAdvice /></WidgetBoundary>
+            <WidgetBoundary name="Coach message feed"><CoachMessageFeed messages={messages} /></WidgetBoundary>
           </div>
         </CollapsibleSection>
 
@@ -257,7 +258,7 @@ export default function Home() {
           icon={HeartPulse}
           deep
         >
-          <AISynthesisCard athleteId={athlete.id} />
+          <WidgetBoundary name="AI synthesis"><AISynthesisCard athleteId={athlete.id} /></WidgetBoundary>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
             <WipWrapper featureName="Readiness Score">
               <ReadinessScoreCard />
