@@ -17,8 +17,15 @@ function createEntityRepo(entityName: string) {
   return {
     async list(filters = {}) {
       if (!entity) return [];
-      const res = await entity.list(filters);
-      return res?.data || res || [];
+      // SDK list(sort, limit) does NOT accept a filter object — passing one would
+      // be silently treated as the sort arg. Fetch all (up to the default page)
+      // and filter client-side to honour the contract's list(filters) shape.
+      const res = await entity.list();
+      let items = res?.data || res || [];
+      if (filters && Object.keys(filters).length > 0 && items.length > 0) {
+        items = items.filter(item => Object.entries(filters).every(([key, val]) => item[key] === val));
+      }
+      return items;
     },
     async filter(filters = {}, sort?: string, limit?: number) {
       if (!entity) return [];
@@ -30,8 +37,9 @@ function createEntityRepo(entityName: string) {
           console.warn(`Native entity.filter failed for ${entityName}, falling back to list:`, err);
         }
       }
-      // Fallback to list if entity doesn't have native filter method or it threw
-      const res = await entity.list(filters);
+      // Fallback to list if entity doesn't have native filter method or it threw.
+      // SDK list() takes no filter arg; fetch all then filter/sort client-side.
+      const res = await entity.list();
       let items = res?.data || res || [];
       // Client-side filtering if entity.list ignores filters
       if (filters && Object.keys(filters).length > 0 && items.length > 0) {
@@ -94,16 +102,21 @@ export const base44WorkoutSessionRepo: WorkoutSessionRepository = {
   },
   async updateMany(ids: string[], dataArray: any[]) {
     const entity = base44.entities['WorkoutSession'];
-    if (entity && typeof entity.updateMany === 'function') {
-      const res = await entity.updateMany(ids, dataArray);
+    // SDK updateMany(query, $set) is for "one change to all matches", not per-record
+    // patches. Per-record different updates use bulkUpdate([{id, ...patch}]).
+    if (entity && typeof entity.bulkUpdate === 'function') {
+      const updates = ids.map((id, i) => ({ id, ...(dataArray[i] || dataArray[0] || {}) }));
+      const res = await entity.bulkUpdate(updates);
       return res?.data || res;
     }
     return Promise.all(ids.map((id, index) => entity.update(id, dataArray[index] || dataArray[0])));
   },
   async deleteMany(ids: string[]) {
     const entity = base44.entities['WorkoutSession'];
+    // SDK deleteMany(query) expects a filter, not an ids array. Wrap ids as an
+    // $in query so the right records are removed server-side.
     if (entity && typeof entity.deleteMany === 'function') {
-      await entity.deleteMany(ids);
+      await entity.deleteMany({ id: { $in: ids } });
       return true;
     }
     await Promise.all(ids.map(id => entity.delete(id)));
