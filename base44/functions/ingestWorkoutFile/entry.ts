@@ -3,6 +3,7 @@ import { parseFitWithLaps, parseTcx, parseCsv, tryParseSummaryCsv, summarizeStre
 import { calcTrimp, calcRTSS, computeNgpSeries, computeDecouplingAndEF } from '../../shared/physiology.ts';
 import { reconcileStreams, recomputePhysiology, dominantFileType } from '../../shared/streamReconcile.ts';
 import { assertSafeFileUrl } from '../../shared/urlGuard.ts';
+import { assertOwnsAthlete } from '../../shared/ownership.ts';
 
 const MAX_STREAM_SAMPLES = 3600; // cap stored streams (~1hr @1Hz) to avoid oversized records
 
@@ -50,6 +51,8 @@ Deno.serve(async (req) => {
       if (summaryRows) {
         const athlete = await base44.entities.AthleteProfile.get(athlete_id);
         if (!athlete) return Response.json({ error: 'Athlete profile not found' }, { status: 404 });
+        if (!(await assertOwnsAthlete(base44, user, athlete_id))) return Response.json({ error: 'Not your athlete profile' }, { status: 403 });
+
         const restHr = athlete.resting_hr || 60;
         const profileMaxHr = athlete.max_heart_rate;
         const sessionSport = sport || 'running';
@@ -133,6 +136,7 @@ Deno.serve(async (req) => {
 
     const athlete = await base44.entities.AthleteProfile.get(athlete_id);
     if (!athlete) return Response.json({ error: 'Athlete profile not found' }, { status: 404 });
+    if (!(await assertOwnsAthlete(base44, user, athlete_id))) return Response.json({ error: 'Not your athlete profile' }, { status: 403 });
 
     const restHr = athlete.resting_hr || 60;
     const maxHr = athlete.max_heart_rate || parsed.max_hr || 190;

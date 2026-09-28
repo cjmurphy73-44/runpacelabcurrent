@@ -2,6 +2,7 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
 import fitParser from 'npm:fit-file-parser';
 import { TelemetryParser } from '../../shared/telemetryParser.ts';
 import { assertSafeFileUrl } from '../../shared/urlGuard.ts';
+import { assertOwnsAthlete } from '../../shared/ownership.ts';
 
 const GARMIN_EPOCH_OFFSET_SEC = 631065600; // seconds between Unix epoch and FIT/Garmin epoch (1989-12-31)
 const VALID_SPORTS = ['running', 'cycling', 'swimming', 'strength', 'triathlon', 'other'];
@@ -371,6 +372,7 @@ Deno.serve(async (req) => {
 
     const athlete = await base44.entities.AthleteProfile.get(athlete_id);
     if (!athlete) return Response.json({ error: 'Athlete profile not found' }, { status: 404 });
+    if (!(await assertOwnsAthlete(base44, user, athlete_id))) return Response.json({ error: 'Not your athlete profile' }, { status: 403 });
 
     const restHr = athlete.resting_hr || 60;
     const maxHr = athlete.max_heart_rate || 190;
