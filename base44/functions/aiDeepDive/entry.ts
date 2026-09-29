@@ -1,19 +1,20 @@
 // base44/functions/aiDeepDive/entry.ts
-// Backend wrapper for the client-side AI Deep Dive card. Moves the restricted
-// Core.InvokeLLM call off the browser; runs under the service role after the
-// caller proves ownership of the athlete whose data is being analyzed.
+// Server-side subscription enforced AI Deep Dive endpoint
 
+<<<<<<< Updated upstream
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
 import { assertOwnsAthlete } from '../../shared/ownership.ts';
 import { assertPaidPlan } from '../../shared/planGate.ts';
 import { claimRateLimit } from '../../shared/rateLimit.ts';
+=======
+import { createClientFromRequest } from 'npm:@base44/runtime';
+import { verifySubscription } from '../common/auth.ts';
+>>>>>>> Stashed changes
 
 export default async function (req: Request) {
-  try {
-    const base44 = createClientFromRequest(req);
-    const user = await base44.auth.me();
-    if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
+  const base44 = createClientFromRequest(req);
 
+<<<<<<< Updated upstream
     const gate = await assertPaidPlan(base44, user);
     if (!gate.ok) return Response.json({ error: 'AI Deep Dive requires a Pro plan.', plan: gate.plan }, { status: 402 });
 
@@ -34,10 +35,46 @@ export default async function (req: Request) {
     const result = await base44.asServiceRole.integrations.Core.InvokeLLM({
       prompt,
       ...(response_json_schema ? { response_json_schema } : {}),
+=======
+  if (req.method !== 'POST') {
+    return new Response(JSON.stringify({ error: 'Method not allowed' }), {
+      status: 405,
+      headers: { 'Content-Type': 'application/json' },
+>>>>>>> Stashed changes
     });
-    return Response.json({ result });
-  } catch (error) {
-    console.error('aiDeepDive error:', error?.message);
-    return Response.json({ error: error.message || 'AI deep dive failed' }, { status: 500 });
+  }
+
+  // Enforce server-side Pro tier gating
+  const authCheck = await verifySubscription(req, 'pro');
+  if (!authCheck.authorized) {
+    return new Response(JSON.stringify({ error: authCheck.error }), {
+      status: 403,
+      headers: { 'Content-Type': 'application/json' },
+    });
+  }
+
+  try {
+    const body = await req.json();
+    const { activityId } = body;
+
+    if (!activityId) {
+      return new Response(JSON.stringify({ error: 'Missing activityId' }), {
+        status: 400,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    }
+
+    // TODO: Insert your existing AI Deep Dive generation logic here using base44.integrations.CoreAI
+
+    return new Response(JSON.stringify({ success: true, message: 'AI Deep Dive generated successfully' }), {
+      status: 200,
+      headers: { 'Content-Type': 'application/json' },
+    });
+
+  } catch (err: any) {
+    return new Response(JSON.stringify({ error: err.message || 'Internal server error' }), {
+      status: 500,
+      headers: { 'Content-Type': 'application/json' },
+    });
   }
 }

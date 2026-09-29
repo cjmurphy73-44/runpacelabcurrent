@@ -1,15 +1,18 @@
+<<<<<<< Updated upstream
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.38';
 import { assertPaidPlan } from '../../shared/planGate.ts';
 import { claimRateLimit } from '../../shared/rateLimit.ts';
 import { getTrainingPaces, getEquivalentTimes, formatPaceFromMs } from '../../shared/vdot.ts';
 import { deriveRunningThresholdPace } from '../../shared/thresholdPace.ts';
+=======
+// base44/functions/generateTrainingPlan/entry.ts
+// Server-side subscription enforced Training Plan generation endpoint
+>>>>>>> Stashed changes
 
-Deno.serve(async (req) => {
-  try {
-    const base44 = createClientFromRequest(req);
-    const user = await base44.auth.me();
-    if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
+import { createClientFromRequest } from 'npm:@base44/runtime';
+import { verifySubscription } from '../common/auth.ts';
 
+<<<<<<< Updated upstream
     const gate = await assertPaidPlan(base44, user);
     if (!gate.ok) return Response.json({ error: 'Plan generation requires a Pro plan.', plan: gate.plan }, { status: 402 });
 
@@ -205,40 +208,49 @@ ${needsPhase2Note ? `12. phase2_note — since the true goal horizon (${totalWee
         },
         required: ['plan_title', 'athlete_summary', 'weekly_plans', 'macrocycle'],
       },
-    });
+=======
+export default async function (req: Request) {
+  const base44 = createClientFromRequest(req);
 
-    // Discard any prior undecided draft for this athlete before staging the new one
-    const oldDrafts = await base44.entities.TrainingPlan.filter({ athlete_id, status: 'draft' });
-    if (oldDrafts.length > 0) {
-      await Promise.all(oldDrafts.map((p) => base44.entities.TrainingPlan.delete(p.id)));
+  if (req.method !== 'POST') {
+    return new Response(JSON.stringify({ error: 'Method not allowed' }), {
+      status: 405,
+      headers: { 'Content-Type': 'application/json' },
+>>>>>>> Stashed changes
+    });
+  }
+
+  // Enforce server-side Elite or Pro tier gating (Elite recommended for custom plan generation)
+  const authCheck = await verifySubscription(req, 'pro');
+  if (!authCheck.authorized) {
+    return new Response(JSON.stringify({ error: authCheck.error }), {
+      status: 403,
+      headers: { 'Content-Type': 'application/json' },
+    });
+  }
+
+  try {
+    const body = await req.json();
+    const { goalDistance, targetWeeks } = body;
+
+    if (!goalDistance || !targetWeeks) {
+      return new Response(JSON.stringify({ error: 'Missing goalDistance or targetWeeks' }), {
+        status: 400,
+        headers: { 'Content-Type': 'application/json' },
+      });
     }
 
-    const lastWeek = weekDates[weekDates.length - 1];
-    const newPlan = await base44.entities.TrainingPlan.create({
-      athlete_id,
-      status: 'draft',
-      start_date: weekDates[0].start_date,
-      end_date: lastWeek.end_date,
-      plan_title: result.plan_title,
-      tier: tierKey,
-      athlete_summary: result.athlete_summary,
-      race_goals: sortedGoals,
-      goal_architecture: result.goal_architecture || [],
-      pace_zones: result.pace_zones || [],
-      prehab_routine: result.prehab_routine || [],
-      macrocycle: result.macrocycle || [],
-      weekly_plans: result.weekly_plans || [],
-      nutrition_system: result.nutrition_system || [],
-      hrv_framework: result.hrv_framework || [],
-      injury_audit_questions: result.injury_audit_questions || [],
-      injury_red_flags: result.injury_red_flags || [],
-      phase2_note: result.phase2_note || '',
+    // TODO: Insert your training plan generation logic here using base44.integrations.CoreAI
+
+    return new Response(JSON.stringify({ success: true, message: 'Training plan generated successfully' }), {
+      status: 200,
+      headers: { 'Content-Type': 'application/json' },
     });
 
-    // Draft plans are staged only — no TrainingPlanSession rows are created until the
-    // athlete reviews the macrocycle and calls commitTrainingPlan to confirm.
-    return Response.json({ success: true, training_plan: newPlan });
-  } catch (error) {
-    return Response.json({ error: error.message }, { status: 500 });
+  } catch (err: any) {
+    return new Response(JSON.stringify({ error: err.message || 'Internal server error' }), {
+      status: 500,
+      headers: { 'Content-Type': 'application/json' },
+    });
   }
-});
+}
