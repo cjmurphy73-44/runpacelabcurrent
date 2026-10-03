@@ -8,6 +8,7 @@
 
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.44';
 import { reportError } from '../../shared/errorReport.ts';
+import { claimRateLimit } from '../../shared/rateLimit.ts';
 
 const VALID_PLANS = ['pro', 'unlimited', 'coach_pro'];
 const CODE_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // no ambiguous chars
@@ -36,6 +37,8 @@ export default async function (req) {
       const expires_at = body.expires_at;
       if (!expires_at || isNaN(Date.parse(expires_at))) return Response.json({ error: 'Invalid expiry' }, { status: 400 });
       const code = (body.code || randomCode()).trim().toUpperCase();
+      // Enforce a minimum length so admin-supplied codes can't be short/guessable.
+      if (code.length < 20) return Response.json({ error: 'Code must be at least 20 characters' }, { status: 400 });
       const existing = await base44.asServiceRole.entities.AccessCode.filter({ code });
       if (existing.length > 0) return Response.json({ error: 'Code already exists' }, { status: 409 });
       const rec = await base44.asServiceRole.entities.AccessCode.create({
@@ -56,6 +59,11 @@ export default async function (req) {
     if (action === 'redeem') {
       const user = await base44.auth.me();
       if (!user) return Response.json({ error: 'Sign in to redeem a code' }, { status: 401 });
+      // Rate-limit brute-force attempts: 10 redeem tries per user per hour. Once the limit is
+      // hit, return a generic message that does not distinguish valid from invalid codes.
+      if (!claimRateLimit(`redeem:${user.id}`, 10, 3600 * 1000)) {
+        return Response.json({ error: 'Too many attempts. Please try again later.' }, { status: 429 });
+      }
       const code = (body.code || '').trim().toUpperCase();
       if (!code) return Response.json({ error: 'Enter a code' }, { status: 400 });
       const found = await base44.asServiceRole.entities.AccessCode.filter({ code });

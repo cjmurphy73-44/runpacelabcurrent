@@ -22,6 +22,14 @@ export default async function (req: Request) {
       return Response.json({ error: 'Forbidden' }, { status: 403 });
     }
 
+    // Verify the workout belongs to this athlete before evaluating: runPostWorkoutEvaluation
+    // fetches the session via asServiceRole (bypassing RLS) and links feedback onto it, so a
+    // caller supplying another athlete's workout_id would otherwise mutate a victim's session.
+    const workout = await base44.asServiceRole.entities.WorkoutSession.get(workout_id).catch(() => null);
+    if (!workout || workout.athlete_id !== athlete_id) {
+      return Response.json({ error: 'Forbidden' }, { status: 403 });
+    }
+
     const result = await runPostWorkoutEvaluation(base44, workout_id, athlete_id);
     return Response.json(result, { headers: { 'Content-Type': 'application/json' } });
   } catch (error) {

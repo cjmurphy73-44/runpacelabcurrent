@@ -674,10 +674,15 @@ async function handleSyncRecovery(base44) {
   }
 }
 
-// Scheduled (workflow) entry point: refresh tokens + sync every connected athlete. No user
-// session — runs entirely as service role. Per-athlete try/catch so one bad connection never
-// aborts the loop; refresh-token rotation is persisted by refreshIfNeeded.
+// Scheduled (workflow) entry point: refresh tokens + sync every connected athlete. Admin-only:
+// the scheduled workflow must run under an admin/service identity so it carries a session;
+// anonymous or non-admin callers are rejected to prevent on-demand cross-tenant token use.
+// Per-athlete try/catch so one bad connection never aborts the loop; refresh-token rotation
+// is persisted by refreshIfNeeded.
 async function handleSyncAll(base44) {
+  const user = await base44.auth.me().catch(() => null);
+  if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
+  if (user.role !== 'admin') return Response.json({ error: 'Admin only' }, { status: 403 });
   const conns = await base44.asServiceRole.entities.CorosConnection.filter({ status: 'connected' });
   const results: any[] = [];
   for (const conn of conns) {

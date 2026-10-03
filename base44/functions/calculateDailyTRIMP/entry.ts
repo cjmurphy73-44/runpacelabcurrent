@@ -1,4 +1,5 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
+import { assertOwnsAthlete } from '../../shared/ownership.ts';
 
 Deno.serve(async (req) => {
   try {
@@ -9,6 +10,12 @@ Deno.serve(async (req) => {
     const { athlete_id, date } = await req.json();
     if (!athlete_id || !date) {
       return Response.json({ error: 'athlete_id and date are required' }, { status: 400 });
+    }
+
+    // Ownership gate: prevent a caller from forging a DailyMetrics row against another
+    // athlete's id (the no-row create path only checks created_by_id, not athlete_id).
+    if (!(await assertOwnsAthlete(base44, user, athlete_id))) {
+      return Response.json({ error: 'Forbidden' }, { status: 403 });
     }
 
     const sessions = await base44.entities.WorkoutSession.filter({ athlete_id, date });

@@ -286,11 +286,12 @@ async function handleSync(base44: any) {
 
 // Comprehensive hourly mirror. Per-table resilience: each table is synced in its
 // own try/catch so a failure on one table does not abort the others or the run.
-// Permissive auth: authenticated callers must be admin, but scheduled-workflow
-// calls (no user session) are allowed so the cron can drive it.
+// Admin-only: the scheduled workflow must run under an admin/service identity so it
+// carries a session; anonymous callers are rejected (no 'no user = allowed' fallthrough).
 async function handleAppMirror(base44: any) {
   const user = await base44.auth.me().catch(() => null);
-  if (user && user.role !== 'admin') return Response.json({ error: 'Admin only' }, { status: 403 });
+  if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
+  if (user.role !== 'admin') return Response.json({ error: 'Admin only' }, { status: 403 });
 
   let token: string;
   try {

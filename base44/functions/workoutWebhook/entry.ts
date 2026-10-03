@@ -12,6 +12,8 @@ import { assertSafeFileUrl } from '../../shared/urlGuard.ts';
 import { recomputeCTLATLTSB } from '../../shared/ctlRecalc.ts';
 import { runPostWorkoutEvaluation } from '../../shared/postWorkoutAI.ts';
 import { reportError } from '../../shared/errorReport.ts';
+import { claimRateLimit } from '../../shared/rateLimit.ts';
+import { constantTimeEqual } from '../../shared/crypto.ts';
 
 function randomKey() {
   const bytes = new Uint8Array(24);
@@ -154,6 +156,31 @@ async function handleGetKey(req, base44) {
 
 function env(name) { try { return Deno.env.get(name) || ''; } catch { return ''; } }
 
+// Verify Strava's X-Strava-Signature header: format "t=<unix-seconds>,v1=<hex-hmac-sha256>"
+// where the HMAC is keyed by STRAVA_CLIENT_SECRET and computed over "<timestamp>.<rawBody>".
+// Rejects on malformed header, >5min timestamp skew, or signature mismatch (constant-time).
+async function verifyStravaSignature(header: string, rawBody: string, clientSecret: string): Promise<boolean> {
+  if (!clientSecret || !header) return false;
+  const parts: Record<string, string> = {};
+  for (const piece of header.split(',')) {
+    const i = piece.indexOf('=');
+    if (i !== -1) parts[piece.slice(0, i)] = piece.slice(i + 1);
+  }
+  const ts = parts['t'];
+  const v1 = parts['v1'];
+  if (!ts || !v1) return false;
+  const tsNum = parseInt(ts, 10);
+  if (isNaN(tsNum) || Math.abs(Date.now() / 1000 - tsNum) > 300) return false;
+  try {
+    const key = await crypto.subtle.importKey('raw', new TextEncoder().encode(clientSecret), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
+    const sig = await crypto.subtle.sign('HMAC', key, new TextEncoder().encode(`${ts}.${rawBody}`));
+    const expected = Array.from(new Uint8Array(sig)).map((b) => b.toString(16).padStart(2, '0')).join('');
+    return constantTimeEqual(v1, expected);
+  } catch {
+    return false;
+  }
+}
+
 async function refreshStravaToken(base44, conn) {
   const now = Date.now();
   const expiresAt = conn.token_expires_at ? Date.parse(conn.token_expires_at) : 0;
@@ -253,21 +280,40 @@ Deno.serve(async (req) => {
     base44 = createClientFromRequest(req);
     const u = new URL(req.url);
 
-    // Strava subscription verification handshake (no key needed; Strava sends GET with hub.challenge).
+    // Strava subscription verification handshake. The verify token is required unconditionally
+    // so an unset STRAVA_VERIFY_TOKEN can't be bypassed to echo an arbitrary challenge.
     const hubChallenge = u.searchParams.get('hub.challenge');
     if (req.method === 'GET' && hubChallenge) {
       const verifyToken = env('STRAVA_VERIFY_TOKEN');
-      if (verifyToken && u.searchParams.get('hub.verify_token') !== verifyToken) {
-        return Response.json({ error: 'Invalid verify token' }, { status: 403 });
+      if (!verifyToken) return Response.json({ error: 'Strava verify token not configured' }, { status: 401 });
+      if (!constantTimeEqual(u.searchParams.get('hub.verify_token') || '', verifyToken)) {
+        return Response.json({ error: 'Invalid verify token' }, { status: 401 });
       }
       return Response.json({ 'hub.challenge': hubChallenge });
     }
 
-    const body = await req.json().catch(() => ({}));
+    // Read the raw body once so the Strava signature (an HMAC over the raw bytes) can be
+    // verified, then parse it for routing.
+    const raw = await req.text().catch(() => '');
+    let body: any = {};
+    try { body = raw ? JSON.parse(raw) : {}; } catch { body = {}; }
 
     // Strava webhook event POST (no API key; the subscription delivers to this public callback).
     // { object_type, object_id, aspect_type, owner_id, updates, event_time }
     if (body.object_type && body.object_id != null && body.aspect_type) {
+      // Per-athlete rate limiting throttles forged/replayed event floods.
+      const ownerId = String(body.owner_id ?? 'unknown');
+      if (!claimRateLimit(`strava:${ownerId}`, 60, 3600 * 1000)) {
+        return Response.json({ error: 'Rate limit exceeded' }, { status: 429 });
+      }
+      // Validate Strava's X-Strava-Signature when present (t=<ts>,v1=<hmac> over the raw body,
+      // keyed by STRAVA_CLIENT_SECRET). Strava does not sign every event by default, so the
+      // signature is enforced when provided and the rate limit + owner-resolution gate otherwise.
+      const sigHeader = req.headers.get('x-strava-signature');
+      if (sigHeader) {
+        const ok = await verifyStravaSignature(sigHeader, raw, env('STRAVA_CLIENT_SECRET'));
+        if (!ok) return Response.json({ error: 'Invalid signature' }, { status: 401 });
+      }
       return await handleStravaEvent(base44, body);
     }
 

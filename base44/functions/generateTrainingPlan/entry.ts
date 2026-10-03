@@ -1,18 +1,22 @@
-<<<<<<< Updated upstream
+// base44/functions/generateTrainingPlan/entry.ts
+// Server-side, plan-gated training-plan generation. The frontend FeatureGate only hides
+// the button; without this server-side check a free-tier user could call the function
+// directly via the SDK and burn a long Core InvokeLLM run + plan write. Generates a
+// draft TrainingPlan (commitTrainingPlan materializes sessions + flips it to active).
+
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.38';
 import { assertPaidPlan } from '../../shared/planGate.ts';
 import { claimRateLimit } from '../../shared/rateLimit.ts';
 import { getTrainingPaces, getEquivalentTimes, formatPaceFromMs } from '../../shared/vdot.ts';
 import { deriveRunningThresholdPace } from '../../shared/thresholdPace.ts';
-=======
-// base44/functions/generateTrainingPlan/entry.ts
-// Server-side subscription enforced Training Plan generation endpoint
->>>>>>> Stashed changes
 
-import { createClientFromRequest } from 'npm:@base44/runtime';
-import { verifySubscription } from '../common/auth.ts';
+Deno.serve(async (req) => {
+  try {
+    const base44 = createClientFromRequest(req);
+    const user = await base44.auth.me();
+    if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
 
-<<<<<<< Updated upstream
+    // Server-side subscription enforcement (the hard boundary).
     const gate = await assertPaidPlan(base44, user);
     if (!gate.ok) return Response.json({ error: 'Plan generation requires a Pro plan.', plan: gate.plan }, { status: 402 });
 
@@ -22,15 +26,15 @@ import { verifySubscription } from '../common/auth.ts';
       return Response.json({ error: 'Rate limit reached for plan generation. Try again later.' }, { status: 429 });
     }
 
-    const { athlete_id, race_goals, long_term_goal } = await req.json();
+    const { athlete_id, race_goals, long_term_goal } = await req.json().catch(() => ({}));
     if (!athlete_id) return Response.json({ error: 'athlete_id is required' }, { status: 400 });
 
     const athlete = await base44.entities.AthleteProfile.get(athlete_id);
     if (!athlete) return Response.json({ error: 'Athlete profile not found' }, { status: 404 });
 
     const recentSessions = await base44.entities.WorkoutSession.filter({ athlete_id }, '-date', 500);
-    // Baseline-test enrichment is optional — the PhysiologicalBaselines entity may not be configured
-    // for this app, so a missing schema shouldn't fail the whole plan generation.
+    // Baseline-test enrichment is optional — the PhysiologicalBaselines entity may not be
+    // configured for this app, so a missing schema shouldn't fail the whole plan generation.
     let latestBaseline = null;
     try {
       const baselines = await base44.entities.PhysiologicalBaselines.filter({ athlete_id }, '-recorded_date', 1);
@@ -44,9 +48,9 @@ import { verifySubscription } from '../common/auth.ts';
     const oldestDate = totalSessions > 0 ? recentSessions[recentSessions.length - 1].date : null;
     const weeksOfData = oldestDate ? Math.max(1, Math.round((Date.now() - new Date(oldestDate).getTime()) / (7 * 86400000))) : 0;
 
-    // Derive VDOT training paces, equivalent race times, and the reconciled
-    // running threshold pace server-side from the authoritative shared science
-    // modules so the LLM receives validated numbers rather than guessing.
+    // Derive VDOT training paces, equivalent race times, and the reconciled running
+    // threshold pace server-side from the authoritative shared science modules so the
+    // LLM receives validated numbers rather than guessing.
     let trainingPaces = null, equivalentTimes = null, thresholdPace = null;
     try {
       const vdot = athlete.vdot_estimate;
@@ -126,7 +130,7 @@ STRUCTURE REQUIRED (keep prose tight — this is a working plan, not an essay):
 11. injury_red_flags — symptoms meaning stop immediately and seek assessment.
 ${needsPhase2Note ? `12. phase2_note — since the true goal horizon (${totalWeeks} weeks) extends beyond this ${cappedWeeks}-week block, a short narrative on what comes next and that it will be recalibrated after this block's race result.` : '12. phase2_note — empty string, this plan already covers the full goal horizon.'}`;
 
-    const result = await base44.integrations.Core.InvokeLLM({
+    const plan = await base44.asServiceRole.integrations.Core.InvokeLLM({
       prompt,
       response_json_schema: {
         type: 'object',
@@ -208,49 +212,35 @@ ${needsPhase2Note ? `12. phase2_note — since the true goal horizon (${totalWee
         },
         required: ['plan_title', 'athlete_summary', 'weekly_plans', 'macrocycle'],
       },
-=======
-export default async function (req: Request) {
-  const base44 = createClientFromRequest(req);
-
-  if (req.method !== 'POST') {
-    return new Response(JSON.stringify({ error: 'Method not allowed' }), {
-      status: 405,
-      headers: { 'Content-Type': 'application/json' },
->>>>>>> Stashed changes
     });
+
+    // Persist as a draft so the athlete can review on /plan, then commit (commitTrainingPlan
+    // materializes TrainingPlanSession rows and flips the status to active).
+    const startDate = weekDates[0]?.start_date || toDateStr(today);
+    const endDate = weekDates[weekDates.length - 1]?.end_date || toDateStr(today);
+    const trainingPlan = await base44.entities.TrainingPlan.create({
+      athlete_id,
+      status: 'draft',
+      start_date: startDate,
+      end_date: endDate,
+      tier: tierKey,
+      race_goals: sortedGoals,
+      plan_title: plan?.plan_title,
+      athlete_summary: plan?.athlete_summary,
+      goal_architecture: plan?.goal_architecture,
+      pace_zones: plan?.pace_zones,
+      prehab_routine: plan?.prehab_routine,
+      macrocycle: plan?.macrocycle,
+      weekly_plans: plan?.weekly_plans,
+      nutrition_system: plan?.nutrition_system,
+      hrv_framework: plan?.hrv_framework,
+      injury_audit_questions: plan?.injury_audit_questions,
+      injury_red_flags: plan?.injury_red_flags,
+      phase2_note: plan?.phase2_note || '',
+    });
+
+    return Response.json({ success: true, training_plan: trainingPlan });
+  } catch (error) {
+    return Response.json({ error: error.message || 'Internal server error' }, { status: 500 });
   }
-
-  // Enforce server-side Elite or Pro tier gating (Elite recommended for custom plan generation)
-  const authCheck = await verifySubscription(req, 'pro');
-  if (!authCheck.authorized) {
-    return new Response(JSON.stringify({ error: authCheck.error }), {
-      status: 403,
-      headers: { 'Content-Type': 'application/json' },
-    });
-  }
-
-  try {
-    const body = await req.json();
-    const { goalDistance, targetWeeks } = body;
-
-    if (!goalDistance || !targetWeeks) {
-      return new Response(JSON.stringify({ error: 'Missing goalDistance or targetWeeks' }), {
-        status: 400,
-        headers: { 'Content-Type': 'application/json' },
-      });
-    }
-
-    // TODO: Insert your training plan generation logic here using base44.integrations.CoreAI
-
-    return new Response(JSON.stringify({ success: true, message: 'Training plan generated successfully' }), {
-      status: 200,
-      headers: { 'Content-Type': 'application/json' },
-    });
-
-  } catch (err: any) {
-    return new Response(JSON.stringify({ error: err.message || 'Internal server error' }), {
-      status: 500,
-      headers: { 'Content-Type': 'application/json' },
-    });
-  }
-}
+});

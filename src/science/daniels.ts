@@ -1,6 +1,6 @@
 // src/science/daniels.ts
 // Frontend proxy for Jack Daniels VDOT calculations (S6 IP Protection)
-import { base44 } from '@base44/runtime';
+import { base44 } from '@/api/base44Client';
 
 export interface TrainingPaces {
   easy: { secPerKm: number; formatted: string };
