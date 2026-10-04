@@ -8,6 +8,7 @@ const Card = ({ className, ...props }) => (
     {...props}
   />
 );
+Card.displayName = "Card";
 
 const CardHeader = ({ className, ...props }) => (
   <div
@@ -15,6 +16,7 @@ const CardHeader = ({ className, ...props }) => (
     {...props}
   />
 );
+CardHeader.displayName = "CardHeader";
 
 const CardTitle = ({ className, ...props }) => (
   <div
@@ -22,6 +24,7 @@ const CardTitle = ({ className, ...props }) => (
     {...props}
   />
 );
+CardTitle.displayName = "CardTitle";
 
 const CardDescription = ({ className, ...props }) => (
   <div
@@ -29,10 +32,12 @@ const CardDescription = ({ className, ...props }) => (
     {...props}
   />
 );
+CardDescription.displayName = "CardDescription";
 
 const CardContent = ({ className, ...props }) => (
   <div className={cn("p-6 pt-0", className)} {...props} />
 );
+CardContent.displayName = "CardContent";
 
 const CardFooter = ({ className, ...props }) => (
   <div
@@ -40,5 +45,6 @@ const CardFooter = ({ className, ...props }) => (
     {...props}
   />
 );
+CardFooter.displayName = "CardFooter";
 
 export { Card, CardHeader, CardFooter, CardTitle, CardDescription, CardContent };
