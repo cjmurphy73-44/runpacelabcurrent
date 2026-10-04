@@ -1,54 +1,48 @@
-const isNode = typeof window === 'undefined';
-const windowObj = isNode ? { localStorage: new Map() } : window;
-const storage = windowObj.localStorage;
+// src/lib/app-params.js
 
-const toSnakeCase = (str) => {
-	return str.replace(/([A-Z])/g, '_$1').toLowerCase();
+function getAppParamValue(name, { defaultValue = null, removeFromUrl = false } = {}) {
+  const windowObj = typeof window !== 'undefined' ? window : null;
+  if (!windowObj || !windowObj.location) {
+    return defaultValue;
+  }
+
+  const urlParams = new URLSearchParams(windowObj.location.search);
+  let value = urlParams.get(name);
+
+  if (!value) {
+    // Check localStorage fallback if applicable
+    try {
+      value = windowObj.localStorage?.getItem(name);
+    } catch (e) {
+      // Ignore storage errors
+    }
+  }
+
+  if (value && removeFromUrl) {
+    urlParams.delete(name);
+    try {
+      const newRelativePathQuery = windowObj.location.pathname + 
+        (urlParams.toString() ? `?${urlParams.toString()}` : '') + 
+        windowObj.location.hash;
+      windowObj.history.replaceState(null, '', newRelativePathQuery);
+    } catch (e) {
+      // Ignore history replace state errors in tests
+    }
+  }
+
+  return value || defaultValue;
 }
 
-const getAppParamValue = (paramName, { defaultValue = undefined, removeFromUrl = false } = {}) => {
-	if (isNode) {
-		return defaultValue;
-	}
-	const storageKey = `base44_${toSnakeCase(paramName)}`;
-	const urlParams = new URLSearchParams(window.location.search);
-	const searchParam = urlParams.get(paramName);
-	if (removeFromUrl) {
-		urlParams.delete(paramName);
-		const newUrl = `${window.location.pathname}${urlParams.toString() ? `?${urlParams.toString()}` : ""
-			}${window.location.hash}`;
-		window.history.replaceState({}, document.title, newUrl);
-	}
-	if (searchParam) {
-		storage.setItem(storageKey, searchParam);
-		return searchParam;
-	}
-	if (defaultValue) {
-		storage.setItem(storageKey, defaultValue);
-		return defaultValue;
-	}
-	const storedValue = storage.getItem(storageKey);
-	if (storedValue) {
-		return storedValue;
-	}
-	return null;
+export function getAppParams() {
+  const windowObj = typeof window !== 'undefined' ? window : {};
+
+  return {
+    appId: getAppParamValue("app_id", { defaultValue: typeof import.meta !== 'undefined' ? import.meta.env?.VITE_APP_ID : undefined }),
+    token: getAppParamValue("access_token", { removeFromUrl: true }),
+    fromUrl: getAppParamValue("from_url", { defaultValue: windowObj.location?.href || '/' }),
+    functionsVersion: getAppParamValue("functions_version", { defaultValue: "" }),
+    appBaseUrl: getAppParamValue("app_base_url", { defaultValue: typeof import.meta !== 'undefined' ? import.meta.env?.VITE_APP_BASE_URL : "" }),
+  };
 }
 
-const getAppParams = () => {
-	if (getAppParamValue("clear_access_token") === 'true') {
-		storage.removeItem('base44_access_token');
-		storage.removeItem('token');
-	}
-	return {
-		appId: getAppParamValue("app_id", { defaultValue: import.meta.env.VITE_BASE44_APP_ID }),
-		token: getAppParamValue("access_token", { removeFromUrl: true }),
-		fromUrl: getAppParamValue("from_url", { defaultValue: window.location.href }),
-		functionsVersion: getAppParamValue("functions_version", { defaultValue: import.meta.env.VITE_BASE44_FUNCTIONS_VERSION }),
-		appBaseUrl: getAppParamValue("app_base_url", { defaultValue: import.meta.env.VITE_BASE44_APP_BASE_URL }),
-	}
-}
-
-
-export const appParams = {
-	...getAppParams()
-}
+export const appParams = getAppParams();
