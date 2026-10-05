@@ -1,4 +1,4 @@
-import React, { useMemo } from "react";
+import React from "react";
 import { useAthlete } from "@/hooks/useAthlete";
 import PageShell from "@/components/layout/PageShell";
 import FitnessTrendCharts from "@/components/analytics/FitnessTrendCharts";

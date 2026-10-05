@@ -98,7 +98,6 @@ export default function BulkWorkoutImport({ athleteId, onUploaded }) {
               ref={folderInputRef}
               type="file"
               webkitdirectory=""
-              directory=""
               multiple
               className="hidden"
               onChange={(e) => addFiles(Array.from(e.target.files || []))}

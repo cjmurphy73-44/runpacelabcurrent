@@ -15,10 +15,10 @@ export default async function(req) {
     if (!user) return Response.json({ error: "Authentication required to start test checkout." }, { status: 401 });
 
     const apiKey = secrets.get("STRIPE_TEST_SECRET_KEY");
-    const priceId = secrets.get("PRO_PRICE_ID"); // test mode can reuse the live price ID in Stripe test mode
+    const priceId = secrets.get("STRIPE_TEST_PRO_PRICE_ID"); // dedicated test-mode price — live price IDs can't be used with a test key
     if (!apiKey || !priceId) {
       console.error("stripeTestCheckout missing config", { hasKey: !!apiKey, hasPrice: !!priceId });
-      return Response.json({ error: "Test billing not configured (STRIPE_TEST_SECRET_KEY required)" }, { status: 500 });
+      return Response.json({ error: "Test billing not configured (STRIPE_TEST_SECRET_KEY and STRIPE_TEST_PRO_PRICE_ID required)" }, { status: 500 });
     }
 
     const origin = new URL(req.url).origin;

@@ -1,11 +1,10 @@
 import React, { useMemo, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Cell } from "recharts";
-import { CalendarClock, Flag } from "lucide-react";
+import { CalendarClock } from "lucide-react";
 
 // Race-distance → taper length (days). Based on Bosquet et al. (2007) meta-analysis
 // (optimal taper ≈ 2 weeks, ~−40% volume, maintained intensity) adjusted by event.

@@ -1,7 +1,7 @@
 import React, { useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { calculateCTL, calculateATL, calculateTSB } from "@/utils/physiologyEngine";
-import { TrendingUp, BatteryCharging, AlertCircle } from "lucide-react";
+import { TrendingUp } from "lucide-react";
 
 export default function TrainingMetricsCard({ workouts = [] }) {
   const metrics = useMemo(() => {
