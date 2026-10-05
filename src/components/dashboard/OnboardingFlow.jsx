@@ -81,6 +81,7 @@ export default function OnboardingFlow({ onCreated }) {
       const owned = existing.find((p) => p.created_by_id === user?.id) || existing[0];
       if (owned) {
         try { await base44.auth.updateMe({ athlete_profile_id: owned.id }); } catch (e) { console.warn("updateMe athlete_profile_id failed:", e); }
+        try { base44.analytics.track({ eventName: "onboarding_complete", properties: { mode: "relink" } }); } catch {}
         onCreated(owned);
         return;
       }
@@ -101,6 +102,7 @@ export default function OnboardingFlow({ onCreated }) {
       // S5: stamp this profile's id onto the owning user so health-data RLS can scope reads.
       // Must happen immediately after profile creation so the dashboard never renders blank.
       try { await base44.auth.updateMe({ athlete_profile_id: profile.id }); } catch (e) { console.warn("updateMe athlete_profile_id failed:", e); }
+      try { base44.analytics.track({ eventName: "onboarding_complete", properties: { mode: "new", tier: form.tier } }); } catch {}
       onCreated(profile);
     } catch (e) { setError(e?.response?.data?.error || "Could not create profile."); }
     finally { setSaving(false); }

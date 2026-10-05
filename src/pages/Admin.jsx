@@ -16,6 +16,7 @@ export default function Admin() {
   const [subs, setSubs] = useState([]);
   const [athletes, setAthletes] = useState([]);
   const [users, setUsers] = useState([]);
+  const [syncConnections, setSyncConnections] = useState([]);
   const [error, setError] = useState(null);
   const [syncing, setSyncing] = useState(false);
   const [syncMsg, setSyncMsg] = useState(null);
@@ -36,12 +37,27 @@ export default function Admin() {
   useEffect(() => {
     (async () => {
       try {
-        const [s, a, u] = await Promise.all([
+        const [s, a, u, garmin, strava, coros, wearable] = await Promise.all([
           base44.entities.Subscription.list("-created_date", 500),
           base44.entities.AthleteProfile.list("-created_date", 500),
           base44.entities.User.list("-created_date", 500),
+          base44.entities.GarminConnection.list("-created_date", 200).catch(() => []),
+          base44.entities.StravaConnection.list("-created_date", 200).catch(() => []),
+          base44.entities.CorosConnection.list("-created_date", 200).catch(() => []),
+          base44.entities.WearableConnection.list("-created_date", 200).catch(() => []),
         ]);
         setSubs(s); setAthletes(a); setUsers(u);
+        // Flatten all *Connection rows into one sync-health list keyed by provider.
+        const flat = (rows, provider) => (rows || []).map((r) => ({
+          provider: typeof provider === "function" ? provider(r) : provider,
+          status: r.status, last_sync_at: r.last_sync_at, last_error: r.last_error, connected_at: r.connected_at,
+        }));
+        setSyncConnections([
+          ...flat(garmin, "Garmin"),
+          ...flat(strava, "Strava"),
+          ...flat(coros, "COROS"),
+          ...flat(wearable, (r) => (r.provider ? r.provider : "wearable")),
+        ]);
       } catch (e) {
         setError(e?.message || "Could not load business data.");
       }
@@ -127,6 +143,25 @@ export default function Admin() {
       </div>
 
       <AccessCodeManager className="mt-4" />
+
+      <Card className="mt-4">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2"><ActivityIcon className="w-4 h-4" /> Wearable sync health</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-2 max-h-80 overflow-auto">
+          {!syncConnections.length && <p className="text-sm text-muted-foreground">No wearable connections yet.</p>}
+          {syncConnections.map((c, i) => (
+            <div key={i} className="flex items-center justify-between text-sm border-b border-border pb-2 gap-3">
+              <span className="font-medium capitalize shrink-0">{c.provider}</span>
+              <span className="text-xs text-muted-foreground truncate flex-1 min-w-0">
+                {c.last_sync_at ? `Last sync ${new Date(c.last_sync_at).toLocaleString()}` : "Never synced"}
+                {c.last_error ? ` — ${c.last_error}` : ""}
+              </span>
+              <Badge variant={c.status === "connected" ? "default" : "outline"} className="capitalize shrink-0">{c.status || "—"}</Badge>
+            </div>
+          ))}
+        </CardContent>
+      </Card>
 
       <Card className="mt-4">
         <CardHeader>

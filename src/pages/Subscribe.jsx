@@ -28,17 +28,27 @@ export default function Subscribe() {
   }, [params]);
 
   const subscribe = async (tier) => {
-    if (window.self !== window.top) {
-      alert("Checkout only works from the published app — open trainpacelab.base44.app in a new tab to subscribe.");
+    // Stripe Checkout must open as a top-level page. When framed (builder
+    // preview), open a new tab synchronously before awaiting the session so
+    // popup blockers keep the user activation; when top-level, navigate the
+    // current page. Never disable checkout based on iframe/publish state.
+    const isFramed = window.self !== window.top;
+    const checkoutTab = isFramed ? window.open("", "_blank") : null;
+    if (isFramed && !checkoutTab) {
+      toast({ title: "Allow popups to continue to checkout.", variant: "destructive" });
       return;
     }
+    if (checkoutTab) checkoutTab.opener = null;
     setBusy(tier);
     try {
+      base44.analytics.track({ eventName: "checkout_started", properties: { plan: tier } });
       const res = await base44.functions.invoke("stripeCheckout", { plan: tier, user_id: user?.id });
       const url = res?.data?.url;
-      if (url) { window.location.href = url; return; }
-      toast({ title: "Could not start checkout", variant: "destructive" });
+      if (!url) throw new Error("No checkout URL returned");
+      if (checkoutTab) checkoutTab.location.replace(url);
+      else window.location.assign(url);
     } catch (e) {
+      checkoutTab?.close();
       toast({ title: "Checkout failed", description: e.message, variant: "destructive" });
     } finally {
       setBusy(null);

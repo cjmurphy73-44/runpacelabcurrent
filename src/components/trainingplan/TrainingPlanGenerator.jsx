@@ -27,6 +27,7 @@ export default function TrainingPlanGenerator({ athleteId, onGenerated }) {
         long_term_goal: longTermGoal,
       });
       if (res.data?.training_plan) {
+        try { base44.analytics.track({ eventName: "plan_generated", properties: { race_goals: cleanGoals.length } }); } catch {}
         onGenerated(res.data.training_plan);
       } else {
         setError(res.error || "Plan generation failed. Please try again.");

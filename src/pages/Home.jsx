@@ -35,6 +35,7 @@ import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from "@/
 import WipWrapper from "@/components/common/WipWrapper";
 import WidgetBoundary from "@/components/common/WidgetBoundary";
 import WorkoutLogWizard from "@/components/workout/WorkoutLogWizard";
+import BetaFeedbackModal from "@/components/feedback/BetaFeedbackModal";
 import CalibrationMeter from "@/components/dashboard/CalibrationMeter";
 import OnboardingEmptyState from "@/components/dashboard/OnboardingEmptyState";
 import PlannedActualReconciliation from "@/components/dashboard/PlannedActualReconciliation";
@@ -42,7 +43,7 @@ import CoachBriefing from "@/components/dashboard/CoachBriefing";
 import PhysiologyStrip from "@/components/dashboard/PhysiologyStrip";
 import AnomalyAlertBanner from "@/components/dashboard/AnomalyAlertBanner";
 import AISynthesisCard from "@/components/dashboard/AISynthesisCard";
-import { Sun, TrendingUp, Activity, MessageCircle, HeartPulse, ArrowRight, Plus, LogIn } from "lucide-react";
+import { Sun, TrendingUp, Activity, MessageCircle, HeartPulse, ArrowRight, Plus, LogIn, MessageSquare } from "lucide-react";
 
 export default function Home() {
   const [loading, setLoading] = useState(true);
@@ -53,6 +54,11 @@ export default function Home() {
   const [loadTimelineWorkouts, setLoadTimelineWorkouts] = useState([]);
   const [plannedWorkouts, setPlannedWorkouts] = useState([]);
   const [manualOpen, setManualOpen] = useState(false);
+  const [feedbackOpen, setFeedbackOpen] = useState(false);
+
+  const trackWorkoutIngested = () => {
+    try { base44.analytics.track({ eventName: "workout_ingested" }); } catch {}
+  };
   const { showDeepMetrics } = useUIPreferences();
   const { user, navigateToLogin } = useAuth();
 
@@ -224,7 +230,7 @@ export default function Home() {
           />
           <WidgetBoundary name="Coach briefing"><CoachBriefing athlete={athlete} /></WidgetBoundary>
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <WidgetBoundary name="Quick import"><OcrDropzone athleteId={athlete.id} onSaved={() => loadAthleteData(athlete.id)} /></WidgetBoundary>
+            <WidgetBoundary name="Quick import"><OcrDropzone athleteId={athlete.id} onSaved={() => { trackWorkoutIngested(); loadAthleteData(athlete.id); }} /></WidgetBoundary>
             <WidgetBoundary name="Recent workouts"><RecentWorkouts workouts={workouts} athlete={athlete} /></WidgetBoundary>
           </div>
         </section>
@@ -291,16 +297,16 @@ export default function Home() {
                 <AccordionItem value="advanced" className="border-0">
                   <AccordionTrigger className="text-base font-heading font-semibold">Advanced metrics</AccordionTrigger>
                   <AccordionContent className="space-y-8 pt-4">
-                    <DashboardRangeControls />
+                    <WidgetBoundary name="Dashboard range controls"><DashboardRangeControls /></WidgetBoundary>
                     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                       <div className="lg:col-span-2">
-                        <FitnessStats athlete={athlete} />
+                        <WidgetBoundary name="Fitness stats"><FitnessStats athlete={athlete} /></WidgetBoundary>
                       </div>
-                      <BaselineHistoryMatrix athleteId={athlete.id} />
+                      <WidgetBoundary name="Baseline history"><BaselineHistoryMatrix athleteId={athlete.id} /></WidgetBoundary>
                     </div>
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                      <WeeklySummary />
-                      <DataCommandCenter athleteId={athlete.id} />
+                      <WidgetBoundary name="Weekly summary"><WeeklySummary /></WidgetBoundary>
+                      <WidgetBoundary name="Data command center"><DataCommandCenter athleteId={athlete.id} /></WidgetBoundary>
                     </div>
                   </AccordionContent>
                 </AccordionItem>
@@ -313,8 +319,19 @@ export default function Home() {
         open={manualOpen}
         onClose={() => setManualOpen(false)}
         athleteId={athlete.id}
-        onSaved={() => loadAthleteData(athlete.id)}
+        onSaved={() => { trackWorkoutIngested(); loadAthleteData(athlete.id); }}
       />
+      {/* Prominent beta feedback entry — a floating button so testers reach
+          the feedback channel without digging into the account menu. */}
+      <button
+        type="button"
+        onClick={() => setFeedbackOpen(true)}
+        className="fixed bottom-6 right-6 z-40 inline-flex items-center gap-2 rounded-full bg-primary text-primary-foreground px-4 py-2.5 text-sm font-medium shadow-lg hover:bg-primary/90 pb-safe mr-safe"
+        aria-label="Send beta feedback"
+      >
+        <MessageSquare className="w-4 h-4" /> Beta feedback
+      </button>
+      <BetaFeedbackModal open={feedbackOpen} onClose={() => setFeedbackOpen(false)} />
     </FitnessProvider>
   );
 }

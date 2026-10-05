@@ -1,7 +1,12 @@
 import { useEffect, useState, useCallback } from "react";
 import { useServices } from "@/services/providers/ServiceContext";
 import { useAuth } from "@/lib/AuthContext";
+import { base44 } from "@/api/base44Client";
 import { isPro, hasFeature, type GatedFeature } from "@/lib/subscriptionFeatures";
+
+// Module-level guard so subscription_active fires once per browser session,
+// not on every hook remount.
+let subscriptionActiveTracked = false;
 
 export interface SubscriptionState {
   plan: string;
@@ -32,6 +37,13 @@ export function useSubscription(): SubscriptionState {
   }, [subscriptionRepo, user?.id]);
 
   useEffect(() => { refresh(); }, [refresh]);
+
+  useEffect(() => {
+    if (!loading && !subscriptionActiveTracked && plan && plan !== "free" && status === "active") {
+      subscriptionActiveTracked = true;
+      try { base44.analytics.track({ eventName: "subscription_active", properties: { plan } }); } catch {}
+    }
+  }, [loading, plan, status]);
 
   return { plan, status, loading, isPro: isPro(plan), hasFeature: (f) => hasFeature(plan, f), refresh };
 }
