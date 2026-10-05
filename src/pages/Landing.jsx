@@ -283,7 +283,7 @@ export default function Landing() {
                       ))}
                     </ul>
                     <Button asChild variant={d.highlighted ? "default" : "outline"} className="w-full mt-6">
-                      <Link to={cta.label === "Go to dashboard" ? "/app" : "/subscribe"}>{user ? "Your account" : `Start with ${d.label}`}</Link>
+                      <Link to={user ? "/app" : tier === "free" ? "/register" : "/subscribe"}>{user ? "Your account" : `Start with ${d.label}`}</Link>
                     </Button>
                   </CardContent>
                 </Card>

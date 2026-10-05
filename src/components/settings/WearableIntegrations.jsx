@@ -95,7 +95,7 @@ function ProviderCard({ provider, athleteId }) {
           <div className="min-w-0">
             <p className="text-sm font-medium flex items-center gap-2">
               {label}
-              <WipBadge label="Setup required" />
+              {!connected && <WipBadge label="Setup required" />}
               {connected && (
                 <span className="inline-flex items-center gap-1 text-xs font-medium text-primary">
                   <CheckCircle2 className="w-3.5 h-3.5" /> Connected

@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { Check, Sparkles, ArrowLeft, Ticket } from "lucide-react";
+import { Check, Sparkles, ArrowLeft, Ticket, Loader2, ReceiptText } from "lucide-react";
 import PageShell from "@/components/layout/PageShell";
 import { PLAN_DETAILS, PLAN_TIERS } from "@/lib/subscriptionFeatures";
 
@@ -21,11 +21,38 @@ export default function Subscribe() {
   const [code, setCode] = useState("");
   const [redeeming, setRedeeming] = useState(false);
 
+  const [portalBusy, setPortalBusy] = useState(false);
+
   React.useEffect(() => {
     const status = params.get("status");
-    if (status === "success") toast({ title: "Subscription active 🎉", description: "Your plan is unlocked." });
+    if (status === "success") {
+      toast({ title: "Subscription active 🎉", description: "Your plan is unlocked." });
+      // Refresh entitlement state immediately so the UI reflects the new plan
+      // without requiring a manual page reload.
+      refresh();
+    }
     if (status === "canceled") toast({ title: "Checkout canceled", variant: "destructive" });
-  }, [params]);
+  }, [params, refresh]);
+
+  const openBillingPortal = async () => {
+    setPortalBusy(true);
+    try {
+      const res = await base44.functions.invoke("stripeBillingPortal", {});
+      const url = res?.data?.url;
+      if (!url) throw new Error("No portal URL returned");
+      const isFramed = window.self !== window.top;
+      if (isFramed) {
+        const tab = window.open(url, "_blank");
+        if (!tab) toast({ title: "Allow popups to open billing.", variant: "destructive" });
+      } else {
+        window.location.assign(url);
+      }
+    } catch (e) {
+      toast({ title: "Could not open billing portal", description: e.message, variant: "destructive" });
+    } finally {
+      setPortalBusy(false);
+    }
+  };
 
   const subscribe = async (tier) => {
     // Stripe Checkout must open as a top-level page. When framed (builder
@@ -81,7 +108,12 @@ export default function Subscribe() {
     <PageShell title="Plans & billing" description="Upgrade to unlock unlimited sync, adaptive re-planning, and structured workout export.">
       <div className="flex items-center gap-2 mb-2 flex-wrap">
         <Badge variant={isPro ? "default" : "outline"}>Current plan: {PLAN_DETAILS[currentPlan]?.label ?? "Free"}</Badge>
-        {isPro && <span className="text-xs text-muted-foreground">Manage billing in your Stripe customer portal.</span>}
+        {isPro && (
+          <Button variant="outline" size="sm" onClick={openBillingPortal} disabled={portalBusy} className="gap-2">
+            {portalBusy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <ReceiptText className="w-3.5 h-3.5" />}
+            Manage billing & invoices
+          </Button>
+        )}
       </div>
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 items-start">
         {PLAN_TIERS.map((tier) => {
@@ -125,6 +157,10 @@ export default function Subscribe() {
           );
         })}
       </div>
+
+      <p className="text-xs text-muted-foreground -mt-1">
+        All plans billed monthly in AUD via Stripe. Cancel anytime from your billing portal — access continues until the end of the current period. No refunds for partial months; see our <Link to="/refund" className="text-primary hover:underline">refund policy</Link>.
+      </p>
 
       <Card className="mt-6 border-dashed">
         <CardContent className="p-5">
