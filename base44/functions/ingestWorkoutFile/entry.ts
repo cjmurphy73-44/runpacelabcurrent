@@ -4,6 +4,7 @@ import { calcTrimp, calcRTSS, computeNgpSeries, computeDecouplingAndEF } from '.
 import { reconcileStreams, recomputePhysiology, dominantFileType } from '../../shared/streamReconcile.ts';
 import { assertSafeFileUrl } from '../../shared/urlGuard.ts';
 import { assertOwnsAthlete } from '../../shared/ownership.ts';
+import { reportError } from '../../shared/errorReport.ts';
 
 const MAX_STREAM_SAMPLES = 3600; // cap stored streams (~1hr @1Hz) to avoid oversized records
 
@@ -280,6 +281,7 @@ Deno.serve(async (req) => {
 
     return Response.json({ success: true, workout_session: session, attached: false });
   } catch (error) {
+    try { await reportError(base44, { source: 'ingestWorkoutFile', message: error.message, stack: error.stack, severity: 'High' }); } catch {}
     return Response.json({ error: error.message }, { status: 500 });
   }
 });

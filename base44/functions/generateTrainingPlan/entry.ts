@@ -9,6 +9,7 @@ import { assertPaidPlan } from '../../shared/planGate.ts';
 import { claimRateLimit } from '../../shared/rateLimit.ts';
 import { getTrainingPaces, getEquivalentTimes, formatPaceFromMs } from '../../shared/vdot.ts';
 import { deriveRunningThresholdPace } from '../../shared/thresholdPace.ts';
+import { reportError } from '../../shared/errorReport.ts';
 
 Deno.serve(async (req) => {
   try {
@@ -241,6 +242,7 @@ ${needsPhase2Note ? `12. phase2_note — since the true goal horizon (${totalWee
 
     return Response.json({ success: true, training_plan: trainingPlan });
   } catch (error) {
+    try { await reportError(base44, { source: 'generateTrainingPlan', message: error.message, stack: error.stack, severity: 'High' }); } catch {}
     return Response.json({ error: error.message || 'Internal server error' }, { status: 500 });
   }
 });

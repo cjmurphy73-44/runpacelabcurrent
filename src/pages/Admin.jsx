@@ -21,6 +21,85 @@ export default function Admin() {
   const [syncing, setSyncing] = useState(false);
   const [syncMsg, setSyncMsg] = useState(null);
   const [syncErr, setSyncErr] = useState(null);
+  const [connRefreshing, setConnRefreshing] = useState(false);
+  const [feedback, setFeedback] = useState([]);
+
+  const loadData = async () => {
+    try {
+      const [s, a, u, garmin, strava, coros, wearable, fb] = await Promise.all([
+        base44.entities.Subscription.list("-created_date", 500),
+        base44.entities.AthleteProfile.list("-created_date", 500),
+        base44.entities.User.list("-created_date", 500),
+        base44.entities.GarminConnection.list("-created_date", 200).catch(() => []),
+        base44.entities.StravaConnection.list("-created_date", 200).catch(() => []),
+        base44.entities.CorosConnection.list("-created_date", 200).catch(() => []),
+        base44.entities.WearableConnection.list("-created_date", 200).catch(() => []),
+        base44.entities.BetaFeedback.list("-created_date", 100).catch(() => []),
+      ]);
+      setSubs(s); setAthletes(a); setUsers(u);
+      setFeedback(fb);
+      // Index athletes by id for connection → athlete name lookup.
+      const athleteById = {};
+      for (const p of a) athleteById[p.id] = p;
+      // Flatten all *Connection rows into one sync-health list keyed by provider.
+      // Include athlete_id so the admin can see WHOSE connection this is.
+      const flat = (rows, provider) => (rows || []).map((r) => ({
+        provider: typeof provider === "function" ? provider(r) : provider,
+        athlete_id: r.athlete_id,
+        athlete_name: r.athlete_id && athleteById[r.athlete_id]
+          ? `${athleteById[r.athlete_id].first_name || ""} ${athleteById[r.athlete_id].last_name || ""}`.trim()
+          : null,
+        status: r.status, last_sync_at: r.last_sync_at, last_error: r.last_error, connected_at: r.connected_at,
+      }));
+      setSyncConnections([
+        ...flat(garmin, "Garmin"),
+        ...flat(strava, "Strava"),
+        ...flat(coros, "COROS"),
+        ...flat(wearable, (r) => (r.provider ? r.provider : "wearable")),
+      ]);
+    } catch (e) {
+      setError(e?.message || "Could not load business data.");
+    }
+    setLoading(false);
+  };
+
+  const refreshConnections = async () => {
+    setConnRefreshing(true);
+    try {
+      const [a, garmin, strava, coros, wearable] = await Promise.all([
+        base44.entities.AthleteProfile.list("-created_date", 500),
+        base44.entities.GarminConnection.list("-created_date", 200).catch(() => []),
+        base44.entities.StravaConnection.list("-created_date", 200).catch(() => []),
+        base44.entities.CorosConnection.list("-created_date", 200).catch(() => []),
+        base44.entities.WearableConnection.list("-created_date", 200).catch(() => []),
+      ]);
+      setAthletes(a);
+      const athleteById = {};
+      for (const p of a) athleteById[p.id] = p;
+      const flat = (rows, provider) => (rows || []).map((r) => ({
+        provider: typeof provider === "function" ? provider(r) : provider,
+        athlete_id: r.athlete_id,
+        athlete_name: r.athlete_id && athleteById[r.athlete_id]
+          ? `${athleteById[r.athlete_id].first_name || ""} ${athleteById[r.athlete_id].last_name || ""}`.trim()
+          : null,
+        status: r.status, last_sync_at: r.last_sync_at, last_error: r.last_error, connected_at: r.connected_at,
+      }));
+      setSyncConnections([
+        ...flat(garmin, "Garmin"),
+        ...flat(strava, "Strava"),
+        ...flat(coros, "COROS"),
+        ...flat(wearable, (r) => (r.provider ? r.provider : "wearable")),
+      ]);
+    } catch {}
+    setConnRefreshing(false);
+  };
+
+  const updateFeedbackStatus = async (id, status) => {
+    try {
+      await base44.entities.BetaFeedback.update(id, { status });
+      setFeedback((prev) => prev.map((f) => (f.id === id ? { ...f, status } : f)));
+    } catch {}
+  };
 
   const syncAirtable = async () => {
     setSyncing(true); setSyncErr(null); setSyncMsg(null);
@@ -34,36 +113,7 @@ export default function Admin() {
     setSyncing(false);
   };
 
-  useEffect(() => {
-    (async () => {
-      try {
-        const [s, a, u, garmin, strava, coros, wearable] = await Promise.all([
-          base44.entities.Subscription.list("-created_date", 500),
-          base44.entities.AthleteProfile.list("-created_date", 500),
-          base44.entities.User.list("-created_date", 500),
-          base44.entities.GarminConnection.list("-created_date", 200).catch(() => []),
-          base44.entities.StravaConnection.list("-created_date", 200).catch(() => []),
-          base44.entities.CorosConnection.list("-created_date", 200).catch(() => []),
-          base44.entities.WearableConnection.list("-created_date", 200).catch(() => []),
-        ]);
-        setSubs(s); setAthletes(a); setUsers(u);
-        // Flatten all *Connection rows into one sync-health list keyed by provider.
-        const flat = (rows, provider) => (rows || []).map((r) => ({
-          provider: typeof provider === "function" ? provider(r) : provider,
-          status: r.status, last_sync_at: r.last_sync_at, last_error: r.last_error, connected_at: r.connected_at,
-        }));
-        setSyncConnections([
-          ...flat(garmin, "Garmin"),
-          ...flat(strava, "Strava"),
-          ...flat(coros, "COROS"),
-          ...flat(wearable, (r) => (r.provider ? r.provider : "wearable")),
-        ]);
-      } catch (e) {
-        setError(e?.message || "Could not load business data.");
-      }
-      setLoading(false);
-    })();
-  }, []);
+  useEffect(() => { loadData(); }, []);
 
   if (loading) {
     return (
@@ -146,18 +196,58 @@ export default function Admin() {
 
       <Card className="mt-4">
         <CardHeader>
-          <CardTitle className="flex items-center gap-2"><ActivityIcon className="w-4 h-4" /> Wearable sync health</CardTitle>
+          <div className="flex items-center justify-between">
+            <CardTitle className="flex items-center gap-2"><ActivityIcon className="w-4 h-4" /> Wearable sync health</CardTitle>
+            <Button variant="outline" size="sm" onClick={refreshConnections} disabled={connRefreshing}>
+              {connRefreshing ? <Loader2 className="w-3.5 h-3.5 mr-1 animate-spin" /> : <RefreshCw className="w-3.5 h-3.5 mr-1" />}
+              Refresh
+            </Button>
+          </div>
         </CardHeader>
         <CardContent className="space-y-2 max-h-80 overflow-auto">
           {!syncConnections.length && <p className="text-sm text-muted-foreground">No wearable connections yet.</p>}
           {syncConnections.map((c, i) => (
             <div key={i} className="flex items-center justify-between text-sm border-b border-border pb-2 gap-3">
-              <span className="font-medium capitalize shrink-0">{c.provider}</span>
-              <span className="text-xs text-muted-foreground truncate flex-1 min-w-0">
+              <div className="flex items-center gap-2 shrink-0 min-w-0">
+                <span className="font-medium capitalize">{c.provider}</span>
+                {c.athlete_name && <span className="text-xs text-muted-foreground truncate max-w-[120px]">· {c.athlete_name}</span>}
+              </div>
+              <span className="text-xs text-muted-foreground truncate flex-1 min-w-0 text-right">
                 {c.last_sync_at ? `Last sync ${new Date(c.last_sync_at).toLocaleString()}` : "Never synced"}
                 {c.last_error ? ` — ${c.last_error}` : ""}
               </span>
               <Badge variant={c.status === "connected" ? "default" : "outline"} className="capitalize shrink-0">{c.status || "—"}</Badge>
+            </div>
+          ))}
+          <p className="text-xs text-muted-foreground pt-1">Shows the most recent 200 connections per provider. If you have more, older entries are not listed here.</p>
+        </CardContent>
+      </Card>
+
+      <Card className="mt-4">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2"><ActivityIcon className="w-4 h-4" /> Beta feedback</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-2 max-h-80 overflow-auto">
+          {!feedback.length && <p className="text-sm text-muted-foreground">No feedback submitted yet.</p>}
+          {feedback.map((f) => (
+            <div key={f.id} className="border-b border-border pb-2 space-y-1">
+              <div className="flex items-center justify-between gap-2">
+                <Badge variant={f.feedback_type === "bug" ? "destructive" : "outline"} className="capitalize text-xs">{f.feedback_type}</Badge>
+                <select
+                  value={f.status || "new"}
+                  onChange={(e) => updateFeedbackStatus(f.id, e.target.value)}
+                  className="text-xs rounded border border-border bg-transparent px-1.5 py-0.5"
+                >
+                  <option value="new">New</option>
+                  <option value="triaged">Triaged</option>
+                  <option value="resolved">Resolved</option>
+                  <option value="wont_fix">Won't fix</option>
+                </select>
+              </div>
+              <p className="text-sm">{f.message}</p>
+              <p className="text-xs text-muted-foreground">
+                {f.contact_email ? `From: ${f.contact_email}` : "Anonymous"} · {f.route || "no route"} · {new Date(f.created_date).toLocaleDateString()}
+              </p>
             </div>
           ))}
         </CardContent>

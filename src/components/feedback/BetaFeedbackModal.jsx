@@ -1,4 +1,6 @@
 import React, { useState } from "react";
+import { base44 } from "@/api/base44Client";
+import { useAuth } from "@/lib/AuthContext";
 import {
   Dialog,
   DialogContent,
@@ -12,35 +14,51 @@ import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/components/ui/use-toast";
+import { Loader2 } from "lucide-react";
 
-// <-- Set this to your real beta feedback inbox before opening the test to users. -->
-const BETA_FEEDBACK_EMAIL = "beta-feedback@runpacelab.app";
-
-// Lightweight feedback reporter for the external beta. Uses a mailto link (reliable,
-// no external email dependency) plus a clipboard fallback so testers always have a path.
+// Persistent beta feedback reporter. Stores each submission in the BetaFeedback
+// entity so the team can triage from the Admin page instead of relying on an
+// email inbox. Falls back to clipboard copy if the entity write fails.
 export default function BetaFeedbackModal({ open, onClose }) {
   const { toast } = useToast();
+  const { user } = useAuth();
   const [email, setEmail] = useState("");
   const [type, setType] = useState("bug");
   const [message, setMessage] = useState("");
+  const [submitting, setSubmitting] = useState(false);
 
-  const composed = `${message}\n\nFrom: ${email || "(anonymous)"}`;
-  const subject = encodeURIComponent(`[Beta Feedback] ${type.toUpperCase()} — Trainpacelab`);
-  const body = encodeURIComponent(composed);
-  const mailto = `mailto:${BETA_FEEDBACK_EMAIL}?subject=${subject}&body=${body}`;
-
-  const handleCopy = async () => {
+  const handleSubmit = async () => {
+    if (!message.trim()) return;
+    setSubmitting(true);
     try {
-      await navigator.clipboard.writeText(composed);
-      toast({ title: "Copied to clipboard" });
-    } catch {
-      toast({ title: "Copy failed", variant: "destructive" });
+      const route = typeof window !== "undefined" ? window.location.pathname : "";
+      const res = await base44.functions.invoke("logBetaFeedback", {
+        feedback_type: type,
+        message: message.trim(),
+        contact_email: email.trim() || undefined,
+        route,
+      });
+      const ok = res?.data?.success || res?.success;
+      if (ok) {
+        toast({ title: "Feedback sent", description: "Thanks — the team will review it." });
+        setMessage("");
+        setEmail("");
+        onClose?.();
+      } else {
+        toast({ title: res?.data?.error || "Could not send feedback", variant: "destructive" });
+      }
+    } catch (e) {
+      // Fallback: copy to clipboard so the tester always has a path.
+      try {
+        const fallback = `${message}\n\nFrom: ${email || "(anonymous)"}`;
+        await navigator.clipboard.writeText(fallback);
+        toast({ title: "Saved to clipboard instead", description: "Copy failed to reach the server — paste it into a message to the team.", variant: "destructive" });
+      } catch {
+        toast({ title: e?.message || "Could not send feedback", variant: "destructive" });
+      }
+    } finally {
+      setSubmitting(false);
     }
-  };
-
-  const handleMail = () => {
-    window.open(mailto, "_blank", "noopener,noreferrer");
-    onClose?.();
   };
 
   return (
@@ -79,6 +97,7 @@ export default function BetaFeedbackModal({ open, onClose }) {
               placeholder="you@example.com"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
+              defaultValue={user?.email || ""}
             />
           </div>
           <div className="space-y-1.5">
@@ -93,11 +112,9 @@ export default function BetaFeedbackModal({ open, onClose }) {
           </div>
         </div>
         <DialogFooter>
-          <Button type="button" variant="ghost" onClick={handleCopy} disabled={!message}>
-            Copy text
-          </Button>
-          <Button type="button" onClick={handleMail} disabled={!message}>
-            Open in email app
+          <Button type="button" onClick={handleSubmit} disabled={!message.trim() || submitting}>
+            {submitting ? <Loader2 className="w-4 h-4 mr-1 animate-spin" /> : null}
+            {submitting ? "Sending…" : "Send feedback"}
           </Button>
         </DialogFooter>
       </DialogContent>

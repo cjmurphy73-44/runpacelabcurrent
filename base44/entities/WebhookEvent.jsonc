@@ -1,17 +1,18 @@
 {
   "name": "WebhookEvent",
   "type": "object",
-  "description": "Idempotency log for inbound wearable / Strava / COROS webhook events. Prevents duplicate processing when a provider retries an event that has already been ingested. Each event_id is unique; a repeat push with the same id is skipped without creating a second WorkoutSession.",
+  "description": "Idempotency log for inbound webhook events (wearable, Strava, COROS, Stripe). Prevents duplicate processing when a provider retries an event that has already been ingested. Each event_id is unique; a repeat push with the same id is skipped without re-processing.",
   "properties": {
     "event_id": {
       "type": "string",
-      "description": "Provider event id or a deterministic key. For Strava: 'strava:<object_id>:<object_type>:<aspect_type>'. For generic ingests: 'generic:<athlete_id>:<date>:<sport>:<duration_minutes*100>:<distance_km*100>'."
+      "description": "Provider event id or a deterministic key. For Strava: 'strava:<object_id>:<object_type>:<aspect_type>'. For Stripe: 'stripe:<event_id>'. For generic ingests: 'generic:<athlete_id>:<date>:<sport>:<duration_minutes*100>:<distance_km*100>'."
     },
     "provider": {
       "type": "string",
       "enum": [
         "strava",
         "coros",
+        "stripe",
         "generic"
       ],
       "default": "generic"

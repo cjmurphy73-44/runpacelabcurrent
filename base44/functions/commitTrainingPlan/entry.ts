@@ -1,4 +1,5 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.38';
+import { reportError } from '../../shared/errorReport.ts';
 
 Deno.serve(async (req) => {
   try {
@@ -54,6 +55,7 @@ Deno.serve(async (req) => {
 
     return Response.json({ success: true, training_plan: updatedPlan });
   } catch (error) {
+    try { await reportError(base44, { source: 'commitTrainingPlan', message: error.message, stack: error.stack, severity: 'High' }); } catch {}
     return Response.json({ error: error.message }, { status: 500 });
   }
 });

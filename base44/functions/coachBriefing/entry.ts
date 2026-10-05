@@ -7,6 +7,7 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
 import { assertOwnsAthlete } from '../../shared/ownership.ts';
 import { assertPaidPlan } from '../../shared/planGate.ts';
 import { claimRateLimit } from '../../shared/rateLimit.ts';
+import { reportError } from '../../shared/errorReport.ts';
 
 export default async function (req: Request) {
   try {
@@ -36,6 +37,7 @@ export default async function (req: Request) {
 
     return Response.json({ success: true, result });
   } catch (error) {
+    try { await reportError(base44, { source: 'coachBriefing', message: error.message, stack: error.stack, severity: 'High' }); } catch {}
     return Response.json({ error: error.message || 'Internal server error' }, { status: 500 });
   }
 }

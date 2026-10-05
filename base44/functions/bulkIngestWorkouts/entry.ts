@@ -3,6 +3,7 @@ import fitParser from 'npm:fit-file-parser';
 import { TelemetryParser } from '../../shared/telemetryParser.ts';
 import { assertSafeFileUrl } from '../../shared/urlGuard.ts';
 import { assertOwnsAthlete } from '../../shared/ownership.ts';
+import { reportError } from '../../shared/errorReport.ts';
 
 const GARMIN_EPOCH_OFFSET_SEC = 631065600; // seconds between Unix epoch and FIT/Garmin epoch (1989-12-31)
 const VALID_SPORTS = ['running', 'cycling', 'swimming', 'strength', 'triathlon', 'other'];
@@ -621,6 +622,7 @@ Deno.serve(async (req) => {
       errors,
     });
   } catch (error) {
+    try { await reportError(base44, { source: 'bulkIngestWorkouts', message: error.message, stack: error.stack, severity: 'High' }); } catch {}
     return Response.json({ error: error.message }, { status: 500 });
   }
 });

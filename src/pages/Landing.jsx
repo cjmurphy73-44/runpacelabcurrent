@@ -23,7 +23,7 @@ const CONCEPT_IMG = "https://media.base44.com/images/public/6a504ebe6a5a6d1be058
 
 const FEATURES = [
   { icon: BrainCircuit, title: "Adaptive physiology engine", body: "Daily CTL/ATL/TSB modeling, HR-based TRIMP, and VDOT calibration that reshapes your plan as you train." },
-  { icon: Watch, title: "Wearable sync", body: "Automatic sync from COROS, plus recovery sync from Oura, WHOOP, and Polar. Garmin and Strava direct sync is coming soon — upload FIT, TCX, or CSV from any device in the meantime. Multi-file reconciliation unifies them into one master record." },
+  { icon: Watch, title: "Wearable sync", body: "Automatic workout and recovery sync from COROS today. Recovery sync from Oura, WHOOP, Polar, Withings, and Fitbit is ready once credentials are configured. Garmin and Strava direct sync is coming soon — upload FIT, TCX, or CSV from any device in the meantime. Multi-file reconciliation unifies them into one master record." },
   { icon: Sparkles, title: "AI coach", body: "Post-workout insights, micro-adjustments, and race strategy grounded in your real telemetry — not generic advice." },
   { icon: Users, title: "Coach workspace", body: "Manage a roster, compare athletes side-by-side, and assign plans. Built for squads and individual coaches alike." },
   { icon: ShieldCheck, title: "Injury-aware loading", body: "Your injury history shapes prehab routines and load caps so the plan pushes you forward without breaking you." },
@@ -31,14 +31,14 @@ const FEATURES = [
 ];
 
 const STEPS = [
-  { icon: Watch, title: "Connect your wearables", body: "Sync COROS automatically today, or upload FIT, TCX, and CSV from any watch. Garmin and Strava direct sync is coming soon; recovery also syncs from Oura, WHOOP, and Polar." },
+  { icon: Watch, title: "Connect your wearables", body: "Sync COROS automatically today, or upload FIT, TCX, and CSV from any watch. Recovery sync from Oura, WHOOP, Polar, Withings, and Fitbit is ready once credentials are configured. Garmin and Strava direct sync is coming soon." },
   { icon: BrainCircuit, title: "We model your physiology", body: "Daily CTL/ATL/TSB, HR-based TRIMP, and VDOT calibration build a living picture of your fitness and fatigue." },
   { icon: Sparkles, title: "Get an adaptive plan + AI coach", body: "Your plan reshapes every session as you train. An AI coach reads your real numbers and adjusts — not generic templates." },
 ];
 
 const FAQ = [
   { q: "Do I need a paid plan to try it?", a: "No. The free tier gives you the dashboard, physiology lab, single-wearable sync (30-day lookback), and 5 AI coach messages a week. Upgrade only when you want full history, adaptive re-planning, and structured workout export." },
-  { q: "Which wearables are supported?", a: "COROS has direct automated sync today. Oura, WHOOP, and Polar sync recovery (sleep, HRV, readiness) automatically. Garmin and Strava direct sync is coming soon — for now, upload FIT, TCX, or CSV files from any device, or use a COROS watch as a bridge. Multi-file reconciliation unifies them into one master record." },
+  { q: "Which wearables are supported?", a: "COROS has direct automated sync today (workouts + recovery). Recovery sync from Oura, WHOOP, Polar, Withings, and Fitbit is built and ready once the team adds each provider's credentials. Garmin and Strava direct sync is coming soon — for now, upload FIT, TCX, or CSV files from any device, or use a COROS watch as a bridge. Multi-file reconciliation unifies them into one master record." },
   { q: "Is this only for runners?", a: "No. TrainPaceLab is multi-sport — running, cycling, swimming, triathlon, and strength all feed the same physiology model so your training load reflects everything you do." },
   { q: "How is this different from a generic plan?", a: "Generic plans assume an average athlete. TrainPaceLab recalibrates off your actual telemetry — heart rate, pace, recovery, and race history — so the plan adapts when you're undertrained, fatigued, or peaking." },
   { q: "What does the AI coach actually do?", a: "It generates post-workout insights, suggests micro-adjustments, builds race strategy, and produces training plans grounded in your real data — not internet-generic advice." },

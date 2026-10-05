@@ -20,6 +20,7 @@ import {
   normalizeWithingsRecovery,
   normalizeSuuntoRecovery,
 } from '../../shared/recoveryIngest.ts';
+import { reportError } from '../../shared/errorReport.ts';
 
 type ProviderKey = 'oura' | 'whoop' | 'withings' | 'polar' | 'fitbit' | 'suunto';
 
@@ -374,6 +375,7 @@ Deno.serve(async (req) => {
     if (action === 'disconnect') return await handleDisconnect(base44, provider);
     return Response.json({ error: `Unknown action: ${action || '(none)'}` }, { status: 400 });
   } catch (error) {
+    try { await reportError(base44, { source: 'wearableOAuthSync', message: error.message, stack: error.stack, severity: 'High' }); } catch {}
     return Response.json({ error: error.message }, { status: 500 });
   }
 });

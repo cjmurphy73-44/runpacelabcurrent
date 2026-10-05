@@ -1,0 +1,71 @@
+{
+  "name": "BetaFeedback",
+  "type": "object",
+  "description": "Persistent beta-tester feedback submitted from the dashboard Beta Feedback button. Replaces the unreliable mailto flow with a stored, admin-triagable record. Each submission captures type (bug/idea), message, optional contact email, and the route it was sent from so the team can reproduce context.",
+  "properties": {
+    "feedback_type": {
+      "type": "string",
+      "enum": [
+        "bug",
+        "idea",
+        "other"
+      ],
+      "default": "bug",
+      "description": "Category of feedback: a bug report, a product idea, or something else"
+    },
+    "message": {
+      "type": "string",
+      "description": "The tester's feedback text"
+    },
+    "contact_email": {
+      "type": "string",
+      "description": "Optional contact email for follow-up"
+    },
+    "route": {
+      "type": "string",
+      "description": "The app route the tester was on when they submitted, for reproduction context"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "new",
+        "triaged",
+        "resolved",
+        "wont_fix"
+      ],
+      "default": "new",
+      "description": "Triage status so the admin can track what's been handled"
+    }
+  },
+  "required": [
+    "feedback_type",
+    "message"
+  ],
+  "rls": {
+    "create": {
+      "created_by_id": "{{user.id}}"
+    },
+    "read": {
+      "$or": [
+        {
+          "created_by_id": "{{user.id}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    },
+    "update": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "delete": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
+}

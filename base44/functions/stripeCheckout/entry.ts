@@ -1,5 +1,6 @@
 import { secrets } from "base44:runtime";
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
+import { reportError } from '../../shared/errorReport.ts';
 
 const PRICE_BY_PLAN = { pro: "PRO_PRICE_ID" };
 
@@ -69,6 +70,7 @@ export default async function(req) {
     return Response.json({ url: data.url });
   } catch (e) {
     console.error("stripeCheckout", e.message);
+    try { await reportError(base44, { source: 'stripeCheckout', message: e.message, stack: e.stack, severity: 'High' }); } catch {}
     return Response.json({ error: e.message }, { status: 500 });
   }
 }

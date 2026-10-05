@@ -1,10 +1,18 @@
 // src/lib/wearableCatalog.js
 //
-// Source of truth for every wearable/tracking ecosystem RunPaceLab recognises.
+// Source of truth for every wearable/tracking ecosystem TrainPaceLab recognises.
 // Drives the onboarding hardware-selection step, the tailored dashboard sync
 // guide, and the settings/data-connections surface. Each entry describes how
 // data actually flows into the platform and the user-facing sync instructions
 // so onboarding can tailor guidance to the athlete's chosen stack.
+//
+// status values:
+//   available     — direct automated sync is configured and working today
+//   setup_required — the OAuth provider code exists but client credentials are
+//                    not yet set as app secrets; the user must complete setup
+//                    before direct sync works (manual upload still works)
+//   coming_soon    — direct sync is in development; manual upload is the only path
+//   manual_only    — no direct web API exists; upload is the only path
 
 export const WEARABLES = [
   {
@@ -49,10 +57,10 @@ export const WEARABLES = [
     category: "watch",
     icon: "Watch",
     syncMethod: "oauth",
-    status: "available",
+    status: "setup_required",
     dataFlow: "Polar Flow → TrainPaceLab (recovery: HRV, sleep, readiness)",
     syncInstructions:
-      "Connect Polar under Settings → Data Connections to sync recovery metrics. Workout files can also be uploaded directly on the Import page.",
+      "Polar recovery sync is ready to connect once the team adds Polar client credentials. Workout files can be uploaded directly on the Import page in the meantime.",
     coverage: ["hrv", "sleep", "resting_hr", "readiness"],
   },
   {
@@ -61,10 +69,10 @@ export const WEARABLES = [
     category: "strap",
     icon: "Activity",
     syncMethod: "oauth",
-    status: "available",
+    status: "setup_required",
     dataFlow: "WHOOP → TrainPaceLab (recovery, sleep, HRV, strain)",
     syncInstructions:
-      "Authorize WHOOP under Settings → Data Connections. Recovery, sleep and HRV sync automatically so your daily readiness score stays current.",
+      "WHOOP recovery sync is ready to connect once the team adds WHOOP client credentials. Recovery, sleep and HRV will sync automatically once configured.",
     coverage: ["hrv", "sleep", "readiness"],
   },
   {
@@ -73,11 +81,47 @@ export const WEARABLES = [
     category: "ring",
     icon: "CircleDot",
     syncMethod: "oauth",
-    status: "available",
+    status: "setup_required",
     dataFlow: "Oura → TrainPaceLab (readiness, sleep, HRV, resting HR)",
     syncInstructions:
-      "Connect Oura under Settings → Data Connections. Readiness, sleep, HRV and resting HR sync automatically each day.",
+      "Oura recovery sync is ready to connect once the team adds Oura client credentials. Readiness, sleep, HRV and resting HR will sync automatically once configured.",
     coverage: ["hrv", "sleep", "resting_hr", "readiness"],
+  },
+  {
+    key: "withings",
+    label: "Withings",
+    category: "watch",
+    icon: "Watch",
+    syncMethod: "oauth",
+    status: "setup_required",
+    dataFlow: "Withings → TrainPaceLab (sleep, HRV, RHR, body comp)",
+    syncInstructions:
+      "Withings recovery sync is ready to connect once the team adds Withings client credentials.",
+    coverage: ["hrv", "sleep", "resting_hr"],
+  },
+  {
+    key: "fitbit",
+    label: "Fitbit",
+    category: "watch",
+    icon: "Watch",
+    syncMethod: "oauth",
+    status: "setup_required",
+    dataFlow: "Fitbit → TrainPaceLab (sleep score, HRV, resting HR)",
+    syncInstructions:
+      "Fitbit recovery sync is ready to connect once the team adds Fitbit client credentials.",
+    coverage: ["hrv", "sleep", "resting_hr"],
+  },
+  {
+    key: "suunto",
+    label: "Suunto",
+    category: "watch",
+    icon: "Watch",
+    syncMethod: "oauth",
+    status: "setup_required",
+    dataFlow: "Suunto → TrainPaceLab (sleep + activity summary)",
+    syncInstructions:
+      "Suunto recovery sync is ready to connect once the team adds Suunto client credentials.",
+    coverage: ["sleep"],
   },
   {
     key: "strava",
@@ -115,6 +159,11 @@ export function wearableLabel(key) {
 // Whether a given wearable needs a manual upload step (no direct connection).
 export function isManualOnly(key) {
   return WEARABLE_BY_KEY[key]?.status === "manual_only";
+}
+
+// Whether a given wearable's direct sync is fully configured and working.
+export function isAvailable(key) {
+  return WEARABLE_BY_KEY[key]?.status === "available";
 }
 
 // Build the tailored sync-instructions list for an athlete's selected stack.
