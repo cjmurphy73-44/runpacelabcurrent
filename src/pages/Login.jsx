@@ -7,6 +7,7 @@ import { Label } from "@/components/ui/label";
 import { LogIn, Mail, Lock, Loader2 } from "lucide-react";
 import AuthLayout from "@/components/AuthLayout";
 import GoogleIcon from "@/components/GoogleIcon";
+import AppleIcon from "@/components/AppleIcon";
 import { safeReturnTo } from "@/lib/authReturnTo";
 
 export default function Login() {
@@ -15,6 +16,7 @@ export default function Login() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
+  const [appleLoading, setAppleLoading] = useState(false);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -41,6 +43,17 @@ export default function Login() {
     }
   };
 
+  const handleApple = () => {
+    setError("");
+    setAppleLoading(true);
+    try {
+      base44.auth.loginWithProvider("apple", safeReturnTo());
+    } catch (err) {
+      setError(err.message || "Apple sign-in failed. Please try again.");
+      setAppleLoading(false);
+    }
+  };
+
   return (
     <AuthLayout
       icon={LogIn}
@@ -55,24 +68,44 @@ export default function Login() {
         </>
       }
     >
-      <Button
-        variant="outline"
-        className="w-full h-12 text-sm font-medium mb-6"
-        onClick={handleGoogle}
-        disabled={googleLoading || loading}
-      >
-        {googleLoading ? (
-          <>
-            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-            Redirecting...
-          </>
-        ) : (
-          <>
-            <GoogleIcon className="w-5 h-5 mr-2" />
-            Continue with Google
-          </>
-        )}
-      </Button>
+      <div className="space-y-3 mb-6">
+        <Button
+          variant="outline"
+          className="w-full h-12 text-sm font-medium"
+          onClick={handleGoogle}
+          disabled={googleLoading || appleLoading || loading}
+        >
+          {googleLoading ? (
+            <>
+              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+              Redirecting...
+            </>
+          ) : (
+            <>
+              <GoogleIcon className="w-5 h-5 mr-2" />
+              Continue with Google
+            </>
+          )}
+        </Button>
+        <Button
+          variant="outline"
+          className="w-full h-12 text-sm font-medium"
+          onClick={handleApple}
+          disabled={appleLoading || googleLoading || loading}
+        >
+          {appleLoading ? (
+            <>
+              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+              Redirecting...
+            </>
+          ) : (
+            <>
+              <AppleIcon className="w-5 h-5 mr-2" />
+              Continue with Apple
+            </>
+          )}
+        </Button>
+      </div>
 
       <div className="relative mb-6">
         <div className="absolute inset-0 flex items-center">
