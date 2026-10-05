@@ -16,10 +16,13 @@ export default function TrainingPlan() {
   const [plan, setPlan] = useState(null);
   const [showGenerator, setShowGenerator] = useState(false);
   const [committing, setCommitting] = useState(false);
+  const [loadError, setLoadError] = useState(false);
+  const [commitError, setCommitError] = useState(null);
   const injury = useCoachInjurySignal(athlete?.id);
 
   const load = useCallback(async () => {
     setLoading(true);
+    setLoadError(false);
     try {
       const user = await base44.auth.me();
       if (!user) { setLoading(false); return; }
@@ -35,6 +38,7 @@ export default function TrainingPlan() {
       }
     } catch (e) {
       console.error("TrainingPlan load failed", e);
+      setLoadError(true);
     }
     setLoading(false);
   }, []);
@@ -43,12 +47,32 @@ export default function TrainingPlan() {
 
   const handleCommit = async () => {
     setCommitting(true);
-    const res = await base44.functions.invoke("commitTrainingPlan", { plan_id: plan.id });
-    setCommitting(false);
-    if (res.data?.training_plan) setPlan(res.data.training_plan);
+    setCommitError(null);
+    try {
+      const res = await base44.functions.invoke("commitTrainingPlan", { plan_id: plan.id });
+      if (res.data?.training_plan) setPlan(res.data.training_plan);
+    } catch (e) {
+      console.error("Commit failed", e);
+      setCommitError(e?.message || "Couldn't commit the plan. Please try again.");
+    } finally {
+      setCommitting(false);
+    }
   };
 
   if (loading) return <div className="text-center py-20 text-muted-foreground">Loading...</div>;
+
+  if (loadError) {
+    return (
+      <div className="space-y-4 max-w-xl mx-auto py-12">
+        <Alert variant="destructive">
+          <ShieldAlert className="w-4 h-4" />
+          <AlertTitle>Couldn't load your training plan</AlertTitle>
+          <AlertDescription>Something went wrong fetching your plan. Check your connection and try again.</AlertDescription>
+        </Alert>
+        <Button variant="outline" onClick={() => load()}>Retry</Button>
+      </div>
+    );
+  }
 
   if (!athlete) {
     return <div className="text-center py-20 text-muted-foreground">Set up your athlete profile on the Dashboard first.</div>;
@@ -84,6 +108,9 @@ export default function TrainingPlan() {
                 {committing ? "Committing..." : "Confirm & Commit to Calendar"}
               </Button>
             </div>
+            {commitError && (
+              <p className="text-xs text-destructive w-full mt-2">{commitError}</p>
+            )}
           </AlertDescription>
         </Alert>
       ) : (

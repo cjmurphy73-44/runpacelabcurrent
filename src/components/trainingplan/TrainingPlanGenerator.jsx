@@ -10,6 +10,7 @@ export default function TrainingPlanGenerator({ athleteId, onGenerated }) {
   const [raceGoals, setRaceGoals] = useState([{ name: "", date: "", distance: "", target_time: "" }]);
   const [longTermGoal, setLongTermGoal] = useState("");
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
 
   const updateGoal = (idx, field, value) => {
     setRaceGoals((prev) => prev.map((g, i) => (i === idx ? { ...g, [field]: value } : g)));
@@ -17,14 +18,24 @@ export default function TrainingPlanGenerator({ athleteId, onGenerated }) {
 
   const handleGenerate = async () => {
     setLoading(true);
-    const cleanGoals = raceGoals.filter((g) => g.name && g.date);
-    const res = await base44.functions.invoke("generateTrainingPlan", {
-      athlete_id: athleteId,
-      race_goals: cleanGoals,
-      long_term_goal: longTermGoal,
-    });
-    setLoading(false);
-    if (res.data?.training_plan) onGenerated(res.data.training_plan);
+    setError(null);
+    try {
+      const cleanGoals = raceGoals.filter((g) => g.name && g.date);
+      const res = await base44.functions.invoke("generateTrainingPlan", {
+        athlete_id: athleteId,
+        race_goals: cleanGoals,
+        long_term_goal: longTermGoal,
+      });
+      if (res.data?.training_plan) {
+        onGenerated(res.data.training_plan);
+      } else {
+        setError(res.error || "Plan generation failed. Please try again.");
+      }
+    } catch (e) {
+      setError(e?.message || "Plan generation failed. Please try again.");
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -66,6 +77,9 @@ export default function TrainingPlanGenerator({ athleteId, onGenerated }) {
           <Label className="text-xs">Long-term goal (optional)</Label>
           <Input value={longTermGoal} onChange={(e) => setLongTermGoal(e.target.value)} placeholder="Sub-17:00 5K by early 2027" />
         </div>
+        {error && (
+          <p className="text-sm text-destructive">{error}</p>
+        )}
         <Button onClick={handleGenerate} disabled={loading} className="w-full">
           {loading ? "Building your plan..." : "Generate Training Plan"}
         </Button>
