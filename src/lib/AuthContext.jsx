@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
+import { base44 } from '@/api/base44Client';
 import { authService } from '@/services/authService';
-import { findOrCreateUserByOAuth } from '@/services/authReconciliationService';
 import { appParams } from '@/lib/app-params';
 
 const AuthContext = createContext(null);
@@ -24,15 +24,11 @@ export const AuthProvider = ({ children }) => {
           setUser(null);
           setIsAuthenticated(false);
         } else {
-          // Reconcile user to normalize email casing and ensure provider linking
-          const reconciledUser = await findOrCreateUserByOAuth({
-            email: rawUser.email,
-            name: rawUser.name,
-            providerId: rawUser.provider_id || rawUser.id,
-            provider: rawUser.provider || 'google'
-          });
-
-          setUser(reconciledUser);
+          // Use the real Base44 user as-is. A previous reconciliation step
+          // replaced the user id with the OAuth provider id, which caused
+          // "Invalid id value -> Object not found" on downstream reads
+          // (AthleteProfile.filter({ created_by_id: user.id }), etc.).
+          setUser(rawUser);
           setIsAuthenticated(true);
         }
       } catch (err) {
