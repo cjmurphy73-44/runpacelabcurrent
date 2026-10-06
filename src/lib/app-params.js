@@ -51,11 +51,39 @@ function getAppParamValue(name, { defaultValue = null, removeFromUrl = false, pe
   return value || defaultValue;
 }
 
+// Hard fallback for this published app. After an OAuth redirect the URL carries
+// access_token but NOT app_id, and if localStorage is empty or holds a stale
+// app_id from a different context (preview vs published, another app), the SDK
+// would otherwise initialise with appId=null and every entity call 404s
+// ("Invalid id value -> Object not found"). This id is fixed for this app.
+const PUBLISHED_APP_ID = "6a504ebe6a5a6d1be058226c";
+
 export function getAppParams() {
   const windowObj = typeof window !== 'undefined' ? window : {};
+  const envAppId = typeof import.meta !== 'undefined' ? (import.meta.env?.VITE_APP_ID || PUBLISHED_APP_ID) : PUBLISHED_APP_ID;
+
+  // Resolve app_id with stale-storage guard: the URL value (present on normal
+  // page loads) is authoritative; if absent (post-OAuth redirect), fall back to
+  // localStorage, but ONLY if it matches this app's known id — a stale value
+  // left by a different Base44 app in the same browser would otherwise init the
+  // SDK with the wrong appId and 404 every entity call. Final fallback is the
+  // hardcoded published id so the client can never initialise with appId=null.
+  let resolvedAppId = null;
+  if (windowObj?.location) {
+    const urlAppId = new URLSearchParams(windowObj.location.search).get("app_id");
+    if (urlAppId) {
+      resolvedAppId = urlAppId;
+      try { if (!windowObj.localStorage?.getItem("app_id")) windowObj.localStorage?.setItem("app_id", urlAppId); } catch {}
+    } else {
+      let stored = null;
+      try { stored = windowObj.localStorage?.getItem("app_id"); } catch {}
+      resolvedAppId = stored === PUBLISHED_APP_ID ? stored : envAppId;
+    }
+  }
+  if (!resolvedAppId) resolvedAppId = envAppId;
 
   return {
-    appId: getAppParamValue("app_id", { defaultValue: typeof import.meta !== 'undefined' ? import.meta.env?.VITE_APP_ID : undefined, persistToLocalStorage: true }),
+    appId: resolvedAppId,
     token: getAppParamValue("access_token", { removeFromUrl: true }),
     fromUrl: getAppParamValue("from_url", { defaultValue: windowObj.location?.href || '/' }),
     functionsVersion: getAppParamValue("functions_version", { defaultValue: "", persistToLocalStorage: true }),
