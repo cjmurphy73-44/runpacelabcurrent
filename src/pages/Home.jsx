@@ -49,6 +49,7 @@ export default function Home() {
   const [loading, setLoading] = useState(true);
   const [athlete, setAthlete] = useState(null);
   const [profileExists, setProfileExists] = useState(false);
+  const [loadError, setLoadError] = useState(false);
   const [workouts, setWorkouts] = useState([]);
   const [messages, setMessages] = useState([]);
   const [loadTimelineWorkouts, setLoadTimelineWorkouts] = useState([]);
@@ -98,8 +99,12 @@ export default function Home() {
           await ensureProfileLinked(user, profile);
           await loadAthleteData(profile.id);
         }
+        // No profile found is NOT an error — it means onboarding is required.
+        // Only a thrown query counts as a loadError (transient RLS/network blip),
+        // which must show a retry, not the onboarding wall (avoids duplicate creation).
       } catch (err) {
         console.error("Dashboard data load failed:", err);
+        if (!cancelled) setLoadError(true);
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -147,6 +152,24 @@ export default function Home() {
   }
 
   if (!athlete) {
+    if (loadError) {
+      // The profile query itself failed (transient RLS/network blip). Showing onboarding
+      // here would let the user create a duplicate profile — so offer a retry instead.
+      return (
+        <div className="py-8 max-w-md mx-auto">
+          <Card className="border-dashed text-center">
+            <CardContent className="pt-8 pb-8 space-y-4">
+              <div className="mx-auto w-12 h-12 rounded-full bg-accent flex items-center justify-center">
+                <Activity className="w-6 h-6 text-accent-foreground" />
+              </div>
+              <h2 className="text-lg font-heading font-semibold">Couldn't reach your profile</h2>
+              <p className="text-sm text-muted-foreground">We hit a snag loading your data. This is usually momentary — try again.</p>
+              <Button onClick={() => window.location.reload()}>Retry</Button>
+            </CardContent>
+          </Card>
+        </div>
+      );
+    }
     if (profileExists) {
       // A profile exists but failed to load (transient RLS/network error). Show a retry
       // instead of the onboarding wall — the wall would let the user create a duplicate.
