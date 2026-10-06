@@ -1,10 +1,11 @@
-import React, { useMemo } from "react";
+import React, { useMemo, useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useFitness } from "@/context/FitnessContext";
 import RecoverySourceBadge from "@/components/dashboard/RecoverySourceBadge";
 import { computeHolisticReadiness } from "@/science/readiness";
-import { TrendingUp, TrendingDown, Minus } from "lucide-react";
+import { base44 } from "@/api/base44Client";
+import { TrendingUp, TrendingDown, Minus, ShieldCheck } from "lucide-react";
 
 function classify(score) {
   if (score == null) return { label: "No data yet", tone: "secondary" };
@@ -15,15 +16,16 @@ function classify(score) {
 
 export default function ReadinessScoreCard() {
   const { biometricTelemetry, dailyMetrics } = useFitness();
+  const [serverScore, setServerScore] = useState(null);
 
   const today = useMemo(() => {
     const sorted = [...dailyMetrics].sort((a, b) => b.date.localeCompare(a.date));
     return sorted[0] || null;
   }, [dailyMetrics]);
 
-  // Recompute the holistic score live from the latest readings + rolling baseline, so the card
-  // reflects the same engine the backend uses during ingest (keeps client/server in sync).
-  const holistic = useMemo(() => {
+  // Instant local computation — displayed immediately while the server-authoritative
+  // score loads. Kept as a fallback so the card never goes blank.
+  const localHolistic = useMemo(() => {
     if (!today) return null;
     const hrvBase = biometricTelemetry
       .map((r) => r.hrv_ms).filter((v) => typeof v === "number" && v > 0);
@@ -49,21 +51,42 @@ export default function ReadinessScoreCard() {
     );
   }, [today, biometricTelemetry]);
 
+  // S6: fetch the server-authoritative readiness score (proprietary formula runs
+  // behind the backend function, not shipped to the browser). Prefers the server
+  // result when available; the local value renders instantly in the meantime.
+  useEffect(() => {
+    let cancelled = false;
+    base44.functions.invoke("physiologyCompute", {})
+      .then((res) => {
+        if (cancelled) return;
+        const data = res?.data ?? res;
+        if (data?.readiness?.score != null) setServerScore(data.readiness.score);
+      })
+      .catch(() => { /* keep local fallback */ });
+    return () => { cancelled = true; };
+  }, [today?.id]);
+
+  // Server score wins when available; local is the instant fallback.
+  const score = serverScore ?? localHolistic?.score ?? today?.readiness_score ?? null;
+
   const providerScore = today?.provider_readiness_score ?? null;
   const providerSource = today?.provider_readiness_source ?? today?.recovery_source ?? null;
-  const delta = (holistic != null && providerScore != null) ? holistic.score - providerScore : null;
-  const cls = classify(holistic != null ? holistic.score : (today?.readiness_score ?? null));
+  const delta = (score != null && providerScore != null) ? score - providerScore : null;
+  const cls = classify(score);
 
   return (
     <Card>
       <CardHeader>
         <CardTitle className="text-sm font-heading flex items-center justify-between">
           <span>Readiness</span>
-          {today?.recovery_source && <RecoverySourceBadge source={today.recovery_source} />}
+          <div className="flex items-center gap-1.5">
+            {serverScore != null && <ShieldCheck className="w-3 h-3 text-primary" title="Server-computed" />}
+            {today?.recovery_source && <RecoverySourceBadge source={today.recovery_source} />}
+          </div>
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-3">
-        {holistic == null && !today?.readiness_score ? (
+        {score == null ? (
           <div className="space-y-2">
             <Badge variant="secondary">No data yet</Badge>
             <p className="text-xs text-muted-foreground">
@@ -73,7 +96,7 @@ export default function ReadinessScoreCard() {
         ) : (
           <>
             <div className="flex items-baseline gap-2">
-              <span className="text-3xl font-bold font-heading">{holistic != null ? holistic.score : today?.readiness_score}</span>
+              <span className="text-3xl font-bold font-heading">{score}</span>
               <span className="text-xs text-muted-foreground">/ 100 holistic</span>
             </div>
             <Badge variant={cls.tone}>{cls.label}</Badge>

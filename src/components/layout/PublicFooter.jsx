@@ -12,10 +12,11 @@ export default function PublicFooter() {
             <span>TrainPaceLab</span>
           </Link>
           <nav className="flex flex-wrap items-center gap-x-5 gap-y-2 text-sm text-muted-foreground">
+            <Link to="/support" className="hover:text-foreground">Support</Link>
             <Link to="/terms" className="hover:text-foreground">Terms of Service</Link>
             <Link to="/privacy" className="hover:text-foreground">Privacy Policy</Link>
             <Link to="/refund" className="hover:text-foreground">Refund Policy</Link>
-            <Link to="/" className="hover:text-foreground">Home</Link>
+            <a href="https://trainpacelab.com" className="hover:text-foreground">Home</a>
           </nav>
         </div>
         <p className="mt-6 text-xs text-muted-foreground">

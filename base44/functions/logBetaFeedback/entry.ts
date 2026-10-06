@@ -22,7 +22,9 @@ export default async function (req: Request): Promise<Response> {
     const contact_email = body.contact_email ? String(body.contact_email).slice(0, 200) : undefined;
     const route = body.route ? String(body.route).slice(0, 300) : undefined;
 
-    const record = await base44.entities.BetaFeedback.create({
+    // Use asServiceRole so public (unauthenticated) support submissions from the
+    // /support page succeed — the user-scoped client would fail RLS without a session.
+    const record = await base44.asServiceRole.entities.BetaFeedback.create({
       feedback_type,
       message,
       contact_email,

@@ -27,6 +27,7 @@ import Landing from '@/pages/Landing';
 import Terms from '@/pages/Terms';
 import Privacy from '@/pages/Privacy';
 import Refund from '@/pages/Refund';
+import Support from '@/pages/Support';
 import AppLayout from '@/components/layout/AppLayout';
 import ProtectedRoute from '@/components/ProtectedRoute';
 import PageNotFound from '@/lib/PageNotFound';
@@ -51,6 +52,7 @@ export default function App() {
             <Route path="/reset-password" element={<ResetPassword />} />
             <Route path="/landing" element={<Navigate to="/" replace />} />
             <Route path="/" element={<Landing />} />
+            <Route path="/support" element={<Support />} />
             <Route path="/terms" element={<Terms />} />
             <Route path="/privacy" element={<Privacy />} />
             <Route path="/refund" element={<Refund />} />
