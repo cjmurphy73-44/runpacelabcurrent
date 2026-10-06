@@ -23,8 +23,11 @@ export default function CoachChat() {
 
   useEffect(() => {
     (async () => {
+      // Only bind to conversations explicitly named "Coach Chat". Never fall back to
+      // existing[0] — that would grab orphaned E2E/test threads (e.g. the old
+      // "E2E coach audit (auto)" conversation) and show 49 test messages to a real user.
       const existing = await base44.agents.listConversations({ agent_name: AGENT_NAME });
-      let convo = (existing || []).find((c) => c?.metadata?.name === "Coach Chat") || existing?.[0];
+      let convo = (existing || []).find((c) => c?.metadata?.name === "Coach Chat");
       if (!convo) {
         convo = await base44.agents.createConversation({
           agent_name: AGENT_NAME,
