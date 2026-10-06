@@ -1,29 +1,39 @@
 import React from 'react';
+import { ShieldAlert, RefreshCw, LogOut } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
+import { base44 } from '@/api/base44Client';
 
+// Themed to match the app's carbon dark aesthetic. Shown by ProtectedRoute when
+// the platform reports the signed-in user is not registered to use the app.
 const UserNotRegisteredError = () => {
+  const handleRetry = () => window.location.reload();
+  const handleSignIn = async () => {
+    try { await base44.auth.logout(); } catch {}
+    window.location.href = '/login';
+  };
+
   return (
-    <div className="flex flex-col items-center justify-center min-h-screen bg-gradient-to-b from-white to-slate-50">
-      <div className="max-w-md w-full p-8 bg-white rounded-lg shadow-lg border border-slate-100">
-        <div className="text-center">
-          <div className="inline-flex items-center justify-center w-16 h-16 mb-6 rounded-full bg-orange-100">
-            <svg className="w-8 h-8 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-            </svg>
+    <div className="min-h-dvh flex items-center justify-center bg-background px-4 pt-safe pb-safe">
+      <Card className="max-w-md w-full">
+        <CardContent className="pt-8 pb-8 space-y-4 text-center">
+          <div className="mx-auto w-12 h-12 rounded-full bg-accent/40 flex items-center justify-center">
+            <ShieldAlert className="w-6 h-6 text-accent-foreground" />
           </div>
-          <h1 className="text-3xl font-bold text-slate-900 mb-4">Access Restricted</h1>
-          <p className="text-slate-600 mb-8">
-            You are not registered to use this application. Please contact the app administrator to request access.
+          <h1 className="font-heading text-xl font-bold">Access restricted</h1>
+          <p className="text-sm text-muted-foreground">
+            Your account isn't registered to use this app yet. If you just signed up, try reloading — otherwise sign out and back in with the right account.
           </p>
-          <div className="p-4 bg-slate-50 rounded-md text-sm text-slate-600">
-            <p>If you believe this is an error, you can:</p>
-            <ul className="list-disc list-inside mt-2 space-y-1">
-              <li>Verify you are logged in with the correct account</li>
-              <li>Contact the app administrator for access</li>
-              <li>Try logging out and back in again</li>
-            </ul>
+          <div className="flex gap-2 justify-center pt-1">
+            <Button variant="outline" onClick={handleRetry} className="gap-2">
+              <RefreshCw className="w-4 h-4" /> Reload
+            </Button>
+            <Button onClick={handleSignIn} className="gap-2">
+              <LogOut className="w-4 h-4" /> Switch account
+            </Button>
           </div>
-        </div>
-      </div>
+        </CardContent>
+      </Card>
     </div>
   );
 };

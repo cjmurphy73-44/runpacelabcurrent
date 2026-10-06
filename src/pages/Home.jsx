@@ -60,7 +60,7 @@ export default function Home() {
     try { base44.analytics.track({ eventName: "workout_ingested" }); } catch {}
   };
   const { showDeepMetrics } = useUIPreferences();
-  const { user, navigateToLogin } = useAuth();
+  const { user, redirectToLogin } = useAuth();
 
   const loadAthleteData = useCallback(async (athleteId) => {
     const [freshAthlete, recentWorkouts, messageRows, planSessions] = await Promise.all([
@@ -137,7 +137,7 @@ export default function Home() {
             <p className="text-sm text-muted-foreground">
               Your training, recovery and readiness insights live here. Sign in to load your athlete profile.
             </p>
-            <Button onClick={navigateToLogin} className="gap-2">
+            <Button onClick={redirectToLogin} className="gap-2">
               <LogIn className="w-4 h-4" /> Sign in
             </Button>
           </CardContent>
