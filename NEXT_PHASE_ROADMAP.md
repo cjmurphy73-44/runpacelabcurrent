@@ -30,8 +30,8 @@ Code changes that must land before any external tester is invited. Each has a ro
 
 | # | Action | Type | Pass criteria | Deps | Status |
 |---|---|---|---|---|---|
-| M1.1 | Fix `/plan` TrainingPlan 500 (reproduce → read `TrainingPlan.jsx` + failing call → fix request shape/null guard) | code | `/plan` loads for athletes with and without an existing plan, no 500 | M0.3 | 🔴 |
-| M1.2 | Fix Tools dropdown → Physiology Lab nested trigger on mobile (≤473px) | code | Physiology Lab opens from the Tools menu at 390px | — | 🔴 |
+| M1.1 | Fix `/plan` TrainingPlan 500 (reproduce → read `TrainingPlan.jsx` + failing call → fix request shape/null guard) | code | `/plan` loads for athletes with and without an existing plan, no 500 | M0.3 | 🟡 | Code fix landed (`TrainingPlan.jsx` try/catch + `loadError` + null guards). Live retest on published app pending — not yet ✅. |
+| M1.2 | Fix Tools dropdown → Physiology Lab nested trigger on mobile (≤473px) | code | Physiology Lab opens from the Tools menu at 390px | — | 🟡 | Code fix landed (`ToolsDropdown.jsx` renders LABS as direct `DropdownMenuItem` Links, no nested trigger). Mobile tap-test on published app pending — not yet ✅. |
 | M1.3 | Move `base44ConnectorGateway` client-side callers behind backend-function proxies (connectors are server-side) | code | No adapter runtime errors in console across Home, Imports, Settings | — | 🔴 |
 | M1.4 | Delete the orphaned E2E test conversation from CoachMessage data | code+manual | No test conversation renders for a real user in `/coach` | — | 🔴 |
 
@@ -66,7 +66,7 @@ Live money testing is gated behind test-mode success.
 | M3.4 | Cancellation event flips `Subscription` to `canceled`; entitlement revokes | manual | Status transition verified | M3.2 | 🟡 |
 | M3.5 | **Gate:** only after M3.1–M3.4 ✅ — run a live checkout on the published domain | manual | Live `Subscription` provisioned with `base44_app_id` metadata | M3.1–M3.4 | 🟡 |
 | M3.6 | Stripe webhook idempotency: replayed `event.id` is skipped (P1.6) | code+manual | Replay ignored, no double-provisioning | M3.2 | 🟡 |
-| M3.7 | Archived A$19 Pro price + deactivated Team product cleaned up in Stripe dashboard | manual | Only the active A$9 price is live | — | 🟡 |
+| M3.7 | Archived A$19 Pro price + deactivated Team product cleaned up in Stripe dashboard | manual | Only the active A$9 price is live | — | ✅ | Audited via Stripe API (`PRODUCTION_ROADMAP.md` B1.3): 0 subs on archived A$19 price; price `active=false`; Team product+A$49 deleted. |
 
 **M3 gate:** M3.1–M3.4 ✅ before M3.5 (live purchase). M3.5 ✅ before cohort invite. M3.6 🔴 must land before broad rollout.
 
@@ -96,9 +96,9 @@ Evidence-based audit of readiness and physiology outputs. Preserve current behav
 
 | # | Action | Type | Pass criteria | Deps | Status |
 |---|---|---|---|---|---|
-| M5.1 | Readiness missing-data: confirm server returns `null` score + `signal_count`/`has_baseline` when no recovery signals exist; UI shows "Insufficient Data" | code+verify | No synthetic neutral score; `ReadinessScoreCard` respects server null | — | 🟡 |
+| M5.1 | Readiness missing-data: confirm server returns `null` score + `signal_count`/`has_baseline` when no recovery signals exist; UI shows "Insufficient Data" | code+verify | No synthetic neutral score; `ReadinessScoreCard` respects server null | — | 🟡 | Code hardened (`base44/shared/readiness.ts` null-handling). Runtime verify on published app pending. |
 | M5.2 | Readiness sparse/inconsistent history: audit rolling-baseline behavior; confirm confidence degrades gracefully | code+verify | Baseline requirement enforced; low-confidence result labeled, not hidden | M5.1 | 🟡 |
-| M5.3 | VDOT running-only filter: confirm non-running activities never inflate VDOT; provenance fields present (`vdot_source_sport`, `source_date`, `source_session_id`) | code+verify | VDOT computed from running sessions only; provenance exposed | — | 🟡 |
+| M5.3 | VDOT running-only filter: confirm non-running activities never inflate VDOT; provenance fields present (`vdot_source_sport`, `source_date`, `source_session_id`) | code+verify | VDOT computed from running sessions only; provenance exposed | — | 🟡 | Run-only filter implemented in `base44/shared/vdot.ts` + `physiologyCompute`. Runtime verify on published app pending. |
 | M5.4 | Golden-case comparison: run `src/science/__tests__/goldenCases.test.ts` + `readiness.test.ts`; record any divergence | code | All golden cases pass; divergences logged with evidence strength | — | 🟡 |
 | M5.5 | Evidence-strength rubric: tag each physiology/coaching feature High/Moderate/Emerging/Hypothesis; record data-source transparency | code/docs | Each science surface shows evidence strength + data source | M5.1–M5.3 | 🟡 |
 | M5.6 | Add regression cases for any gaps found in M5.1–M5.4 | code | New tests committed; CI (when wired) stays green | M5.4 | 🟡 |

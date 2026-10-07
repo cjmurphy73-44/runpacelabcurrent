@@ -46,11 +46,11 @@ The first thing a tester does. If this fails, nothing else gets tested.
 | 1.1 | User A cannot read User B's `WorkoutSession`/`DailyMetrics`/`LabResult` via the SDK | Filter returns only A's records | 🔴 | 🟡 | |
 | 1.2 | `athlete_profile_id` + `coached_athletes` on the user record gates reads (S5 RLS) | Cross-athlete reads return empty, not 403-crash | 🔴 | 🟡 | |
 | 1.3 | Coach picker enumerates only the coach's roster, never the full athlete directory | Roster = `CoachAthleteAssignment` rows for this coach | 🔴 | 🟡 | |
-| 1.4 | `created_by_id` is stamped on every ingest path (file, webhook, bulk) | New `WorkoutSession`/`WorkoutAsset` carry owner id | 🔴 | 🟡 | |
+| 1.4 | `created_by_id` is stamped on every ingest path (file, webhook, bulk) | New `WorkoutSession`/`WorkoutAsset` carry owner id | 🔴 | ✅ | Code-audited in `PRODUCTION_ROADMAP.md` B1.1: user-context SDK auto-stamps file/bulk; webhook functions stamp `created_by_id: athlete.created_by_id` explicitly. Runtime retest not required for the stamp itself. |
 | 1.5 | `updateAthleteProfile` authorizes via `created_by_id` OR linked `athlete_profile_id` | Owner can save; non-owner gets 403 | 🔴 | 🟡 | |
 | 1.6 | `resetAthleteData` deletes only the caller's workouts/plans/telemetry | Other users' counts unchanged after | 🔴 | 🟡 | |
 | 1.7 | `deleteAccount` removes the user + their data and signs out | Cannot sign back in; data gone | 🔴 | 🟡 | |
-| 1.8 | One-time ownership backfill has run before RLS publishes | No tester is locked out of their own records | 🔴 | 🟡 | |
+| 1.8 | One-time ownership backfill has run before RLS publishes | No tester is locked out of their own records | 🔴 | ✅ | `backfillOwnershipMapping` ran + `auditLinkageMapping` first audit: 3 users, 0 auto-relinked, 0 flagged (`PRODUCTION_ROADMAP.md` B1.2). Re-run if new users appear before invite. |
 
 **Phase 1 gate:** all 🔴 ✅. This is the single biggest privacy gap — do not invite a cohort with 1.1–1.4 unverified.
 
@@ -66,8 +66,8 @@ The first thing a tester does. If this fails, nothing else gets tested.
 | 2.4 | `stripeWebhook` registered on published domain, `STRIPE_WEBHOOK_SECRET` valid | Events reach the function and update subscription status | 🔴 | 🟡 | |
 | 2.5 | `Subscription` `plan` gates premium features; free tier capped | AI coach 5 msg/wk enforced; upgrade unlocks | 🔴 | 🟡 | |
 | 2.6 | `stripeBillingPortal` lets a subscriber manage/cancel | Portal loads for an active subscriber | 🟡 | 🟡 | |
-| 2.7 | `redeemAccessCode` provisions plan + expiry; expired code rejected | Tester unlocks features; expired code shows error | 🟡 | 🟡 | |
-| 2.8 | Archived A$19 Pro price and deactivated Team product cleaned up in Stripe | Only the active A$9 price is live | 🟡 | 🟡 | |
+| 2.7 | `redeemAccessCode` provisions plan + expiry; expired code rejected | Tester unlocks features; expired code shows error | 🟡 | ✅ | Verified live (`PRODUCTION_ROADMAP.md` B1.4): redeem → `pro/active` provisioned with correct expiry; 2nd redeem rejected (410 use-limit); expired code rejected (410). Test codes + subscription cleaned up. |
+| 2.8 | Archived A$19 Pro price and deactivated Team product cleaned up in Stripe | Only the active A$9 price is live | 🟡 | ✅ | Audited via Stripe API (`PRODUCTION_ROADMAP.md` B1.3): 0 subscriptions on the archived A$19 price; price `active=false` (archived — Stripe prices aren't hard-deletable); Team product + A$49 price deleted. `PRO_PRICE_ID` = active A$9 monthly. |
 | 2.9 | Test-mode checkout isolated from live (separate test price/secret) | Test flow never touches live keys | 🟡 | 🟡 | |
 
 **Phase 2 gate:** 2.1–2.5 must be ✅. Real charges are involved — do not invite with billing unverified.
@@ -85,7 +85,7 @@ One pass per route on mobile and desktop. Expected outcome for every row: route 
 | 3.1 | `/app` Home | Loads with empty state when no workouts; widgets don't blank-screen | 🔴 | 🟡 | |
 | 3.2 | `/app` Home | `LoadStatusCards` shows real numbers, not `NaN` | 🔴 | 🟡 | |
 | 3.3 | `/app` Home | Log a workout via the wizard → appears in recent workouts + persists | 🔴 | 🟡 | |
-| 3.4 | `/plan` TrainingPlan | Generates a plan without a 500; plan sessions persist | 🔴 | 🟡 | |
+| 3.4 | `/plan` TrainingPlan | Generates a plan without a 500; plan sessions persist | 🔴 | 🟡 | Code fix landed (`TrainingPlan.jsx` try/catch + null guards, `PRODUCTION_ROADMAP.md` B0.1). Live retest on published app pending. |
 | 3.5 | `/coach` CoachChat | Sends a message; AI replies; no orphaned test/E2E thread surfaces | 🔴 | 🟡 | |
 | 3.6 | `/predict` RacePrediction | Produces a prediction for a saved profile | 🟡 | 🟡 | |
 | 3.7 | `/pbs` Pbs | Shows current-year + all-time bests; empty state if none | 🟡 | 🟡 | |
@@ -97,7 +97,7 @@ One pass per route on mobile and desktop. Expected outcome for every row: route 
 
 | # | Route / flow | Interaction to verify | Sev | Status | Evidence |
 |---|---|---|---|---|---|
-| 3.11 | `/physiology` | Physiology Lab opens (the Tools dropdown link works on mobile) | 🔴 | 🟡 | |
+| 3.11 | `/physiology` | Physiology Lab opens (the Tools dropdown link works on mobile) | 🔴 | 🟡 | Code fix landed (`ToolsDropdown.jsx` renders LABS as direct links, `PRODUCTION_ROADMAP.md` B0.4). Mobile tap-test on published app pending. |
 | 3.12 | `/vdot` | VDOT calculator returns a value | 🟡 | 🟡 | |
 | 3.13 | `/weather` | Weather adjust returns an adjusted pace | 🟡 | 🟡 | |
 | 3.14 | `/zones` | Zones render from profile thresholds | 🟡 | 🟡 | |
