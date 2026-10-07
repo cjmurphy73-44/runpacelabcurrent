@@ -86,14 +86,28 @@ export default function Home() {
     (async () => {
       try {
         if (!user) return; // signed-out — show the sign-in prompt below
-        // Prefer the profile explicitly linked on the user, fall back to the most recently
-        // updated owned one. Deterministic selection prevents the dashboard binding to a
-        // random duplicate stub (the same bug class that hit COROS sync) and stops a
-        // transient load error from re-showing the onboarding wall (which created duplicates).
-        const profiles = await base44.entities.AthleteProfile.filter({ created_by_id: user.id }, "-updated_date", 50);
-        if (cancelled) return;
-        const linked = user.data?.athlete_profile_id ? profiles.find((p) => p.id === user.data.athlete_profile_id) : null;
-        const profile = linked || profiles[0];
+        // Prefer the profile explicitly linked on the user (fetch it directly by ID —
+        // a filter by created_by_id misses profiles created under a different identity,
+        // e.g. an earlier auth account or a service-role backend function, which is
+        // exactly why a Gmail re-login "lost" an existing profile full of data).
+        // RLS read allows id == user.data.athlete_profile_id, so this succeeds even
+        // when created_by_id doesn't match the current user. Fall back to the most
+        // recently updated owned profile only when no link is set.
+        let profile = null;
+        const linkedId = user.data?.athlete_profile_id;
+        if (linkedId) {
+          try {
+            profile = await base44.entities.AthleteProfile.get(linkedId);
+          } catch (err) {
+            console.warn("Linked athlete_profile_id not resolvable:", err);
+            profile = null;
+          }
+        }
+        if (!profile) {
+          const profiles = await base44.entities.AthleteProfile.filter({ created_by_id: user.id }, "-updated_date", 50);
+          if (cancelled) return;
+          profile = profiles[0];
+        }
         if (profile) {
           setProfileExists(true);
           await ensureProfileLinked(user, profile);
