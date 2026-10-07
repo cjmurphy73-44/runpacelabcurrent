@@ -1,6 +1,7 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
 import { sendAthletePush } from '../../shared/pushNotifications.ts';
 import { assertPaidPlan } from '../../shared/planGate.ts';
+import { validateAdjustments } from '../../shared/planValidation.ts';
 
 // C-13 Adaptive Re-planning.
 // Fired from the reconciliation hook the moment a planned session is marked
@@ -103,15 +104,21 @@ Return an adjustment for EVERY session id listed.`,
       },
     });
 
-    const updates = (llmResult.adjustments || []).map((a: any) => ({
-      id: a.id,
-      prescribed_duration_minutes: a.new_duration_minutes,
-      prescribed_intensity_zone: a.new_intensity_zone || undefined,
-      rationale_text: a.rationale,
-      status: 'modified',
-    }));
+    // Validate every adjustment against the supplied upcoming sessions before
+    // applying. Only adjustments targeting a known upcoming session id, with
+    // in-bounds values, are accepted — nothing partial is persisted.
+    const validation = validateAdjustments(llmResult.adjustments || [], upcoming);
+    if (validation.accepted.length === 0) {
+      return Response.json({
+        success: true,
+        adjusted: [],
+        rejected: validation.rejected,
+        summary: 'No valid adjustments to apply.',
+        deviated_session: session_id,
+      });
+    }
 
-    if (updates.length > 0) await base44.entities.TrainingPlanSession.bulkUpdate(updates);
+    await base44.entities.TrainingPlanSession.bulkUpdate(validation.accepted);
 
     const summary: string = llmResult.summary || 'Your coach adjusted the rest of your week.';
     await base44.entities.CoachMessage.create({
@@ -129,7 +136,7 @@ Return an adjustment for EVERY session id listed.`,
       action_url: '/plan',
     });
 
-    return Response.json({ success: true, adjusted: updates, summary, deviated_session: session_id });
+    return Response.json({ success: true, adjusted: validation.accepted, rejected: validation.rejected, summary, deviated_session: session_id });
   } catch (error: any) {
     return Response.json({ error: error.message }, { status: 500 });
   }

@@ -9,6 +9,7 @@ import { assertPaidPlan } from '../../shared/planGate.ts';
 import { claimRateLimit } from '../../shared/rateLimit.ts';
 import { getTrainingPaces, getEquivalentTimes, formatPaceFromMs } from '../../shared/vdot.ts';
 import { deriveRunningThresholdPace } from '../../shared/thresholdPace.ts';
+import { validatePlanStructure } from '../../shared/planValidation.ts';
 import { reportError } from '../../shared/errorReport.ts';
 
 Deno.serve(async (req) => {
@@ -215,6 +216,18 @@ ${needsPhase2Note ? `12. phase2_note — since the true goal horizon (${totalWee
       },
     });
 
+    // Validate the AI-generated plan before persisting. The LLM is advisory;
+    // the server is authoritative — reject malformed/bounded-output plans
+    // rather than trusting and storing them.
+    const validation = validatePlanStructure(plan, weekDates);
+    if (!validation.valid) {
+      return Response.json({
+        error: 'Plan generation produced an invalid structure. Please try again.',
+        validation_errors: validation.errors,
+      }, { status: 422 });
+    }
+    const safePlan = validation.sanitized;
+
     // Persist as a draft so the athlete can review on /plan, then commit (commitTrainingPlan
     // materializes TrainingPlanSession rows and flips the status to active).
     const startDate = weekDates[0]?.start_date || toDateStr(today);
@@ -226,18 +239,18 @@ ${needsPhase2Note ? `12. phase2_note — since the true goal horizon (${totalWee
       end_date: endDate,
       tier: tierKey,
       race_goals: sortedGoals,
-      plan_title: plan?.plan_title,
-      athlete_summary: plan?.athlete_summary,
-      goal_architecture: plan?.goal_architecture,
-      pace_zones: plan?.pace_zones,
-      prehab_routine: plan?.prehab_routine,
-      macrocycle: plan?.macrocycle,
-      weekly_plans: plan?.weekly_plans,
-      nutrition_system: plan?.nutrition_system,
-      hrv_framework: plan?.hrv_framework,
-      injury_audit_questions: plan?.injury_audit_questions,
-      injury_red_flags: plan?.injury_red_flags,
-      phase2_note: plan?.phase2_note || '',
+      plan_title: safePlan.plan_title,
+      athlete_summary: safePlan.athlete_summary,
+      goal_architecture: safePlan.goal_architecture,
+      pace_zones: safePlan.pace_zones,
+      prehab_routine: safePlan.prehab_routine,
+      macrocycle: safePlan.macrocycle,
+      weekly_plans: safePlan.weekly_plans,
+      nutrition_system: safePlan.nutrition_system,
+      hrv_framework: safePlan.hrv_framework,
+      injury_audit_questions: safePlan.injury_audit_questions,
+      injury_red_flags: safePlan.injury_red_flags,
+      phase2_note: safePlan.phase2_note || '',
     });
 
     return Response.json({ success: true, training_plan: trainingPlan });

@@ -7,16 +7,18 @@ import { computeHolisticReadiness } from "@/science/readiness";
 import { base44 } from "@/api/base44Client";
 import { TrendingUp, TrendingDown, Minus, ShieldCheck } from "lucide-react";
 
+// Aligned with the server-authoritative thresholds (85 / 70 / 50).
 function classify(score) {
   if (score == null) return { label: "No data yet", tone: "secondary" };
-  if (score >= 75) return { label: "High readiness", tone: "default" };
-  if (score >= 55) return { label: "Moderate readiness", tone: "secondary" };
-  return { label: "Suppressed readiness", tone: "destructive" };
+  if (score >= 85) return { label: "Optimal readiness", tone: "default" };
+  if (score >= 70) return { label: "Good readiness", tone: "default" };
+  if (score >= 50) return { label: "Moderate readiness", tone: "secondary" };
+  return { label: "High fatigue", tone: "destructive" };
 }
 
 export default function ReadinessScoreCard() {
   const { biometricTelemetry, dailyMetrics } = useFitness();
-  const [serverScore, setServerScore] = useState(null);
+  const [serverReadiness, setServerReadiness] = useState(null);
 
   const today = useMemo(() => {
     const sorted = [...dailyMetrics].sort((a, b) => b.date.localeCompare(a.date));
@@ -60,14 +62,21 @@ export default function ReadinessScoreCard() {
       .then((res) => {
         if (cancelled) return;
         const data = res?.data ?? res;
-        if (data?.readiness?.score != null) setServerScore(data.readiness.score);
+        if (data?.readiness) setServerReadiness(data.readiness);
       })
       .catch(() => { /* keep local fallback */ });
     return () => { cancelled = true; };
   }, [today?.id]);
 
-  // Server score wins when available; local is the instant fallback.
-  const score = serverScore ?? localHolistic?.score ?? today?.readiness_score ?? null;
+  // Server verdict is authoritative once it arrives — including a null score
+  // meaning "Insufficient Data", which overrides any stale stored value so
+  // the card never shows a contradictory number after the server says no data.
+  // Before the server responds, the local computation is the instant fallback.
+  const serverResponded = serverReadiness != null;
+  const score = serverResponded
+    ? (serverReadiness.score ?? null)
+    : (localHolistic?.score ?? today?.readiness_score ?? null);
+  const serverSignalCount = serverReadiness?.signal_count ?? null;
 
   const providerScore = today?.provider_readiness_score ?? null;
   const providerSource = today?.provider_readiness_source ?? today?.recovery_source ?? null;
@@ -80,7 +89,7 @@ export default function ReadinessScoreCard() {
         <CardTitle className="text-sm font-heading flex items-center justify-between">
           <span>Readiness</span>
           <div className="flex items-center gap-1.5">
-            {serverScore != null && <ShieldCheck className="w-3 h-3 text-primary" title="Server-computed" />}
+            {serverResponded && <ShieldCheck className="w-3 h-3 text-primary" title="Server-computed" />}
             {today?.recovery_source && <RecoverySourceBadge source={today.recovery_source} />}
           </div>
         </CardTitle>
@@ -100,6 +109,12 @@ export default function ReadinessScoreCard() {
               <span className="text-xs text-muted-foreground">/ 100 holistic</span>
             </div>
             <Badge variant={cls.tone}>{cls.label}</Badge>
+
+            {serverSignalCount != null && serverSignalCount > 0 && (
+              <p className="text-[11px] text-muted-foreground">
+                Based on {serverSignalCount} signal{serverSignalCount === 1 ? "" : "s"}{serverReadiness?.has_baseline ? " with rolling baseline" : " — no baseline yet"}.
+              </p>
+            )}
 
             {providerScore != null && (
               <div className="pt-2 border-t border-border space-y-1">

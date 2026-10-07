@@ -32,9 +32,10 @@ describe('computeHolisticReadiness', () => {
     expect(result.status).not.toBe('Insufficient Data');
   });
 
-  it('returns Insufficient Data when all metrics are null/undefined', () => {
+  it('returns Insufficient Data with null score when all metrics are null/undefined', () => {
     const result = computeHolisticReadiness({});
     expect(result.status).toBe('Insufficient Data');
-    expect(result.score).toBe(70); // neutral component mix
+    expect(result.score).toBeNull();
+    expect(result.validSignalCount).toBe(0);
   });
 });

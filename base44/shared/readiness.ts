@@ -33,7 +33,7 @@ function zSubScore(value: number | null, baseline: number | null, direction: 'hi
   return Math.max(0, Math.min(100, Math.round(raw)));
 }
 
-export function computeHolisticReadiness(signals: RecoverySignals, baseline: RecoveryBaseline = {}): number {
+export function computeHolisticReadiness(signals: RecoverySignals, baseline: RecoveryBaseline = {}): number | null {
   const subs: number[] = [];
   const weights: number[] = [];
 
@@ -69,7 +69,7 @@ export function computeHolisticReadiness(signals: RecoverySignals, baseline: Rec
     subs.push(Math.max(0, Math.min(100, Math.round(60 + signals.tsb * 1.5)))); weights.push(0.1);
   }
 
-  if (!subs.length) return 50;
+  if (!subs.length) return null;
   const totalW = weights.reduce((a, b) => a + b, 0);
   const weighted = subs.reduce((acc, s, i) => acc + s * weights[i], 0);
   return Math.max(1, Math.min(100, Math.round(weighted / (totalW || 1))));

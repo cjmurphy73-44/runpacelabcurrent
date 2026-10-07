@@ -23,8 +23,9 @@ export interface BaselineInput {
 }
 
 export interface ReadinessResult {
-  score: number; // 0-100 unified score
+  score: number | null; // null when insufficient data — no score derived from defaults
   status: 'Optimal' | 'Good' | 'Moderate' | 'High Fatigue' | 'Insufficient Data';
+  validSignalCount: number;
   components: {
     hrvScore: number; // 0-100 normalized
     sleepScore: number; // 0-100 normalized
@@ -103,10 +104,30 @@ export function computeHolisticReadiness(
     tsbComponent * 0.20
   );
 
+  // Insufficient data: no valid signals at all. Return null score so the UI
+  // can show an explicit insufficient-data state rather than a number derived
+  // purely from neutral defaults.
+  if (validCount === 0) {
+    return {
+      score: null,
+      status: 'Insufficient Data',
+      validSignalCount: 0,
+      components: {
+        hrvScore: Math.round(hrvComponent),
+        sleepScore: Math.round(sleepComponent),
+        restingHrScore: Math.round(rhrComponent),
+        tsbScore: Math.round(tsbComponent),
+      },
+      details: {
+        hrvZScore,
+        restingHrDelta: rhrDelta,
+        tsb: tsb ?? undefined,
+      },
+    };
+  }
+
   let status: ReadinessResult['status'] = 'Moderate';
-  if (validCount === 0 && current.sleepScore == null && current.hrvMs == null && current.restingHr == null && tsb == null) {
-    status = 'Insufficient Data';
-  } else if (compositeScore >= 85) {
+  if (compositeScore >= 85) {
     status = 'Optimal';
   } else if (compositeScore >= 70) {
     status = 'Good';
@@ -119,6 +140,7 @@ export function computeHolisticReadiness(
   return {
     score: compositeScore,
     status,
+    validSignalCount: validCount,
     components: {
       hrvScore: Math.round(hrvComponent),
       sleepScore: Math.round(sleepComponent),
@@ -129,6 +151,6 @@ export function computeHolisticReadiness(
       hrvZScore,
       restingHrDelta: rhrDelta,
       tsb: tsb ?? undefined,
-    }
+    },
   };
 }

@@ -1,5 +1,6 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
 import { assertPaidPlan } from '../../shared/planGate.ts';
+import { validateAdjustments } from '../../shared/planValidation.ts';
 
 Deno.serve(async (req) => {
   try {
@@ -56,14 +57,15 @@ Deno.serve(async (req) => {
       },
     });
 
-    const updates = (llmResult.adjustments || []).map((a) => ({
-      id: a.id,
-      prescribed_duration_minutes: a.new_duration_minutes,
-      prescribed_intensity_zone: a.new_intensity_zone || undefined,
-      rationale_text: a.rationale,
-    }));
+    // Validate every adjustment against the supplied upcoming sessions before
+    // applying. Only adjustments targeting a known upcoming session id, with
+    // in-bounds values, are accepted — nothing partial is persisted.
+    const validation = validateAdjustments(llmResult.adjustments || [], upcoming);
+    if (validation.accepted.length === 0) {
+      return Response.json({ success: true, adjusted: [], rejected: validation.rejected, summary: 'No valid adjustments to apply.' });
+    }
 
-    if (updates.length > 0) await base44.entities.TrainingPlanSession.bulkUpdate(updates);
+    await base44.entities.TrainingPlanSession.bulkUpdate(validation.accepted);
 
     await base44.entities.CoachMessage.create({
       athlete_id,
@@ -71,7 +73,7 @@ Deno.serve(async (req) => {
       content_text: llmResult.summary,
     });
 
-    return Response.json({ success: true, adjusted: updates });
+    return Response.json({ success: true, adjusted: validation.accepted, rejected: validation.rejected });
   } catch (error) {
     return Response.json({ error: error.message }, { status: 500 });
   }

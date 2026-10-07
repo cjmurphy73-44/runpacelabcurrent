@@ -72,6 +72,9 @@ export default async function(req: Request): Promise<Response> {
       readiness,
       vdot: vdot ?? null,
       vdot_source: vdotResult.source,
+      vdot_source_session_id: vdotResult.source_session_id ?? null,
+      vdot_source_date: vdotResult.source_date ?? null,
+      vdot_source_sport: vdotResult.source_sport ?? null,
       training_paces: trainingPaces,
       equivalent_times: equivalentTimes,
       threshold_pace: thresholdPace.paceMs ? {
@@ -99,9 +102,6 @@ async function getOwnedAthlete(base44, userId) {
 
 // Holistic readiness from today's signals + 14-day rolling baseline.
 function computeReadiness(today, history) {
-  if (!today && (!history || history.length === 0)) {
-    return { score: null, status: 'Insufficient Data', components: null, details: null };
-  }
   const hrvBase = computeBaseline(history, 'hrv', 14);
   const rhrBase = computeBaseline(history, 'resting_hr', 14);
   const sleepBase = computeBaseline(history, 'sleep_score', 14);
@@ -125,13 +125,35 @@ function computeReadiness(today, history) {
   };
 
   const score = computeHolisticReadiness(signals, baseline);
+
+  // Insufficient data: the engine had no valid signals to compute from.
+  // Return an explicit null score so the UI shows insufficient-data rather
+  // than a number derived purely from defaults.
+  if (score == null) {
+    return {
+      score: null,
+      status: 'Insufficient Data',
+      baseline,
+      signal_count: 0,
+      has_baseline: hrvBase != null || rhrBase != null || sleepBase != null,
+    };
+  }
+
+  // Count how many signals actually contributed (not defaults).
+  const signalCount = [
+    signals.hrv, signals.sleep_score, signals.sleep_duration_hours,
+    signals.resting_hr, signals.body_battery, signals.stress_score, signals.tsb,
+  ].filter((v) => v != null && Number.isFinite(v)).length;
+
+  const hasBaseline = hrvBase != null || rhrBase != null || sleepBase != null;
+
   let status = 'Moderate';
   if (score >= 85) status = 'Optimal';
   else if (score >= 70) status = 'Good';
   else if (score >= 50) status = 'Moderate';
   else status = 'High Fatigue';
 
-  return { score, status, baseline };
+  return { score, status, baseline, signal_count: signalCount, has_baseline: hasBaseline };
 }
 
 // Find the strongest recent qualifying race effort and compute VDOT from it.
@@ -147,6 +169,10 @@ function computeVdotFromSessions(sessions, athlete) {
   let sourceSession = null;
 
   for (const s of recent) {
+    // VDOT is a running-performance model — only running sessions qualify.
+    // Non-running efforts (cycling, swimming, strength, triathlon, other)
+    // must never influence the running estimate.
+    if (!s.sport || !s.sport.toLowerCase().startsWith('run')) continue;
     const durS = s.duration_seconds ?? (s.duration_minutes ? s.duration_minutes * 60 : 0);
     const distM = s.distance_km ? s.distance_km * 1000 : 0;
     if (!durS || durS < 180 || distM < 1200) continue; // Daniels requires >= 3 min, >= 1200 m
@@ -160,7 +186,19 @@ function computeVdotFromSessions(sessions, athlete) {
   }
 
   if (bestVdot != null) {
-    return { vdot: bestVdot, source: `From ${sourceSession?.date || 'recent race'}` };
+    return {
+      vdot: bestVdot,
+      source: `From run on ${sourceSession?.date || 'recent date'}`,
+      source_session_id: sourceSession?.id ?? null,
+      source_date: sourceSession?.date ?? null,
+      source_sport: 'running',
+    };
   }
-  return { vdot: null, source: athlete.vdot_estimate ? 'Stored VDOT' : 'No qualifying race yet' };
+  return {
+    vdot: null,
+    source: athlete.vdot_estimate ? 'Stored VDOT' : 'No qualifying run yet',
+    source_session_id: null,
+    source_date: null,
+    source_sport: null,
+  };
 }

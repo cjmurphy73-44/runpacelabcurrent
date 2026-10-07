@@ -1,4 +1,5 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.38';
+import { validatePlanStructure } from '../../shared/planValidation.ts';
 import { reportError } from '../../shared/errorReport.ts';
 
 Deno.serve(async (req) => {
@@ -30,9 +31,20 @@ Deno.serve(async (req) => {
     const toDelete = oldPending.filter((s) => s.date >= todayStr);
     await Promise.all(toDelete.map((s) => base44.entities.TrainingPlanSession.delete(s.id)));
 
+    // Validate the stored plan's structure before materializing sessions.
+    // A plan corrupted by a bad generation must not silently produce bad sessions.
+    const validation = validatePlanStructure(plan, null);
+    if (!validation.valid) {
+      return Response.json({
+        error: 'Plan structure is invalid. Please regenerate your plan.',
+        validation_errors: validation.errors,
+      }, { status: 422 });
+    }
+    const safePlan = validation.sanitized;
+
     // Materialize TrainingPlanSession records so the calendar reflects the new plan
     const sessionsToCreate = [];
-    for (const week of plan.weekly_plans || []) {
+    for (const week of safePlan.weekly_plans || []) {
       for (const day of week.days || []) {
         if (!day.date || day.session_type === 'rest') continue;
         sessionsToCreate.push({
