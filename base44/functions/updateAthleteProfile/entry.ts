@@ -38,8 +38,15 @@ export default async function (req: Request): Promise<Response> {
     } catch (_e) {
       return Response.json({ error: 'Athlete profile not found' }, { status: 404 });
     }
-    // Ownership check — a user may only edit their own profile.
-    if (athlete.created_by_id !== user.id) return Response.json({ error: 'Forbidden' }, { status: 403 });
+    // Authorization — a user may only edit their own profile. Ownership is established by
+    // either creating the profile (created_by_id) OR having it explicitly linked on their
+    // user record (athlete_profile_id, set by onboarding / self-heal / backfill). The link
+    // path covers profiles created under a different identity (e.g. a service-role function)
+    // that were later claimed by the user — without it those profiles become uneditable.
+    const linkedId = user.data?.athlete_profile_id || user.athlete_profile_id || null;
+    const isOwner = athlete.created_by_id === user.id;
+    const isLinked = linkedId && linkedId === athlete_id;
+    if (!isOwner && !isLinked) return Response.json({ error: 'Forbidden' }, { status: 403 });
 
     const cleanUpdates = {};
     for (const key of ALLOWED_FIELDS) {
