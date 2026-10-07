@@ -126,6 +126,8 @@ Beta Phase 0 (stability)
 
 S4 ownership stamp, observability (B3), and CI gate (P1.2) run in parallel and can trail the critical path by one phase. **S5 (health-data RLS + backfill) must land before any broad marketing push** — it's the single biggest privacy gap.
 
+> **Beta verification checklist:** `src/BETA_READINESS_ROADMAP.md` is the pass/fail companion to this roadmap — it turns each phase above into route-grounded checklist items (account/onboarding, privacy, billing, app-wide UX, integrations, support) with expected outcomes, evidence columns, retest rules, go/no-go gates, and staged cohorts (C0→C3). This file tracks what to build/fix; that one tracks what to prove with fresh evidence before any cohort advances.
+
 ## Risk register
 
 | Risk | Impact | Mitigation |
