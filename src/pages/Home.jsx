@@ -268,7 +268,7 @@ export default function Home() {
           <WidgetBoundary name="Coach briefing"><CoachBriefing athlete={athlete} /></WidgetBoundary>
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <WidgetBoundary name="Quick import"><OcrDropzone athleteId={athlete.id} onSaved={() => { trackWorkoutIngested(); loadAthleteData(athlete.id); }} /></WidgetBoundary>
-            <WidgetBoundary name="Recent workouts"><RecentWorkouts workouts={workouts} athlete={athlete} /></WidgetBoundary>
+            <WidgetBoundary name="Recent workouts"><RecentWorkouts workouts={workouts} athlete={athlete} onChanged={() => loadAthleteData(athlete.id)} /></WidgetBoundary>
           </div>
         </section>
 

@@ -1,11 +1,31 @@
-import React, { useMemo } from "react";
+import React, { useMemo, useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { base44 } from "@/api/base44Client";
+import { useToast } from "@/components/ui/use-toast";
+import { Pencil, Trash2 } from "lucide-react";
 import HRZoneBreakdown from "@/components/workout/HRZoneBreakdown";
 import WorkoutMetricTile from "@/components/workout/WorkoutMetricTile";
+import EditWorkoutModal from "@/components/workout/EditWorkoutModal";
 import { computeHrZoneDistribution, estimateCalories, normalizedPacePower } from "@/lib/workoutAnalytics";
 
-export default function WorkoutDetailModal({ workout, athlete, children }) {
+export default function WorkoutDetailModal({ workout, athlete, children, onChanged }) {
+  const { toast } = useToast();
+  const [open, setOpen] = useState(false);
+  const [editing, setEditing] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const maxHr = athlete?.max_heart_rate || workout.max_hr;
   const zones = useMemo(() => computeHrZoneDistribution(workout, maxHr), [workout, maxHr]);
   const calories = useMemo(() => estimateCalories(workout, athlete), [workout, athlete]);
@@ -15,8 +35,27 @@ export default function WorkoutDetailModal({ workout, athlete, children }) {
   const anaerobicPct = Math.max(100 - aerobicPct, 0);
   const durationMin = Math.round(workout.duration_minutes || (workout.duration_seconds || 0) / 60);
 
+  const handleDelete = async () => {
+    setDeleting(true);
+    try {
+      await base44.functions.invoke("editWorkoutSession", { workout_id: workout.id, action: "delete" });
+      toast({ title: "Workout deleted", description: "Training load refreshed." });
+      setConfirmDelete(false);
+      setOpen(false);
+      onChanged?.();
+    } catch (err) {
+      toast({
+        title: "Could not delete workout",
+        description: err?.response?.data?.error || err?.message || "Unexpected error",
+        variant: "destructive",
+      });
+    } finally {
+      setDeleting(false);
+    }
+  };
+
   return (
-    <Dialog>
+    <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>{children}</DialogTrigger>
       <DialogContent className="max-w-lg bg-card/95 border border-border/50 backdrop-blur">
         <DialogHeader>
@@ -54,7 +93,39 @@ export default function WorkoutDetailModal({ workout, athlete, children }) {
             </div>
           </div>
         </div>
+
+        <div className="flex items-center justify-end gap-2 pt-2 border-t border-border/50">
+          <Button variant="outline" size="sm" onClick={() => setEditing(true)}>
+            <Pencil className="w-4 h-4" /> Edit
+          </Button>
+          <Button variant="destructive" size="sm" onClick={() => setConfirmDelete(true)}>
+            <Trash2 className="w-4 h-4" /> Delete
+          </Button>
+        </div>
       </DialogContent>
+
+      <EditWorkoutModal
+        workout={workout}
+        open={editing}
+        onClose={() => setEditing(false)}
+        onSaved={() => { setEditing(false); setOpen(false); onChanged?.(); }}
+      />
+      <AlertDialog open={confirmDelete} onOpenChange={setConfirmDelete}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete this workout?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This removes the session and its attached files/feedback, then re-runs the fitness model. This cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleting}>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDelete} disabled={deleting} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              {deleting ? "Deleting…" : "Delete"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Dialog>
   );
 }

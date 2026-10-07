@@ -31,12 +31,12 @@ export default function MobileNav() {
 
   const primaryClass = (to) =>
     cn(
-      "flex items-center gap-3 px-3 py-2.5 rounded-md text-sm font-medium",
+      "flex items-center gap-3 px-3 py-3 rounded-md text-sm font-medium min-h-[44px]",
       isActive(to) ? "bg-primary text-primary-foreground" : "text-foreground hover:bg-accent"
     );
 
   const toolClass =
-    "flex items-center gap-3 px-3 py-2.5 rounded-md text-sm text-foreground hover:bg-accent";
+    "flex items-center gap-3 px-3 py-3 rounded-md text-sm text-foreground hover:bg-accent min-h-[44px]";
 
   return (
     <Sheet open={open} onOpenChange={setOpen}>
@@ -44,7 +44,7 @@ export default function MobileNav() {
         <button
           type="button"
           aria-label="Open menu"
-          className="flex items-center justify-center h-9 w-9 rounded-md text-muted-foreground hover:bg-accent"
+          className="flex items-center justify-center h-11 w-11 rounded-md text-muted-foreground hover:bg-accent"
         >
           <Menu className="w-5 h-5" />
         </button>
@@ -85,7 +85,7 @@ export default function MobileNav() {
           <nav className="space-y-1">
             {PRIMARY_NAV.map((n) => (
               <SheetClose asChild key={n.to}>
-                <Link to={n.to} className={primaryClass(n.to)}>
+                <Link to={n.to} className={primaryClass(n.to)} aria-current={isActive(n.to) ? "page" : undefined}>
                   <n.icon className="w-5 h-5" />
                   {n.label}
                 </Link>
@@ -93,7 +93,7 @@ export default function MobileNav() {
             ))}
             {coachMode && (
               <SheetClose asChild>
-                <Link to="/roster" className={primaryClass("/roster")}>
+                <Link to="/roster" className={primaryClass("/roster")} aria-current={isActive("/roster") ? "page" : undefined}>
                   <Users className="w-5 h-5" />
                   Roster
                 </Link>
@@ -125,9 +125,12 @@ export default function MobileNav() {
                 </Link>
               </SheetClose>
             ))}
+            <p className="px-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-1 mt-3">
+              Labs
+            </p>
             {LABS.map((t) => (
               <SheetClose asChild key={t.to}>
-                <Link to={t.to} className={toolClass}>
+                <Link to={t.to} className={toolClass} aria-current={isActive(t.to) ? "page" : undefined}>
                   <t.icon className="w-5 h-5 text-muted-foreground" />
                   {t.label}
                 </Link>
@@ -160,7 +163,7 @@ export default function MobileNav() {
           {/* Actions */}
           <div className="px-2 pt-3 border-t border-border space-y-1">
             <SheetClose asChild>
-              <Link to="/import" className={toolClass}>
+              <Link to="/import" className={toolClass} aria-current={isActive("/import") ? "page" : undefined}>
                 <Upload className="w-5 h-5 text-muted-foreground" />
                 Imports
               </Link>
