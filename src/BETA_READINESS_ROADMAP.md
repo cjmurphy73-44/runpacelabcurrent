@@ -86,7 +86,7 @@ One pass per route on mobile and desktop. Expected outcome for every row: route 
 | 3.2 | `/app` Home | `LoadStatusCards` shows real numbers, not `NaN` | 🔴 | 🟡 | |
 | 3.3 | `/app` Home | Log a workout via the wizard → appears in recent workouts + persists | 🔴 | 🟡 | |
 | 3.4 | `/plan` TrainingPlan | Generates a plan without a 500; plan sessions persist | 🔴 | 🟡 | Code fix landed (`TrainingPlan.jsx` try/catch + null guards, `PRODUCTION_ROADMAP.md` B0.1). Live retest on published app pending. |
-| 3.5 | `/coach` CoachChat | Sends a message; AI replies; no orphaned test/E2E thread surfaces | 🔴 | 🟡 | |
+| 3.5 | `/coach` CoachChat | Sends a message; AI replies; no orphaned test/E2E thread surfaces | 🔴 | 🟡 | `CoachMessage` queried live: 0 records — no test thread to surface (B0.6 ✅). Send/reply runtime retest on published app still pending. |
 | 3.6 | `/predict` RacePrediction | Produces a prediction for a saved profile | 🟡 | 🟡 | |
 | 3.7 | `/pbs` Pbs | Shows current-year + all-time bests; empty state if none | 🟡 | 🟡 | |
 | 3.8 | `/calendar` Calendar | Renders sessions; tap a day | 🟡 | 🟡 | |

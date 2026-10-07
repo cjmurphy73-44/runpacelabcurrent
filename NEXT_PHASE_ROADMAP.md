@@ -32,8 +32,8 @@ Code changes that must land before any external tester is invited. Each has a ro
 |---|---|---|---|---|---|
 | M1.1 | Fix `/plan` TrainingPlan 500 (reproduce → read `TrainingPlan.jsx` + failing call → fix request shape/null guard) | code | `/plan` loads for athletes with and without an existing plan, no 500 | M0.3 | 🟡 | Code fix landed (`TrainingPlan.jsx` try/catch + `loadError` + null guards). Live retest on published app pending — not yet ✅. |
 | M1.2 | Fix Tools dropdown → Physiology Lab nested trigger on mobile (≤473px) | code | Physiology Lab opens from the Tools menu at 390px | — | 🟡 | Code fix landed (`ToolsDropdown.jsx` renders LABS as direct `DropdownMenuItem` Links, no nested trigger). Mobile tap-test on published app pending — not yet ✅. |
-| M1.3 | Move `base44ConnectorGateway` client-side callers behind backend-function proxies (connectors are server-side) | code | No adapter runtime errors in console across Home, Imports, Settings | — | 🔴 |
-| M1.4 | Delete the orphaned E2E test conversation from CoachMessage data | code+manual | No test conversation renders for a real user in `/coach` | — | 🔴 |
+| M1.3 | Move `base44ConnectorGateway` client-side callers behind backend-function proxies (connectors are server-side) | code | No adapter runtime errors in console across Home, Imports, Settings | — | ✅ | No UI consumer reads `connectorGateway` from the service context (only `functionGateway` is used); Admin's Airtable call routes via the `airtableSync` backend function. Dead gateway is a latent footgun, not a live defect. |
+| M1.4 | Delete the orphaned E2E test conversation from CoachMessage data | code+manual | No test conversation renders for a real user in `/coach` | — | ✅ | Queried `CoachMessage` live: 0 records exist — the test thread is already gone, nothing renders. |
 
 **M1 gate:** all four items ✅ (retested on the published app, fresh evidence recorded). No cohort invite while any is ❌/🟡.
 
