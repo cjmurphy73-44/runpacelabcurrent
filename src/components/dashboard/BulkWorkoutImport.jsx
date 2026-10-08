@@ -90,7 +90,7 @@ export default function BulkWorkoutImport({ athleteId, onUploaded }) {
             <Label>Files (.fit or .csv, multiple)</Label>
             <Input
               type="file"
-              accept=".fit,.csv"
+              accept=".fit,.csv,application/vnd.ant.fit,application/octet-stream"
               multiple
               onChange={(e) => addFiles(Array.from(e.target.files || []))}
             />

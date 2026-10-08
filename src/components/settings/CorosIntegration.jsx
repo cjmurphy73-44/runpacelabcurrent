@@ -60,7 +60,10 @@ export default function CorosIntegration({ athleteId }) {
     try {
       const res = await base44.functions.invoke("corosSync", { action: "sync_historical" });
       const data = res.data || res;
-      setInfo(`Imported ${data.imported ?? 0} workout(s)${data.errors ? `, ${data.errors} skipped` : ""}.`);
+      const parts = [`Imported ${data.imported ?? 0} of ${data.records_found ?? 0} found`];
+      if (data.duplicates) parts.push(`${data.duplicates} already up to date`);
+      if (data.errors) parts.push(`${data.errors} skipped`);
+      setInfo(parts.join(" · ") + ".");
       loadStatus();
     } catch (e) {
       setError(e?.response?.data?.error || "Historical sync failed.");
@@ -101,7 +104,7 @@ export default function CorosIntegration({ athleteId }) {
 
   return (
     <div className="space-y-2">
-      <div className="flex items-center justify-between p-3 border border-border rounded-md">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 p-3 border border-border rounded-md">
         <div className="flex items-center gap-3">
           <div className="bg-muted p-2 rounded text-muted-foreground">
             <Link2 className="w-5 h-5" />
@@ -129,24 +132,26 @@ export default function CorosIntegration({ athleteId }) {
             )}
           </div>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-col gap-2 w-full sm:w-auto sm:items-end">
           {connected ? (
             <>
-              <Button variant="outline" size="sm" onClick={syncHistorical} disabled={syncing}>
-                {syncing ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <RefreshCw className="w-4 h-4 mr-2" />}
-                Sync workouts
-              </Button>
-              <Button variant="outline" size="sm" onClick={syncRecovery} disabled={syncingRecovery}>
-                {syncingRecovery ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <RefreshCw className="w-4 h-4 mr-2" />}
-                Sync recovery
-              </Button>
-              <Button variant="ghost" size="sm" onClick={disconnect} disabled={disconnecting}>
+              <div className="flex flex-col gap-2 w-full">
+                <Button variant="outline" size="sm" onClick={syncHistorical} disabled={syncing} className="w-full justify-center min-h-[44px]">
+                  {syncing ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <RefreshCw className="w-4 h-4 mr-2" />}
+                  Sync workouts
+                </Button>
+                <Button variant="outline" size="sm" onClick={syncRecovery} disabled={syncingRecovery} className="w-full justify-center min-h-[44px]">
+                  {syncingRecovery ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <RefreshCw className="w-4 h-4 mr-2" />}
+                  Sync recovery
+                </Button>
+              </div>
+              <Button variant="ghost" size="sm" onClick={disconnect} disabled={disconnecting} className="w-full sm:w-auto justify-center min-h-[44px]">
                 {disconnecting ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Unlink className="w-4 h-4 mr-2" />}
                 Disconnect
               </Button>
             </>
           ) : (
-            <Button size="sm" onClick={connect} disabled={connecting}>
+            <Button size="sm" onClick={connect} disabled={connecting} className="w-full sm:w-auto justify-center min-h-[44px]">
               {connecting ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Link2 className="w-4 h-4 mr-2" />}
               Connect COROS Account
             </Button>

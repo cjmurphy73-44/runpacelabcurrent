@@ -478,8 +478,12 @@ function mapRecord(a: any, athlete: any) {
 
 // Service-role core: pulls 90 days of sport records for one athlete. Shared by the
 // user-scoped on-demand sync and the scheduled sync_all loop.
-async function syncHistoricalFor(athlete: any, accessToken: string, base44, lookbackDays = 90): Promise<{ imported: number; errors: number; records_found: number }> {
+async function syncHistoricalFor(athlete: any, accessToken: string, base44, lookbackDays = 90): Promise<{ imported: number; errors: number; records_found: number; duplicates: number }> {
+  // End date is bumped +1 day so today's workout is always inside the window
+  // regardless of the athlete's timezone — the server runs in UTC, and a morning
+  // session in UTC+10 would otherwise fall on "yesterday" and be skipped.
   const end = new Date();
+  end.setDate(end.getDate() + 1);
   const start = new Date();
   start.setDate(start.getDate() - Math.min(90, lookbackDays));
   // COROS MCP requires yyyyMMdd (no dashes), and sportTypeCodes is mandatory — 65535 = all sports.
@@ -495,12 +499,13 @@ async function syncHistoricalFor(athlete: any, accessToken: string, base44, look
     : extractRecords(result);
   const toCreate = [];
   let errors = 0;
+  let duplicates = 0;
   for (const a of records) {
     const mapped = mapRecord(a, athlete);
     if (!mapped) { errors++; continue; }
     const existing = await base44.asServiceRole.entities.WorkoutSession.filter({ athlete_id: athlete.id, date: mapped.date });
     const dup = existing.some((s) => s.sport === mapped.sport && Math.abs((s.duration_minutes || 0) - mapped.duration_minutes) < 1 && Math.abs((s.distance_km || 0) - mapped.distance_km) < 0.1);
-    if (dup) continue;
+    if (dup) { duplicates++; continue; }
     toCreate.push(mapped);
   }
   if (toCreate.length) {
@@ -512,7 +517,7 @@ async function syncHistoricalFor(athlete: any, accessToken: string, base44, look
   for (const d of dates) {
     try { await base44.asServiceRole.functions.invoke('calculateDailyTRIMP', { athlete_id: athlete.id, date: d }); } catch { /* keep going */ }
   }
-  return { imported: toCreate.length, errors, records_found: records.length };
+  return { imported: toCreate.length, errors, records_found: records.length, duplicates };
 }
 
 async function handleSyncHistorical(base44) {

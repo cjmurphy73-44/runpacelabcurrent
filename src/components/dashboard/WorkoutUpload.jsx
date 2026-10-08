@@ -55,7 +55,7 @@ export default function WorkoutUpload({ athleteId, onUploaded }) {
         <form onSubmit={handleSubmit} className="space-y-3">
           <div>
             <Label>File (.fit or .csv)</Label>
-            <Input type="file" accept=".fit,.csv" onChange={(e) => setFile(e.target.files?.[0] || null)} required />
+            <Input type="file" accept=".fit,.csv,application/vnd.ant.fit,application/octet-stream" onChange={(e) => setFile(e.target.files?.[0] || null)} required />
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
