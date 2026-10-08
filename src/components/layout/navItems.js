@@ -1,7 +1,7 @@
 import {
   Activity, LineChart, CalendarRange, MessageCircle,
   Gauge, CloudSun, LayoutGrid, Target, Trophy, KanbanSquare,
-  FlaskConical, HeartPulse,
+  FlaskConical, HeartPulse, History,
 } from "lucide-react";
 
 // Shared navigation model used by both the desktop header bar and the mobile
@@ -21,6 +21,7 @@ export const CALCULATORS = [
 ];
 
 export const INSIGHTS = [
+  { to: "/workouts", label: "Workouts", icon: History },
   { to: "/predict", label: "Race Predictor", icon: Target },
   { to: "/pbs", label: "Race Ledger", icon: Trophy },
   { to: "/calendar", label: "Training Calendar", icon: CalendarRange },

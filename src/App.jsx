@@ -16,6 +16,7 @@ import Vdot from '@/pages/Vdot';
 import WeatherAdjust from '@/pages/WeatherAdjust';
 import Zones from '@/pages/Zones';
 import AdvancedAnalytics from '@/pages/AdvancedAnalytics';
+import Workouts from '@/pages/Workouts';
 import TrainingPlan from '@/pages/TrainingPlan';
 import AthleteSettings from '@/pages/AthleteSettings';
 import Imports from '@/pages/Imports';
@@ -70,6 +71,7 @@ export default function App() {
               <Route path="/weather" element={<WeatherAdjust />} />
               <Route path="/zones" element={<Zones />} />
               <Route path="/analytics" element={<AdvancedAnalytics />} />
+              <Route path="/workouts" element={<Workouts />} />
               <Route path="/plan" element={<TrainingPlan />} />
               <Route path="/settings" element={<AthleteSettings />} />
               <Route path="/import" element={<Imports />} />
