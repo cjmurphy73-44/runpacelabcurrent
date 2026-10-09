@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { uploadWorkoutFile, WorkoutImportResponse } from '../services/api';
 
-export function WorkoutUploadForm() {
+export default function WorkoutUploadForm() {
   const [file, setFile] = useState<File | null>(null);
   const [sex, setSex] = useState<string>('male');
   const [restingHr, setRestingHr] = useState<number>(50);
