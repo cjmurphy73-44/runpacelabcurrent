@@ -7,6 +7,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Loader2, Plus, ArrowRight, Watch, Upload, FlaskConical, Webhook, Settings } from "lucide-react";
 import HelpLink from "@/components/guide/HelpLink";
 import BulkWorkoutImport from "@/components/dashboard/BulkWorkoutImport";
+import WorkoutUploadForm from "@/components/WorkoutUploadForm";
 import WebhookSyncPanel from "@/components/imports/WebhookSyncPanel";
 import LabResultsImport from "@/components/imports/LabResultsImport";
 import ManualWorkoutModal from "@/components/workout/ManualWorkoutModal";
@@ -112,6 +113,7 @@ export default function Imports() {
       {/* 2 — Import workout files */}
       <section className="space-y-3">
         <SectionHeading index="02" title="Import workout files" description="Bulk-upload .fit or .csv exports from your watch or training platform." icon={Upload} />
+        <WorkoutUploadForm athleteId={athlete.id} />
         <BulkWorkoutImport athleteId={athlete.id} onUploaded={() => {}} />
         <p className="text-xs text-muted-foreground">
           Supports <span className="font-medium">.fit</span> and <span className="font-medium">.csv</span> from Strava, COROS, Garmin and others.
