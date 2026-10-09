@@ -11,10 +11,10 @@ class ReadinessRequest(BaseModel):
 
 class TRIMPRequest(BaseModel):
     duration_minutes: float = Field(..., gt=0, description="Duration of the exercise session in minutes")
-    avg_heart_rate: float = Field(..., gt=0, description="Average heart rate during session")
-    resting_heart_rate: float = Field(..., gt=0, description="Resting heart rate")
-    max_heart_rate: float = Field(..., gt=0, description="Maximum heart rate")
-    is_male: bool = Field(True, description="Biological sex factor for Banister formula weighting")
+    avg_hr: float = Field(..., gt=0, description="Average heart rate during session")
+    resting_hr: float = Field(..., gt=0, description="Resting heart rate")
+    max_hr: float = Field(..., gt=0, description="Maximum heart rate")
+    sex: str = Field("male", description="Biological sex factor ('male' or 'female') for Banister formula weighting")
 
 @router.post("/readiness")
 def get_holistic_readiness(payload: ReadinessRequest):
@@ -32,10 +32,10 @@ def get_banister_trimp(payload: TRIMPRequest):
     try:
         trimp_score = calculate_banister_trimp(
             duration_minutes=payload.duration_minutes,
-            avg_heart_rate=payload.avg_heart_rate,
-            resting_heart_rate=payload.resting_heart_rate,
-            max_heart_rate=payload.max_heart_rate,
-            is_male=payload.is_male
+            avg_hr=payload.avg_hr,
+            resting_hr=payload.resting_hr,
+            max_hr=payload.max_hr,
+            sex=payload.sex
         )
         return {
             "status": "success",
