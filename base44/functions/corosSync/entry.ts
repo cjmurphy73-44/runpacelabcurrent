@@ -29,9 +29,16 @@ function getClientId(): string {
   return env('COROS_MCP_CLIENT_ID');
 }
 
-function selfUrl(req: Request): string {
-  const url = new URL(req.url);
-  return `${url.origin}${url.pathname}`;
+// The public URL athletes' browsers are redirected to after COROS approval.
+// req.url inside the Deno runtime is an internal dispatcher URL
+// (https://base44-dispatcher-production.base44.workers.dev/run/<hash>) that does NOT
+// match the redirect_uri registered with COROS during DCR, causing a 400 after consent.
+// Use the stable public function URL, overridable via COROS_REDIRECT_URI if the DCR
+// registration used a different value.
+function selfUrl(_req: Request): string {
+  const override = env('COROS_REDIRECT_URI');
+  if (override) return override;
+  return 'https://trainpacelab.base44.app/functions/corosSync';
 }
 
 // Friendly HTML callback page shown on the OAuth landing — surfaces COROS's real
@@ -113,6 +120,7 @@ async function handleOAuthCallback(req, base44) {
   const origin = u.origin;
   const code = u.searchParams.get('code');
   const state = u.searchParams.get('state') || '';
+  console.log('COROS callback reached: origin =', origin, 'path =', u.pathname, 'has code =', Boolean(code), 'has state =', Boolean(state));
   if (!code) {
     console.error('COROS callback: missing authorization code');
     return callbackPage('error', 'Connection failed', 'COROS did not return an authorization code. Please try connecting again.', origin);
@@ -276,16 +284,18 @@ async function handleAuthorize(req, base44) {
   const verifier = randomB64url(32);
   const challenge = await pkceChallenge(verifier);
   const state = await buildState(athlete.id, verifier);
+  const redirectUri = selfUrl(req);
+  console.log('COROS authorize: redirect_uri =', redirectUri, 'athlete =', athlete.id);
   const params = new URLSearchParams({
     response_type: 'code',
     ...(getClientId() ? { client_id: getClientId() } : {}),
-    redirect_uri: selfUrl(req),
+    redirect_uri: redirectUri,
     code_challenge: challenge,
     code_challenge_method: 'S256',
     scope: SCOPE,
     state,
   });
-  return Response.json({ authorize_url: `${AUTHORIZE_ENDPOINT}?${params.toString()}` });
+  return Response.json({ authorize_url: `${AUTHORIZE_ENDPOINT}?${params.toString()}`, redirect_uri: redirectUri });
 }
 
 async function handleStatus(base44) {
