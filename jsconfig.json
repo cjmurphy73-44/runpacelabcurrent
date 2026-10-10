@@ -16,6 +16,6 @@
     "resolveJsonModule": true,
     "types": []
   },
-  "include": [],
-  "exclude": ["node_modules", "dist", "src/components", "src/pages", "src/**/*.jsx"]
+  "include": ["src"],
+  "exclude": ["node_modules", "dist"]
 }
