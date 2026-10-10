@@ -77,13 +77,21 @@ async function buildState(athleteId: string, verifier: string): Promise<string> 
   return `${payload}.${sig}`;
 }
 async function parseState(state: string): Promise<{ athleteId: string | null; verifier: string | null; ok: boolean }> {
-  const [payload, sig] = (state || '').split('.');
-  if (!payload || !sig) return { athleteId: null, verifier: null, ok: false };
+  // State format: athleteId.b64url(verifier).sig  — three dot-separated parts.
+  // buildState signs the full "athleteId.b64url(verifier)" payload, so we must
+  // reconstruct that same payload before verifying the HMAC. Splitting into
+  // only two parts (as the old code did) treats the verifier as the signature
+  // and discards the real signature, so verification always fails.
+  const parts = (state || '').split('.');
+  if (parts.length < 3) return { athleteId: null, verifier: null, ok: false };
+  const athleteId = parts[0];
+  const verifierB64 = parts[1];
+  const sig = parts.slice(2).join('.');
+  if (!athleteId || !verifierB64 || !sig) return { athleteId: null, verifier: null, ok: false };
   const clientId = getClientId();
   if (!clientId) return { athleteId: null, verifier: null, ok: false };
-  if ((await hmacBase64Url(payload, clientId)) !== sig) return { athleteId: null, verifier: null, ok: false };
-  const [athleteId, verifierB64] = payload.split('.');
-  if (!athleteId || !verifierB64) return { athleteId, verifier: null, ok: false };
+  const payload = `${athleteId}.${verifierB64}`;
+  if ((await hmacBase64Url(payload, clientId)) !== sig) return { athleteId, verifier: null, ok: false };
   try { return { athleteId, verifier: b64urlDecode(verifierB64), ok: true }; }
   catch { return { athleteId, verifier: null, ok: false }; }
 }
