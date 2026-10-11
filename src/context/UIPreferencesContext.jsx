@@ -3,28 +3,52 @@ import React, { createContext, useContext, useState, useEffect, useCallback } fr
 const UIPreferencesContext = createContext(null);
 const STORAGE_KEY = "showDeepMetrics";
 const LENS_KEY = "analyticsLens"; // "scientific" | "simplified"
+const THEME_KEY = "appTheme"; // "dark" | "light"
 
 export function UIPreferencesProvider({ children }) {
   const [showDeepMetrics, setShowDeepMetrics] = useState(() => {
     if (typeof window === "undefined") return false;
     return window.localStorage.getItem(STORAGE_KEY) === "true";
   });
+
   const [lens, setLensState] = useState(() => {
     if (typeof window === "undefined") return "scientific";
     return window.localStorage.getItem(LENS_KEY) === "simplified" ? "simplified" : "scientific";
   });
 
+  const [theme, setThemeState] = useState(() => {
+    if (typeof window === "undefined") return "dark";
+    return window.localStorage.getItem(THEME_KEY) === "light" ? "light" : "dark";
+  });
+
   useEffect(() => {
     window.localStorage.setItem(STORAGE_KEY, String(showDeepMetrics));
   }, [showDeepMetrics]);
+
   useEffect(() => {
     window.localStorage.setItem(LENS_KEY, lens);
   }, [lens]);
+
+  useEffect(() => {
+    window.localStorage.setItem(THEME_KEY, theme);
+    const root = document.documentElement;
+    if (theme === "light") {
+      root.classList.add("light");
+      root.classList.remove("dark");
+    } else {
+      root.classList.add("dark");
+      root.classList.remove("light");
+    }
+  }, [theme]);
 
   const toggleDeepMetrics = useCallback(() => setShowDeepMetrics((v) => !v), []);
   const setLens = useCallback((v) => setLensState(v), []);
   const toggleLens = useCallback(
     () => setLensState((v) => (v === "scientific" ? "simplified" : "scientific")),
+    []
+  );
+  const toggleTheme = useCallback(
+    () => setThemeState((prev) => (prev === "light" ? "dark" : "light")),
     []
   );
 
@@ -37,6 +61,8 @@ export function UIPreferencesProvider({ children }) {
         lens,
         setLens,
         toggleLens,
+        theme,
+        toggleTheme,
       }}
     >
       {children}
