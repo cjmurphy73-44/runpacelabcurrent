@@ -101,6 +101,7 @@ export default function CorosIntegration({ athleteId }) {
   };
 
   const connected = status?.connected;
+  const needsReconnect = status?.needs_reconnect;
 
   return (
     <div className="space-y-2">
@@ -125,8 +126,13 @@ export default function CorosIntegration({ athleteId }) {
                   ? status?.last_sync_at
                     ? `Last sync ${new Date(status.last_sync_at).toLocaleString()}`
                     : "Connected — use Sync historical to pull activities"
-                  : "Not connected"}
+                  : needsReconnect
+                    ? "Authorization expired — reconnect to resume syncing"
+                    : "Not connected"}
             </p>
+            {needsReconnect && (
+              <p className="text-xs text-destructive mt-0.5">Your COROS login expired. Your imported workouts are safe.</p>
+            )}
             {connected && status?.last_error && (
               <p className="text-xs text-destructive mt-0.5">{status.last_error}</p>
             )}
@@ -153,7 +159,7 @@ export default function CorosIntegration({ athleteId }) {
           ) : (
             <Button size="sm" onClick={connect} disabled={connecting} className="w-full sm:w-auto justify-center min-h-[44px]">
               {connecting ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Link2 className="w-4 h-4 mr-2" />}
-              Connect COROS Account
+              {needsReconnect ? "Reconnect COROS" : "Connect COROS Account"}
             </Button>
           )}
         </div>

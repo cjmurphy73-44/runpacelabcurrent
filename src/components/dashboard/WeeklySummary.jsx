@@ -75,8 +75,8 @@ export default function WeeklySummary() {
                     <p className="text-sm font-semibold tabular-nums">CTL {w.ctl ?? "-"}</p>
                     <p className="text-xs text-muted-foreground tabular-nums">TSB {w.tsb ?? "-"}</p>
                   </div>
-                  {w.trend === "up" && <ArrowUp className="w-4 h-4 text-green-500" />}
-                  {w.trend === "down" && <ArrowDown className="w-4 h-4 text-red-500" />}
+                  {w.trend === "up" && <ArrowUp className="w-4 h-4 text-success" />}
+                  {w.trend === "down" && <ArrowDown className="w-4 h-4 text-danger" />}
                   {w.trend === "flat" && <Minus className="w-4 h-4 text-muted-foreground" />}
                 </div>
               </div>

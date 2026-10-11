@@ -10,10 +10,10 @@ import { useSubscription } from "@/hooks/useSubscription";
 import FeatureGate from "@/components/billing/FeatureGate";
 
 const STATUS_STYLES = {
-  EXACT: { label: "On plan", chip: "bg-emerald-50 text-emerald-700 border-emerald-200" },
-  COMPLETED_EXCEEDED: { label: "Excess", chip: "bg-amber-50 text-amber-700 border-amber-200" },
-  COMPLETED_SHORT: { label: "Partial", chip: "bg-rose-50 text-rose-700 border-rose-200" },
-  PLAUSIBLE: { label: "Plausible", chip: "bg-sky-50 text-sky-700 border-sky-200" },
+  EXACT: { label: "On plan", chip: "bg-success/10 text-success border-success/30" },
+  COMPLETED_EXCEEDED: { label: "Excess", chip: "bg-warning/10 text-warning border-warning/30" },
+  COMPLETED_SHORT: { label: "Partial", chip: "bg-danger/10 text-danger border-danger/30" },
+  PLAUSIBLE: { label: "Plausible", chip: "bg-primary/10 text-primary border-primary/30" },
 };
 
 function titleCase(sport) {
@@ -74,7 +74,7 @@ export default function PlannedActualReconciliation({ athleteId }) {
         <Card>
           <CardContent className="pt-6 space-y-3">
             <div className="flex items-center gap-2 text-sm font-medium text-foreground">
-              <Check className="w-4 h-4 text-emerald-600" />
+              <Check className="w-4 h-4 text-success" />
               {autoLinked.length} session{autoLinked.length === 1 ? "" : "s"} auto-linked at ≥90% — verify this is what you did, or unlink.
             </div>
             <ul className="divide-y divide-border">
@@ -130,7 +130,7 @@ export default function PlannedActualReconciliation({ athleteId }) {
         <Card>
           <CardContent className="pt-6 space-y-3">
             <div className="flex items-center gap-2 text-sm font-medium text-foreground">
-              <Sun className="w-4 h-4 text-amber-500" />
+              <Sun className="w-4 h-4 text-warning" />
               {todaySessions.length} session{todaySessions.length === 1 ? "" : "s"} planned for today — mark off when done.
             </div>
             <ul className="divide-y divide-border">
@@ -185,7 +185,7 @@ export default function PlannedActualReconciliation({ athleteId }) {
         <Card>
           <CardContent className="pt-6 space-y-3">
             <div className="flex items-center gap-2 text-sm font-medium text-foreground">
-              <AlertTriangle className="w-4 h-4 text-amber-600" />
+              <AlertTriangle className="w-4 h-4 text-warning" />
               {overdue.length} planned session{overdue.length === 1 ? "" : "s"} overdue in the past week with no matching activity. Mark as skipped if you didn't do it.
             </div>
             <ul className="divide-y divide-border">
@@ -226,7 +226,7 @@ export default function PlannedActualReconciliation({ athleteId }) {
           {loading ? (
             <p className="text-sm text-muted-foreground">Matching your sessions to the plan…</p>
           ) : error ? (
-            <p className="text-sm text-rose-600">{error}</p>
+            <p className="text-sm text-danger">{error}</p>
           ) : matches.length === 0 ? (
             <p className="text-sm text-muted-foreground">No unlinked ingested sessions matched a scheduled session within tolerance.</p>
           ) : (
@@ -253,7 +253,7 @@ export default function PlannedActualReconciliation({ athleteId }) {
                         </span>
                         <span>· {pctText(m.varianceDetails.completionRatio)}</span>
                         {m.varianceDetails.dayOffset !== 0 && (
-                          <span className="text-amber-600">day {m.varianceDetails.dayOffset > 0 ? "+" : ""}{m.varianceDetails.dayOffset}</span>
+                          <span className="text-warning">day {m.varianceDetails.dayOffset > 0 ? "+" : ""}{m.varianceDetails.dayOffset}</span>
                         )}
                       </div>
                     </div>
@@ -268,7 +268,7 @@ export default function PlannedActualReconciliation({ athleteId }) {
                       {confirmed ? "Linked" : isConfirming ? "Linking…" : m.matchStatus === "PLAUSIBLE" ? "That was it" : "Confirm match"}
                     </Button>
                     {m.matchStatus === "PLAUSIBLE" && !confirmed && (
-                      <span className="w-full text-[11px] text-sky-600">Outside ±20% — looks close enough to confirm?</span>
+                      <span className="w-full text-[11px] text-primary">Outside ±20% — looks close enough to confirm?</span>
                     )}
                   </li>
                 );

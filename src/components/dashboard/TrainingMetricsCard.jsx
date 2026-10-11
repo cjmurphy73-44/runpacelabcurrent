@@ -25,9 +25,9 @@ export default function TrainingMetricsCard({ workouts = [] }) {
   }, [workouts]);
 
   const getTsbColor = (tsb) => {
-    if (tsb > 5) return "text-green-600";
-    if (tsb > -10) return "text-blue-600";
-    return "text-red-600";
+    if (tsb > 5) return "text-success";
+    if (tsb > -10) return "text-primary";
+    return "text-danger";
   };
 
   if (!workouts || workouts.length === 0) {

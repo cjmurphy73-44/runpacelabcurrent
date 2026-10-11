@@ -135,7 +135,7 @@ export default function BulkWorkoutImport({ athleteId, onUploaded }) {
             {buttonLabel}
           </Button>
           {status && (
-            <p className={`text-sm ${status.type === "error" ? "text-destructive" : status.type === "warning" ? "text-amber-500" : "text-primary"}`}>
+            <p className={`text-sm ${status.type === "error" ? "text-destructive" : status.type === "warning" ? "text-warning" : "text-primary"}`}>
               {status.message}
             </p>
           )}

@@ -1,7 +1,7 @@
 {
   "name": "CorosConnection",
   "type": "object",
-  "description": "Per-athlete COROS OAuth connection. Holds tokens used by the corosSync backend function to pull historical activities and validate incoming COROS webhooks.",
+  "description": "Per-athlete COROS OAuth connection. Holds tokens used by the corosSync backend function to pull historical activities and validate incoming COROS webhooks. status 'expired' means the refresh token was rejected (invalid_grant) and the athlete must reconnect.",
   "properties": {
     "athlete_id": {
       "type": "string",
@@ -29,7 +29,8 @@
       "enum": [
         "connected",
         "error",
-        "disconnected"
+        "disconnected",
+        "expired"
       ],
       "default": "connected"
     },

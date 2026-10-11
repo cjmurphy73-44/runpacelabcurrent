@@ -128,7 +128,7 @@ export default function ReadinessScoreCard() {
                 {delta != null && (
                   <div className="flex items-center justify-between text-xs">
                     <span className="text-muted-foreground">vs. holistic</span>
-                    <span className={`font-medium flex items-center gap-1 ${delta > 2 ? "text-emerald-600" : delta < -2 ? "text-destructive" : "text-muted-foreground"}`}>
+                    <span className={`font-medium flex items-center gap-1 ${delta > 2 ? "text-success" : delta < -2 ? "text-destructive" : "text-muted-foreground"}`}>
                       {delta > 2 ? <TrendingUp className="w-3 h-3" /> : delta < -2 ? <TrendingDown className="w-3 h-3" /> : <Minus className="w-3 h-3" />}
                       {delta > 0 ? "+" : ""}{delta}
                     </span>

@@ -3,12 +3,12 @@ import { Badge } from "@/components/ui/badge";
 import { Watch, HeartPulse, Activity } from "lucide-react";
 
 const SOURCES = {
-  garmin: { label: "Garmin", icon: Watch, className: "bg-blue-50 text-blue-700 border-blue-200" },
-  coros: { label: "COROS", icon: Watch, className: "bg-emerald-50 text-emerald-700 border-emerald-200" },
-  suunto: { label: "Suunto", icon: Watch, className: "bg-sky-50 text-sky-700 border-sky-200" },
-  apple: { label: "Apple", icon: HeartPulse, className: "bg-rose-50 text-rose-700 border-rose-200" },
-  polar: { label: "Polar", icon: HeartPulse, className: "bg-red-50 text-red-700 border-red-200" },
-  samsung: { label: "Samsung", icon: Watch, className: "bg-indigo-50 text-indigo-700 border-indigo-200" },
+  garmin: { label: "Garmin", icon: Watch, className: "bg-primary/10 text-primary border-primary/30" },
+  coros: { label: "COROS", icon: Watch, className: "bg-success/10 text-success border-success/30" },
+  suunto: { label: "Suunto", icon: Watch, className: "bg-primary/10 text-primary border-primary/30" },
+  apple: { label: "Apple", icon: HeartPulse, className: "bg-danger/10 text-danger border-danger/30" },
+  polar: { label: "Polar", icon: HeartPulse, className: "bg-danger/10 text-danger border-danger/30" },
+  samsung: { label: "Samsung", icon: Watch, className: "bg-accent text-accent-foreground border-border" },
   manual: { label: "Manual", icon: Activity, className: "bg-muted text-muted-foreground border-border" },
 };
 

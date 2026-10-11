@@ -8,7 +8,7 @@ import {
   SheetTrigger,
   SheetClose,
 } from "@/components/ui/sheet";
-import { Menu, Users, Upload, Sparkles, Microscope, Zap } from "lucide-react";
+import { Menu, Users, Upload, Sparkles, Microscope, Zap, Sun, Moon } from "lucide-react";
 import { useUIPreferences } from "@/context/UIPreferencesContext";
 import { useCoachAccess } from "@/hooks/useCoachAccess";
 import { cn } from "@/lib/utils";
@@ -24,7 +24,7 @@ import { PRIMARY_NAV, CALCULATORS, INSIGHTS, LABS } from "@/components/layout/na
 export default function MobileNav() {
   const [open, setOpen] = useState(false);
   const location = useLocation();
-  const { lens, setLens, showDeepMetrics, toggleDeepMetrics } = useUIPreferences();
+  const { lens, setLens, showDeepMetrics, toggleDeepMetrics, theme, toggleTheme } = useUIPreferences();
   const { isPro, coachMode } = useCoachAccess();
 
   const isActive = (to) => location.pathname === to;
@@ -136,6 +136,23 @@ export default function MobileNav() {
                 </Link>
               </SheetClose>
             ))}
+          </div>
+
+          {/* Theme toggle */}
+          <div className="px-2">
+            <button
+              type="button"
+              onClick={toggleTheme}
+              className="flex items-center justify-between w-full px-3 py-2.5 rounded-md text-sm text-foreground hover:bg-accent min-h-[44px]"
+            >
+              <span className="flex items-center gap-3">
+                {theme === "light" ? <Moon className="w-5 h-5 text-muted-foreground" /> : <Sun className="w-5 h-5 text-muted-foreground" />}
+                Appearance
+              </span>
+              <span className="text-xs font-medium text-muted-foreground">
+                {theme === "light" ? "Light" : "Dark"}
+              </span>
+            </button>
           </div>
 
           {/* Deep metrics toggle */}

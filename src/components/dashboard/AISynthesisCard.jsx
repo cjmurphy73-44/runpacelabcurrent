@@ -7,13 +7,13 @@ import { useExceptionSynthesis } from "@/hooks/useExceptionSynthesis";
 
 const SEV_STYLE = {
   danger: { icon: ShieldAlert, chip: "bg-destructive/10 text-destructive", label: "Alert" },
-  warning: { icon: AlertTriangle, chip: "bg-amber-500/15 text-amber-700", label: "Watch" },
-  positive: { icon: Sparkles, chip: "bg-emerald-500/15 text-emerald-700", label: "Win" },
+  warning: { icon: AlertTriangle, chip: "bg-warning/15 text-warning", label: "Watch" },
+  positive: { icon: Sparkles, chip: "bg-success/15 text-success", label: "Win" },
 };
 
 const CONF_STYLE = {
-  high: "text-emerald-600",
-  medium: "text-amber-600",
+  high: "text-success",
+  medium: "text-warning",
   low: "text-destructive",
 };
 

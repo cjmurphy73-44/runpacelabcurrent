@@ -9,6 +9,7 @@ import BetaFeedbackModal from "@/components/feedback/BetaFeedbackModal";
 import { Activity, Microscope, Zap, Sparkles, Upload, Users, LayoutDashboard, HelpCircle } from "lucide-react";
 import { useCoachAccess } from "@/hooks/useCoachAccess";
 import MobileNav from "@/components/layout/MobileNav";
+import ThemeToggle from "@/components/layout/ThemeToggle";
 import MobileTabBar from "@/components/layout/MobileTabBar";
 import PageErrorBoundary from "@/components/common/PageErrorBoundary";
 import { PRIMARY_NAV } from "@/components/layout/navItems";
@@ -88,6 +89,7 @@ export default function AppLayout() {
                 <span className="hidden lg:inline">Simplified</span>
               </button>
             </div>
+            <ThemeToggle />
             <Link to="/guide" title="User Guide" className="flex items-center justify-center h-9 w-9 rounded-md text-muted-foreground hover:bg-accent">
               <HelpCircle className="w-4 h-4" />
             </Link>

@@ -66,6 +66,9 @@ module.exports = {
   				'4': 'hsl(var(--zone-4))',
   				'5': 'hsl(var(--zone-5))'
   			},
+  			success: 'hsl(var(--success))',
+  			warning: 'hsl(var(--warning))',
+  			danger: 'hsl(var(--danger))',
   			sidebar: {
   				DEFAULT: 'hsl(var(--sidebar-background))',
   				foreground: 'hsl(var(--sidebar-foreground))',

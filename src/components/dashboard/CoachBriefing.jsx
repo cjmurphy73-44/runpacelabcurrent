@@ -9,9 +9,9 @@ import { useServices } from "@/services/providers/ServiceContext";
 const WINDOW_DAYS = 14;
 
 const TONE_STYLES = {
-  positive: "border-emerald-500/40 bg-emerald-50/60 text-emerald-900",
+  positive: "border-success/40 bg-success/10 text-foreground",
   neutral: "border-border bg-muted/40 text-foreground",
-  warning: "border-amber-500/40 bg-amber-50/60 text-amber-900",
+  warning: "border-warning/40 bg-warning/10 text-foreground",
 };
 const TONE_LABEL = { positive: "Win", neutral: "Note", warning: "Watch" };
 

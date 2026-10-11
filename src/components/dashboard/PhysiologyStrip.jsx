@@ -21,9 +21,9 @@ function humanThresholdSource(source) {
 }
 
 const ZONE = {
-  Green: { label: "Low", badge: "border-emerald-200 bg-emerald-50 text-emerald-700" },
-  Yellow: { label: "Moderate", badge: "border-amber-200 bg-amber-50 text-amber-700" },
-  Red: { label: "Elevated", badge: "border-rose-200 bg-rose-50 text-rose-700" },
+  Green: { label: "Low", badge: "border-success/30 bg-success/10 text-success" },
+  Yellow: { label: "Moderate", badge: "border-warning/30 bg-warning/10 text-warning" },
+  Red: { label: "Elevated", badge: "border-danger/30 bg-danger/10 text-danger" },
 };
 
 function formatPace(ms) {
@@ -36,9 +36,9 @@ function formatPace(ms) {
 
 function readinessTone(v) {
   if (v == null) return { label: "—", cls: "text-muted-foreground" };
-  if (v >= 70) return { label: "High", cls: "text-emerald-600" };
-  if (v >= 40) return { label: "Moderate", cls: "text-amber-600" };
-  return { label: "Low", cls: "text-rose-600" };
+  if (v >= 70) return { label: "High", cls: "text-success" };
+  if (v >= 40) return { label: "Moderate", cls: "text-warning" };
+  return { label: "Low", cls: "text-danger" };
 }
 
 function Tile({ icon: Icon, label, value, suffix, sub, badge }) {

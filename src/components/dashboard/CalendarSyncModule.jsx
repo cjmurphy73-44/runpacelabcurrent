@@ -67,16 +67,16 @@ export default function CalendarSyncModule({ workouts = [], onSyncComplete }) {
   };
 
   return (
-    <div className="bg-white rounded-lg shadow border border-gray-100 p-6 max-w-4xl mx-auto space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between border-b border-gray-100 pb-4">
+    <div className="bg-card text-card-foreground rounded-lg shadow border border-border p-6 max-w-4xl mx-auto space-y-6">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between border-b border-border pb-4">
         <div>
-          <h2 className="text-xl font-bold text-gray-900">Calendar Export & Session Sync</h2>
-          <p className="text-sm text-gray-600 mt-1">
+          <h2 className="text-xl font-heading font-bold text-foreground">Calendar Export & Session Sync</h2>
+          <p className="text-sm text-muted-foreground mt-1">
             Export adaptive workout prescriptions to standard calendar formats or synchronize directly with external calendar endpoints.
           </p>
         </div>
         <div className="mt-4 sm:mt-0 flex items-center space-x-2">
-          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-primary/10 text-primary">
             {workouts.length} Sessions Ready
           </span>
         </div>
@@ -84,48 +84,48 @@ export default function CalendarSyncModule({ workouts = [], onSyncComplete }) {
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         {/* ICS File Export */}
-        <div className={`p-4 rounded-lg border transition-all ${selectedFormat === 'ics' ? 'border-blue-500 bg-blue-50/30' : 'border-gray-200 hover:border-gray-300'}`} onClick={() => setSelectedFormat('ics')}>
+        <div className={`p-4 rounded-lg border transition-all ${selectedFormat === 'ics' ? 'border-primary bg-primary/5' : 'border-border hover:border-primary/40'}`} onClick={() => setSelectedFormat('ics')}>
           <div className="flex items-center justify-between mb-2">
-            <span className="font-semibold text-gray-900">Universal .ICS File</span>
-            <span className="text-xs text-gray-500 tabular-nums">Standard</span>
+            <span className="font-semibold text-foreground">Universal .ICS File</span>
+            <span className="text-xs text-muted-foreground tabular-nums">Standard</span>
           </div>
-          <p className="text-xs text-gray-600 mb-4">Compatible with Apple Calendar, Outlook, and local calendar apps.</p>
+          <p className="text-xs text-muted-foreground mb-4">Compatible with Apple Calendar, Outlook, and local calendar apps.</p>
           <button 
             onClick={(e) => { e.stopPropagation(); generateICSFile(); }}
             disabled={syncStatus === 'syncing' || workouts.length === 0}
-            className="w-full bg-blue-600 text-white text-sm font-medium py-2 px-4 rounded-md hover:bg-blue-700 disabled:opacity-50 transition-colors"
+            className="w-full min-h-[44px] bg-primary text-primary-foreground text-sm font-medium py-2 px-4 rounded-md hover:bg-primary/90 disabled:opacity-50 transition-colors"
           >
             {syncStatus === 'syncing' && selectedFormat === 'ics' ? 'Generating...' : 'Export .ICS'}
           </button>
         </div>
 
         {/* Google Calendar Sync */}
-        <div className={`p-4 rounded-lg border transition-all ${selectedFormat === 'google' ? 'border-blue-500 bg-blue-50/30' : 'border-gray-200 hover:border-gray-300'}`} onClick={() => setSelectedFormat('google')}>
+        <div className={`p-4 rounded-lg border transition-all ${selectedFormat === 'google' ? 'border-primary bg-primary/5' : 'border-border hover:border-primary/40'}`} onClick={() => setSelectedFormat('google')}>
           <div className="flex items-center justify-between mb-2">
-            <span className="font-semibold text-gray-900">Google Calendar</span>
-            <span className="text-xs text-green-600 font-medium">Cloud API</span>
+            <span className="font-semibold text-foreground">Google Calendar</span>
+            <span className="text-xs text-success font-medium">Cloud API</span>
           </div>
-          <p className="text-xs text-gray-600 mb-4">Direct sync with your primary Google Calendar schedule.</p>
+          <p className="text-xs text-muted-foreground mb-4">Direct sync with your primary Google Calendar schedule.</p>
           <button 
             onClick={(e) => { e.stopPropagation(); handleExternalSync('google'); }}
             disabled={syncStatus === 'syncing' || workouts.length === 0}
-            className="w-full bg-white border border-gray-300 text-gray-700 text-sm font-medium py-2 px-4 rounded-md hover:bg-gray-50 disabled:opacity-50 transition-colors"
+            className="w-full min-h-[44px] bg-card border border-border text-foreground text-sm font-medium py-2 px-4 rounded-md hover:bg-accent disabled:opacity-50 transition-colors"
           >
             {syncStatus === 'syncing' && selectedFormat === 'google' ? 'Syncing...' : 'Sync Google Calendar'}
           </button>
         </div>
 
         {/* Apple Calendar WebCal Feed */}
-        <div className={`p-4 rounded-lg border transition-all ${selectedFormat === 'apple' ? 'border-blue-500 bg-blue-50/30' : 'border-gray-200 hover:border-gray-300'}`} onClick={() => setSelectedFormat('apple')}>
+        <div className={`p-4 rounded-lg border transition-all ${selectedFormat === 'apple' ? 'border-primary bg-primary/5' : 'border-border hover:border-primary/40'}`} onClick={() => setSelectedFormat('apple')}>
           <div className="flex items-center justify-between mb-2">
-            <span className="font-semibold text-gray-900">Apple WebCal Feed</span>
-            <span className="text-xs text-purple-600 font-medium">Live Feed</span>
+            <span className="font-semibold text-foreground">Apple WebCal Feed</span>
+            <span className="text-xs text-accent-foreground font-medium">Live Feed</span>
           </div>
-          <p className="text-xs text-gray-600 mb-4">Subscribe to automatic background updates for schedule changes.</p>
+          <p className="text-xs text-muted-foreground mb-4">Subscribe to automatic background updates for schedule changes.</p>
           <button 
             onClick={(e) => { e.stopPropagation(); handleExternalSync('apple'); }}
             disabled={syncStatus === 'syncing' || workouts.length === 0}
-            className="w-full bg-white border border-gray-300 text-gray-700 text-sm font-medium py-2 px-4 rounded-md hover:bg-gray-50 disabled:opacity-50 transition-colors"
+            className="w-full min-h-[44px] bg-card border border-border text-foreground text-sm font-medium py-2 px-4 rounded-md hover:bg-accent disabled:opacity-50 transition-colors"
           >
             {syncStatus === 'syncing' && selectedFormat === 'apple' ? 'Subscribing...' : 'Copy WebCal Link'}
           </button>
@@ -133,14 +133,14 @@ export default function CalendarSyncModule({ workouts = [], onSyncComplete }) {
       </div>
 
       {syncStatus === 'success' && (
-        <div className="p-3 bg-green-50 border border-green-200 rounded-md text-xs text-green-700 flex items-center justify-between">
+        <div className="p-3 bg-success/10 border border-success/30 rounded-md text-xs text-success flex items-center justify-between">
           <span>Calendar synchronization completed successfully! All {workouts.length} workout sessions processed.</span>
           <span className="tabular-nums font-semibold">{new Date().toLocaleTimeString()}</span>
         </div>
       )}
 
       {syncStatus === 'error' && (
-        <div className="p-3 bg-red-50 border border-red-200 rounded-md text-xs text-red-700">
+        <div className="p-3 bg-danger/10 border border-danger/30 rounded-md text-xs text-danger">
           <span>Error: {errorMessage || 'Failed to complete session sync.'}</span>
         </div>
       )}

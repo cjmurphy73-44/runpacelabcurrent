@@ -77,11 +77,11 @@ export default function TrainingCalendar({ athleteId, currentTsb }) {
                       <p className="font-medium capitalize flex items-center gap-1">
                         {session.sport}
                         {injury.level === "hold" && session.sport?.toLowerCase().startsWith("run") && (
-                          <span className="text-[10px] uppercase bg-rose-100 text-rose-700 rounded px-1 py-0.5 leading-none">Coach hold</span>
+                          <span className="text-[10px] uppercase bg-danger/10 text-danger rounded px-1 py-0.5 leading-none">Coach hold</span>
                         )}
                       </p>
                       {injury.level === "hold" && session.sport?.toLowerCase().startsWith("run") && (
-                        <p className="text-xs text-rose-700 font-medium">→ Swap to rest / recovery</p>
+                        <p className="text-xs text-danger font-medium">→ Swap to rest / recovery</p>
                       )}
                       <p className="text-muted-foreground">{session.prescribed_duration_minutes} min · {session.prescribed_intensity_zone || "-"}</p>
                       <p className="text-muted-foreground">Target TRIMP ~{estTrimp}</p>

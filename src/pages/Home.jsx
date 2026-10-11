@@ -41,6 +41,7 @@ import OnboardingEmptyState from "@/components/dashboard/OnboardingEmptyState";
 import PlannedActualReconciliation from "@/components/dashboard/PlannedActualReconciliation";
 import CoachBriefing from "@/components/dashboard/CoachBriefing";
 import PhysiologyStrip from "@/components/dashboard/PhysiologyStrip";
+import TodayFocusLine from "@/components/dashboard/TodayFocusLine";
 import AnomalyAlertBanner from "@/components/dashboard/AnomalyAlertBanner";
 import AISynthesisCard from "@/components/dashboard/AISynthesisCard";
 import { Sun, TrendingUp, Activity, MessageCircle, HeartPulse, ArrowRight, Plus, LogIn, MessageSquare } from "lucide-react";
@@ -231,21 +232,17 @@ export default function Home() {
         {/* 1 — Today's snapshot */}
         <section className="space-y-4">
           <SectionHeading index="01" title="Today's snapshot" description="Your form, readiness and prescribed session for today." icon={Sun} />
+          <WidgetBoundary name="Today's focus"><TodayFocusLine athlete={athlete} /></WidgetBoundary>
           <WidgetBoundary name="Physiology strip"><PhysiologyStrip athlete={athlete} /></WidgetBoundary>
           <WidgetBoundary name="Calibration meter"><CalibrationMeter athlete={athlete} athleteId={athlete.id} /></WidgetBoundary>
           <WidgetBoundary name="Today's session"><TodaySessionCard athleteId={athlete.id} /></WidgetBoundary>
         </section>
 
-        {/* 2 — Load & Form (deep — collapses in Simplified mode) */}
-        <CollapsibleSection
-          title="02 · Load & Form"
-          subtitle="Fitness, fatigue and the balance between them over time"
-          icon={TrendingUp}
-          deep
-        >
-          <WidgetBoundary name="Load & fatigue chart"><LoadFatigueChart completedSessions={loadTimelineWorkouts} plannedWorkouts={plannedWorkouts} /></WidgetBoundary>
-          <WidgetBoundary name="Horizon strip"><HorizonStrip athleteId={athlete.id} /></WidgetBoundary>
-        </CollapsibleSection>
+        {/* 2 — Coaching: the AI read on the last two weeks sits directly under today's snapshot */}
+        <section className="space-y-4">
+          <SectionHeading index="02" title="Coaching" description="Your coach's read on the last two weeks." icon={MessageCircle} />
+          <WidgetBoundary name="Coach briefing"><CoachBriefing athlete={athlete} /></WidgetBoundary>
+        </section>
 
         {/* 3 — Recent activity */}
         <section className="space-y-4">
@@ -265,26 +262,16 @@ export default function Home() {
               </div>
             }
           />
-          <WidgetBoundary name="Coach briefing"><CoachBriefing athlete={athlete} /></WidgetBoundary>
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <WidgetBoundary name="Quick import"><OcrDropzone athleteId={athlete.id} onSaved={() => { trackWorkoutIngested(); loadAthleteData(athlete.id); }} /></WidgetBoundary>
             <WidgetBoundary name="Recent workouts"><RecentWorkouts workouts={workouts} athlete={athlete} onChanged={() => loadAthleteData(athlete.id)} /></WidgetBoundary>
           </div>
         </section>
 
-        {/* 3b — Planned vs. Actual (collapsible) */}
-        <CollapsibleSection
-          title="04 · Planned vs. Actual"
-          subtitle="Reconciliation across your recent sessions"
-          deep
-        >
-          <WidgetBoundary name="Planned vs actual"><PlannedActualReconciliation athleteId={athlete.id} /></WidgetBoundary>
-        </CollapsibleSection>
-
         {/* 4 — Coach notes (collapsible) */}
         <CollapsibleSection
-          title="05 · Coach notes"
-          subtitle="Briefings & AI messages tuned to your trend"
+          title="04 · Coach notes"
+          subtitle="Advice & AI messages tuned to your trend"
           icon={MessageCircle}
           deep
         >
@@ -294,9 +281,29 @@ export default function Home() {
           </div>
         </CollapsibleSection>
 
-        {/* 5 — Recovery & Readiness (collapsible) */}
+        {/* 5 — Load & Form (deep — collapses in Simplified mode) */}
         <CollapsibleSection
-          title="06 · Recovery & Readiness"
+          title="05 · Load & Form"
+          subtitle="Fitness, fatigue and the balance between them over time"
+          icon={TrendingUp}
+          deep
+        >
+          <WidgetBoundary name="Load & fatigue chart"><LoadFatigueChart completedSessions={loadTimelineWorkouts} plannedWorkouts={plannedWorkouts} /></WidgetBoundary>
+          <WidgetBoundary name="Horizon strip"><HorizonStrip athleteId={athlete.id} /></WidgetBoundary>
+        </CollapsibleSection>
+
+        {/* 6 — Planned vs. Actual (collapsible) */}
+        <CollapsibleSection
+          title="06 · Planned vs. Actual"
+          subtitle="Reconciliation across your recent sessions"
+          deep
+        >
+          <WidgetBoundary name="Planned vs actual"><PlannedActualReconciliation athleteId={athlete.id} /></WidgetBoundary>
+        </CollapsibleSection>
+
+        {/* 7 — Recovery & Readiness (collapsible) */}
+        <CollapsibleSection
+          title="07 · Recovery & Readiness"
           subtitle="Sleep, HRV, autonomic stress & lifestyle"
           icon={HeartPulse}
           deep

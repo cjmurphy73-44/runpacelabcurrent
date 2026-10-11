@@ -81,7 +81,7 @@ export default function WorkoutUpload({ athleteId, onUploaded }) {
             {uploading ? "Processing..." : "Upload"}
           </Button>
           {status && (
-            <p className={`text-sm ${status.type === "error" ? "text-destructive" : "text-green-600"}`}>{status.message}</p>
+            <p className={`text-sm ${status.type === "error" ? "text-destructive" : "text-success"}`}>{status.message}</p>
           )}
         </form>
       </CardContent>

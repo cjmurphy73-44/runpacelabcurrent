@@ -37,14 +37,14 @@ export default function DashboardGreeting({ athlete }) {
             <div className="flex items-center gap-1.5">
               <Activity className="w-4 h-4 text-primary" />
               <span className="text-muted-foreground">Fitness</span>
-              <span className="font-semibold tabular-nums">{Math.round(ctl)}</span>
+              <span className="font-mono font-semibold tabular-nums">{Math.round(ctl)}</span>
             </div>
           )}
           {tsb != null && !isNaN(tsb) && (
             <div className="flex items-center gap-1.5">
               <Gauge className="w-4 h-4 text-primary" />
               <span className="text-muted-foreground">Form</span>
-              <span className={`font-semibold tabular-nums ${tsb >= 0 ? "text-emerald-600" : "text-amber-600"}`}>
+              <span className={`font-mono font-semibold tabular-nums ${tsb >= 0 ? "text-success" : "text-warning"}`}>
                 {tsb >= 0 ? "+" : ""}{Math.round(tsb)}
               </span>
             </div>

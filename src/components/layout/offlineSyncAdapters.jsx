@@ -41,17 +41,17 @@ export function NetworkStatusBadge() {
       <div
         className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold border transition-all min-w-0 ${
           !isOnline
-            ? "bg-amber-50 text-amber-800 border-amber-200 shadow-sm"
+            ? "bg-warning/10 text-warning border-warning/30 shadow-sm"
             : syncInProgress
-            ? "bg-blue-50 text-blue-800 border-blue-200 animate-pulse"
+            ? "bg-primary/10 text-primary border-primary/30 animate-pulse"
             : queueCount > 0
-            ? "bg-purple-50 text-purple-800 border-purple-200"
-            : "bg-emerald-50 text-emerald-800 border-emerald-200"
+            ? "bg-accent text-accent-foreground border-border"
+            : "bg-success/10 text-success border-success/30"
         }`}
       >
         <span
           className={`w-2 h-2 rounded-full mr-1.5 shrink-0 ${
-            !isOnline ? "bg-amber-500" : syncInProgress ? "bg-blue-500" : queueCount > 0 ? "bg-purple-500" : "bg-emerald-500"
+            !isOnline ? "bg-warning" : syncInProgress ? "bg-primary" : queueCount > 0 ? "bg-accent-foreground" : "bg-success"
           }`}
         />
         <span className="truncate">
@@ -66,7 +66,7 @@ export function NetworkStatusBadge() {
         {queueCount > 0 && isOnline && !syncInProgress && syncNow && (
           <button
             onClick={() => syncNow().catch((err) => alert(err.message))}
-            className="ml-2 underline hover:text-purple-900 font-bold uppercase text-[10px]"
+            className="ml-2 underline hover:opacity-80 font-bold uppercase text-[10px]"
           >
             Sync Now
           </button>
@@ -94,15 +94,15 @@ export class SyncErrorBoundary extends React.Component {
   render() {
     if (this.state.hasError) {
       return (
-        <div className="p-4 bg-red-50 border border-red-200 rounded-lg text-red-800 max-w-xl mx-auto my-4">
+        <div className="p-4 bg-destructive/10 border border-destructive/30 rounded-lg text-destructive max-w-xl mx-auto my-4">
           <h3 className="text-sm font-bold uppercase tracking-wide">Sync Manager Encountered an Error</h3>
-          <p className="text-xs mt-1 text-red-600">{this.state.error?.message || "Unknown persistence error."}</p>
+          <p className="text-xs mt-1 text-muted-foreground">{this.state.error?.message || "Unknown persistence error."}</p>
           <button
             onClick={() => {
               this.setState({ hasError: false });
               window.location.reload();
             }}
-            className="mt-3 px-3 py-1 bg-red-600 text-white rounded text-xs font-semibold hover:bg-red-700"
+            className="mt-3 px-3 py-1 bg-destructive text-destructive-foreground rounded text-xs font-semibold hover:bg-destructive/90"
           >
             Reload Sync Engine
           </button>

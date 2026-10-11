@@ -35,34 +35,34 @@ export function getTsbZoneInfo(tsbValue) {
   if (tsbValue === null || tsbValue === undefined || isNaN(tsbValue)) {
     return {
       label: "Neutral",
-      badgeClass: "bg-slate-100 text-slate-600 border-slate-200",
+      badgeClass: "bg-muted text-muted-foreground border-border",
       advice: "Not enough data yet.",
     };
   }
   if (tsbValue > 15) {
     return {
       label: "Fresh",
-      badgeClass: "bg-emerald-50 text-emerald-600 border-emerald-200",
+      badgeClass: "bg-success/10 text-success border-success/30",
       advice: "Well-rested — a good window for a hard effort or race.",
     };
   }
   if (tsbValue >= -10) {
     return {
       label: "Neutral",
-      badgeClass: "bg-sky-50 text-sky-600 border-sky-200",
+      badgeClass: "bg-primary/10 text-primary border-primary/30",
       advice: "Balanced form — maintain your current training load.",
     };
   }
   if (tsbValue >= -25) {
     return {
       label: "Optimal",
-      badgeClass: "bg-amber-50 text-amber-600 border-amber-200",
+      badgeClass: "bg-warning/10 text-warning border-warning/30",
       advice: "Productive fatigue — good for building fitness. Monitor recovery.",
     };
   }
   return {
     label: "High Risk",
-    badgeClass: "bg-rose-50 text-rose-600 border-rose-200",
+    badgeClass: "bg-danger/10 text-danger border-danger/30",
     advice: "Deep fatigue — high injury/illness risk. Prioritize recovery.",
   };
 }

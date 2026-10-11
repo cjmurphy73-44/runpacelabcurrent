@@ -308,6 +308,7 @@ async function handleStatus(base44) {
   if (!c) return Response.json({ connected: false });
   return Response.json({
     connected: c.status === 'connected' && Boolean(c.access_token),
+    needs_reconnect: c.status === 'expired',
     status: c.status,
     connected_at: c.connected_at || null,
     last_sync_at: c.last_sync_at || null,
@@ -330,7 +331,19 @@ async function refreshIfNeeded(conn, base44): Promise<string> {
       ...(clientId ? { client_id: clientId } : {}),
     }),
   });
-  if (!r.ok) throw new Error(`Token refresh failed: ${r.status}`);
+  if (!r.ok) {
+    const errText = await r.text().catch(() => '');
+    // invalid_grant = the refresh token was revoked/expired. It can never recover on its own,
+    // so flag the connection for reconnect instead of leaving it "connected" and failing every sync.
+    if (r.status === 400 || r.status === 401 || /invalid_grant/i.test(errText)) {
+      await base44.asServiceRole.entities.CorosConnection.update(conn.id, {
+        status: 'expired',
+        last_error: 'COROS authorization expired. Please reconnect your COROS account.',
+      });
+      throw new Error('COROS authorization expired. Please reconnect your COROS account.');
+    }
+    throw new Error(`Token refresh failed: ${r.status}`);
+  }
   const tok = await r.json();
   const accessToken = tok.access_token || conn.access_token;
   await base44.asServiceRole.entities.CorosConnection.update(conn.id, {
@@ -706,6 +719,7 @@ async function handleSyncAll(base44) {
   const user = await base44.auth.me().catch(() => null);
   if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
   if (user.role !== 'admin') return Response.json({ error: 'Admin only' }, { status: 403 });
+  // Only 'connected' rows are synced; rows flagged 'expired' wait for the athlete to reconnect.
   const conns = await base44.asServiceRole.entities.CorosConnection.filter({ status: 'connected' });
   const results: any[] = [];
   for (const conn of conns) {

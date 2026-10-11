@@ -100,7 +100,7 @@ export default function CalibrationMeter({ athlete, athleteId }) {
           {signals.map((s) => (
             <li key={s.key} className="flex items-center gap-2 text-xs">
               {s.ok ? (
-                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                <CheckCircle2 className="w-3.5 h-3.5 text-success shrink-0" />
               ) : (
                 <Circle className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
               )}

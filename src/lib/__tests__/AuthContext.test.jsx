@@ -4,7 +4,7 @@ import { renderHook, waitFor } from '@testing-library/react';
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 
 beforeEach(() => {
-  global.fetch = vi.fn().mockImplementation(() => 
+  globalThis.fetch = vi.fn().mockImplementation(() => 
     Promise.resolve({ ok: true, json: () => Promise.resolve({}) })
   );
 });

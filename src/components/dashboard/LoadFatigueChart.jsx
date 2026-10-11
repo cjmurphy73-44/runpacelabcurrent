@@ -6,21 +6,20 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Gauge, AlertTriangle } from "lucide-react";
 import { useTelemetryData } from "@/hooks/useTelemetryData";
 import { calculateHistoricalAndProjectedLoad, getTsbZoneInfo, toDateKey } from "@/lib/loadForecasting";
-import { THEME_COLORS as COLORS } from "@/constants/colors";
 
-// Quantum Polar chart palette — light clinical surface, hairline grid, electric
-// accent line colors that match the rest of the dashboard (no dark override).
+// Chart palette resolved from theme CSS variables so the chart follows the
+// light/dark toggle (recharts accepts hsl(var(--token)) as a color string).
 const POLAR = {
-  card: "#FFFFFF",
-  border: "#E2E8F0",
-  text: "#111827",
-  muted: "#64748B",
-  grid: "#EEF2F6",
-  axis: "#94A3B8",
-  ctl: COLORS.CTL,      // electric blue
-  atl: COLORS.ATL,      // pink
-  tsbPos: COLORS.TSB_FRESH, // emerald
-  tsbNeg: COLORS.TSB_FATIGUED, // red
+  card: "hsl(var(--card))",
+  border: "hsl(var(--border))",
+  text: "hsl(var(--foreground))",
+  muted: "hsl(var(--muted-foreground))",
+  grid: "hsl(var(--border))",
+  axis: "hsl(var(--muted-foreground))",
+  ctl: "hsl(var(--chart-1))",
+  atl: "hsl(var(--chart-2))",
+  tsbPos: "hsl(var(--success))",
+  tsbNeg: "hsl(var(--danger))",
 };
 
 function MetricCard({ icon: Icon, label, value, suffix, badge }) {
@@ -96,6 +95,13 @@ export default function LoadFatigueChart({ completedSessions = [], plannedWorkou
     <Card>
       <CardHeader><CardTitle className="text-sm font-heading">Load & Fatigue Forecast</CardTitle></CardHeader>
       <CardContent className="space-y-4">
+        <div className="flex flex-wrap items-center gap-x-5 gap-y-2 text-xs text-muted-foreground" aria-label="Chart legend">
+          <span className="flex items-center gap-1.5"><span className="w-3 h-0.5 bg-chart-1" /> CTL (Fitness)</span>
+          <span className="flex items-center gap-1.5"><span className="w-3 h-0.5 bg-chart-2" /> ATL (Fatigue)</span>
+          <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-sm bg-success/40" /> Form +</span>
+          <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-sm bg-danger/40" /> Form −</span>
+          <span className="flex items-center gap-1.5"><span className="w-3 border-t-2 border-dashed border-muted-foreground" /> Projected</span>
+        </div>
         <div className="flex flex-wrap items-center gap-3">
           <MetricCard
             icon={Gauge}
@@ -153,10 +159,10 @@ export default function LoadFatigueChart({ completedSessions = [], plannedWorkou
         </div>
 
         {overtrainingRisk && (
-          <div className="rounded-md border border-rose-200 bg-rose-50 p-3 flex gap-3">
-            <AlertTriangle className="w-5 h-5 text-rose-600 shrink-0 mt-0.5" />
-            <div className="text-sm text-rose-700">
-              <p className="font-medium text-rose-800">Overtraining risk in the next 7 days</p>
+          <div className="rounded-md border border-danger/30 bg-danger/10 p-3 flex gap-3">
+            <AlertTriangle className="w-5 h-5 text-danger shrink-0 mt-0.5" />
+            <div className="text-sm text-muted-foreground">
+              <p className="font-medium text-danger">Overtraining risk in the next 7 days</p>
               <p>
                 Form (TSB) is projected to drop to {worstPoint.tsb} by {worstPoint.date}
                 {spikeDay && spikeDay.dailyTss > 0 && (

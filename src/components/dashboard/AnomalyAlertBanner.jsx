@@ -13,16 +13,16 @@ const SEV_STYLE = {
   },
   warning: {
     icon: AlertTriangle,
-    wrap: "border-amber-500/40 bg-amber-50/60",
-    iconWrap: "bg-amber-500/15 text-amber-600",
-    chip: "bg-amber-500/15 text-amber-700",
+    wrap: "border-warning/40 bg-warning/10",
+    iconWrap: "bg-warning/15 text-warning",
+    chip: "bg-warning/15 text-warning",
     label: "Watch",
   },
   positive: {
     icon: Sparkles,
-    wrap: "border-emerald-500/40 bg-emerald-50/60",
-    iconWrap: "bg-emerald-500/15 text-emerald-600",
-    chip: "bg-emerald-500/15 text-emerald-700",
+    wrap: "border-success/40 bg-success/10",
+    iconWrap: "bg-success/15 text-success",
+    chip: "bg-success/15 text-success",
     label: "Win",
   },
 };
