@@ -1,6 +1,6 @@
 // Central subscription feature map. Edit plan tiers / gated features here only.
 
-export const PLAN_TIERS = ["free", "pro", "coach_pro"] as const;
+export const PLAN_TIERS = ["free", "pro", "unlimited", "coach_pro"] as const;
 
 export type PlanTier = (typeof PLAN_TIERS)[number];
 
@@ -54,12 +54,19 @@ export const PLAN_DETAILS: Record<PlanTier, { label: string; tagline: string; pr
     highlighted: true,
     features: ["Advanced VDOT & training-load zones", "Weather-adjusted pace calculators (heat, humidity, altitude)", "Deep performance trends & metric graphs", "Algorithmic race pacing tools"],
   },
+  unlimited: {
+    label: "Unlimited",
+    tagline: "The Data-Driven Athlete",
+    price: "A$19",
+    cadence: "per month",
+    features: ["Everything in Pro", "Uncapped AI coaching, plan generation and deep-dives", "Unlimited wearable sync history", "Structured workout export to your watch"],
+  },
   coach_pro: {
     label: "Coach Pro",
     tagline: "The Roster Manager",
     price: "A$29",
     cadence: "per month",
-    comingSoon: true,
+    features: ["Everything in Unlimited", "Multi-athlete roster dashboard & athlete linking", "Training compliance heatmaps", "Advanced batch data review across athletes"],
     features: ["Multi-athlete roster dashboard & athlete linking", "Training compliance heatmaps", "Client monitoring tools", "Advanced batch data review across athletes"],
   },
 };

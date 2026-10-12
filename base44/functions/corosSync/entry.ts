@@ -316,10 +316,27 @@ async function handleStatus(base44) {
   });
 }
 
-async function refreshIfNeeded(conn, base44): Promise<string> {
+// Emails the athlete once when their COROS link expires so they can reconnect.
+async function notifyReconnect(athlete: any, base44): Promise<void> {
+  try {
+    const owner = athlete.created_by_id
+      ? await base44.asServiceRole.entities.User.get(athlete.created_by_id).catch(() => null)
+      : null;
+    if (!owner?.email) return;
+    await base44.asServiceRole.integrations.Core.SendEmail({
+      to: owner.email,
+      template_name: 'CorosReconnect',
+      variables: { first_name: athlete.first_name || 'there' },
+    });
+  } catch (e) { console.warn('CorosReconnect email failed:', e.message); }
+}
+
+// force = refresh even if the access token is still valid (scheduled sync does this so any
+// rotated/extended refresh token is persisted and the connection never silently ages out).
+async function refreshIfNeeded(conn, base44, force = false): Promise<string> {
   const now = Date.now();
   const expiresAt = conn.token_expires_at ? Date.parse(conn.token_expires_at) : 0;
-  if (expiresAt > now + 60_000 && conn.access_token) return conn.access_token;
+  if (!force && expiresAt > now + 60_000 && conn.access_token) return conn.access_token;
   if (!conn.refresh_token) return conn.access_token || '';
   const clientId = getClientId();
   const r = await fetchWithTimeout(TOKEN_ENDPOINT, {
@@ -729,10 +746,13 @@ async function handleSyncAll(base44) {
 
     const r: any = { athlete_id: conn.athlete_id };
     let accessToken: string;
-    try { accessToken = await refreshIfNeeded(conn, base44); }
+    try { accessToken = await refreshIfNeeded(conn, base44, true); }
     catch (e) {
       await base44.asServiceRole.entities.CorosConnection.update(conn.id, { last_error: e.message });
       results.push({ athlete_id: conn.athlete_id, error: e.message });
+      // Refresh token is dead (flagged 'expired' by refreshIfNeeded): tell the athlete once.
+      const fresh = await base44.asServiceRole.entities.CorosConnection.get(conn.id).catch(() => null);
+      if (fresh?.status === 'expired') await notifyReconnect(athlete, base44);
       continue;
     }
     try { r.historical = await syncHistoricalFor(athlete, accessToken, base44); } catch (e) { r.historical_error = e.message; }

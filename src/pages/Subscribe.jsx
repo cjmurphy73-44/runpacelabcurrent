@@ -115,7 +115,7 @@ export default function Subscribe() {
           </Button>
         )}
       </div>
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 items-start">
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4 items-start">
         {PLAN_TIERS.map((tier) => {
           const d = PLAN_DETAILS[tier];
           const isCurrent = currentPlan === tier || (tier === "free" && (!currentPlan || currentPlan === "free"));
@@ -138,7 +138,7 @@ export default function Subscribe() {
                 <ul className="space-y-2 mb-5">
                   {d.features.map((f) => (
                     <li key={f} className="flex items-start gap-2 text-sm">
-                      <Check className="w-4 h-4 text-emerald-600 mt-0.5 shrink-0" />
+                      <Check className="w-4 h-4 text-success mt-0.5 shrink-0" />
                       <span>{f}</span>
                     </li>
                   ))}

@@ -37,12 +37,12 @@ const SPORTS = ["running", "cycling", "swimming", "strength", "triathlon", "othe
 const DAY_NAMES = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
 const STATUS_META = {
-  pending: { label: "Planned", cls: "bg-slate-100 text-slate-600" },
-  completed: { label: "Done", cls: "bg-emerald-100 text-emerald-700" },
-  partial: { label: "Partial", cls: "bg-amber-100 text-amber-700" },
-  excess: { label: "Excess", cls: "bg-orange-100 text-orange-700" },
-  skipped: { label: "Skipped", cls: "bg-zinc-200 text-zinc-600" },
-  modified: { label: "Modified", cls: "bg-blue-100 text-blue-700" },
+  pending: { label: "Planned", cls: "bg-muted text-muted-foreground" },
+  completed: { label: "Done", cls: "bg-success/15 text-success" },
+  partial: { label: "Partial", cls: "bg-warning/15 text-warning" },
+  excess: { label: "Excess", cls: "bg-danger/15 text-danger" },
+  skipped: { label: "Skipped", cls: "bg-secondary text-muted-foreground" },
+  modified: { label: "Modified", cls: "bg-primary/15 text-primary" },
 };
 
 function startOfWeekMonday(d) {
@@ -298,7 +298,7 @@ export default function TrainingKanban() {
                       {s.prescribed_intensity_zone ? ` · ${s.prescribed_intensity_zone}` : ""}
                     </div>
                     {actual && (
-                      <div className="text-xs text-emerald-600 mt-1">
+                      <div className="text-xs text-success mt-1">
                         ✓ Logged
                         {actual.distance_km ? ` · ${actual.distance_km} km` : ""}
                         {actual.duration_minutes ? ` · ${Math.round(actual.duration_minutes)} min` : ""}
@@ -321,7 +321,7 @@ export default function TrainingKanban() {
               })}
 
               {daySessions.length === 0 && dayActual.length > 0 && (
-                <div className="text-xs text-emerald-600 py-1 pl-11">
+                <div className="text-xs text-success py-1 pl-11">
                   ✓ Logged
                   {dayActual[0].distance_km ? ` · ${dayActual[0].distance_km} km` : ""}
                   {dayActual[0].duration_minutes ? ` · ${Math.round(dayActual[0].duration_minutes)} min` : ""}

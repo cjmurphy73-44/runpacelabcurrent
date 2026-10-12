@@ -213,12 +213,12 @@ export default function AnomalyAlertBanner({ athleteId, maxHr }) {
 
   if (alerts.length === 0) {
     return (
-      <Card className="border-emerald-200 bg-emerald-50/50">
+      <Card className="border-success/30 bg-success/10">
         <CardContent className="py-4 flex items-center gap-3">
-          <CheckCircle2 className="w-5 h-5 text-emerald-600" />
+          <CheckCircle2 className="w-5 h-5 text-success" />
           <div>
-            <p className="text-sm font-medium text-emerald-800">No training anomalies detected</p>
-            <p className="text-xs text-emerald-700/80">Your load, efficiency and recovery signals are within range.</p>
+            <p className="text-sm font-medium text-success">No training anomalies detected</p>
+            <p className="text-xs text-muted-foreground">Your load, efficiency and recovery signals are within range.</p>
           </div>
         </CardContent>
       </Card>
