@@ -31,6 +31,13 @@ function planFromPrice(sub, priceIds) {
   return null;
 }
 
+// Newer Stripe API versions (incl. 2025-10-29.clover) moved current_period_end from
+// the subscription onto its items; older payloads still carry it at the top level.
+function periodEndIso(sub) {
+  const ts = sub?.items?.data?.[0]?.current_period_end ?? sub?.current_period_end;
+  return ts ? new Date(ts * 1000).toISOString() : null;
+}
+
 async function getSubscription(apiKey, subId) {
   const r = await fetch(`https://api.stripe.com/v1/subscriptions/${subId}`, {
     headers: { Authorization: `Bearer ${apiKey}`, "Stripe-Version": "2025-10-29.clover" },
@@ -63,7 +70,10 @@ export default async function(req) {
     const apiKey = isTestMode ? (secrets.get("STRIPE_TEST_SECRET_KEY") || secrets.get("STRIPE_SECRET_KEY")) : secrets.get("STRIPE_SECRET_KEY");
 
     const sr = base44.asServiceRole;
-    const priceIds = { pro: secrets.get("PRO_PRICE_ID"), unlimited: secrets.get("UNLIMITED_PRICE_ID"), coach_pro: secrets.get("COACH_PRO_PRICE_ID"), team: secrets.get("TEAM_PRICE_ID") };
+    // Only Pro is sold today. Unlimited / Coach Pro / legacy Team prices are optional and
+    // must never break the webhook when their secrets aren't defined.
+    const optionalSecret = (name) => { try { return secrets.get(name) || null; } catch { return null; } };
+    const priceIds = { pro: secrets.get("PRO_PRICE_ID"), unlimited: optionalSecret("UNLIMITED_PRICE_ID"), coach_pro: optionalSecret("COACH_PRO_PRICE_ID"), team: optionalSecret("TEAM_PRICE_ID") };
 
     // Event-id idempotency: Stripe retries events. Key on the Stripe event id so a
     // retried event is processed exactly once — independent of the subscription-level
@@ -111,7 +121,7 @@ export default async function(req) {
         await logEvent("ack_only");
         return Response.json({ received: true, error: "Could not resolve plan from subscription price" });
       }
-      const periodEnd = sub?.current_period_end ? new Date(sub.current_period_end * 1000).toISOString() : null;
+      const periodEnd = periodEndIso(sub);
       await provision(userId, plan, "active", s.customer, s.subscription, periodEnd);
       await logEvent("created");
     } else if (event.type === "customer.subscription.updated") {
@@ -124,7 +134,7 @@ export default async function(req) {
         return Response.json({ received: true });
       }
       const status = sub.status === "active" || sub.status === "trialing" ? "active" : sub.status === "past_due" ? "past_due" : "canceled";
-      const periodEnd = sub.current_period_end ? new Date(sub.current_period_end * 1000).toISOString() : null;
+      const periodEnd = periodEndIso(sub);
       const existing = await sr.entities.Subscription.filter({ stripe_subscription_id: sub.id }, "-created_date", 5);
       if (existing[0]) await sr.entities.Subscription.update(existing[0].id, { plan, status, current_period_end: periodEnd, stripe_customer_id: sub.customer });
       await logEvent("created");
