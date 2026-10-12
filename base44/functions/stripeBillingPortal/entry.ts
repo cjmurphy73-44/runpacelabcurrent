@@ -26,7 +26,11 @@ export default async function(req) {
       return Response.json({ error: "No active billing account found. If you just subscribed, refresh in a moment." }, { status: 404 });
     }
 
-    const origin = new URL(req.url).origin;
+    const origin = req.headers.get("X-Base44-App-Url")?.replace(/\/+$/, "");
+    if (!origin) {
+      console.error("stripeBillingPortal: missing X-Base44-App-Url header");
+      return Response.json({ error: "Could not determine the app URL for the billing portal." }, { status: 400 });
+    }
     const params = new URLSearchParams();
     params.append("customer", customerId);
     params.append("return_url", `${origin}/subscribe`);

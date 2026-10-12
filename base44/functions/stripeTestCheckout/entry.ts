@@ -21,7 +21,11 @@ export default async function(req) {
       return Response.json({ error: "Test billing not configured (STRIPE_TEST_SECRET_KEY and STRIPE_TEST_PRO_PRICE_ID required)" }, { status: 500 });
     }
 
-    const origin = new URL(req.url).origin;
+    const origin = req.headers.get("X-Base44-App-Url")?.replace(/\/+$/, "");
+    if (!origin) {
+      console.error("stripeTestCheckout: missing X-Base44-App-Url header");
+      return Response.json({ error: "Could not determine the app URL for checkout." }, { status: 400 });
+    }
     const params = new URLSearchParams();
     params.append("ui_mode", "hosted");
     params.append("mode", "subscription");

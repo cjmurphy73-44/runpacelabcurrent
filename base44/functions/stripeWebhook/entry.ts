@@ -90,6 +90,11 @@ export default async function(req) {
       try { await sr.entities.WebhookEvent.create({ event_id: eventId, provider: "stripe", outcome }); } catch (e) { console.warn("WebhookEvent log failed:", e); }
     };
 
+    if ((event.type === "checkout.session.completed" || event.type === "checkout.session.async_payment_succeeded") && event.data?.object?.metadata?.base44_test_checkout === "true") {
+      // Base44 merchant self-test charge, not a customer order.
+      return Response.json({ received: true, ignored: "base44_test_checkout" });
+    }
+
     if (event.type === "checkout.session.completed") {
       const s = event.data.object;
       const userId = s.client_reference_id;

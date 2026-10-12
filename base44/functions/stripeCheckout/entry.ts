@@ -25,7 +25,11 @@ export default async function(req) {
       return Response.json({ error: "Billing not configured" }, { status: 500 });
     }
 
-    const origin = new URL(req.url).origin;
+    const origin = req.headers.get("X-Base44-App-Url")?.replace(/\/+$/, "");
+    if (!origin) {
+      console.error("stripeCheckout: missing X-Base44-App-Url header");
+      return Response.json({ error: "Could not determine the app URL for checkout." }, { status: 400 });
+    }
     const params = new URLSearchParams();
     // fixed_by_ui (Checkout Studio) parameters
     params.append("ui_mode", "hosted");
