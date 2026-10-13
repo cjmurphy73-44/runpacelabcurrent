@@ -11,6 +11,7 @@ import {
 import { PLAN_TIERS, PLAN_DETAILS } from "@/lib/subscriptionFeatures";
 import ProductPreview from "@/components/landing/ProductPreview";
 import PublicFooter from "@/components/layout/PublicFooter";
+import Reveal from "@/components/landing/Reveal";
 
 const HERO_IMG = "https://media.base44.com/images/public/6a504ebe6a5a6d1be058226c/b0f9ec0cb_generated_image.png";
 const STEP_IMGS = [
@@ -37,7 +38,7 @@ const STEPS = [
 ];
 
 const FAQ = [
-  { q: "Do I need a paid plan to try it?", a: "No. The free tier gives you the dashboard, physiology lab, single-wearable sync (30-day lookback), and 5 AI coach messages a week. Upgrade only when you want full history, adaptive re-planning, and structured workout export." },
+  { q: "Do I need a paid plan to try it?", a: "No. The free tier gives you the dashboard, physiology lab, wearable sync with 90 days of history, 10 file imports a day, and 20 AI coach messages a week. Upgrade only when you want full history, adaptive re-planning, and structured workout export." },
   { q: "Which wearables are supported?", a: "COROS has direct automated sync today (workouts + recovery). Recovery sync from Oura, WHOOP, Polar, Withings, and Fitbit is built and ready once the team adds each provider's credentials. Garmin and Strava direct sync is coming soon — for now, upload FIT, TCX, or CSV files from any device, or use a COROS watch as a bridge. Multi-file reconciliation unifies them into one master record." },
   { q: "Is this only for runners?", a: "No. TrainPaceLab is multi-sport — running, cycling, swimming, triathlon, and strength all feed the same physiology model so your training load reflects everything you do." },
   { q: "How is this different from a generic plan?", a: "Generic plans assume an average athlete. TrainPaceLab recalibrates off your actual telemetry — heart rate, pace, recovery, and race history — so the plan adapts when you're undertrained, fatigued, or peaking." },
@@ -74,7 +75,7 @@ export default function Landing() {
       {/* Hero */}
       <section className="relative overflow-hidden">
         <div className="absolute inset-0 bg-grid-dots opacity-20 pointer-events-none" />
-        <div className="max-w-6xl mx-auto px-4 py-16 sm:py-24 relative">
+        <Reveal className="max-w-6xl mx-auto px-4 py-16 sm:py-24 relative">
           <div className="grid lg:grid-cols-2 gap-10 items-center">
             <div className="max-w-xl">
               <span className="inline-flex items-center gap-1.5 rounded-full border border-primary/40 bg-primary/10 px-3 py-1 text-xs font-medium text-primary">
@@ -107,7 +108,7 @@ export default function Landing() {
               />
             </div>
           </div>
-        </div>
+        </Reveal>
       </section>
 
       {/* Product showcase */}
@@ -154,7 +155,8 @@ export default function Landing() {
             {STEPS.map((s, i) => {
               const flip = i % 2 === 1;
               return (
-                <div key={s.title} className="grid md:grid-cols-2 overflow-hidden rounded-lg border border-border bg-card shadow-lg">
+                <Reveal key={s.title}>
+                <div className="grid md:grid-cols-2 overflow-hidden rounded-lg border border-border bg-card shadow-lg">
                   <div className={flip ? "md:order-2" : ""}>
                     <Image
                       src={STEP_IMGS[i]}
@@ -174,6 +176,7 @@ export default function Landing() {
                     <p className="mt-3 text-muted-foreground">{s.body}</p>
                   </div>
                 </div>
+                </Reveal>
               );
             })}
           </div>
@@ -186,9 +189,9 @@ export default function Landing() {
           <div className="lg:col-span-3">
             <Quote className="w-12 h-12 mb-5 text-primary" />
             <p className="font-heading text-2xl sm:text-3xl font-semibold leading-snug">
-              "My plan actually understands how tired I am, not just what day it is."
+              A plan that understands how tired you are, not just what day it is.
             </p>
-            <p className="mt-5 text-sm font-medium uppercase tracking-wider text-primary">Sarah — Elite Marathoner</p>
+            <p className="mt-5 text-sm font-medium uppercase tracking-wider text-primary">Built around your recovery</p>
           </div>
           <div className="lg:col-span-2">
             <Image
@@ -209,16 +212,18 @@ export default function Landing() {
             <p className="mt-2 text-muted-foreground">Everything you need to train smarter and recover better.</p>
           </div>
           <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-            {FEATURES.map((f) => (
-              <Card key={f.title} className="bg-card">
-                <CardContent className="p-6">
-                  <div className="w-10 h-10 rounded-md flex items-center justify-center mb-4 bg-primary/10 text-primary">
-                    <f.icon className="w-5 h-5" />
-                  </div>
-                  <h3 className="font-heading font-semibold text-lg">{f.title}</h3>
-                  <p className="mt-2 text-sm text-muted-foreground">{f.body}</p>
-                </CardContent>
-              </Card>
+            {FEATURES.map((f, i) => (
+              <Reveal key={f.title} delay={(i % 3) * 0.08}>
+                <Card className="bg-card h-full transition-all duration-200 hover:-translate-y-1 hover:border-primary/50 hover:shadow-lg">
+                  <CardContent className="p-6">
+                    <div className="w-10 h-10 rounded-md flex items-center justify-center mb-4 bg-primary/10 text-primary">
+                      <f.icon className="w-5 h-5" />
+                    </div>
+                    <h3 className="font-heading font-semibold text-lg">{f.title}</h3>
+                    <p className="mt-2 text-sm text-muted-foreground">{f.body}</p>
+                  </CardContent>
+                </Card>
+              </Reveal>
             ))}
           </div>
         </div>

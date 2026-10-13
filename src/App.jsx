@@ -1,29 +1,9 @@
-import React from 'react';
+import React, { lazy } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-import CoachChat from '@/pages/CoachChat';
-import Home from '@/pages/Home';
 import Login from '@/pages/Login';
 import Register from '@/pages/Register';
 import ForgotPassword from '@/pages/ForgotPassword';
 import ResetPassword from '@/pages/ResetPassword';
-import RecoveryCenter from '@/pages/RecoveryCenter';
-import RacePrediction from '@/pages/RacePrediction';
-import Pbs from '@/pages/Pbs';
-import Calendar from '@/pages/Calendar';
-import TrainingKanban from '@/pages/TrainingKanban';
-import Physiology from '@/pages/Physiology';
-import Vdot from '@/pages/Vdot';
-import WeatherAdjust from '@/pages/WeatherAdjust';
-import Zones from '@/pages/Zones';
-import AdvancedAnalytics from '@/pages/AdvancedAnalytics';
-import Workouts from '@/pages/Workouts';
-import TrainingPlan from '@/pages/TrainingPlan';
-import AthleteSettings from '@/pages/AthleteSettings';
-import Imports from '@/pages/Imports';
-import Subscribe from '@/pages/Subscribe';
-import CoachWorkspace from '@/pages/CoachWorkspace';
-import Admin from '@/pages/Admin';
-import UserGuide from '@/pages/UserGuide';
 import Landing from '@/pages/Landing';
 import Terms from '@/pages/Terms';
 import Privacy from '@/pages/Privacy';
@@ -38,6 +18,29 @@ import { AuthProvider } from '@/lib/AuthContext';
 import { UIPreferencesProvider } from '@/context/UIPreferencesContext';
 import { ServiceProvider } from '@/services/providers/ServiceContext';
 import { Toaster } from '@/components/ui/toaster';
+
+// In-app pages load on demand so the first visit downloads far less code.
+const CoachChat = lazy(() => import('@/pages/CoachChat'));
+const Home = lazy(() => import('@/pages/Home'));
+const RecoveryCenter = lazy(() => import('@/pages/RecoveryCenter'));
+const RacePrediction = lazy(() => import('@/pages/RacePrediction'));
+const Pbs = lazy(() => import('@/pages/Pbs'));
+const Calendar = lazy(() => import('@/pages/Calendar'));
+const TrainingKanban = lazy(() => import('@/pages/TrainingKanban'));
+const Physiology = lazy(() => import('@/pages/Physiology'));
+const Vdot = lazy(() => import('@/pages/Vdot'));
+const WeatherAdjust = lazy(() => import('@/pages/WeatherAdjust'));
+const Zones = lazy(() => import('@/pages/Zones'));
+const AdvancedAnalytics = lazy(() => import('@/pages/AdvancedAnalytics'));
+const Workouts = lazy(() => import('@/pages/Workouts'));
+const TrainingPlan = lazy(() => import('@/pages/TrainingPlan'));
+const AthleteSettings = lazy(() => import('@/pages/AthleteSettings'));
+const Imports = lazy(() => import('@/pages/Imports'));
+const Subscribe = lazy(() => import('@/pages/Subscribe'));
+const CoachWorkspace = lazy(() => import('@/pages/CoachWorkspace'));
+const Admin = lazy(() => import('@/pages/Admin'));
+const UserGuide = lazy(() => import('@/pages/UserGuide'));
+
 
 export default function App() {
   return (

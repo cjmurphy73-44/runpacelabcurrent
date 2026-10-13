@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, Suspense } from "react";
 import { Outlet, Link, useLocation } from "react-router-dom";
 import { useAuth } from "@/lib/AuthContext";
 import { useUIPreferences } from "@/context/UIPreferencesContext";
@@ -12,6 +12,7 @@ import MobileNav from "@/components/layout/MobileNav";
 import ThemeToggle from "@/components/layout/ThemeToggle";
 import MobileTabBar from "@/components/layout/MobileTabBar";
 import PageErrorBoundary from "@/components/common/PageErrorBoundary";
+import PageTransition from "@/components/layout/PageTransition";
 import { PRIMARY_NAV } from "@/components/layout/navItems";
 import { OfflineSyncProvider, NetworkStatusBadge, SyncErrorBoundary } from "@/components/layout/offlineSyncAdapters";
 
@@ -27,7 +28,7 @@ export default function AppLayout() {
     <Link
       to={to}
       title={label}
-      className={`flex items-center gap-2 px-2 sm:px-3 py-2 rounded-md text-sm font-medium whitespace-nowrap ${
+      className={`flex items-center gap-2 px-2 sm:px-3 py-2 rounded-md text-sm font-medium whitespace-nowrap transition-colors duration-150 ${
         location.pathname === to ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-accent"
       }`}
     >
@@ -108,7 +109,17 @@ export default function AppLayout() {
       <BetaFeedbackModal open={feedbackOpen} onClose={() => setFeedbackOpen(false)} />
       <main className="max-w-7xl mx-auto px-4 py-8 pb-24 md:pb-8">
         <PageErrorBoundary>
-          <Outlet />
+          <Suspense
+            fallback={
+              <div className="flex items-center justify-center py-24">
+                <div className="w-8 h-8 border-4 border-muted border-t-primary rounded-full animate-spin" />
+              </div>
+            }
+          >
+            <PageTransition>
+              <Outlet />
+            </PageTransition>
+          </Suspense>
         </PageErrorBoundary>
       </main>
           <MobileTabBar />
