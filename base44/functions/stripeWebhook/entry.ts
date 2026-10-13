@@ -24,7 +24,7 @@ async function verifySignature(body, sigHeader, secret) {
 
 function planFromPrice(sub, priceIds) {
   const priceId = sub?.items?.data?.[0]?.price?.id;
-  if (priceId === priceIds.pro) return "pro";
+  if (priceId && (priceId === priceIds.pro || priceId === priceIds.testPro)) return "pro";
   if (priceId === priceIds.unlimited) return "unlimited";
   if (priceId === priceIds.coach_pro) return "coach_pro";
   if (priceId === priceIds.team) return "coach_pro"; // legacy Team → Coach Pro
@@ -73,7 +73,7 @@ export default async function(req) {
     // Only Pro is sold today. Unlimited / Coach Pro / legacy Team prices are optional and
     // must never break the webhook when their secrets aren't defined.
     const optionalSecret = (name) => { try { return secrets.get(name) || null; } catch { return null; } };
-    const priceIds = { pro: secrets.get("PRO_PRICE_ID"), unlimited: optionalSecret("UNLIMITED_PRICE_ID"), coach_pro: optionalSecret("COACH_PRO_PRICE_ID"), team: optionalSecret("TEAM_PRICE_ID") };
+    const priceIds = { pro: secrets.get("PRO_PRICE_ID"), unlimited: optionalSecret("UNLIMITED_PRICE_ID"), coach_pro: optionalSecret("COACH_PRO_PRICE_ID"), team: optionalSecret("TEAM_PRICE_ID"), testPro: optionalSecret("STRIPE_TEST_PRO_PRICE_ID") };
 
     // Event-id idempotency: Stripe retries events. Key on the Stripe event id so a
     // retried event is processed exactly once — independent of the subscription-level

@@ -5,6 +5,7 @@ import { reconcileStreams, recomputePhysiology, dominantFileType } from '../../s
 import { assertSafeFileUrl } from '../../shared/urlGuard.ts';
 import { assertOwnsAthlete } from '../../shared/ownership.ts';
 import { reportError } from '../../shared/errorReport.ts';
+import { checkImportAllowance } from '../../shared/importLimit.ts';
 
 const MAX_STREAM_SAMPLES = 3600; // cap stored streams (~1hr @1Hz) to avoid oversized records
 
@@ -30,6 +31,14 @@ Deno.serve(async (req) => {
 
     const urlCheck = assertSafeFileUrl(file_url);
     if (!urlCheck.ok) return Response.json({ error: 'file_url not allowed' }, { status: 400 });
+
+    // Free-tier daily import cap, enforced server-side (paid plans and admins are uncapped).
+    if (!(await assertOwnsAthlete(base44, user, athlete_id))) return Response.json({ error: 'Not your athlete profile' }, { status: 403 });
+    const allowance = await checkImportAllowance(base44, user, athlete_id);
+    if (!allowance.ok) {
+      return Response.json({ error: `Free plan limit reached: ${allowance.limit} file imports per day. Upgrade to Pro for unlimited imports.`, code: 'import_limit_reached' }, { status: 429 });
+    }
+
     const fileRes = await fetch(file_url);
     if (!fileRes.ok) return Response.json({ error: 'Could not fetch uploaded file' }, { status: 400 });
 

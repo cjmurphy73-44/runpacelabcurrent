@@ -29,7 +29,12 @@ export function useSubscription(): SubscriptionState {
     try {
       const rows = await subscriptionRepo.filter({ user_id: user.id }, "-created_date", 5);
       const sub = rows[0];
-      if (sub) { setPlan(sub.plan); setStatus(sub.status); }
+      if (sub) {
+        // Mirror server-side assertPaidPlan: only active/trialing subscriptions grant paid access.
+        const active = !sub.status || sub.status === "active" || sub.status === "trialing";
+        setPlan(active ? sub.plan : "free");
+        setStatus(sub.status);
+      }
       else { setPlan("free"); setStatus("active"); }
     } catch {
       setPlan("free"); setStatus("active");
