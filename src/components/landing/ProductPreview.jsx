@@ -17,7 +17,7 @@ const TREND = [
 
 const STATS = [
   { label: "Fitness", value: "58", unit: "CTL", icon: Activity, tone: "text-primary" },
-  { label: "Form", value: "+28", unit: "TSB", icon: Gauge, tone: "text-emerald-600" },
+  { label: "Form", value: "+28", unit: "TSB", icon: Gauge, tone: "text-success" },
   { label: "Readiness", value: "82", unit: "/100", icon: HeartPulse, tone: "text-accent-foreground" },
 ];
 
@@ -36,7 +36,7 @@ export default function ProductPreview() {
             <p className="text-xs text-muted-foreground uppercase tracking-wider">Today</p>
             <p className="font-heading font-semibold text-lg">Tuesday — Quality session</p>
           </div>
-          <Badge className="bg-emerald-500/15 text-emerald-700 border border-emerald-500/30">Ready</Badge>
+          <Badge className="bg-success/15 text-success border border-success/30">Ready</Badge>
         </div>
         <div className="grid grid-cols-3 gap-3">
           {STATS.map((s) => (

@@ -12,6 +12,7 @@ import { PLAN_TIERS, PLAN_DETAILS } from "@/lib/subscriptionFeatures";
 import ProductPreview from "@/components/landing/ProductPreview";
 import PublicFooter from "@/components/layout/PublicFooter";
 import Reveal from "@/components/landing/Reveal";
+import ThemeToggle from "@/components/layout/ThemeToggle";
 
 const HERO_IMG = "https://media.base44.com/images/public/6a504ebe6a5a6d1be058226c/b0f9ec0cb_generated_image.png";
 const STEP_IMGS = [
@@ -59,7 +60,8 @@ export default function Landing() {
             <Activity className="w-5 h-5 text-primary" />
             <span>TrainPaceLab</span>
           </Link>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1 sm:gap-2">
+            <ThemeToggle />
             {!user && (
               <Button asChild variant="ghost" size="sm" className="text-muted-foreground hover:text-foreground">
                 <Link to="/login">Sign in</Link>
