@@ -14,8 +14,8 @@ import { useUIPreferences } from "@/context/UIPreferencesContext";
  *  - subtitle:     optional muted hint
  *  - defaultOpen:  start expanded (default false). Overrides lens behaviour.
  *  - deep:         marks an analytically-heavy section. Deep sections start
- *                  OPEN in Scientific mode and COLLAPSED in Simplified mode
- *                  (progressive disclosure), and re-sync when the lens changes.
+ *                  OPEN in Geek mode and COLLAPSED in Standard mode
+ *                  (progressive disclosure), and re-sync when the mode changes.
  *  - icon:          optional lucide icon
  *  - badge:         optional right-aligned content (count, status)
  *  - className:     applied to the outer container

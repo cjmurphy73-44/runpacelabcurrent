@@ -8,8 +8,9 @@ import {
   SheetTrigger,
   SheetClose,
 } from "@/components/ui/sheet";
-import { Menu, Users, Upload, Sparkles, Microscope, Zap, Sun, Moon } from "lucide-react";
+import { Menu, Users, Upload, Sparkles, Sun, Moon } from "lucide-react";
 import { useUIPreferences } from "@/context/UIPreferencesContext";
+import ModeSwitch from "@/components/layout/ModeSwitch";
 import { useCoachAccess } from "@/hooks/useCoachAccess";
 import { cn } from "@/lib/utils";
 import { PRIMARY_NAV, CALCULATORS, INSIGHTS, LABS } from "@/components/layout/navItems";
@@ -17,14 +18,14 @@ import { PRIMARY_NAV, CALCULATORS, INSIGHTS, LABS } from "@/components/layout/na
 /**
  * MobileNav — a slide-out sheet that holds the full navigation surface on
  * small screens, so the top bar can stay minimal (logo + account + this
- * trigger). Surfaces primary routes, tools, the Scientific/Simplified lens,
- * the deep-metrics toggle, and the import/upgrade actions in one organised
- * place instead of cramming them all into the header row.
+ * trigger). Surfaces primary routes, tools, the Standard/Geek mode switch,
+ * and the import/upgrade actions in one organised place instead of cramming
+ * them all into the header row.
  */
 export default function MobileNav() {
   const [open, setOpen] = useState(false);
   const location = useLocation();
-  const { lens, setLens, showDeepMetrics, toggleDeepMetrics, theme, toggleTheme } = useUIPreferences();
+  const { theme, toggleTheme } = useUIPreferences();
   const { isPro, coachMode } = useCoachAccess();
 
   const isActive = (to) => location.pathname === to;
@@ -55,30 +56,12 @@ export default function MobileNav() {
         </SheetHeader>
 
         <div className="overflow-y-auto px-3 pb-6 space-y-5">
-          {/* Lens toggle */}
+          {/* Standard / Geek mode */}
           <div className="px-2">
-            <div className="flex items-center rounded-md border border-border p-0.5">
-              <button
-                type="button"
-                onClick={() => setLens("scientific")}
-                className={cn(
-                  "flex-1 flex items-center justify-center gap-1.5 px-2 h-9 rounded-[5px] text-xs font-medium",
-                  lens === "scientific" ? "bg-primary text-primary-foreground" : "text-muted-foreground"
-                )}
-              >
-                <Microscope className="w-3.5 h-3.5" /> Scientific
-              </button>
-              <button
-                type="button"
-                onClick={() => setLens("simplified")}
-                className={cn(
-                  "flex-1 flex items-center justify-center gap-1.5 px-2 h-9 rounded-[5px] text-xs font-medium",
-                  lens === "simplified" ? "bg-primary text-primary-foreground" : "text-muted-foreground"
-                )}
-              >
-                <Zap className="w-3.5 h-3.5" /> Simplified
-              </button>
-            </div>
+            <ModeSwitch fullWidth />
+            <p className="mt-1.5 px-1 text-[11px] text-muted-foreground">
+              Standard keeps it plain. Geek adds full terms, formulas and advanced metrics.
+            </p>
           </div>
 
           {/* Primary nav */}
@@ -151,28 +134,6 @@ export default function MobileNav() {
               </span>
               <span className="text-xs font-medium text-muted-foreground">
                 {theme === "light" ? "Light" : "Dark"}
-              </span>
-            </button>
-          </div>
-
-          {/* Deep metrics toggle */}
-          <div className="px-2">
-            <button
-              type="button"
-              onClick={toggleDeepMetrics}
-              className="flex items-center justify-between w-full px-3 py-2.5 rounded-md text-sm text-foreground hover:bg-accent"
-            >
-              <span className="flex items-center gap-3">
-                <Microscope className="w-5 h-5 text-muted-foreground" />
-                Scientific mode
-              </span>
-              <span
-                className={cn(
-                  "text-xs font-medium",
-                  showDeepMetrics ? "text-primary" : "text-muted-foreground"
-                )}
-              >
-                {showDeepMetrics ? "On" : "Off"}
               </span>
             </button>
           </div>

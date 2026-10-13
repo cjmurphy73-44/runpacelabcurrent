@@ -4,6 +4,7 @@ import { calculateACWR } from "@/lib/injuryEngine";
 import { deriveRunningThresholdPace } from "@/utils/physiology/thresholdPaceEngine";
 import { Term } from "@/components/ui/Term";
 import { AuditBadge } from "@/components/ui/AuditBadge";
+import { useUIPreferences } from "@/context/UIPreferencesContext";
 import { Zap, Gauge, ShieldAlert, HeartPulse } from "lucide-react";
 
 // Map the threshold-engine provenance strings to clear on-tile sub-labels.
@@ -62,6 +63,7 @@ function Tile({ icon: Icon, label, value, suffix, sub, badge }) {
 
 export default function PhysiologyStrip({ athlete }) {
   const { dailyMetrics, workoutSessions } = useFitness();
+  const { isGeek } = useUIPreferences();
 
   const vdot = athlete?.vdot_estimate ?? null;
   const threshold = useMemo(
@@ -95,27 +97,27 @@ export default function PhysiologyStrip({ athlete }) {
         icon={Zap}
         label={
           <span className="inline-flex items-center gap-1">
-            <Term k="vdot">VO₂max · VDOT</Term>
+            <Term k="vdot">{isGeek ? "VO₂max · VDOT" : "Engine Size"}</Term>
             <AuditBadge metric="vdot" />
           </span>
         }
         value={vdot != null ? Math.round(vdot) : "—"}
-        suffix={vdot != null ? "ml/kg/min" : ""}
-        sub={vdot == null ? "Set in Physiology" : undefined}
+        suffix={vdot != null && isGeek ? "ml/kg/min" : ""}
+        sub={vdot == null ? "Set in Physiology" : isGeek ? undefined : "Higher = bigger aerobic engine"}
       />
       <Tile
         icon={Gauge}
         label={<Term k="threshold_pace">Threshold pace</Term>}
         value={formatPace(threshold.paceMs)}
         suffix={threshold.paceMs ? "/km" : ""}
-        sub={threshold.paceMs ? humanThresholdSource(threshold.source) : "Set in Physiology"}
+        sub={threshold.paceMs ? (isGeek ? humanThresholdSource(threshold.source) : "Pace you can hold ~1 hour") : "Set in Physiology"}
       />
       <Tile
         icon={ShieldAlert}
         label={<Term k="acwr">Injury risk</Term>}
         value={hasInjuryData ? zone.label : "—"}
         badge={hasInjuryData ? zone.badge : undefined}
-        sub={hasInjuryData ? `ACWR ${injury.acwr.toFixed(2)}` : "Needs 14 days"}
+        sub={hasInjuryData ? (isGeek ? `ACWR ${injury.acwr.toFixed(2)}` : "This week vs your average") : "Needs 14 days"}
       />
       <Tile
         icon={HeartPulse}

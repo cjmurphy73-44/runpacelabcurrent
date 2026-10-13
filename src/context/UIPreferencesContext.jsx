@@ -1,29 +1,22 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from "react";
 
 const UIPreferencesContext = createContext(null);
-const STORAGE_KEY = "showDeepMetrics";
-const LENS_KEY = "analyticsLens"; // "scientific" | "simplified"
+const LENS_KEY = "analyticsLens"; // "scientific" (Geek) | "simplified" (Standard)
 const THEME_KEY = "appTheme"; // "dark" | "light"
 
 export function UIPreferencesProvider({ children }) {
-  const [showDeepMetrics, setShowDeepMetrics] = useState(() => {
-    if (typeof window === "undefined") return false;
-    return window.localStorage.getItem(STORAGE_KEY) === "true";
-  });
-
   const [lens, setLensState] = useState(() => {
-    if (typeof window === "undefined") return "scientific";
-    return window.localStorage.getItem(LENS_KEY) === "simplified" ? "simplified" : "scientific";
+    if (typeof window === "undefined") return "simplified";
+    const stored = window.localStorage.getItem(LENS_KEY);
+    if (stored === "scientific" || stored === "simplified") return stored;
+    // Migrate the retired separate "deep metrics" flag so existing geek users keep their choice.
+    return window.localStorage.getItem("showDeepMetrics") === "true" ? "scientific" : "simplified";
   });
 
   const [theme, setThemeState] = useState(() => {
     if (typeof window === "undefined") return "dark";
     return window.localStorage.getItem(THEME_KEY) === "light" ? "light" : "dark";
   });
-
-  useEffect(() => {
-    window.localStorage.setItem(STORAGE_KEY, String(showDeepMetrics));
-  }, [showDeepMetrics]);
 
   useEffect(() => {
     window.localStorage.setItem(LENS_KEY, lens);
@@ -41,7 +34,6 @@ export function UIPreferencesProvider({ children }) {
     }
   }, [theme]);
 
-  const toggleDeepMetrics = useCallback(() => setShowDeepMetrics((v) => !v), []);
   const setLens = useCallback((v) => setLensState(v), []);
   const toggleLens = useCallback(
     () => setLensState((v) => (v === "scientific" ? "simplified" : "scientific")),
@@ -52,15 +44,19 @@ export function UIPreferencesProvider({ children }) {
     []
   );
 
+  // One switch: Geek mode (lens "scientific") is the only source of truth.
+  // showDeepMetrics / toggleDeepMetrics are kept as derived aliases so existing consumers keep working.
+  const showDeepMetrics = lens === "scientific";
+
   return (
     <UIPreferencesContext.Provider
       value={{
-        showDeepMetrics,
-        setShowDeepMetrics,
-        toggleDeepMetrics,
         lens,
         setLens,
         toggleLens,
+        isGeek: showDeepMetrics,
+        showDeepMetrics,
+        toggleDeepMetrics: toggleLens,
         theme,
         toggleTheme,
       }}

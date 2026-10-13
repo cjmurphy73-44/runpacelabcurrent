@@ -7,14 +7,11 @@ import {
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuSeparator,
-  DropdownMenuCheckboxItem,
 } from "@/components/ui/dropdown-menu";
-import { ChevronDown, Wrench, Microscope } from "lucide-react";
-import { useUIPreferences } from "@/context/UIPreferencesContext";
+import { ChevronDown, Wrench } from "lucide-react";
 import { CALCULATORS, INSIGHTS, LABS } from "@/components/layout/navItems";
 
 export default function ToolsDropdown() {
-  const { showDeepMetrics, toggleDeepMetrics } = useUIPreferences();
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
@@ -55,11 +52,6 @@ export default function ToolsDropdown() {
             </Link>
           </DropdownMenuItem>
         ))}
-        <DropdownMenuSeparator />
-        <DropdownMenuCheckboxItem checked={showDeepMetrics} onCheckedChange={toggleDeepMetrics}>
-          <Microscope className="w-4 h-4 mr-2" />
-          Scientific mode
-        </DropdownMenuCheckboxItem>
       </DropdownMenuContent>
     </DropdownMenu>
   );

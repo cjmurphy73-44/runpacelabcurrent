@@ -1,12 +1,12 @@
 import React, { useState, Suspense } from "react";
 import { Outlet, Link, useLocation } from "react-router-dom";
 import { useAuth } from "@/lib/AuthContext";
-import { useUIPreferences } from "@/context/UIPreferencesContext";
+import ModeSwitch from "@/components/layout/ModeSwitch";
 import { Button } from "@/components/ui/button";
 import ToolsDropdown from "@/components/layout/ToolsDropdown";
 import AccountMenu from "@/components/layout/AccountMenu";
 import BetaFeedbackModal from "@/components/feedback/BetaFeedbackModal";
-import { Activity, Microscope, Zap, Sparkles, Upload, Users, LayoutDashboard, HelpCircle } from "lucide-react";
+import { Activity, Sparkles, Upload, Users, LayoutDashboard, HelpCircle } from "lucide-react";
 import { useCoachAccess } from "@/hooks/useCoachAccess";
 import MobileNav from "@/components/layout/MobileNav";
 import ThemeToggle from "@/components/layout/ThemeToggle";
@@ -20,7 +20,6 @@ export default function AppLayout() {
   const { user, logout } = useAuth();
   const location = useLocation();
   const [feedbackOpen, setFeedbackOpen] = useState(false);
-  const { lens, setLens } = useUIPreferences();
   const { isPro, coachMode } = useCoachAccess();
   const isCoach = coachMode;
 
@@ -68,28 +67,7 @@ export default function AppLayout() {
                 <div className="sm:hidden">
                   <NetworkStatusBadge />
                 </div>
-                <div className="hidden lg:flex items-center rounded-md border border-border p-0.5 mr-1" title="Switch between Scientific and Simplified mode">
-              <button
-                type="button"
-                onClick={() => setLens("scientific")}
-                className={`flex items-center gap-1 px-2 h-8 rounded-[5px] text-xs font-medium transition-colors ${
-                  lens === "scientific" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"
-                }`}
-              >
-                <Microscope className="w-3.5 h-3.5" />
-                <span className="hidden lg:inline">Scientific</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => setLens("simplified")}
-                className={`flex items-center gap-1 px-2 h-8 rounded-[5px] text-xs font-medium transition-colors ${
-                  lens === "simplified" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"
-                }`}
-              >
-                <Zap className="w-3.5 h-3.5" />
-                <span className="hidden lg:inline">Simplified</span>
-              </button>
-            </div>
+            <ModeSwitch className="hidden sm:flex mr-1" />
             <ThemeToggle />
             <Link to="/guide" title="User Guide" className="flex items-center justify-center h-9 w-9 rounded-md text-muted-foreground hover:bg-accent">
               <HelpCircle className="w-4 h-4" />

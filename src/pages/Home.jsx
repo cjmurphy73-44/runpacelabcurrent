@@ -32,7 +32,6 @@ import SectionHeading from "@/components/layout/SectionHeading";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from "@/components/ui/accordion";
-import WipWrapper from "@/components/common/WipWrapper";
 import WidgetBoundary from "@/components/common/WidgetBoundary";
 import WorkoutLogWizard from "@/components/workout/WorkoutLogWizard";
 import BetaFeedbackModal from "@/components/feedback/BetaFeedbackModal";
@@ -62,7 +61,7 @@ export default function Home() {
   const trackWorkoutIngested = () => {
     try { base44.analytics.track({ eventName: "workout_ingested" }); } catch {}
   };
-  const { showDeepMetrics } = useUIPreferences();
+  const { isGeek } = useUIPreferences();
   const { user, redirectToLogin } = useAuth();
 
   const loadAthleteData = useCallback(async (athleteId) => {
@@ -272,7 +271,7 @@ export default function Home() {
 
         {/* 4 — Coach notes (collapsible) */}
         <CollapsibleSection
-          title="04 · Coach notes"
+          title="Coach notes"
           subtitle="Advice & AI messages tuned to your trend"
           icon={MessageCircle}
           deep
@@ -285,8 +284,8 @@ export default function Home() {
 
         {/* 5 — Load & Form (deep — collapses in Simplified mode) */}
         <CollapsibleSection
-          title="05 · Load & Form"
-          subtitle="Fitness, fatigue and the balance between them over time"
+          title={isGeek ? "Load & Form (CTL / ATL / TSB)" : "Fitness & freshness over time"}
+          subtitle={isGeek ? "Chronic, acute and balance of training stress" : "How fit and how fresh you are"}
           icon={TrendingUp}
           deep
         >
@@ -296,7 +295,7 @@ export default function Home() {
 
         {/* 6 — Planned vs. Actual (collapsible) */}
         <CollapsibleSection
-          title="06 · Planned vs. Actual"
+          title="Planned vs. Actual"
           subtitle="Reconciliation across your recent sessions"
           deep
         >
@@ -305,39 +304,35 @@ export default function Home() {
 
         {/* 7 — Recovery & Readiness (collapsible) */}
         <CollapsibleSection
-          title="07 · Recovery & Readiness"
-          subtitle="Sleep, HRV, autonomic stress & lifestyle"
+          title="Recovery & Readiness"
+          subtitle={isGeek ? "Sleep, HRV, autonomic stress & lifestyle" : "Sleep, recovery signal & how you feel"}
           icon={HeartPulse}
           deep
         >
           <WidgetBoundary name="AI synthesis"><AISynthesisCard athleteId={athlete.id} /></WidgetBoundary>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
-            <WipWrapper featureName="Readiness Score">
-              <ReadinessScoreCard />
-            </WipWrapper>
-            <WipWrapper featureName="Sleep & Energy">
-              <SleepEnergyCard />
-            </WipWrapper>
-            <WipWrapper featureName="Autonomic Stress">
-              <AutonomicStressCard />
-            </WipWrapper>
+            <WidgetBoundary name="Readiness score"><ReadinessScoreCard /></WidgetBoundary>
+            <WidgetBoundary name="Sleep & energy"><SleepEnergyCard /></WidgetBoundary>
+            <WidgetBoundary name="Autonomic stress"><AutonomicStressCard /></WidgetBoundary>
           </div>
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <WipWrapper featureName="Recovery Lab">
-              <RecoveryLab athleteId={athlete.id} />
-            </WipWrapper>
-            <WipWrapper featureName="Holistic Factors">
-              <HolisticFactorsLog athleteId={athlete.id} />
-            </WipWrapper>
+            <WidgetBoundary name="Recovery lab"><RecoveryLab athleteId={athlete.id} /></WidgetBoundary>
+            <WidgetBoundary name="Holistic factors"><HolisticFactorsLog athleteId={athlete.id} /></WidgetBoundary>
           </div>
         </CollapsibleSection>
 
           </div>
           </>
         )}
-        {/* 6 — Advanced metrics (geek mode only, collapsible) */}
-        {showDeepMetrics && !isEmpty && (
-          <Card>
+        {/* Standard mode: a single pointer to the deep dive instead of hiding it silently */}
+        {!isGeek && !isEmpty && (
+          <p className="mt-8 text-center text-xs text-muted-foreground">
+            Want the full numbers, formulas and advanced metrics? Switch to <span className="font-medium text-foreground">Geek</span> mode in the menu.
+          </p>
+        )}
+        {/* Advanced metrics (Geek mode only) */}
+        {isGeek && !isEmpty && (
+          <Card className="mt-8">
             <CardContent className="pt-6">
               <Accordion type="single" collapsible defaultValue="advanced">
                 <AccordionItem value="advanced" className="border-0">
