@@ -46,6 +46,8 @@ export default function TrainingPlan() {
   useEffect(() => { load(); }, [load]);
 
   const handleCommit = async () => {
+    if (!plan?.id) return;
+    if (!plan?.id) return;
     setCommitting(true);
     setCommitError(null);
     try {
@@ -92,7 +94,7 @@ export default function TrainingPlan() {
     );
   }
 
-  const isDraft = plan.status === "draft";
+  const isDraft = plan?.status === "draft";
 
   return (
     <div className="space-y-6">
