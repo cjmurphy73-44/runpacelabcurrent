@@ -124,6 +124,21 @@ export default async function(req) {
       const periodEnd = periodEndIso(sub);
       await provision(userId, plan, "active", s.customer, s.subscription, periodEnd);
       await logEvent("created");
+    } else if (event.type === "customer.subscription.created") {
+      // Fallback provisioning path: when checkout.session.completed is not
+      // delivered (or arrives out of order), customer.subscription.created
+      // still fires and carries the same metadata[plan] + metadata[user_id].
+      const sub = event.data.object;
+      const userId = sub.metadata?.user_id;
+      const plan = planFromPrice(sub, priceIds);
+      if (!userId || !plan) {
+        await logEvent("ack_only");
+        return Response.json({ received: true, error: "Missing user_id or plan in subscription metadata" });
+      }
+      const status = sub.status === "active" || sub.status === "trialing" ? "active" : sub.status === "past_due" ? "past_due" : "canceled";
+      const periodEnd = periodEndIso(sub);
+      await provision(userId, plan, status, sub.customer, sub.id, periodEnd);
+      await logEvent("created");
     } else if (event.type === "customer.subscription.updated") {
       const sub = event.data.object;
       const plan = planFromPrice(sub, priceIds);
