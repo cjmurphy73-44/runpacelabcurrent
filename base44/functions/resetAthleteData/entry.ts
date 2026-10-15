@@ -29,6 +29,7 @@ Deno.serve(async (req) => {
       e.StravaConnection.deleteMany({ athlete_id }),
       e.CorosConnection.deleteMany({ athlete_id }),
       e.WearableConnection.deleteMany({ athlete_id }),
+      e.LabResult.deleteMany({ athlete_id }),
     ]);
 
     return Response.json({ success: true });

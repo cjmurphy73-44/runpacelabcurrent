@@ -34,6 +34,8 @@ export default async function(req) {
       // don't keep a dangling reference to a deleted profile.
       ...(user.data?.athlete_profile_id ? [() => e.CoachAthleteAssignment.deleteMany({ athlete_profile_id: user.data.athlete_profile_id })] : []),
       () => e.Subscription.deleteMany({ user_id: user.id }),
+      () => e.LabResult.deleteMany(owned),
+      () => e.BetaFeedback.deleteMany(owned),
     ];
     for (const del of cleanup) {
       try { await del(); } catch (err) { /* best-effort; continue */ }

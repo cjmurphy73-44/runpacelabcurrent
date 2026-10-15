@@ -22,6 +22,26 @@ import {
   Loader2,
 } from "lucide-react";
 
+function ChecklistGroup({ title, items }) {
+  return (
+    <div>
+      <h3 className="text-sm font-heading font-semibold mb-2">{title}</h3>
+      <ul className="space-y-1.5">
+        {items.map((item) => (
+          <li key={item.label} className="flex items-start gap-2 text-sm">
+            {item.done ? (
+              <CheckCircle2 className="w-4 h-4 text-success mt-0.5 shrink-0" />
+            ) : (
+              <div className="w-4 h-4 rounded-full border-2 border-muted-foreground mt-0.5 shrink-0" />
+            )}
+            <span className={item.done ? "" : "text-muted-foreground"}>{item.label}</span>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
 function StatTile({ icon: Icon, label, value, sub }) {
   return (
     <Card>
@@ -317,6 +337,52 @@ export default function Operations() {
           variant="status"
         />
       </div>
+
+      {/* Launch checklist — external and operational tasks that cannot be
+          verified from inside the app. Keeps the operator honest about what
+          still needs manual sign-off before going fully live. */}
+      <h2 className="font-heading font-bold text-lg mb-3 mt-8">Launch checklist</h2>
+      <Card>
+        <CardContent className="p-5 space-y-4">
+          <ChecklistGroup
+            title="Payments & billing"
+            items={[
+              { label: "Checkout binds to the authenticated user (client_reference_id + metadata)", done: true },
+              { label: "Webhook has event-id idempotency and validates user exists", done: true },
+              { label: "Billing portal resolves customer from subscription record", done: true },
+              { label: "Verify a live test purchase end-to-end in Stripe Dashboard", done: false },
+              { label: "Confirm webhook endpoint is registered for live mode in Stripe", done: false },
+            ]}
+          />
+          <ChecklistGroup
+            title="Data & privacy"
+            items={[
+              { label: "Account deletion covers all owned entities + connections", done: true },
+              { label: "Athlete data reset covers lab results and connections", done: true },
+              { label: "RLS enforced on all athlete-scoped entities", done: true },
+              { label: "Review privacy policy and refund policy with legal counsel", done: false },
+            ]}
+          />
+          <ChecklistGroup
+            title="Integrations"
+            items={[
+              { label: "Manual workout entry and file import work without a wearable", done: true },
+              { label: "Connection status and last-sync shown per provider", done: true },
+              { label: "Resolve COROS OAuth callback (state mismatch / dispatcher secret)", done: false },
+              { label: "Test each wearable OAuth flow with a real account", done: false },
+            ]}
+          />
+          <ChecklistGroup
+            title="Operations"
+            items={[
+              { label: "Operations dashboard shows aggregate MRR, athletes, connections", done: true },
+              { label: "Support page routes billing/account issues with self-serve links", done: true },
+              { label: "Define support response SLA and refund handling process", done: false },
+              { label: "Set up error monitoring and alerting (logErrorToAirtable)", done: true },
+            ]}
+          />
+        </CardContent>
+      </Card>
 
       <p className="text-xs text-muted-foreground mt-6">
         All figures are aggregate counts — no individual athlete records or health
