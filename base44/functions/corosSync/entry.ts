@@ -41,6 +41,17 @@ function selfUrl(_req: Request): string {
   return 'https://trainpacelab.base44.app/functions/corosSync';
 }
 
+// Public app origin for the callback page's "back to settings" link. req.url is the
+// internal dispatcher URL (its .origin is the dispatcher host, not the app), and the
+// browser must land on the real app. Prefer the platform's X-Base44-App-Url header;
+// fall back to deriving from the registered redirect URI so it still works in tests.
+function appOrigin(req: Request): string {
+  const header = req.headers.get('X-Base44-App-Url');
+  if (header) return header.replace(/\/+$/, '');
+  const base = env('COROS_REDIRECT_URI') || 'https://trainpacelab.base44.app/functions/corosSync';
+  try { return new URL(base).origin; } catch { return 'https://trainpacelab.base44.app'; }
+}
+
 // Friendly HTML callback page shown on the OAuth landing — surfaces COROS's real
 // failure reason (invalid_grant, etc.) instead of raw JSON, with a link back to settings.
 function escapeHtml(s: string): string {
@@ -117,7 +128,7 @@ async function fetchWithTimeout(url: string, opts: RequestInit, ms = 20000): Pro
 // from the athlete profile's created_by_id.
 async function handleOAuthCallback(req, base44) {
   const u = new URL(req.url);
-  const origin = u.origin;
+  const origin = appOrigin(req);
   const code = u.searchParams.get('code');
   const state = u.searchParams.get('state') || '';
   console.log('COROS callback reached: origin =', origin, 'path =', u.pathname, 'has code =', Boolean(code), 'has state =', Boolean(state));
