@@ -618,12 +618,32 @@ function parseCorosRestingHrText(text: string): Map<string, number> {
 function parseCorosSleepDataText(text: string): Map<string, { sleep_score: number | null; sleep_duration_hours: number | null }> {
   const out = new Map<string, { sleep_score: number | null; sleep_duration_hours: number | null }>();
   if (!text) return out;
-  const re = /(\d{4}-\d{2}-\d{2})\nSleep Score:\s*(\d+)[\s\S]*?Main Sleep:\s*(?:(\d+)h\s*)?(\d+)min/g;
-  let m: RegExpExecArray | null;
-  while ((m = re.exec(text)) !== null) {
-    const hours = m[3] ? Number(m[3]) : 0;
-    const mins = Number(m[4]);
-    out.set(m[1], { sleep_score: Number(m[2]), sleep_duration_hours: Math.round((hours + mins / 60) * 100) / 100 });
+  // COROS sleep overview is a text report with one block per date. The block
+  // format has changed across MCP versions, so we split on date headers and
+  // harvest score + duration with flexible labels (Main Sleep / Sleep Duration /
+  // Total Sleep / Total Sleep Time) and flexible units (Xh Ymin, Ymin, minutes-only).
+  const blocks = text.split(/(?=\d{4}-\d{2}-\d{2})/);
+  for (const block of blocks) {
+    const dateM = block.match(/^(\d{4}-\d{2}-\d{2})/);
+    if (!dateM) continue;
+    const date = dateM[1];
+    const scoreM = block.match(/Sleep Score:\s*(\d+)/i);
+    const sleepScore = scoreM ? Number(scoreM[1]) : null;
+
+    let hours: number | null = null;
+    // COROS Sleep Overview reports "Daily Sleep: Xh Ymin (incl. naps)" — the
+    // total including naps. Fall back to "Main Sleep (asleep): Xh Ymin".
+    const durMatch = block.match(/Daily Sleep:\s*(?:(\d+)\s*h\s*)?(?:(\d+)\s*min)?/i)
+      || block.match(/Main Sleep \(asleep\):\s*(?:(\d+)\s*h\s*)?(?:(\d+)\s*min)?/i)
+      || block.match(/(?:Sleep Duration|Total Sleep Time|Total Sleep|Sleep Time):\s*(?:(\d+)\s*h\s*)?(?:(\d+)\s*min)?/i);
+    if (durMatch && (durMatch[1] || durMatch[2])) {
+      const h = durMatch[1] ? Number(durMatch[1]) : 0;
+      const m = durMatch[2] ? Number(durMatch[2]) : 0;
+      hours = Math.round((h + m / 60) * 100) / 100;
+    }
+    if (sleepScore != null || hours != null) {
+      out.set(date, { sleep_score: sleepScore, sleep_duration_hours: hours });
+    }
   }
   return out;
 }
@@ -669,7 +689,7 @@ async function syncRecoveryFor(athlete: any, accessToken: string, base44): Promi
   const pulls: [string, any, (t: string) => void][] = [
     ['querySleepHrv', { startDate: fmt(start), endDate: fmt(end), days: 14 }, (t) => parseCorosSleepHrvText(t).forEach((v, k) => hrvMap.set(k, v))],
     ['queryRestingHeartRate', { days: 14 }, (t) => parseCorosRestingHrText(t).forEach((v, k) => rhrMap.set(k, v))],
-    ['querySleepData', { startDate: fmt(start), endDate: fmt(end) }, (t) => parseCorosSleepDataText(t).forEach((v, k) => sleepMap.set(k, v))],
+    ['querySleepOverview', { startDate: fmt(start), endDate: fmt(end), days: 14 }, (t) => parseCorosSleepDataText(t).forEach((v, k) => sleepMap.set(k, v))],
     ['queryStressLevel', { days: 14 }, (t) => parseCorosStressText(t).forEach((v, k) => stressMap.set(k, v))],
   ];
   for (const [tool, args, ingest] of pulls) {
