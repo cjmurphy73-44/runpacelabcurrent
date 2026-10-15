@@ -8,8 +8,9 @@ import {
   SheetTrigger,
   SheetClose,
 } from "@/components/ui/sheet";
-import { Menu, Users, Upload, Sparkles, Sun, Moon } from "lucide-react";
+import { Menu, Users, Upload, Sparkles, Sun, Moon, Gauge, LayoutDashboard } from "lucide-react";
 import { useUIPreferences } from "@/context/UIPreferencesContext";
+import { useAuth } from "@/lib/AuthContext";
 import ModeSwitch from "@/components/layout/ModeSwitch";
 import { useCoachAccess } from "@/hooks/useCoachAccess";
 import { cn } from "@/lib/utils";
@@ -27,6 +28,7 @@ export default function MobileNav() {
   const location = useLocation();
   const { theme, toggleTheme } = useUIPreferences();
   const { isPro, coachMode } = useCoachAccess();
+  const { user } = useAuth();
 
   const isActive = (to) => location.pathname === to;
 
@@ -147,6 +149,22 @@ export default function MobileNav() {
 
           {/* Actions */}
           <div className="px-2 pt-3 border-t border-border space-y-1">
+            {user?.role === "admin" && (
+              <>
+                <SheetClose asChild>
+                  <Link to="/operations" className={toolClass} aria-current={isActive("/operations") ? "page" : undefined}>
+                    <Gauge className="w-5 h-5 text-muted-foreground" />
+                    Operations
+                  </Link>
+                </SheetClose>
+                <SheetClose asChild>
+                  <Link to="/admin" className={toolClass} aria-current={isActive("/admin") ? "page" : undefined}>
+                    <LayoutDashboard className="w-5 h-5 text-muted-foreground" />
+                    Admin
+                  </Link>
+                </SheetClose>
+              </>
+            )}
             <SheetClose asChild>
               <Link to="/import" className={toolClass} aria-current={isActive("/import") ? "page" : undefined}>
                 <Upload className="w-5 h-5 text-muted-foreground" />

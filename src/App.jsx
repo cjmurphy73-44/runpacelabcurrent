@@ -39,6 +39,7 @@ const Imports = lazy(() => import('@/pages/Imports'));
 const Subscribe = lazy(() => import('@/pages/Subscribe'));
 const CoachWorkspace = lazy(() => import('@/pages/CoachWorkspace'));
 const Admin = lazy(() => import('@/pages/Admin'));
+const Operations = lazy(() => import('@/pages/Operations'));
 const UserGuide = lazy(() => import('@/pages/UserGuide'));
 
 
@@ -81,6 +82,7 @@ export default function App() {
               <Route path="/subscribe" element={<Subscribe />} />
               <Route path="/roster" element={<CoachWorkspace />} />
               <Route path="/admin" element={<Admin />} />
+              <Route path="/operations" element={<Operations />} />
               <Route path="/guide" element={<UserGuide />} />
               <Route path="*" element={<PageNotFound />} />
               </Route>
