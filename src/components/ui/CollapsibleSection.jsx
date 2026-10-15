@@ -46,7 +46,7 @@ export default function CollapsibleSection({
         type="button"
         onClick={() => setOpen((v) => !v)}
         aria-expanded={open}
-        className="flex w-full items-center gap-2 px-4 py-3 text-left"
+        className="flex w-full items-center gap-2 px-4 py-3.5 text-left min-h-[44px]"
       >
         {Icon && <Icon className="w-4 h-4 text-primary shrink-0" />}
         <div className="min-w-0 flex-1">

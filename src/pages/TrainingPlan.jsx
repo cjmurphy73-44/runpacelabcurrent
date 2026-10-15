@@ -47,7 +47,6 @@ export default function TrainingPlan() {
 
   const handleCommit = async () => {
     if (!plan?.id) return;
-    if (!plan?.id) return;
     setCommitting(true);
     setCommitError(null);
     try {
