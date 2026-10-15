@@ -36,7 +36,9 @@ export default function TodaySessionCard({ athleteId }) {
   }, [athleteId]);
 
   const anomaly = detectAnomaly(biometricTelemetry);
-  const paceZone = plan?.pace_zones?.find((z) => z.zone === session?.prescribed_intensity_zone);
+  const isRunning = session?.sport?.toLowerCase() === "running";
+  // Pace zones in the plan are running-derived, so only apply them to running sessions.
+  const paceZone = isRunning ? plan?.pace_zones?.find((z) => z.zone === session?.prescribed_intensity_zone) : null;
   const hrvAdvice = plan?.hrv_framework?.find((f) => /hrv|suppress|low/i.test(f.condition || ""));
 
   return (
@@ -82,17 +84,23 @@ export default function TodaySessionCard({ athleteId }) {
                 <p className="text-muted-foreground text-xs">Duration</p>
                 <p className="font-medium">{session.prescribed_duration_minutes} min</p>
               </div>
-              {paceZone && (
-                <>
-                  <div>
-                    <p className="text-muted-foreground text-xs">Target Pace</p>
-                    <p className="font-medium">{paceZone.pace_range}</p>
-                  </div>
-                  <div>
-                    <p className="text-muted-foreground text-xs">Target HR</p>
-                    <p className="font-medium">{paceZone.hr_range}</p>
-                  </div>
-                </>
+              {paceZone?.pace_range && (
+                <div>
+                  <p className="text-muted-foreground text-xs">Target Pace</p>
+                  <p className="font-medium">{paceZone.pace_range}</p>
+                </div>
+              )}
+              {paceZone?.hr_range && (
+                <div>
+                  <p className="text-muted-foreground text-xs">Target HR</p>
+                  <p className="font-medium">{paceZone.hr_range}</p>
+                </div>
+              )}
+              {session.target_power != null && !isRunning && (
+                <div>
+                  <p className="text-muted-foreground text-xs">Target Power</p>
+                  <p className="font-medium">{session.target_power} W</p>
+                </div>
               )}
             </div>
             {session.rationale_text && <p className="text-sm text-muted-foreground">{session.rationale_text}</p>}
