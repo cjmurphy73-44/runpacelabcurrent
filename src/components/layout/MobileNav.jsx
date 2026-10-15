@@ -113,7 +113,14 @@ export default function MobileNav() {
             </p>
             {LABS.map((t) => (
               <SheetClose asChild key={t.to}>
-                <Link to={t.to} className={toolClass} aria-current={isActive(t.to) ? "page" : undefined}>
+                <Link
+                  to={t.to}
+                  className={toolClass}
+                  onClick={(e) => {
+                    e.stopPropagation(); // Stop event bubbling
+                    setOpen(false); // Force close
+                  }}
+                >
                   <t.icon className="w-5 h-5 text-muted-foreground" />
                   {t.label}
                 </Link>
