@@ -351,7 +351,7 @@ export default function Operations() {
               { label: "Webhook has event-id idempotency and validates user exists", done: true },
               { label: "Billing portal resolves customer from subscription record", done: true },
               { label: "Verify a live test purchase end-to-end in Stripe Dashboard", done: false },
-              { label: "Confirm webhook endpoint is registered for live mode in Stripe", done: false },
+              { label: "Confirm webhook endpoint is registered for live mode in Stripe", done: true },
             ]}
           />
           <ChecklistGroup
@@ -368,7 +368,7 @@ export default function Operations() {
             items={[
               { label: "Manual workout entry and file import work without a wearable", done: true },
               { label: "Connection status and last-sync shown per provider", done: true },
-              { label: "Resolve COROS OAuth callback (state mismatch / dispatcher secret)", done: false },
+              { label: "Resolve COROS OAuth callback (state mismatch / dispatcher secret)", done: true },
               { label: "Test each wearable OAuth flow with a real account", done: false },
             ]}
           />
