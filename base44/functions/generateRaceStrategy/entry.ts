@@ -18,8 +18,15 @@ Deno.serve(async (req) => {
     const athlete = await base44.entities.AthleteProfile.get(athlete_id);
     if (!athlete) return Response.json({ error: 'Athlete profile not found' }, { status: 404 });
 
-    const baselines = await base44.entities.PhysiologicalBaselines.filter({ athlete_id }, '-recorded_date', 1);
-    const latestBaseline = baselines[0] || null;
+    // Baseline-test enrichment is optional — the PhysiologicalBaselines entity may not be
+    // configured for this app, so a missing schema shouldn't fail the whole strategy.
+    let latestBaseline = null;
+    try {
+      const baselines = await base44.entities.PhysiologicalBaselines.filter({ athlete_id }, '-recorded_date', 1);
+      latestBaseline = baselines[0] || null;
+    } catch (_e) {
+      latestBaseline = null;
+    }
 
     // Derive the reconciled running threshold pace server-side so race-day
     // HR/pace caps map to a validated current threshold rather than a stale
