@@ -134,7 +134,9 @@ export default function CorosIntegration({ athleteId }) {
               <p className="text-xs text-destructive mt-0.5">Your COROS login expired. Your imported workouts are safe.</p>
             )}
             {connected && status?.last_error && (
-              <p className="text-xs text-destructive mt-0.5">{status.last_error}</p>
+              <p className="text-xs text-destructive mt-0.5">
+                {String(status.last_error).split(";").map((s) => s.trim()).filter(Boolean).filter((s, i, arr) => arr.indexOf(s) === i).join("; ")}
+              </p>
             )}
           </div>
         </div>

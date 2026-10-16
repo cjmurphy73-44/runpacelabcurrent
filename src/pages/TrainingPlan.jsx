@@ -2,7 +2,8 @@ import React, { useEffect, useState, useCallback } from "react";
 import { base44 } from "@/api/base44Client";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
-import { Sparkles, ShieldAlert } from "lucide-react";
+import { Sparkles, ShieldAlert, ClipboardList, ArrowRight } from "lucide-react";
+import { Link } from "react-router-dom";
 import HelpLink from "@/components/guide/HelpLink";
 import { useCoachInjurySignal } from "@/hooks/useCoachInjurySignal";
 import TrainingPlanGenerator from "@/components/trainingplan/TrainingPlanGenerator";
@@ -76,7 +77,21 @@ export default function TrainingPlan() {
   }
 
   if (!athlete) {
-    return <div className="text-center py-20 text-muted-foreground">Set up your athlete profile on the Dashboard first.</div>;
+    return (
+      <div className="max-w-md mx-auto text-center py-16 px-4 space-y-4">
+        <div className="w-14 h-14 rounded-full bg-primary/10 text-primary flex items-center justify-center mx-auto">
+          <ClipboardList className="w-7 h-7" />
+        </div>
+        <h2 className="text-xl font-heading font-bold">Set up your athlete profile first</h2>
+        <p className="text-sm text-muted-foreground">
+          Your training plan is built around your physiology, thresholds, and training history.
+          Create your athlete profile on the Dashboard, then come back here to generate your plan.
+        </p>
+        <Button asChild>
+          <Link to="/app">Go to Dashboard <ArrowRight className="w-4 h-4" /></Link>
+        </Button>
+      </div>
+    );
   }
 
   if (!plan || showGenerator) {

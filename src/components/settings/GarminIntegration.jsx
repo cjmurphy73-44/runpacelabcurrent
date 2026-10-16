@@ -119,10 +119,8 @@ export default function GarminIntegration({ athleteId, onSynced }) {
       <div className="flex gap-2 items-start text-xs text-muted-foreground bg-muted/30 border border-border rounded-md p-2.5">
         <Info className="w-3.5 h-3.5 shrink-0 mt-0.5" />
         <p>
-          We'd love to offer one-click Garmin sync — honestly. Garmin's developer program is currently{" "}
-          <span className="text-foreground font-medium">closed to new consumer apps</span> (it's enterprise-only and
-          approval takes months). Until Garmin reopens it, manual export → upload is the fastest reliable path. We'll
-          flip this on the moment access is possible.
+          Garmin's developer program is <span className="text-foreground font-medium">closed to new consumer apps</span>,
+          so direct auto-sync isn't available yet. Manual export → upload works great in the meantime.
         </p>
       </div>
 

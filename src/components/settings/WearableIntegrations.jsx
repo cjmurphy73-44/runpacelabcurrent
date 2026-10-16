@@ -86,14 +86,14 @@ function ProviderCard({ provider, athleteId }) {
   const connected = status?.connected;
 
   return (
-    <div className="flex flex-col gap-1 p-3 border border-border rounded-md">
-      <div className="flex items-center justify-between gap-2">
-        <div className="flex items-center gap-3 min-w-0">
+    <div className="flex flex-col gap-2 p-3 border border-border rounded-md">
+      <div className="flex items-start justify-between gap-2">
+        <div className="flex items-center gap-3 min-w-0 flex-1">
           <div className="bg-muted p-2 rounded text-muted-foreground shrink-0">
             <Link2 className="w-5 h-5" />
           </div>
           <div className="min-w-0">
-            <p className="text-sm font-medium flex items-center gap-2">
+            <p className="text-sm font-medium flex items-center gap-2 flex-wrap">
               {label}
               {!connected && <WipBadge label="Setup required" />}
               {connected && (
@@ -110,7 +110,7 @@ function ProviderCard({ provider, athleteId }) {
             )}
           </div>
         </div>
-        <div className="flex items-center gap-2 shrink-0">
+        <div className="flex items-center gap-2 shrink-0 mt-0.5">
           {connected ? (
             <>
               <Button variant="outline" size="sm" onClick={sync} disabled={syncing}>
@@ -139,18 +139,11 @@ export default function WearableIntegrations({ athleteId }) {
   return (
     <div className="space-y-3">
       <p className="text-xs text-muted-foreground">
-        Free OAuth wearables. Each needs its own developer app + client credentials (set as app secrets) before Connect works —
-        see the notes below the cards.
+        Free OAuth recovery sources — connect your ring or strap to sync sleep, HRV, and readiness automatically.
       </p>
       {PROVIDERS.map((p) => (
         <ProviderCard key={p.key} provider={p} athleteId={athleteId} />
       ))}
-      <p className="text-xs text-muted-foreground pt-1">
-        To enable a provider: register an app at its developer portal, set the redirect URI to
-        <span className="font-mono"> https://trainpacelab.base44.app/functions/wearableOAuthSync</span>,
-        then add the issued client id/secret as <span className="font-mono">{'<BRAND>_CLIENT_ID'}</span> /
-        <span className="font-mono"> {'<BRAND>_CLIENT_SECRET'}</span> app secrets.
-      </p>
     </div>
   );
 }
