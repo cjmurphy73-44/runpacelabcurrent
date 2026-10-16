@@ -20,8 +20,8 @@ export default function AppLayout() {
   const { user, logout } = useAuth();
   const location = useLocation();
   const [feedbackOpen, setFeedbackOpen] = useState(false);
-  const { isPro, coachMode, plan } = useCoachAccess();
-  const isCoach = coachMode;
+  const { isPro, coachMode, plan, canUseCoachWorkspace } = useCoachAccess();
+  const isCoach = canUseCoachWorkspace;
 
   const navLink = (to, label, Icon) => (
     <Link

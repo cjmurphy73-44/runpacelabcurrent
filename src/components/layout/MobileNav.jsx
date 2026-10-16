@@ -27,7 +27,7 @@ export default function MobileNav() {
   const [open, setOpen] = useState(false);
   const location = useLocation();
   const { theme, toggleTheme } = useUIPreferences();
-  const { isPro, coachMode } = useCoachAccess();
+  const { isPro, coachMode, canUseCoachWorkspace } = useCoachAccess();
   const { user } = useAuth();
 
   const isActive = (to) => location.pathname === to;
@@ -76,7 +76,7 @@ export default function MobileNav() {
                 </Link>
               </SheetClose>
             ))}
-            {coachMode && (
+            {canUseCoachWorkspace && (
               <SheetClose asChild>
                 <Link to="/roster" className={primaryClass("/roster")} aria-current={isActive("/roster") ? "page" : undefined}>
                   <Users className="w-5 h-5" />

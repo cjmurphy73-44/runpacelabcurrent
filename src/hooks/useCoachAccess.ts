@@ -1,6 +1,7 @@
 import { useAuth } from "@/lib/AuthContext";
 import { useAthlete } from "@/hooks/useAthlete";
 import { useSubscription } from "@/hooks/useSubscription";
+import { hasFeature } from "@/lib/subscriptionFeatures";
 
 export interface CoachAccess {
   loading: boolean;
@@ -23,7 +24,8 @@ export function useCoachAccess(): CoachAccess {
 
   const isAdmin = user?.role === "admin";
   const coachMode = isAdmin || user?.role === "coach" || athlete?.profile_role === "coach";
-  const teamActive = plan === "team";
+  // Roster access requires a Coach Pro plan (or the legacy "team" tier).
+  const teamActive = plan === "coach_pro" || plan === "team";
 
   return {
     loading: athleteLoading || subLoading,
