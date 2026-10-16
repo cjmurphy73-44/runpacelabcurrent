@@ -109,7 +109,7 @@ async function parseState(state: string): Promise<{ athleteId: string | null; ve
   const clientId = getClientId();
   if (!clientId) return { athleteId: null, verifier: null, ok: false };
   const payload = `${athleteId}.${verifierB64}`;
-  if ((await hmacBase64Url(payload, clientId)) !== sig) return { athleteId, verifier: null, ok: false };
+  if (!constantTimeEqual(await hmacBase64Url(payload, clientId), sig)) return { athleteId, verifier: null, ok: false };
   try { return { athleteId, verifier: b64urlDecode(verifierB64), ok: true }; }
   catch { return { athleteId, verifier: null, ok: false }; }
 }
