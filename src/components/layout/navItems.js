@@ -1,7 +1,7 @@
 import {
   Activity, LineChart, CalendarRange, MessageCircle,
   Gauge, CloudSun, LayoutGrid, Target, Trophy, KanbanSquare,
-  FlaskConical, HeartPulse, History,
+  FlaskConical, HeartPulse, History, LayoutDashboard, ShieldCheck,
 } from "lucide-react";
 
 // Shared navigation model used by both the desktop header bar and the mobile
@@ -31,4 +31,10 @@ export const INSIGHTS = [
 export const LABS = [
   { to: "/physiology", label: "Physiology Lab", icon: FlaskConical },
   { to: "/recovery", label: "Recovery Center", icon: HeartPulse },
+];
+
+// Owner-only surfaces, shown in the Tools dropdown only when the user is an admin.
+export const MANAGE = [
+  { to: "/admin", label: "Admin", icon: LayoutDashboard, adminOnly: true },
+  { to: "/operations", label: "Operations", icon: Gauge, adminOnly: true },
 ];

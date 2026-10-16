@@ -9,9 +9,12 @@ import {
   DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
 import { ChevronDown, Wrench } from "lucide-react";
-import { CALCULATORS, INSIGHTS, LABS } from "@/components/layout/navItems";
+import { useAuth } from "@/lib/AuthContext";
+import { CALCULATORS, INSIGHTS, LABS, MANAGE } from "@/components/layout/navItems";
 
 export default function ToolsDropdown() {
+  const { user } = useAuth();
+  const manageItems = MANAGE.filter((m) => !m.adminOnly || user?.role === "admin");
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
@@ -52,6 +55,20 @@ export default function ToolsDropdown() {
             </Link>
           </DropdownMenuItem>
         ))}
+        {manageItems.length > 0 && (
+          <>
+            <DropdownMenuSeparator />
+            <DropdownMenuLabel>Manage</DropdownMenuLabel>
+            {manageItems.map((t) => (
+              <DropdownMenuItem key={t.to} asChild>
+                <Link to={t.to} className="flex items-center gap-2">
+                  <t.icon className="w-4 h-4" />
+                  {t.label}
+                </Link>
+              </DropdownMenuItem>
+            ))}
+          </>
+        )}
       </DropdownMenuContent>
     </DropdownMenu>
   );

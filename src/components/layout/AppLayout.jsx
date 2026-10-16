@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import ToolsDropdown from "@/components/layout/ToolsDropdown";
 import AccountMenu from "@/components/layout/AccountMenu";
 import BetaFeedbackModal from "@/components/feedback/BetaFeedbackModal";
-import { Activity, Sparkles, Upload, Users, LayoutDashboard, HelpCircle, Gauge } from "lucide-react";
+import { Activity, Sparkles, Upload, Users, HelpCircle } from "lucide-react";
 import { useCoachAccess } from "@/hooks/useCoachAccess";
 import MobileNav from "@/components/layout/MobileNav";
 import ThemeToggle from "@/components/layout/ThemeToggle";
@@ -56,8 +56,6 @@ export default function AppLayout() {
                 <nav className="hidden lg:flex items-center gap-1 min-w-0">
                   {PRIMARY_NAV.map((n) => navLink(n.to, n.label, n.icon))}
                   {isCoach && navLink("/roster", "Roster", Users)}
-                  {user?.role === "admin" && navLink("/admin", "Admin", LayoutDashboard)}
-                  {user?.role === "admin" && navLink("/operations", "Ops", Gauge)}
                   <ToolsDropdown />
                 </nav>
                 <div className="lg:hidden">
