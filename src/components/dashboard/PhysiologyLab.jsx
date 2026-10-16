@@ -7,6 +7,7 @@ import AIDeepDiveCard from "@/components/dashboard/AIDeepDiveCard";
 import ThresholdTrendChart from "@/components/dashboard/ThresholdTrendChart";
 import AutonomicStressCard from "@/components/dashboard/AutonomicStressCard";
 import BaselineHistoryMatrix from "@/components/dashboard/BaselineHistoryMatrix";
+import OdeModelChart from "@/components/dashboard/OdeModelChart";
 
 function getTsbStatus(tsb) {
   if (tsb < -30) return { label: "Danger – Overtraining Risk", detail: "Fatigue is far outpacing fitness. Back off intensity and prioritize recovery immediately." };
@@ -42,6 +43,8 @@ export default function PhysiologyLab({ athlete }) {
         <ThresholdTrendChart />
         <AutonomicStressCard />
       </div>
+
+      <OdeModelChart athlete={athlete} />
 
       <BaselineHistoryMatrix athleteId={athlete.id} />
 

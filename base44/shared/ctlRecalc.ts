@@ -5,6 +5,8 @@
 
 const DAY_MS = 86400000;
 
+import { calculateFitnessFatigueOde } from './fitnessFatigueOde.ts';
+
 export async function recomputeCTLATLTSB(base44: any, athlete_id: string) {
   const athlete = await base44.asServiceRole.entities.AthleteProfile.get(athlete_id).catch(() => null);
 
@@ -53,16 +55,37 @@ export async function recomputeCTLATLTSB(base44: any, athlete_id: string) {
 
   const persistDates = new Set([...workoutDates, ...existing.map((m) => m.date)]);
 
-  let ctl: number | null = null;
-  let currentATL: number | null = null;
+  // Build the full daily TRIMP history (including zero-load rest days) for the ODE model.
+  // The ODE needs continuous daily impulses to model fitness/fatigue decay on rest days.
+  const odeTau1 = athlete?.ode_tau1 || 42;
+  const odeTau2 = athlete?.ode_tau2 || 7;
+  const odeParams = { tau1: odeTau1, tau2: odeTau2, k1: 1.0, k2: 1.5, baselinePerformance: 50.0 };
+
+  // First pass: build the daily TRIMP history and compute the ODE model states.
   const start = new Date(workoutDates[0] + 'T00:00:00Z');
   const end = new Date();
-  const cursor = new Date(start);
+  const dailyHistory: { date: string; trimp: number }[] = [];
+  {
+    const cursor = new Date(start);
+    while (cursor <= end) {
+      const iso = cursor.toISOString().slice(0, 10);
+      dailyHistory.push({ date: iso, trimp: trimpByDate[iso] || 0 });
+      cursor.setTime(cursor.getTime() + DAY_MS);
+    }
+  }
+  const odeStates = calculateFitnessFatigueOde(dailyHistory, odeParams);
+  const odeByDate: Record<string, { fitness: number; fatigue: number; form: number }> = {};
+  for (const s of odeStates) odeByDate[s.date] = { fitness: s.fitness, fatigue: s.fatigue, form: s.form };
+
+  // Second pass: EWMA CTL/ATL/TSB with ODE values merged inline.
+  let ctl: number | null = null;
+  let currentATL: number | null = null;
+  const cursor2 = new Date(start);
   const updates: any[] = [];
   const creates: any[] = [];
 
-  while (cursor <= end) {
-    const iso = cursor.toISOString().slice(0, 10);
+  while (cursor2 <= end) {
+    const iso = cursor2.toISOString().slice(0, 10);
     const load = trimpByDate[iso] || 0;
 
     if (ctl === null || currentATL === null) {
@@ -75,16 +98,20 @@ export async function recomputeCTLATLTSB(base44: any, athlete_id: string) {
 
     if (persistDates.has(iso)) {
       const tsb = ctl - currentATL;
+      const ode = odeByDate[iso];
       const payload: any = {
         calculated_ctl: Math.round(ctl * 10) / 10,
         calculated_atl: Math.round(currentATL * 10) / 10,
         calculated_tsb: Math.round(tsb * 10) / 10,
+        ode_fitness: ode?.fitness ?? 0,
+        ode_fatigue: ode?.fatigue ?? 0,
+        ode_form: ode?.form ?? 0,
       };
       if (trimpByDate[iso] !== undefined) payload.total_trimp = Math.round(trimpByDate[iso] * 100) / 100;
       if (existingByDate[iso]) updates.push({ id: existingByDate[iso], ...payload });
       else creates.push({ athlete_id, date: iso, ...payload });
     }
-    cursor.setTime(cursor.getTime() + DAY_MS);
+    cursor2.setTime(cursor2.getTime() + DAY_MS);
   }
 
   for (let i = 0; i < updates.length; i += 500) {

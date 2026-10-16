@@ -117,6 +117,18 @@
       "default": 7,
       "description": "Time constant (tau) in days for the ATL (Fatigue) EWMA"
     },
+    "ode_tau1": {
+      "type": "integer",
+      "minimum": 1,
+      "default": 42,
+      "description": "Personal time constant (tau1) in days for the ODE fitness compartment decay. Adjustable in the Physiology Lab so the athlete can match the model to their individual rate of fitness decay."
+    },
+    "ode_tau2": {
+      "type": "integer",
+      "minimum": 1,
+      "default": 7,
+      "description": "Personal time constant (tau2) in days for the ODE fatigue compartment decay. Adjustable in the Physiology Lab so the athlete can match the model to their individual rate of fatigue decay."
+    },
     "current_ctl": {
       "type": "number",
       "default": 0,
