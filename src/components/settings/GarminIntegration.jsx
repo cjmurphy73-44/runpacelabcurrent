@@ -131,9 +131,21 @@ export default function GarminIntegration({ athleteId, onSynced }) {
         </span>
         <div className="min-w-0 space-y-1">
           <p className="text-sm font-medium">Export from Garmin Connect</p>
-          <ol className="text-xs text-muted-foreground space-y-0.5 list-decimal list-inside">
+          <ol className="text-xs text-muted-foreground space-y-1 list-decimal list-inside">
             <li>
-              Open{" "}
+              <span className="font-medium text-foreground">Bulk (recommended):</span>{" "}
+              <a
+                href="https://connect.garmin.com/modern/account-information"
+                target="_blank"
+                rel="noreferrer"
+                className="text-primary hover:underline inline-flex items-center gap-0.5"
+              >
+                Account <ExternalLink className="w-3 h-3" />
+              </a>{" "}
+              → <span className="font-medium text-foreground">Export Your Data</span> → Activities — downloads a ZIP of all your <span className="font-medium">.fit</span> files at once
+            </li>
+            <li>
+              <span className="font-medium text-foreground">One at a time:</span>{" "}
               <a
                 href="https://connect.garmin.com"
                 target="_blank"
@@ -142,11 +154,12 @@ export default function GarminIntegration({ athleteId, onSynced }) {
               >
                 connect.garmin.com <ExternalLink className="w-3 h-3" />
               </a>{" "}
-              → Activities
+              → Activities → open one → <span className="font-medium text-foreground">⋯ → Export Original</span>
             </li>
-            <li>Open an activity → <span className="font-medium text-foreground">⋯ → Export Original</span> (downloads a <span className="font-medium">.fit</span> file)</li>
-            <li>Repeat for any other activities you want to import</li>
           </ol>
+          <p className="text-[11px] text-muted-foreground mt-1.5">
+            Either way, drop all the <span className="font-medium">.fit</span> files below — the bulk importer handles multiple files at once.
+          </p>
         </div>
       </div>
 
