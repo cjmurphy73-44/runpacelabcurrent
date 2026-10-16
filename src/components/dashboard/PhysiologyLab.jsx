@@ -1,9 +1,9 @@
 import React from "react";
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
-import { BookOpen } from "lucide-react";
+import { BookOpen, Sparkles } from "lucide-react";
 import CollapsibleSection from "@/components/ui/CollapsibleSection";
 import RaceStrategyPlanner from "@/components/dashboard/RaceStrategyPlanner";
-import WipWrapper from "@/components/common/WipWrapper";
+import AIDeepDiveCard from "@/components/dashboard/AIDeepDiveCard";
 import ThresholdTrendChart from "@/components/dashboard/ThresholdTrendChart";
 import AutonomicStressCard from "@/components/dashboard/AutonomicStressCard";
 import BaselineHistoryMatrix from "@/components/dashboard/BaselineHistoryMatrix";
@@ -45,9 +45,17 @@ export default function PhysiologyLab({ athlete }) {
 
       <BaselineHistoryMatrix athleteId={athlete.id} />
 
-      <WipWrapper isWip={true} featureName="Race Strategy Engine">
-        <RaceStrategyPlanner athleteId={athlete.id} />
-      </WipWrapper>
+      <CollapsibleSection
+        title="AI intelligence"
+        subtitle="Deep-dive analysis & competition strategy"
+        icon={Sparkles}
+        deep
+      >
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+          <AIDeepDiveCard athleteId={athlete.id} />
+          <RaceStrategyPlanner athleteId={athlete.id} />
+        </div>
+      </CollapsibleSection>
     </div>
   );
 }

@@ -4,10 +4,10 @@ import { useNavigate } from "react-router-dom";
 import { base44 } from "@/api/base44Client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Loader2, Plus, ArrowRight, Watch, Upload, FlaskConical, Webhook, Settings } from "lucide-react";
+import { Loader2, Plus, ArrowRight, Watch, Upload, FlaskConical, Webhook, Settings, HeartPulse } from "lucide-react";
 import HelpLink from "@/components/guide/HelpLink";
 import BulkWorkoutImport from "@/components/dashboard/BulkWorkoutImport";
-import WorkoutUploadForm from "@/components/WorkoutUploadForm";
+import RecoveryImportSection from "@/components/imports/RecoveryImportSection";
 import WebhookSyncPanel from "@/components/imports/WebhookSyncPanel";
 import LabResultsImport from "@/components/imports/LabResultsImport";
 import ManualWorkoutModal from "@/components/workout/ManualWorkoutModal";
@@ -113,7 +113,6 @@ export default function Imports() {
       {/* 2 — Import workout files */}
       <section className="space-y-3">
         <SectionHeading index="02" title="Import workout files" description="Bulk-upload .fit or .csv exports from your watch or training platform." icon={Upload} />
-        <WorkoutUploadForm athleteId={athlete.id} />
         <BulkWorkoutImport athleteId={athlete.id} onUploaded={() => {}} />
         <p className="text-xs text-muted-foreground">
           Supports <span className="font-medium">.fit</span> and <span className="font-medium">.csv</span> from Strava, COROS, Garmin and others.
@@ -121,9 +120,15 @@ export default function Imports() {
         </p>
       </section>
 
-      {/* 3 — Lab results */}
+      {/* 3 — Recovery & sleep */}
       <section className="space-y-3">
-        <SectionHeading index="03" title="Lab results" description="Blood panels, VO₂max, lactate-at-threshold — feed your recovery baselines and AI synthesis." icon={FlaskConical} />
+        <SectionHeading index="03" title="Recovery & sleep" description="Log today's HRV, sleep and resting HR manually, or bulk-import a CSV/JSON export from Oura, WHOOP, Garmin or Apple Health." icon={HeartPulse} />
+        <RecoveryImportSection athleteId={athlete.id} />
+      </section>
+
+      {/* 4 — Lab results */}
+      <section className="space-y-3">
+        <SectionHeading index="04" title="Lab results" description="Blood panels, VO₂max, lactate-at-threshold — feed your recovery baselines and AI synthesis." icon={FlaskConical} />
         <Card>
           <CardContent className="pt-5">
             <LabResultsImport athleteId={athlete.id} />
@@ -132,9 +137,9 @@ export default function Imports() {
         <p className="text-xs text-muted-foreground">One row per metric per date.</p>
       </section>
 
-      {/* 4 — Advanced webhook / API */}
+      {/* 5 — Advanced webhook / API */}
       <section className="space-y-3">
-        <SectionHeading index="04" title="Webhook & API" description="Advanced — push workout summaries from your own scripts, Zapier, or Make." icon={Webhook} />
+        <SectionHeading index="05" title="Webhook & API" description="Advanced — push workout summaries from your own scripts, Zapier, or Make." icon={Webhook} />
         <WebhookSyncPanel athleteId={athlete.id} />
       </section>
 
