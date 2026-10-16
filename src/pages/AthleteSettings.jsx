@@ -18,6 +18,7 @@ import CorosIntegration from "@/components/settings/CorosIntegration";
 import GarminIntegration from "@/components/settings/GarminIntegration";
 import StravaIntegration from "@/components/settings/StravaIntegration";
 import WearableIntegrations from "@/components/settings/WearableIntegrations";
+import PrivacySecurityDashboard from "@/components/settings/PrivacySecurityDashboard";
 
 // TIER_CONSTANTS mirrors updateAthleteProfile so editing the tier in Settings keeps the
 // CTL/ATL time constants consistent with the chosen philosophy.
@@ -369,6 +370,8 @@ export default function AthleteSettings() {
           <WearableIntegrations athleteId={athlete.id} />
         </CardContent>
       </Card>
+
+      <PrivacySecurityDashboard athleteId={athlete.id} />
 
       <Card className="border-destructive/30">
         <CardHeader>

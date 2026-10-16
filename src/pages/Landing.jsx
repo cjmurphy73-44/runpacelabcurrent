@@ -10,6 +10,7 @@ import {
 } from "lucide-react";
 import { PLAN_TIERS, PLAN_DETAILS } from "@/lib/subscriptionFeatures";
 import ProductPreview from "@/components/landing/ProductPreview";
+import DataSovereigntySection from "@/components/landing/DataSovereigntySection";
 import PublicFooter from "@/components/layout/PublicFooter";
 import Reveal from "@/components/landing/Reveal";
 import ThemeToggle from "@/components/layout/ThemeToggle";
@@ -158,6 +159,9 @@ export default function Landing() {
           </div>
         </div>
       </section>
+
+      {/* Data Sovereignty Guarantee */}
+      <DataSovereigntySection />
 
       {/* Product showcase */}
       <section className="max-w-6xl mx-auto px-4 py-16">
