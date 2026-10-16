@@ -18,7 +18,7 @@ export default function ProviderExportCard({ provider }) {
           </div>
           <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
             {isLive ? <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" /> : <Clock className="w-3.5 h-3.5" />}
-            <span>{isLive ? "Automatic sync" : provider.type === "bridge" ? "On-device bridge" : "OAuth sync"}</span>
+            <span>{isLive ? "Automatic sync" : provider.type === "bridge" ? "On-device bridge" : provider.type === "manual" ? "Manual upload" : "OAuth sync"}</span>
           </div>
         </div>
         <p className="text-sm text-muted-foreground">{provider.blurb}</p>
