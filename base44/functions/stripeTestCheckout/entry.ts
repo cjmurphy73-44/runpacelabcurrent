@@ -32,7 +32,7 @@ export default async function(req) {
     params.append("line_items[0][price]", priceId);
     params.append("line_items[0][quantity]", "1");
     params.append("client_reference_id", user.id);
-    params.append("success_url", `${origin}/subscribe?status=success&mode=test`);
+    params.append("success_url", `${origin}/welcome?plan=pro&mode=test`);
     params.append("cancel_url", `${origin}/subscribe?status=canceled&mode=test`);
     const appId = Deno.env.get("BASE44_APP_ID") || "";
     params.append("metadata[base44_app_id]", appId);

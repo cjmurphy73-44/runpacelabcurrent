@@ -9,6 +9,7 @@ import Terms from '@/pages/Terms';
 import Privacy from '@/pages/Privacy';
 import Refund from '@/pages/Refund';
 import Support from '@/pages/Support';
+import CheckoutSuccess from '@/pages/CheckoutSuccess';
 import AppLayout from '@/components/layout/AppLayout';
 import ProtectedRoute from '@/components/ProtectedRoute';
 import PageNotFound from '@/lib/PageNotFound';
@@ -61,6 +62,7 @@ export default function App() {
             <Route path="/terms" element={<Terms />} />
             <Route path="/privacy" element={<Privacy />} />
             <Route path="/refund" element={<Refund />} />
+            <Route path="/welcome" element={<CheckoutSuccess />} />
             <Route element={<ProtectedRoute unauthenticatedElement={<Navigate to="/login" replace />} />}>
               <Route element={<AppLayout />}>
                 <Route path="/app" element={<Home />} />
