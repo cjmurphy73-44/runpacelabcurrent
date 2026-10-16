@@ -1,5 +1,5 @@
 import React, { useRef, useState } from "react";
-import { Watch, UploadCloud, FileCheck2, Loader2, ExternalLink } from "lucide-react";
+import { Watch, UploadCloud, FileCheck2, Loader2, ExternalLink, Info } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -113,6 +113,17 @@ export default function GarminIntegration({ athleteId, onSynced }) {
             </p>
           </div>
         </div>
+      </div>
+
+      {/* Why no direct sync */}
+      <div className="flex gap-2 items-start text-xs text-muted-foreground bg-muted/30 border border-border rounded-md p-2.5">
+        <Info className="w-3.5 h-3.5 shrink-0 mt-0.5" />
+        <p>
+          We'd love to offer one-click Garmin sync — honestly. Garmin's developer program is currently{" "}
+          <span className="text-foreground font-medium">closed to new consumer apps</span> (it's enterprise-only and
+          approval takes months). Until Garmin reopens it, manual export → upload is the fastest reliable path. We'll
+          flip this on the moment access is possible.
+        </p>
       </div>
 
       {/* Step 1 — Export */}
