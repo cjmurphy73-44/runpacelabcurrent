@@ -9,7 +9,6 @@ import {
 
 export const PRIMARY_NAV = [
   { to: "/app", label: "Dashboard", icon: Activity },
-  { to: "/analytics", label: "Analytics", icon: LineChart },
   { to: "/plan", label: "Plan", icon: CalendarRange },
   { to: "/coach", label: "Coach", icon: MessageCircle },
 ];
@@ -21,6 +20,7 @@ export const CALCULATORS = [
 ];
 
 export const INSIGHTS = [
+  { to: "/analytics", label: "Analytics", icon: LineChart },
   { to: "/workouts", label: "Workouts", icon: History },
   { to: "/predict", label: "Race Predictor", icon: Target },
   { to: "/pbs", label: "Race Ledger", icon: Trophy },

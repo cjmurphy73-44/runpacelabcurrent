@@ -1,12 +1,11 @@
 import React, { useState, Suspense } from "react";
 import { Outlet, Link, useLocation } from "react-router-dom";
 import { useAuth } from "@/lib/AuthContext";
-import ModeSwitch from "@/components/layout/ModeSwitch";
 import { Button } from "@/components/ui/button";
 import ToolsDropdown from "@/components/layout/ToolsDropdown";
 import AccountMenu from "@/components/layout/AccountMenu";
 import BetaFeedbackModal from "@/components/feedback/BetaFeedbackModal";
-import { Activity, Sparkles, Upload, Users, HelpCircle } from "lucide-react";
+import { Activity, Sparkles, Users } from "lucide-react";
 import { useCoachAccess } from "@/hooks/useCoachAccess";
 import MobileNav from "@/components/layout/MobileNav";
 import ThemeToggle from "@/components/layout/ThemeToggle";
@@ -66,14 +65,6 @@ export default function AppLayout() {
                 <div className="sm:hidden">
                   <NetworkStatusBadge />
                 </div>
-            <ModeSwitch className="hidden sm:flex mr-1" />
-            <ThemeToggle />
-            <Link to="/guide" title="User Guide" className="flex items-center justify-center h-9 w-9 rounded-md text-muted-foreground hover:bg-accent">
-              <HelpCircle className="w-4 h-4" />
-            </Link>
-            <Link to="/import" title="Imports" className="hidden lg:flex items-center justify-center h-9 w-9 rounded-md text-muted-foreground hover:bg-accent">
-              <Upload className="w-4 h-4" />
-            </Link>
             {!isPro && (
               <Button asChild variant="default" size="sm" title="Upgrade plan" className="hidden lg:inline-flex gap-1.5">
                 <Link to="/subscribe"><Sparkles className="w-4 h-4" /><span className="hidden sm:inline">Upgrade</span></Link>
