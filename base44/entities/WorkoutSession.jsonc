@@ -166,6 +166,11 @@
     "post_workout_feedback_id": {
       "type": "string",
       "description": "References WorkoutFeedback.id \u2014 the latest AI post-workout insight generated for this session (relation to the WorkoutFeedback entity)"
+    },
+    "description": {
+      "type": "string",
+      "maxLength": 1000,
+      "description": "Optional freeform description (up to 1000 characters) that makes this record text-searchable for AI-assisted discovery."
     }
   },
   "required": [

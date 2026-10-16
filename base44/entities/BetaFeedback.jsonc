@@ -35,6 +35,11 @@
       ],
       "default": "new",
       "description": "Triage status so the admin can track what's been handled"
+    },
+    "description": {
+      "type": "string",
+      "maxLength": 1000,
+      "description": "Optional freeform description (up to 1000 characters) that makes this record text-searchable for AI-assisted discovery."
     }
   },
   "required": [

@@ -156,6 +156,11 @@
     "webhook_api_key": {
       "type": "string",
       "description": "Personal API key authenticating this athlete's /workoutWebhook endpoint; also used as the Strava webhook subscription verify_token. Set only by the workoutWebhook backend function."
+    },
+    "description": {
+      "type": "string",
+      "maxLength": 1000,
+      "description": "Optional freeform description (up to 1000 characters) that makes this record text-searchable for AI-assisted discovery."
     }
   },
   "required": [
