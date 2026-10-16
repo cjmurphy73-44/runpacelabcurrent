@@ -13,13 +13,14 @@ import MobileTabBar from "@/components/layout/MobileTabBar";
 import PageErrorBoundary from "@/components/common/PageErrorBoundary";
 import PageTransition from "@/components/layout/PageTransition";
 import { PRIMARY_NAV } from "@/components/layout/navItems";
+import PlanBadge from "@/components/billing/PlanBadge";
 import { OfflineSyncProvider, NetworkStatusBadge, SyncErrorBoundary } from "@/components/layout/offlineSyncAdapters";
 
 export default function AppLayout() {
   const { user, logout } = useAuth();
   const location = useLocation();
   const [feedbackOpen, setFeedbackOpen] = useState(false);
-  const { isPro, coachMode } = useCoachAccess();
+  const { isPro, coachMode, plan } = useCoachAccess();
   const isCoach = coachMode;
 
   const navLink = (to, label, Icon) => (
@@ -69,6 +70,9 @@ export default function AppLayout() {
               <Button asChild variant="default" size="sm" title="Upgrade plan" className="hidden lg:inline-flex gap-1.5">
                 <Link to="/subscribe"><Sparkles className="w-4 h-4" /><span className="hidden sm:inline">Upgrade</span></Link>
               </Button>
+            )}
+            {isPro && (
+              <PlanBadge plan={plan} className="hidden sm:inline-flex" />
             )}
             <AccountMenu onFeedback={() => setFeedbackOpen(true)} onLogout={logout} />
           </div>

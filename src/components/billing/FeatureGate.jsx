@@ -4,6 +4,7 @@ import { Lock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { hasFeature, PLAN_DETAILS } from "@/lib/subscriptionFeatures";
+import PlanBadge from "@/components/billing/PlanBadge";
 
 const LABELS = {
   unlimited_sync: "Unlimited wearable sync is a Pro feature",
@@ -19,7 +20,7 @@ export default function FeatureGate({ feature, plan, children, compact = false }
   if (compact) {
     return (
       <Button asChild variant="outline" size="sm" className="gap-1.5">
-        <Link to="/subscribe"><Lock className="w-3.5 h-3.5" />{LABELS[feature]}</Link>
+        <Link to="/subscribe"><Lock className="w-3.5 h-3.5" />{LABELS[feature]}<PlanBadge feature={feature} className="ml-1" /></Link>
       </Button>
     );
   }
@@ -32,7 +33,10 @@ export default function FeatureGate({ feature, plan, children, compact = false }
         <div className="flex items-center gap-3 min-w-0">
           <div className="w-9 h-9 rounded-full bg-primary/10 text-primary flex items-center justify-center shrink-0"><Lock className="w-4 h-4" /></div>
           <div className="min-w-0">
-            <p className="text-sm font-medium truncate">{LABELS[feature]}</p>
+            <div className="flex items-center gap-2">
+              <p className="text-sm font-medium truncate">{LABELS[feature]}</p>
+              <PlanBadge feature={feature} />
+            </div>
             <p className="text-xs text-muted-foreground">{target.tagline} · {target.price}/{target.cadence}</p>
           </div>
         </div>
