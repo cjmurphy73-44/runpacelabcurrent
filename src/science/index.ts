@@ -22,3 +22,4 @@ export * from './racePacing';
 export * from './racePrediction';
 export * from './norwegianEngine';
 export * from './reconciliation';
+export * from './models/fitnessFatigueOde';
