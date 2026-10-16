@@ -277,6 +277,11 @@
     "phase2_note": {
       "type": "string",
       "description": "Narrative preview for goals beyond the currently generated weeks, to be recalibrated after the next race result"
+    },
+    "description": {
+      "type": "string",
+      "maxLength": 1000,
+      "description": "Optional freeform description (up to 1000 characters) that makes this record text-searchable for AI-assisted discovery."
     }
   },
   "required": [

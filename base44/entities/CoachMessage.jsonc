@@ -37,6 +37,11 @@
     "triggered_by_workout_session_id": {
       "type": "string",
       "description": "References WorkoutSession.id that triggered this message, if any"
+    },
+    "description": {
+      "type": "string",
+      "maxLength": 1000,
+      "description": "Optional freeform description (up to 1000 characters) that makes this record text-searchable for AI-assisted discovery."
     }
   },
   "required": [

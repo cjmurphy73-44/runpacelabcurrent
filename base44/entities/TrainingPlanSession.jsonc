@@ -113,6 +113,11 @@
       ],
       "default": "pending",
       "description": "completion outcome: completed (within \u00b15%), partial (<95% of prescribed), excess (>105% of prescribed), skipped (overdue + not performed), modified (auto-replanned by the adaptive re-planning engine)"
+    },
+    "description": {
+      "type": "string",
+      "maxLength": 1000,
+      "description": "Optional freeform description (up to 1000 characters) that makes this record text-searchable for AI-assisted discovery."
     }
   },
   "required": [
