@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
 import { useTelemetryIngestion } from '@/hooks/useTelemetryIngestion';
+import { TelemetryIngestionEngine } from '@/lib/telemetry/TelemetryIngestionEngine';
 import { processActivityStreams, ProcessedActivityStreams } from '@/services/telemetryProcessor';
 import { Button } from '@/components/ui/button';
-import { X, File, Activity } from 'lucide-react';
+import { X, File, Activity, AlertCircle } from 'lucide-react';
 
 interface TelemetryDrawerProps {
   isOpen: boolean;
@@ -13,6 +14,7 @@ interface TelemetryDrawerProps {
 export const TelemetryDrawer: React.FC<TelemetryDrawerProps> = ({ isOpen, onClose, sessionId }) => {
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [analysisResults, setAnalysisResults] = useState<Record<string, ProcessedActivityStreams>>({});
+  const [parseErrors, setParseErrors] = useState<Record<string, string>>({});
   const { uploadFiles, isUploading } = useTelemetryIngestion();
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -21,16 +23,24 @@ export const TelemetryDrawer: React.FC<TelemetryDrawerProps> = ({ isOpen, onClos
       setSelectedFiles(files);
 
       const results: Record<string, ProcessedActivityStreams> = {};
+      const errors: Record<string, string> = {};
+
       for (const file of files) {
-        const mockStream = [
-          { timeOffsetSeconds: 0, outputValue: 250 },
-          { timeOffsetSeconds: 1, outputValue: 360 },
-          { timeOffsetSeconds: 2, outputValue: 360 },
-          { timeOffsetSeconds: 3, outputValue: 200 },
-        ];
-        results[file.name] = processActivityStreams(mockStream, 300, 20000);
+        try {
+          const buffer = await file.arrayBuffer();
+          const ingestionResult = await TelemetryIngestionEngine.ingestAndReconcile([
+            { filename: file.name, buffer }
+          ]);
+
+          const streams = (ingestionResult.reconciledStream[0] as any) || [];
+          results[file.name] = processActivityStreams(streams, 300, 20000);
+        } catch (err: any) {
+          errors[file.name] = err?.message || 'Failed to parse telemetry streams';
+        }
       }
+
       setAnalysisResults(results);
+      setParseErrors(errors);
     }
   };
 
@@ -50,11 +60,12 @@ export const TelemetryDrawer: React.FC<TelemetryDrawerProps> = ({ isOpen, onClos
             <Button variant="ghost" size="sm" onClick={onClose} aria-label="Close"><X className="w-4 h-4" /></Button>
           </div>
           
-          <input type="file" multiple onChange={handleFileChange} className="mb-4" />
+          <input type="file" multiple onChange={handleFileChange} className="mb-4 text-sm" />
           
           <div className="flex-1 overflow-y-auto mb-6">
             {selectedFiles.map((file, i) => {
               const analysis = analysisResults[file.name];
+              const error = parseErrors[file.name];
               return (
                 <div key={i} className="p-3 bg-slate-50 rounded mb-3 border border-slate-100">
                   <div className="flex items-center gap-2 mb-1">
@@ -65,6 +76,12 @@ export const TelemetryDrawer: React.FC<TelemetryDrawerProps> = ({ isOpen, onClos
                     <div className="flex items-center gap-2 text-xs text-slate-600 mt-2 pl-6">
                       <Activity className="w-3.5 h-3.5 text-blue-600" />
                       <span>Max W' Depletion: <strong>{analysis.maxDepletionPercent}%</strong></span>
+                    </div>
+                  )}
+                  {error && (
+                    <div className="flex items-center gap-2 text-xs text-red-600 mt-2 pl-6">
+                      <AlertCircle className="w-3.5 h-3.5" />
+                      <span>{error}</span>
                     </div>
                   )}
                 </div>

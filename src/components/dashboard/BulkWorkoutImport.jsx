@@ -5,28 +5,33 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { History, FolderOpen } from "lucide-react";
+import { History, FolderOpen, CheckCircle2, AlertTriangle, XCircle, FileCode } from "lucide-react";
 
-// Files are parsed on the backend by the fit-file-parser library (not hand-rolled in the browser),
-// which reliably extracts session-level summaries. Backend rejects any session under 60s or over
-// 24h and dedups against the existing master log (WorkoutSession), so every accepted row is real.
 const BATCH_SIZE = 5;
 
 function isSupportedFile(name) {
   const lower = name.toLowerCase();
-  return lower.endsWith(".fit") || lower.endsWith(".csv");
+  return lower.endsWith(".fit") || lower.endsWith(".csv") || lower.endsWith(".gpx") || lower.endsWith(".tcx");
 }
 
 export default function BulkWorkoutImport({ athleteId, onUploaded }) {
   const [fileList, setFileList] = useState([]);
+  const [skippedCount, setSkippedCount] = useState(0);
   const [sport, setSport] = useState("running");
   const [status, setStatus] = useState(null);
   const [busy, setBusy] = useState(false);
   const [progress, setProgress] = useState(null); // { phase, current, total }
-  const [failedFiles, setFailedFiles] = useState([]);
+  const [resultsSummary, setResultsSummary] = useState(null); // { created, duplicates, errors }
   const folderInputRef = useRef(null);
 
-  const addFiles = (fileArray) => setFileList(fileArray.filter((f) => isSupportedFile(f.name)));
+  const addFiles = (fileArray) => {
+    const valid = fileArray.filter((f) => isSupportedFile(f.name));
+    const skipped = fileArray.length - valid.length;
+    setFileList(valid);
+    setSkippedCount(skipped);
+    setStatus(null);
+    setResultsSummary(null);
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -37,9 +42,10 @@ export default function BulkWorkoutImport({ athleteId, onUploaded }) {
     }
     setBusy(true);
     setStatus(null);
-    setFailedFiles([]);
+    setResultsSummary(null);
 
     let createdCount = 0;
+    let duplicateCount = 0;
     const allErrors = [];
     const totalBatches = Math.ceil(fileList.length / BATCH_SIZE);
 
@@ -47,7 +53,6 @@ export default function BulkWorkoutImport({ athleteId, onUploaded }) {
       setProgress({ phase: "importing", current: b + 1, total: totalBatches });
       const batch = fileList.slice(b * BATCH_SIZE, (b + 1) * BATCH_SIZE);
       try {
-        // Upload each file, then let the backend parse it with fit-file-parser.
         const fileEntries = [];
         for (const f of batch) {
           const { file_url } = await base44.integrations.Core.UploadFile({ file: f });
@@ -57,67 +62,88 @@ export default function BulkWorkoutImport({ athleteId, onUploaded }) {
         const data = res.data;
         if (data?.success) {
           createdCount += data.created_count || 0;
+          duplicateCount += data.duplicate_count || 0;
           if (data.errors) allErrors.push(...data.errors);
         } else {
-          allErrors.push({ file_name: `batch ${b + 1}`, error: data?.error || "Batch failed" });
+          allErrors.push({ file_name: `Batch ${b + 1}`, error: data?.error || "Batch execution failed" });
         }
       } catch (err) {
-        allErrors.push({ file_name: `batch ${b + 1}`, error: err.message });
+        allErrors.push({ file_name: `Batch ${b + 1}`, error: err.message });
       }
     }
 
-    if (allErrors.length > 0) setFailedFiles(allErrors);
+    setResultsSummary({
+      created: createdCount,
+      duplicates: duplicateCount,
+      errors: allErrors,
+      total: fileList.length,
+    });
+
     setStatus({
       type: allErrors.length > 0 ? "warning" : "success",
-      message: `Imported ${createdCount} workout(s) from ${fileList.length} file(s).${allErrors.length ? ` ${allErrors.length} error(s).` : ""}`,
+      message: `Batch ingestion completed: ${createdCount} created, ${duplicateCount} duplicates skipped, ${allErrors.length} errors.`,
     });
+
     setFileList([]);
-    onUploaded();
+    if (onUploaded) onUploaded();
     setBusy(false);
     setProgress(null);
   };
 
   const buttonLabel = progress
-    ? `Importing batch ${progress.current}/${progress.total}...`
-    : `Import ${fileList.length || ""} file(s)`;
+    ? `Processing Batch ${progress.current}/${progress.total}...`
+    : `Import ${fileList.length || ""} File(s)`;
 
   return (
-    <Card>
-      <CardHeader><CardTitle className="text-sm font-heading flex items-center gap-2"><History className="w-4 h-4" /> Bulk import history</CardTitle></CardHeader>
+    <Card className="shadow-sm">
+      <CardHeader className="pb-3">
+        <CardTitle className="text-sm font-heading flex items-center gap-2">
+          <History className="w-4 h-4 text-primary" /> Bulk Workout Ingestion
+        </CardTitle>
+      </CardHeader>
       <CardContent>
-        <form onSubmit={handleSubmit} className="space-y-3">
+        <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <Label>Files (.fit or .csv, multiple)</Label>
-            <Input
-              type="file"
-              accept=".fit,.csv,application/vnd.ant.fit,application/octet-stream"
-              multiple
-              onChange={(e) => addFiles(Array.from(e.target.files || []))}
-            />
-            <input
-              ref={folderInputRef}
-              type="file"
-              webkitdirectory=""
-              multiple
-              className="hidden"
-              onChange={(e) => addFiles(Array.from(e.target.files || []))}
-            />
-            <button
-              type="button"
-              onClick={() => folderInputRef.current?.click()}
-              className="mt-2 inline-flex items-center gap-1.5 text-xs text-primary hover:underline"
-            >
-              <FolderOpen className="w-3.5 h-3.5" /> Or select an entire folder
-            </button>
+            <Label className="text-xs font-semibold">Select Activity Files (.fit, .gpx, .tcx, .csv)</Label>
+            <div className="mt-1.5 flex flex-col gap-2">
+              <Input
+                type="file"
+                accept=".fit,.gpx,.tcx,.csv,application/vnd.ant.fit,application/octet-stream"
+                multiple
+                onChange={(e) => addFiles(Array.from(e.target.files || []))}
+                className="text-xs"
+              />
+              <input
+                ref={folderInputRef}
+                type="file"
+                webkitdirectory=""
+                multiple
+                className="hidden"
+                onChange={(e) => addFiles(Array.from(e.target.files || []))}
+              />
+              <button
+                type="button"
+                onClick={() => folderInputRef.current?.click()}
+                className="inline-flex items-center gap-1.5 text-xs text-primary hover:underline w-fit"
+              >
+                <FolderOpen className="w-3.5 h-3.5" /> Select Entire Directory / Folder
+              </button>
+            </div>
+            {skippedCount > 0 && (
+              <p className="text-xs text-amber-600 mt-1 flex items-center gap-1">
+                <AlertTriangle className="w-3 h-3" /> Skipped {skippedCount} unsupported file(s).
+              </p>
+            )}
             <p className="text-xs text-muted-foreground mt-1">
-              {fileList.length > 0 ? `${fileList.length} file(s) selected. ` : ""}
-              Files are parsed on the server with a dedicated FIT parser, then saved to your master workout log.
+              {fileList.length > 0 ? `${fileList.length} supported file(s) ready for server parsing. ` : ""}
+              Files are sanitized and deduplicated against your master workout log.
             </p>
           </div>
+
           <div>
-            <Label>Fallback sport</Label>
+            <Label className="text-xs font-semibold">Fallback Sport</Label>
             <Select value={sport} onValueChange={setSport}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectTrigger className="h-8 text-xs mt-1"><SelectValue /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="running">Running</SelectItem>
                 <SelectItem value="cycling">Cycling</SelectItem>
@@ -127,24 +153,56 @@ export default function BulkWorkoutImport({ athleteId, onUploaded }) {
                 <SelectItem value="other">Other</SelectItem>
               </SelectContent>
             </Select>
-            <p className="text-xs text-muted-foreground mt-1">
-              Used when a file's sport can't be detected automatically (mainly .csv files).
-            </p>
           </div>
-          <Button type="submit" disabled={busy || fileList.length === 0} className="w-full">
+
+          <Button type="submit" disabled={busy || fileList.length === 0} className="w-full text-xs h-9">
             {buttonLabel}
           </Button>
+
           {status && (
-            <p className={`text-sm ${status.type === "error" ? "text-destructive" : status.type === "warning" ? "text-warning" : "text-primary"}`}>
+            <div className={`p-3 rounded-md text-xs border ${
+              status.type === "error"
+                ? "bg-red-50 border-red-200 text-red-800"
+                : status.type === "warning"
+                ? "bg-amber-50 border-amber-200 text-amber-800"
+                : "bg-emerald-50 border-emerald-200 text-emerald-800"
+            }`}>
               {status.message}
-            </p>
+            </div>
           )}
-          {failedFiles.length > 0 && (
-            <ul className="text-xs text-muted-foreground space-y-0.5 max-h-28 overflow-y-auto border border-border rounded-md p-2">
-              {failedFiles.map((f, i) => (
-                <li key={i}><span className="font-medium">{f.file_name}:</span> {f.error}</li>
-              ))}
-            </ul>
+
+          {resultsSummary && (
+            <div className="space-y-2 border-t pt-3 mt-3">
+              <span className="text-xs font-semibold text-foreground">Import Outcome Breakdown:</span>
+              <div className="grid grid-cols-3 gap-2 text-center text-xs">
+                <div className="p-2 bg-emerald-50 text-emerald-700 rounded border border-emerald-100">
+                  <CheckCircle2 className="w-3.5 h-3.5 mx-auto mb-0.5" />
+                  <span className="font-bold">{resultsSummary.created}</span> Created
+                </div>
+                <div className="p-2 bg-slate-50 text-slate-700 rounded border border-slate-100">
+                  <FileCode className="w-3.5 h-3.5 mx-auto mb-0.5" />
+                  <span className="font-bold">{resultsSummary.duplicates}</span> Duplicates
+                </div>
+                <div className="p-2 bg-red-50 text-red-700 rounded border border-red-100">
+                  <XCircle className="w-3.5 h-3.5 mx-auto mb-0.5" />
+                  <span className="font-bold">{resultsSummary.errors.length}</span> Failed
+                </div>
+              </div>
+
+              {resultsSummary.errors.length > 0 && (
+                <div className="mt-2">
+                  <span className="text-xs font-medium text-destructive">Failed Files Detail:</span>
+                  <ul className="text-xs text-muted-foreground space-y-1 mt-1 max-h-32 overflow-y-auto border rounded p-2 bg-slate-50">
+                    {resultsSummary.errors.map((f, i) => (
+                      <li key={i} className="flex justify-between gap-2 border-b border-slate-100 last:border-none pb-0.5">
+                        <span className="font-medium text-slate-700 truncate">{f.file_name}:</span>
+                        <span className="text-red-600 shrink-0">{f.error}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+            </div>
           )}
         </form>
       </CardContent>

@@ -1,15 +1,13 @@
-import { vi, beforeEach } from 'vitest';
+import { vi } from 'vitest';
 
-// Silence background analytics fetch errors during headless tests
-beforeEach(() => {
-  vi.stubGlobal(
-    'fetch',
-    vi.fn(async (input: RequestInfo | URL) => {
-      const url = typeof input === 'string' ? input : input.url;
-      if (url.includes('/analytics/track/batch') || url.includes('localhost:3000')) {
-        return new Response(JSON.stringify({ status: 'ok' }), { status: 200 });
-      }
-      return Promise.reject(new Error(`Unhandled fetch to ${url}`));
-    })
-  );
+const originalFetch = global.fetch;
+global.fetch = vi.fn().mockImplementation((input: RequestInfo | URL, init?: RequestInit) => {
+  const url = typeof input === 'string' ? input : input.toString();
+  if (url.includes('analytics/track/batch')) {
+    return Promise.resolve(new Response(JSON.stringify({ success: true }), { status: 200 }));
+  }
+  if (originalFetch) {
+    return originalFetch(input, init);
+  }
+  return Promise.resolve(new Response(JSON.stringify({}), { status: 200 }));
 });

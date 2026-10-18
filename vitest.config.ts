@@ -7,8 +7,7 @@ export default defineConfig({
     environment: 'node',
     setupFiles: ['./src/__tests__/setup.ts'],
     include: ['src/**/*.test.{ts,js,jsx,tsx}', 'src/**/__tests__/**/*.{ts,js,jsx,tsx}'],
-    reporters: ['default'],
-    hideSkippedTests: true,
+    exclude: ['src/__tests__/setup.ts', 'node_modules', 'dist'],
   },
   resolve: {
     alias: {
