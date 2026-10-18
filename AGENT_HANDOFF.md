@@ -9,3 +9,11 @@
   - Zero-equilibrium reference line for form divergence tracking.
   - Dark-mode TrainPaceLab design aesthetic with custom glassmorphic tooltip, loading spinner overlay, and latest state metric footer.
   - Strict UI presentation boundary maintained (zero ODE math computation inside component).
+
+### Integration Manager (Agent 5)
+- **Component Created**: `src/components/physiology/PhysiologyLabDashboard.tsx`
+- **Responsibilities**:
+  - Wired ODE data pipeline using `calculateFitnessFatigueOde` from `src/science/`.
+  - Implemented interactive `useState` for τ₁ (Fitness decay) and τ₂ (Fatigue decay).
+  - Used `useMemo` for performance-optimized ODE state vector calculation.
+  - Connected state to `OdeFitnessFatigueChart` via `onTauChange`.

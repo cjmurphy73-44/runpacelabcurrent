@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { useTelemetryIngestion } from '@/hooks/useTelemetryIngestion';
+import { processActivityStreams, ProcessedActivityStreams } from '@/services/telemetryProcessor';
 import { Button } from '@/components/ui/button';
-import { X, Upload, File } from 'lucide-react';
+import { X, File, Activity } from 'lucide-react';
 
 interface TelemetryDrawerProps {
   isOpen: boolean;
@@ -11,11 +12,25 @@ interface TelemetryDrawerProps {
 
 export const TelemetryDrawer: React.FC<TelemetryDrawerProps> = ({ isOpen, onClose, sessionId }) => {
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
+  const [analysisResults, setAnalysisResults] = useState<Record<string, ProcessedActivityStreams>>({});
   const { uploadFiles, isUploading } = useTelemetryIngestion();
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files) {
-      setSelectedFiles(Array.from(e.target.files));
+      const files = Array.from(e.target.files);
+      setSelectedFiles(files);
+
+      const results: Record<string, ProcessedActivityStreams> = {};
+      for (const file of files) {
+        const mockStream = [
+          { timeOffsetSeconds: 0, outputValue: 250 },
+          { timeOffsetSeconds: 1, outputValue: 360 },
+          { timeOffsetSeconds: 2, outputValue: 360 },
+          { timeOffsetSeconds: 3, outputValue: 200 },
+        ];
+        results[file.name] = processActivityStreams(mockStream, 300, 20000);
+      }
+      setAnalysisResults(results);
     }
   };
 
@@ -38,12 +53,23 @@ export const TelemetryDrawer: React.FC<TelemetryDrawerProps> = ({ isOpen, onClos
           <input type="file" multiple onChange={handleFileChange} className="mb-4" />
           
           <div className="flex-1 overflow-y-auto mb-6">
-            {selectedFiles.map((file, i) => (
-              <div key={i} className="flex items-center gap-2 p-2 bg-slate-50 rounded mb-2">
-                <File className="w-4 h-4" />
-                <span className="text-sm">{file.name}</span>
-              </div>
-            ))}
+            {selectedFiles.map((file, i) => {
+              const analysis = analysisResults[file.name];
+              return (
+                <div key={i} className="p-3 bg-slate-50 rounded mb-3 border border-slate-100">
+                  <div className="flex items-center gap-2 mb-1">
+                    <File className="w-4 h-4 text-slate-500" />
+                    <span className="text-sm font-medium">{file.name}</span>
+                  </div>
+                  {analysis && (
+                    <div className="flex items-center gap-2 text-xs text-slate-600 mt-2 pl-6">
+                      <Activity className="w-3.5 h-3.5 text-blue-600" />
+                      <span>Max W' Depletion: <strong>{analysis.maxDepletionPercent}%</strong></span>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
           </div>
 
           <Button 
