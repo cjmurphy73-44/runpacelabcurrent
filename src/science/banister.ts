@@ -13,6 +13,37 @@
 
 import { BanisterLoadInput, FitnessSummary } from './types';
 
+
+/**
+ * Calculates the change in Fitness and Fatigue using the Banister Differential Equations.
+ * 
+ * @citation Banister, E. W. (1982).
+ * @param currentFitness Current Fitness (CTL)
+ * @param currentFatigue Current Fatigue (ATL)
+ * @param tss Today's Training Stress Score
+ * @param k1 Gain constant for fitness
+ * @param k2 Gain constant for fatigue
+ * @param tau1 Time constant for fitness (default 42d)
+ * @param tau2 Time constant for fatigue (default 7d)
+ * @returns {fitness: number, fatigue: number} Next state
+ */
+export function calculateFitnessFatigueOde(
+  currentFitness: number,
+  currentFatigue: number,
+  tss: number,
+  k1: number = 1.0,
+  k2: number = 2.0,
+  tau1: number = 42,
+  tau2: number = 7
+): { fitness: number; fatigue: number } {
+  const nextFitness = currentFitness * Math.exp(-1 / tau1) + k1 * tss;
+  const nextFatigue = currentFatigue * Math.exp(-1 / tau2) + k2 * tss;
+  return {
+    fitness: Math.round(nextFitness * 100) / 100,
+    fatigue: Math.round(nextFatigue * 100) / 100,
+  };
+}
+
 /**
  * Calculates Training Impulse (TRIMP) using Banister's heart rate reserve formula.
  * 

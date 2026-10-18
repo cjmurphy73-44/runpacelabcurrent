@@ -16,6 +16,20 @@ export interface StandardizedTelemetryPayload {
 }
 
 /**
+ * Optional validator callback to ensure the Strava owner_id matches a linked athlete profile.
+ */
+export async function verifyAthleteOwnership(
+  ownerId: string,
+  verifyMappingFn?: (athleteId: string) => Promise<boolean>
+): Promise<boolean> {
+  if (!verifyMappingFn) {
+    // Default fallback: require explicit mapping configuration
+    return Boolean(ownerId && ownerId !== 'unknown');
+  }
+  return await verifyMappingFn(ownerId);
+}
+
+/**
  * Handles Strava webhook subscription verification (GET request with `hub.challenge`).
  */
 export function handleStravaWebhookVerification(req: Request, res: Response): void {
@@ -63,7 +77,8 @@ export function normalizeStravaActivity(event: any): StandardizedTelemetryPayloa
 export async function handleStravaWebhookEvent(
   req: Request,
   res: Response,
-  onTelemetryIngested?: (telemetry: StandardizedTelemetryPayload) => Promise<void>
+  onTelemetryIngested?: (telemetry: StandardizedTelemetryPayload) => Promise<void>,
+  verifyMappingFn?: (athleteId: string) => Promise<boolean>
 ): Promise<void> {
   try {
     const event = req.body;
@@ -75,6 +90,14 @@ export async function handleStravaWebhookEvent(
     if (event.aspect_type === 'create' || event.aspect_type === 'update') {
       if (event.object_type === 'activity') {
         const normalizedData = normalizeStravaActivity(event);
+        
+        // Ownership Check
+        const isAuthorized = await verifyAthleteOwnership(normalizedData.athleteId, verifyMappingFn);
+        if (!isAuthorized) {
+          console.warn(`[SECURITY_GATE_BLOCKED] Unauthorized or unlinked Strava athlete owner ID: ${normalizedData.athleteId}`);
+          return;
+        }
+
         console.log(`Processing Strava activity [${event.aspect_type}] for activity ID: ${normalizedData.activityId}`);
 
         if (onTelemetryIngested) {

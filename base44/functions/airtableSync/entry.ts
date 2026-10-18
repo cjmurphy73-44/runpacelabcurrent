@@ -29,6 +29,13 @@ const PLAN_TIER_MAP: Record<string, string> = {
   conservative: 'conservative', intermediate: 'moderate', aggressive: 'aggressive',
 };
 
+// Subscriber.plan (Unlimited, Enterprise, Free) → Airtable Subscriber.plan (Pro, Free).
+const AIRTABLE_PLAN_MAP: Record<string, string> = {
+  "Unlimited": "Pro",
+  "Enterprise": "Pro",
+  "Free": "Free",
+};
+
 // One row per backend function → the Features catalog (Status = Released).
 const FUNCTION_PURPOSES: Record<string, string> = {
   aiDeepDive: 'AI deep-dive correlating recovery cost with training stress into an actionable report.',
@@ -113,7 +120,7 @@ function buildPlanRows(plans: any[], athleteIdMap: Record<string, string>): any[
 function buildSubscriberRows(subscriptions: any[]): any[] {
   return subscriptions.map((s) => ({
     'user_id': s.user_id,
-    'plan': safeSelect(s.plan, ['free', 'pro', 'unlimited', 'coach_pro', 'team']),
+    'plan': AIRTABLE_PLAN_MAP[s.plan] || 'Free',
     'status': safeSelect(s.status, ['active', 'trialing', 'past_due', 'canceled']),
     'current_period_end': toDateOnly(s.current_period_end),
     'stripe_customer_id': s.stripe_customer_id || undefined,
