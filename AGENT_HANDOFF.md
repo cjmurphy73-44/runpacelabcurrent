@@ -17,3 +17,7 @@
   - Implemented interactive `useState` for τ₁ (Fitness decay) and τ₂ (Fatigue decay).
   - Used `useMemo` for performance-optimized ODE state vector calculation.
   - Connected state to `OdeFitnessFatigueChart` via `onTauChange`.
+
+### Marketing Lead (Agent 4) Update
+- **Technical Content Produced**: Authored `docs/PHYSIOLOGY_ODE_VS_EWMA.md` comparing standard EWMA vs. 2-Compartment Differential Equation modeling to establish technical authority for the platform's proprietary analytics engine.
+- **Documentation Reference**: Integrated the full technical analysis in `docs/PHYSIOLOGY_ODE_VS_EWMA.md`, detailing the 2-compartment impulse-response modeling advantage over traditional EWMA for elite taper analytics.
