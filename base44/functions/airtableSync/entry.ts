@@ -29,11 +29,18 @@ const PLAN_TIER_MAP: Record<string, string> = {
   conservative: 'conservative', intermediate: 'moderate', aggressive: 'aggressive',
 };
 
-// Subscriber.plan (Unlimited, Enterprise, Free) → Airtable Subscriber.plan (Pro, Free).
+// Subscriber.plan → Airtable Subscribers.plan. The entity stores lowercase values
+// (free/pro/unlimited/coach_pro/team); the Airtable singleSelect only accepts
+// "free", "pro", "team" (all lowercase). unlimited/coach_pro have no direct option
+// and map to "pro"; team maps to "team". The old map used capitalized keys ("Unlimited",
+// "Enterprise", "Free") that never matched the entity's lowercase plan values and wrote
+// capitalized values ("Free") the singleSelect rejected with HTTP 422.
 const AIRTABLE_PLAN_MAP: Record<string, string> = {
-  "Unlimited": "Pro",
-  "Enterprise": "Pro",
-  "Free": "Free",
+  pro: "pro",
+  unlimited: "pro",
+  coach_pro: "pro",
+  team: "team",
+  free: "free",
 };
 
 // One row per backend function → the Features catalog (Status = Released).
@@ -223,11 +230,14 @@ function buildFinanceRows(biz: any) {
 }
 
 function buildSegmentRows(biz: any) {
+  // Pricing Tier is a singleSelect whose allowed options are: Free/Community, Pro Athlete,
+  // Coach/Team, Free, Pro, etc. "Unlimited" and "Coach Pro" are NOT valid options and were
+  // rejected with HTTP 422 INVALID_MULTIPLE_CHOICE_OPTIONS. Map to the closest valid option.
   return [
     { 'Segment Name': 'Free / Community', 'Pricing Tier': 'Free', 'Projected ARPU': 0, 'Usage Tier': `${biz.planCounts.free} users` },
     { 'Segment Name': 'Pro Athlete', 'Pricing Tier': 'Pro', 'Projected ARPU': biz.arpuPro, 'Usage Tier': `${biz.planCounts.pro} subscribers` },
-    { 'Segment Name': 'Unlimited Athlete', 'Pricing Tier': 'Unlimited', 'Projected ARPU': biz.arpuUnlimited, 'Usage Tier': `${biz.planCounts.unlimited} subscribers` },
-    { 'Segment Name': 'Coach Pro', 'Pricing Tier': 'Coach Pro', 'Projected ARPU': biz.arpuCoachPro, 'Usage Tier': `${biz.planCounts.coach_pro} subscribers` },
+    { 'Segment Name': 'Unlimited Athlete', 'Pricing Tier': 'Pro', 'Projected ARPU': biz.arpuUnlimited, 'Usage Tier': `${biz.planCounts.unlimited} subscribers` },
+    { 'Segment Name': 'Coach Pro', 'Pricing Tier': 'Coach/Team', 'Projected ARPU': biz.arpuCoachPro, 'Usage Tier': `${biz.planCounts.coach_pro} subscribers` },
   ];
 }
 
@@ -341,13 +351,18 @@ async function handleAppMirror(base44: any) {
 
   // 7. Feature usage/performance → System Health Metrics (linked to Features).
   // 8. Finances + User Segments (absorbed so the hourly run is complete).
+  // Each table has its own try/catch so one failure doesn't mask the others' results.
+  const biz = computeBusiness(subscriptions, users);
+  const counts = { users: users.length, athletes: athletes.length, workouts: workouts.length, plans: plans.length };
   try {
-    const biz = computeBusiness(subscriptions, users);
-    const counts = { users: users.length, athletes: athletes.length, workouts: workouts.length, plans: plans.length };
     results.system_health = await upsertByKey(token, TABLES.systemHealth, 'Metric Name', buildLinkedSystemRows(biz, counts, featureIdByName));
+  } catch (e: any) { results.system_health = { error: e.message }; }
+  try {
     results.finances = await upsertByKey(token, TABLES.finances, 'Expense or Revenue Category', buildFinanceRows(biz));
+  } catch (e: any) { results.finances = { error: e.message }; }
+  try {
     results.user_segments = await upsertByKey(token, TABLES.userSegments, 'Segment Name', buildSegmentRows(biz));
-  } catch (e: any) { results.system_health = { error: e.message }; results.finances = { error: e.message }; results.user_segments = { error: e.message }; }
+  } catch (e: any) { results.user_segments = { error: e.message }; }
 
   return Response.json({ success: true, results });
 }
