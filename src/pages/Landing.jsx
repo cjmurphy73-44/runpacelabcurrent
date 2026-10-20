@@ -84,7 +84,7 @@ export default function Landing() {
           <div className="flex items-center gap-1 sm:gap-2">
             <ThemeToggle />
             {!user && (
-              <Button asChild variant="ghost" size="sm" className="text-muted-foreground hover:text-foreground">
+              <Button asChild variant="ghost" size="sm" className="hidden sm:inline-flex text-muted-foreground hover:text-foreground">
                 <Link to="/login">Sign in</Link>
               </Button>
             )}
@@ -314,7 +314,7 @@ export default function Landing() {
       </section>
 
       {/* Pricing summary */}
-      <section className="border-t border-border bg-muted/40">
+      <section className="border-t border-border">
         <div className="max-w-6xl mx-auto px-4 py-16">
           <div className="mb-10">
             <h2 className="font-heading text-3xl sm:text-4xl font-bold">Simple pricing</h2>
