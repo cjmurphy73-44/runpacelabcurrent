@@ -162,10 +162,10 @@ export default function BulkWorkoutImport({ athleteId, onUploaded }) {
           {status && (
             <div className={`p-3 rounded-md text-xs border ${
               status.type === "error"
-                ? "bg-red-50 border-red-200 text-red-800"
+                ? "bg-destructive/10 border-destructive/30 text-destructive"
                 : status.type === "warning"
-                ? "bg-amber-50 border-amber-200 text-amber-800"
-                : "bg-emerald-50 border-emerald-200 text-emerald-800"
+                ? "bg-warning/10 border-warning/30 text-warning"
+                : "bg-success/10 border-success/30 text-success"
             }`}>
               {status.message}
             </div>
@@ -175,15 +175,15 @@ export default function BulkWorkoutImport({ athleteId, onUploaded }) {
             <div className="space-y-2 border-t pt-3 mt-3">
               <span className="text-xs font-semibold text-foreground">Import Outcome Breakdown:</span>
               <div className="grid grid-cols-3 gap-2 text-center text-xs">
-                <div className="p-2 bg-emerald-50 text-emerald-700 rounded border border-emerald-100">
+                <div className="p-2 bg-success/10 text-success rounded border border-success/20">
                   <CheckCircle2 className="w-3.5 h-3.5 mx-auto mb-0.5" />
                   <span className="font-bold">{resultsSummary.created}</span> Created
                 </div>
-                <div className="p-2 bg-slate-50 text-slate-700 rounded border border-slate-100">
+                <div className="p-2 bg-muted text-muted-foreground rounded border border-border">
                   <FileCode className="w-3.5 h-3.5 mx-auto mb-0.5" />
                   <span className="font-bold">{resultsSummary.duplicates}</span> Duplicates
                 </div>
-                <div className="p-2 bg-red-50 text-red-700 rounded border border-red-100">
+                <div className="p-2 bg-destructive/10 text-destructive rounded border border-destructive/20">
                   <XCircle className="w-3.5 h-3.5 mx-auto mb-0.5" />
                   <span className="font-bold">{resultsSummary.errors.length}</span> Failed
                 </div>
@@ -192,11 +192,11 @@ export default function BulkWorkoutImport({ athleteId, onUploaded }) {
               {resultsSummary.errors.length > 0 && (
                 <div className="mt-2">
                   <span className="text-xs font-medium text-destructive">Failed Files Detail:</span>
-                  <ul className="text-xs text-muted-foreground space-y-1 mt-1 max-h-32 overflow-y-auto border rounded p-2 bg-slate-50">
+                  <ul className="text-xs text-muted-foreground space-y-1 mt-1 max-h-32 overflow-y-auto border border-border rounded p-2 bg-muted/30">
                     {resultsSummary.errors.map((f, i) => (
-                      <li key={i} className="flex justify-between gap-2 border-b border-slate-100 last:border-none pb-0.5">
-                        <span className="font-medium text-slate-700 truncate">{f.file_name}:</span>
-                        <span className="text-red-600 shrink-0">{f.error}</span>
+                      <li key={i} className="flex justify-between gap-2 border-b border-border last:border-none pb-0.5">
+                        <span className="font-medium text-foreground truncate">{f.file_name}:</span>
+                        <span className="text-destructive shrink-0">{f.error}</span>
                       </li>
                     ))}
                   </ul>

@@ -231,8 +231,8 @@ export default function AnomalyAlertBanner({ athleteId, maxHr }) {
         const tone =
           a.severity === "high"
             ? "border-destructive/40 bg-destructive/5"
-            : "border-amber-300 bg-amber-50/60";
-        const iconTone = a.severity === "high" ? "text-destructive" : "text-amber-600";
+            : "border-warning/40 bg-warning/10";
+            const iconTone = a.severity === "high" ? "text-destructive" : "text-warning";
         return (
           <Card key={a.key} className={tone}>
             <CardContent className="py-4 flex flex-col sm:flex-row sm:items-center gap-3">
