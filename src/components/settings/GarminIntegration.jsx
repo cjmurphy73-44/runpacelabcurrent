@@ -145,6 +145,9 @@ export default function GarminIntegration({ athleteId, onSynced }) {
               → <span className="font-medium text-foreground">Export Your Data</span> → Activities — downloads a ZIP of all your <span className="font-medium">.fit</span> files at once
             </li>
             <li>
+              <span className="font-medium text-foreground">Extract the ZIP first</span> — open it and drag the individual <span className="font-medium">.fit</span> files into the dropzone below. The importer takes the files themselves, not the archive.
+            </li>
+            <li>
               <span className="font-medium text-foreground">One at a time:</span>{" "}
               <a
                 href="https://connect.garmin.com"

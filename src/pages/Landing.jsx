@@ -11,6 +11,7 @@ import {
 import { PLAN_TIERS, PLAN_DETAILS } from "@/lib/subscriptionFeatures";
 import ProductPreview from "@/components/landing/ProductPreview";
 import DataSovereigntySection from "@/components/landing/DataSovereigntySection";
+import ScienceExplainedSection from "@/components/landing/ScienceExplainedSection";
 import PublicFooter from "@/components/layout/PublicFooter";
 import Reveal from "@/components/landing/Reveal";
 import ThemeToggle from "@/components/layout/ThemeToggle";
@@ -283,6 +284,9 @@ export default function Landing() {
           />
         </div>
       </section>
+
+      {/* Science explained */}
+      <ScienceExplainedSection />
 
       {/* Features grid */}
       <section className="border-t border-border bg-muted/40">
