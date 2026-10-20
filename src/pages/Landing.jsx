@@ -6,7 +6,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Image } from "@/components/ui/image";
 import {
   Activity, BrainCircuit, Watch, Sparkles, Users, ShieldCheck, Dumbbell,
-  CalendarClock, ArrowRight, Check, LineChart, Quote, Calculator, HeartPulse,
+  ArrowRight, Check, LineChart, Quote, Calculator, HeartPulse, Ban,
 } from "lucide-react";
 import { PLAN_TIERS, PLAN_DETAILS } from "@/lib/subscriptionFeatures";
 import ProductPreview from "@/components/landing/ProductPreview";
@@ -101,35 +101,30 @@ export default function Landing() {
         <Reveal className="max-w-6xl mx-auto px-4 py-16 sm:py-24 relative">
           <div className="grid lg:grid-cols-2 gap-10 items-center">
             <div className="max-w-xl">
-              <span className="inline-flex items-center gap-1.5 rounded-full border border-primary/40 bg-primary/10 px-3 py-1 text-xs font-medium text-primary">
-                <Sparkles className="w-3.5 h-3.5" /> Elite athletic intelligence
+              <span className="inline-flex items-center gap-1.5 rounded-full border border-primary/40 bg-primary/10 px-3 py-1 text-xs font-semibold uppercase tracking-wider text-primary">
+                <Sparkles className="w-3.5 h-3.5" /> Zero AI-Slop · Runner-built
               </span>
               <h1 className="mt-5 font-heading text-4xl sm:text-6xl font-bold tracking-tight leading-[1.05]">
-                Train to your physiology, not a template.
+                Train to your physiology, <span className="text-primary">not a template.</span>
               </h1>
               <p className="mt-5 text-lg text-muted-foreground max-w-lg">
                 TrainPaceLab models your training load with the specificity the body actually responds to,
                 then reshapes your plan around your real recovery — so you arrive at your race fit, fresh,
                 and healthy.
               </p>
-              <div className="mt-8 flex flex-wrap items-center gap-3">
+              <div className="mt-8">
                 <Button asChild size="lg" className="gap-2">
                   <Link to={cta.to}>{cta.label}<ArrowRight className="w-4 h-4" /></Link>
                 </Button>
-                <Button asChild variant="outline" size="lg" className="gap-2">
-                  <Link to="/subscribe"><CalendarClock className="w-4 h-4" />See pricing</Link>
-                </Button>
               </div>
-              <p className="mt-4 text-xs text-muted-foreground">Free tier forever. No card required.</p>
+              <div className="mt-6 flex flex-wrap items-center gap-x-5 gap-y-2 text-xs font-medium text-muted-foreground">
+                <span className="flex items-center gap-1.5"><Ban className="w-3.5 h-3.5 text-primary" />No templated plans</span>
+                <span className="flex items-center gap-1.5"><Ban className="w-3.5 h-3.5 text-primary" />No hallucinated advice</span>
+                <span className="flex items-center gap-1.5"><Ban className="w-3.5 h-3.5 text-primary" />No data mining</span>
+              </div>
             </div>
             <div className="relative">
-              <div className="absolute inset-0 bg-grid-dots opacity-10 pointer-events-none rounded-lg" />
-              <Image
-                src={HERO_IMG}
-                alt="Runner on an open road at golden hour"
-                fittingType="fill"
-                className="rounded-lg border border-border shadow-2xl w-full aspect-[4/3]"
-              />
+              <ProductPreview />
             </div>
           </div>
         </Reveal>
@@ -178,7 +173,15 @@ export default function Landing() {
           </p>
         </div>
         <div className="grid lg:grid-cols-2 gap-10 items-center">
-          <ProductPreview />
+          <div className="relative">
+            <div className="absolute inset-0 bg-grid-dots opacity-10 pointer-events-none rounded-lg" />
+            <Image
+              src={HERO_IMG}
+              alt="Runner on an open road at golden hour"
+              fittingType="fill"
+              className="rounded-lg border border-border shadow-2xl w-full aspect-[4/3]"
+            />
+          </div>
           <ul className="space-y-3">
             {["Daily CTL/ATL/TSB from HR-based TRIMP", "Holistic readiness from wearables", "VDOT & threshold-pace calibration", "Aerobic decoupling & efficiency factor"].map((t) => (
               <li key={t} className="flex items-start gap-3 text-base">
