@@ -1,0 +1,15 @@
+{
+  "$id": "ProductFamily",
+  "type": "object",
+  "properties": {
+    "id": { "type": "string", "format": "uuid" },
+    "brandId": { "type": "string", "format": "uuid", "description": "Foreign key to Brand entity" },
+    "name": { "type": "string", "description": "e.g., Clifton, Ghost, Adrenaline" },
+    "categoryTags": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "e.g., Neutral, Stability, Carbon-Plated, Trail, Hiking, Gym"
+    }
+  },
+  "required": ["id", "brandId", "name", "categoryTags"]
+}

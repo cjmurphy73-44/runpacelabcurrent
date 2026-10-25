@@ -1,0 +1,62 @@
+{
+  "name": "Offer",
+  "comment": "Represents a specific price offer from a retailer for a ShoeVariant.",
+  "properties": {
+    "id": {
+      "type": "string",
+      "format": "uuid",
+      "auto": true
+    },
+    "variantId": {
+      "type": "string",
+      "format": "uuid",
+      "relationship": {
+        "kind": "many-to-one",
+        "target": "ShoeVariant"
+      }
+    },
+    "retailerName": {
+      "type": "string",
+      "comment": "Name of the retailer (e.g., Wildfire Sports, The Athlete's Foot)"
+    },
+    "retailerProductId": {
+      "type": "string",
+      "comment": "The product ID or SKU used by the retailer on their site."
+    },
+    "url": {
+      "type": "string",
+      "format": "uri",
+      "comment": "Direct URL to the product page on the retailer's website."
+    },
+    "currentPrice": {
+      "type": "number",
+      "comment": "Current selling price of the shoe."
+    },
+    "rrp": {
+      "type": "number",
+      "nullable": true,
+      "comment": "Recommended Retail Price (original price, if on sale)."
+    },
+    "salePercentage": {
+      "type": "number",
+      "nullable": true,
+      "comment": "Calculated percentage discount from RRP."
+    },
+    "shippingCost": {
+      "type": "number",
+      "nullable": true,
+      "comment": "Standard shipping cost (if known and applicable)."
+    },
+    "shippingInfo": {
+      "type": "string",
+      "nullable": true,
+      "comment": "e.g., Free Shipping over $100, Flat rate $10, etc."
+    },
+    "lastUpdated": {
+      "type": "string",
+      "format": "date-time",
+      "auto": true
+    }
+  },
+  "required": ["variantId", "retailerName", "retailerProductId", "url", "currentPrice"]
+}

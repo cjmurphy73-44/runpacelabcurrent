@@ -118,10 +118,6 @@ export default function MobileNav() {
                 <Link
                   to={t.to}
                   className={toolClass}
-                  onClick={(e) => {
-                    e.stopPropagation(); // Stop event bubbling
-                    setOpen(false); // Force close
-                  }}
                 >
                   <t.icon className="w-5 h-5 text-muted-foreground" />
                   {t.label}

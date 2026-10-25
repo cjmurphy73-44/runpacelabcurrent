@@ -1,0 +1,9 @@
+{
+  "$id": "Brand",
+  "type": "object",
+  "properties": {
+    "id": { "type": "string", "format": "uuid" },
+    "name": { "type": "string", "description": "e.g., Nike, Hoka, Brooks" }
+  },
+  "required": ["id", "name"]
+}

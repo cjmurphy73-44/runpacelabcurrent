@@ -21,7 +21,7 @@ const mocks = vi.hoisted(() => ({
     token: null,
     fromUrl: '/',
     functionsVersion: '',
-    appBaseUrl: '',
+    appBaseUrl: 'https://example.base44.com',
   },
 }));
 

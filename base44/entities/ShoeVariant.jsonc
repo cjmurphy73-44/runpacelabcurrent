@@ -1,0 +1,36 @@
+{
+  "name": "ShoeVariant",
+  "comment": "Represents a specific gender, width, and colorway for a shoe generation.",
+  "properties": {
+    "id": {
+      "type": "string",
+      "format": "uuid",
+      "auto": true
+    },
+    "generationId": {
+      "type": "string",
+      "format": "uuid",
+      "relationship": {
+        "kind": "many-to-one",
+        "target": "ShoeGeneration"
+      }
+    },
+    "gender": {
+      "type": "string",
+      "enum": ["Men", "Women", "Unisex"]
+    },
+    "width": {
+      "type": "string",
+      "enum": ["Standard", "Wide", "Extra Wide", "Kids"]
+    },
+    "colorwayName": {
+      "type": "string"
+    },
+    "sku": {
+      "type": "string",
+      "nullable": true,
+      "comment": "Retailer or manufacturer SKU for this specific variant."
+    }
+  },
+  "required": ["generationId", "gender", "width", "colorwayName"]
+}
