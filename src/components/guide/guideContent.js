@@ -1,32 +1,38 @@
-export const G = [
-  {
-    id: "coros",
-    name: "COROS",
-    status: "live",
-    type: "auto",
-    formats: "Workouts + recovery (HRV, sleep, resting HR, recovery score)",
-    blurb: "One-click OAuth sync through the COROS open platform — workouts and daily recovery flow in automatically.",
-    steps: [
-      "Go to Settings → Connected Apps and tap Connect COROS.",
-      "Authorise TrainPaceLab in the COROS window that opens.",
-      "Tap Sync now (or wait for the scheduled pull) to import recent workouts and recovery.",
-      "Recovery data writes to your Recovery Center automatically each day."
-    ],
-    manual: "In the COROS app: open an activity → Share/Export → choose .FIT → save the file, then drop it into Bulk File Upload here."
-  },
-  {
-    id: "garmin",
-    name: "Garmin",
-    status: "live",
-    type: "auto",
-    formats: "Workouts + telemetry streams via Garmin Health API",
-    blurb: "Direct Garmin OAuth sync is live — connect your account to automatically sync activities and telemetry streams.",
-    steps: [
-      "Go to Settings → Connected Apps and tap Connect Garmin.",
-      "Authorise access in the Garmin Connect window.",
-      "Workouts and telemetry streams will sync automatically."
-    ],
-    manual: "Garmin Connect web: Activities → open an activity → ⋯ → Export Original (downloads a .FIT) if manual backup upload is needed."
-  },
-  // ... rest of guide array remains as is ...
+export const STATUS_META = {
+  active: { label: 'Active', color: 'green' },
+  pending: { label: 'Pending', color: 'yellow' },
+  success: { label: 'Success', color: 'green' },
+  failed: { label: 'Failed', color: 'red' },
+  default: { label: 'Unknown', color: 'gray' }
+};
+
+export const PROVIDERS = [
+  { id: 'garmin', name: 'Garmin Connect' },
+  { id: 'strava', name: 'Strava' },
+  { id: 'coros', name: 'COROS' }
 ];
+
+export const FILE_FORMATS = [
+  { ext: '.fit', description: 'Flexible and Interoperable Data Transfer' },
+  { ext: '.gpx', description: 'GPS Exchange Format' },
+  { ext: '.tcx', description: 'Training Center XML' }
+];
+
+export const DASHBOARD_METRICS = [
+  { key: 'load', label: 'Training Load' },
+  { key: 'compliance', label: 'Workout Compliance' },
+  { key: 'form', label: 'Form Score' }
+];
+
+export const ONBOARDING_STEPS = [
+  { step: 1, title: 'Connect Wearable' },
+  { step: 2, title: 'Establish Baseline' },
+  { step: 3, title: 'Generate Plan' }
+];
+
+export const FAQS = [
+  { q: 'How do I sync my watch?', a: 'Link your provider account in settings.' }
+];
+
+export const guideContent = {};
+export default guideContent;

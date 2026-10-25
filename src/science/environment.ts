@@ -103,3 +103,6 @@ export function heatAdjustmentFactor(airTempF: number, dewPointF: number): numbe
 export function heatIsDangerous(airTempF: number, dewPointF: number): boolean {
   return heatScore(airTempF, dewPointF) > 170;
 }
+export function cToF(celsius: number): number {
+  return (celsius * 9/5) + 32;
+}

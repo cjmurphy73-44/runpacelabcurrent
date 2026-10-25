@@ -17,7 +17,7 @@ describe('TelemetryIngestionEngine', () => {
     };
     
     // @ts-ignore
-    const result = await engine.processWorkout(workout);
+    const result = await engine.processWorkout(workout as any);
     
     expect(result).toHaveProperty('reconciledStream');
     expect(result).toHaveProperty('dominantSourceFormat');
@@ -57,7 +57,7 @@ describe('TelemetryIngestionEngine', () => {
         { filename: 'workout_bad_ext.unknown', buffer: 'some-data' }
       ]
     };
-    const result = await engine.processWorkout(workout);
+    const result = await engine.processWorkout(workout as any);
     expect(result.dominantSourceFormat).toBe('fit');
     expect(result.reconciledStream).toHaveLength(2);
   });

@@ -75,16 +75,16 @@ describe('Provider-agnostic independence proof (in-memory adapter)', () => {
 
   it('repository bulkCreate / updateMany / deleteMany', async () => {
     const { coachMessageRepo } = createMemoryServices();
-    const created = await coachMessageRepo.bulkCreate([
+    const created = await ((coachMessageRepo as any).bulkCreate)([
       { athlete_id: 'a1', message_type: 'performance_summary', content_text: 'm1' },
       { athlete_id: 'a1', message_type: 'micro_adjustment', content_text: 'm2' },
     ] as any);
     expect(created.length).toBe(2);
 
-    const updated = await coachMessageRepo.updateMany([created[0].id, created[1].id], [{ content_text: 'm1-updated' }, { content_text: 'm2-updated' }] as any);
+    const updated = await ((coachMessageRepo as any).updateMany)([created[0].id, created[1].id], [{ content_text: 'm1-updated' }, { content_text: 'm2-updated' }] as any);
     expect(updated[0].content_text).toBe('m1-updated');
 
-    const ok = await coachMessageRepo.deleteMany([created[0].id, created[1].id] as any);
+    const ok = await ((coachMessageRepo as any).deleteMany)([created[0].id, created[1].id] as any);
     expect(ok).toBe(true);
     expect((await coachMessageRepo.list()).length).toBe(0);
   });

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { computeHolisticReadiness } from '../readiness.ts';
+import { computeHolisticReadiness } from '../readiness';
 
 describe('computeHolisticReadiness', () => {
   it('calculates optimal readiness when metrics exceed baseline and TSB is positive', () => {

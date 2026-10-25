@@ -21,7 +21,7 @@ function createEntityRepo(entityName: string) {
       // be silently treated as the sort arg. Fetch all (up to the default page)
       // and filter client-side to honour the contract's list(filters) shape.
       const res = await entity.list();
-      let items = res?.data || res || [];
+      let items = (res as any)?.data || res || [];
       if (filters && Object.keys(filters).length > 0 && items.length > 0) {
         items = items.filter(item => Object.entries(filters).every(([key, val]) => item[key] === val));
       }
@@ -32,7 +32,7 @@ function createEntityRepo(entityName: string) {
       if (typeof entity.filter === 'function') {
         try {
           const res = await entity.filter(filters, sort, limit);
-          return res?.data || res || [];
+          return (res as any)?.data || res || [];
         } catch (err) {
           console.warn(`Native entity.filter failed for ${entityName}, falling back to list:`, err);
         }
@@ -40,7 +40,7 @@ function createEntityRepo(entityName: string) {
       // Fallback to list if entity doesn't have native filter method or it threw.
       // SDK list() takes no filter arg; fetch all then filter/sort client-side.
       const res = await entity.list();
-      let items = res?.data || res || [];
+      let items = (res as any)?.data || res || [];
       // Client-side filtering if entity.list ignores filters
       if (filters && Object.keys(filters).length > 0 && items.length > 0) {
         items = items.filter(item => {
@@ -64,17 +64,17 @@ function createEntityRepo(entityName: string) {
     async get(id: string) {
       if (!entity) return null;
       const res = await entity.get(id);
-      return res?.data || res || null;
+      return (res as any)?.data || res || null;
     },
     async create(data: any) {
       if (!entity) throw new Error(`Entity ${entityName} not found`);
       const res = await entity.create(data);
-      return res?.data || res;
+      return (res as any)?.data || res;
     },
     async update(id: string, data: any) {
       if (!entity) throw new Error(`Entity ${entityName} not found`);
       const res = await entity.update(id, data);
-      return res?.data || res;
+      return (res as any)?.data || res;
     },
     async delete(id: string) {
       if (!entity) throw new Error(`Entity ${entityName} not found`);
@@ -96,7 +96,7 @@ export const base44WorkoutSessionRepo: WorkoutSessionRepository = {
     const entity = base44.entities['WorkoutSession'];
     if (entity && typeof entity.bulkCreate === 'function') {
       const res = await entity.bulkCreate(items);
-      return res?.data || res;
+      return (res as any)?.data || res;
     }
     return Promise.all(items.map(item => entity.create(item)));
   },
@@ -107,7 +107,7 @@ export const base44WorkoutSessionRepo: WorkoutSessionRepository = {
     if (entity && typeof entity.bulkUpdate === 'function') {
       const updates = ids.map((id, i) => ({ id, ...(dataArray[i] || dataArray[0] || {}) }));
       const res = await entity.bulkUpdate(updates);
-      return res?.data || res;
+      return (res as any)?.data || res;
     }
     return Promise.all(ids.map((id, index) => entity.update(id, dataArray[index] || dataArray[0])));
   },
@@ -152,7 +152,7 @@ export const base44FunctionGateway: BackendFunctionGateway = {
 export const base44AuthService: AuthService = {
   async me() {
     if (base44.auth && typeof base44.auth.me === 'function') {
-      return base44.auth.me();
+      return (base44.auth as any).me();
     }
     return null;
   },
@@ -166,30 +166,30 @@ export const base44AuthService: AuthService = {
   },
   async loginViaEmailPassword(credentials) {
     if (base44.auth && typeof base44.auth.loginViaEmailPassword === 'function') {
-      return base44.auth.loginViaEmailPassword(credentials);
+      return (base44.auth as any).loginViaEmailPassword(credentials.email, credentials.password);
     }
     throw new Error('Auth loginViaEmailPassword not supported by SDK');
   },
   async loginWithProvider(provider, fromUrl) {
     if (base44.auth && typeof base44.auth.loginWithProvider === 'function') {
-      return base44.auth.loginWithProvider(provider, fromUrl);
+      return (base44.auth as any).loginWithProvider(provider, fromUrl);
     }
     throw new Error('Auth loginWithProvider not supported by SDK');
   },
   async logout(redirectUrl?: string) {
     if (base44.auth && typeof base44.auth.logout === 'function') {
-      return base44.auth.logout(redirectUrl);
+      return (base44.auth as any).logout(redirectUrl);
     }
   },
   async register(credentials: Record<string, any>): Promise<any> {
     if (base44.auth && typeof base44.auth.register === 'function') {
-      return base44.auth.register(credentials);
+      return (base44.auth as any).register(credentials);
     }
     throw new Error('register not supported');
   },
   async redirectToLogin(nextUrl?: string) {
     if (base44.auth && typeof base44.auth.redirectToLogin === 'function') {
-      return base44.auth.redirectToLogin(nextUrl || (typeof window !== 'undefined' ? window.location.href : '/'));
+      return (base44.auth as any).redirectToLogin(nextUrl || (typeof window !== 'undefined' ? window.location.href : '/'));
     }
     throw new Error('Auth redirectToLogin not supported by SDK');
   },
@@ -201,38 +201,38 @@ export const base44AuthService: AuthService = {
   },
   async updateMe(data: Record<string, any>) {
     if (base44.auth && typeof base44.auth.updateMe === 'function') {
-      return base44.auth.updateMe(data);
+      return (base44.auth as any).updateMe(data);
     }
     throw new Error('Auth updateMe not supported by SDK');
   },
   async verifyOtp(payload) {
     if (base44.auth && typeof base44.auth.verifyOtp === 'function') {
-      return base44.auth.verifyOtp(payload);
+      return (base44.auth as any).verifyOtp(payload);
     }
     throw new Error('Auth verifyOtp not supported by SDK');
   },
   async resendOtp(email) {
     if (base44.auth && typeof base44.auth.resendOtp === 'function') {
-      return base44.auth.resendOtp(email);
+      return (base44.auth as any).resendOtp(email);
     }
     throw new Error('Auth resendOtp not supported by SDK');
   },
 
   async resetPasswordRequest(email) {
     if (base44.auth && typeof base44.auth.resetPasswordRequest === 'function') {
-      return base44.auth.resetPasswordRequest(email);
+      return (base44.auth as any).resetPasswordRequest(email);
     }
     throw new Error('Auth resetPasswordRequest not supported by SDK');
   },
   async resetPassword(payload) {
     if (base44.auth && typeof base44.auth.resetPassword === 'function') {
-      return base44.auth.resetPassword(payload);
+      return (base44.auth as any).resetPassword(payload);
     }
     throw new Error('Auth resetPassword not supported by SDK');
   },
   async inviteUser(payload) {
     if (base44.auth && typeof base44.auth.inviteUser === 'function') {
-      return base44.auth.inviteUser(payload);
+      return (base44.auth as any).inviteUser(payload.email, payload.role);
     }
     throw new Error('Auth inviteUser not supported by SDK');
   }
@@ -240,50 +240,50 @@ export const base44AuthService: AuthService = {
 
 export const base44IntegrationsService: IntegrationsService = {
   async invokeLLM(payload) {
-    if (base44.integrations?.Core?.InvokeLLM) {
-      return base44.integrations.Core.InvokeLLM(payload);
+    if ((base44.integrations?.Core as any)?.InvokeLLM) {
+      return (base44.integrations.Core as any).InvokeLLM(payload as any);
     }
     throw new Error('InvokeLLM not available');
   },
   async uploadPublicFile(file, options) {
-    if (base44.integrations?.Core?.UploadPublicFile) {
-      return base44.integrations.Core.UploadPublicFile(file, options);
+    if ((base44.integrations?.Core as any)?.UploadPublicFile) {
+      return (base44.integrations.Core as any).UploadPublicFile(file, options);
     }
     throw new Error('UploadPublicFile not available');
   },
   async uploadPrivateFile(file, options) {
-    if (base44.integrations?.Core?.UploadPrivateFile) {
-      return base44.integrations.Core.UploadPrivateFile(file, options);
+    if ((base44.integrations?.Core as any)?.UploadPrivateFile) {
+      return (base44.integrations.Core as any).UploadPrivateFile(file, options);
     }
     throw new Error('UploadPrivateFile not available');
   },
   async generateImage(payload) {
-    if (base44.integrations?.Core?.GenerateImage) {
-      return base44.integrations.Core.GenerateImage(payload);
+    if ((base44.integrations?.Core as any)?.GenerateImage) {
+      return (base44.integrations.Core as any).GenerateImage(payload as any);
     }
     throw new Error('GenerateImage not available');
   },
   async generateSpeech(payload) {
-    if (base44.integrations?.Core?.GenerateSpeech) {
-      return base44.integrations.Core.GenerateSpeech(payload);
+    if ((base44.integrations?.Core as any)?.GenerateSpeech) {
+      return (base44.integrations.Core as any).GenerateSpeech(payload);
     }
     throw new Error('GenerateSpeech not available');
   },
   async sendEmail(payload) {
-    if (base44.integrations?.Core?.SendEmail) {
-      return base44.integrations.Core.SendEmail(payload);
+    if ((base44.integrations?.Core as any)?.SendEmail) {
+      return (base44.integrations.Core as any).SendEmail(payload as any);
     }
     throw new Error('SendEmail not available');
   },
   async createFileSignedUrl(payload) {
-    if (base44.integrations?.Core?.CreateFileSignedUrl) {
-      return base44.integrations.Core.CreateFileSignedUrl(payload);
+    if ((base44.integrations?.Core as any)?.CreateFileSignedUrl) {
+      return (base44.integrations.Core as any).CreateFileSignedUrl(payload as any);
     }
     throw new Error('CreateFileSignedUrl not available');
   },
   async extractDataFromUploadedFile(payload) {
-    if (base44.integrations?.Core?.ExtractDataFromUploadedFile) {
-      return base44.integrations.Core.ExtractDataFromUploadedFile(payload);
+    if ((base44.integrations?.Core as any)?.ExtractDataFromUploadedFile) {
+      return (base44.integrations.Core as any).ExtractDataFromUploadedFile(payload as any);
     }
     throw new Error('ExtractDataFromUploadedFile not available');
   }
@@ -291,14 +291,14 @@ export const base44IntegrationsService: IntegrationsService = {
 
 export const base44ConnectorGateway: ConnectorGateway = {
   async airtable(action, payload) {
-    if (base44.connectors?.Airtable) {
-      return base44.connectors.Airtable(action, payload);
+    if ((base44.connectors as any)?.Airtable) {
+      return (base44.connectors as any).Airtable(action, payload);
     }
     throw new Error('Airtable connector not available');
   },
   async github(action, payload) {
-    if (base44.connectors?.Github) {
-      return base44.connectors.Github(action, payload);
+    if ((base44.connectors as any)?.Github) {
+      return (base44.connectors as any).Github(action, payload);
     }
     throw new Error('GitHub connector not available');
   }

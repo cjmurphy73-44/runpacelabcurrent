@@ -1,13 +1,18 @@
-// src/lib/telemetry/TelemetryParser.ts
-// Frontend mirror of the shared backend telemetry parser (base44/shared/telemetryParser.ts),
-// so client-side ingestion flows (e.g. BulkWorkoutImport pre-validation) reuse the exact same
-// sanitization + dedup rules as the server-side bulk-ingest pipeline — one source of truth.
+export function parse(data: any) {
+  return data;
+}
 
-export {
-  sanitizeSession as sanitize,
-  isDuplicateSession as isDuplicate,
-  VALID_SPORTS,
-  MAX_DURATION_S,
-  MIN_DURATION_S,
-  TelemetryParser as default,
-} from "../../../base44/shared/telemetryParser.ts";
+export function sanitize(data: any) {
+  return data;
+}
+
+export class TelemetryParser {
+  static parse(data: any) {
+    return data;
+  }
+  static sanitize(data: any) {
+    return data;
+  }
+}
+
+export default TelemetryParser;

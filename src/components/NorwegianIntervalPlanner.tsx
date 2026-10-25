@@ -1,5 +1,5 @@
 import React from 'react';
-import { useNorwegianWorkouts } from '../../hooks/useNorwegianWorkouts';
+import { useNorwegianWorkouts } from '@/hooks/useNorwegianWorkouts';
 
 export interface NorwegianIntervalPlannerProps {
   initialVdot?: number;
