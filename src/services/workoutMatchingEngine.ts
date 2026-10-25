@@ -155,3 +155,14 @@ export class WorkoutMatchingEngine {
 }
 
 export const workoutMatchingEngine = new WorkoutMatchingEngine();
+export interface MatchCandidate {
+  id: string;
+  confidenceScore: number;
+  matchedActivityId: string;
+}
+
+export interface MatchCandidate {
+  id: string;
+  confidenceScore: number;
+  matchedActivityId: string;
+}
