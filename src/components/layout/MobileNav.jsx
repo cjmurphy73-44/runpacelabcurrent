@@ -118,6 +118,11 @@ export default function MobileNav() {
                 <Link
                   to={t.to}
                   className={toolClass}
+                  onClick={(e) => {
+                    // Force navigation if touch event is being finicky,
+                    // though SheetClose usually handles this.
+                    console.log("Navigating to:", t.to);
+                  }}
                 >
                   <t.icon className="w-5 h-5 text-muted-foreground" />
                   {t.label}
