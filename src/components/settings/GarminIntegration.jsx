@@ -5,7 +5,9 @@ import { Watch } from "lucide-react";
 
 export function GarminIntegration() {
   const handleConnect = () => {
-    window.location.href = '/api/garmin/oauth/authorize';
+    const apiBase = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api/v1';
+    // Redirect to the backend OAuth authorization route
+    window.location.href = `${apiBase}/garmin/oauth/authorize`;
   };
 
   return (
