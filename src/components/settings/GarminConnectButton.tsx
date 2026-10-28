@@ -1,24 +1,53 @@
-import React from 'react';
+import React, { useState } from 'react';
+import { Button } from '@/components/ui/button';
+import { Activity, Loader2 } from 'lucide-react';
+import { toast } from 'sonner';
 
 export function GarminConnectButton() {
-  const handleConnect = () => {
-    // Default to relative /api/v1 so requests stay on trainpacelab.com
-    const apiBase = import.meta.env.VITE_API_BASE_URL || '/api/v1';
-    
-    const baseUrl = apiBase.startsWith('http') 
-      ? apiBase 
-      : `${window.location.origin}${apiBase}`;
-    
-    window.location.href = `${baseUrl}/garmin/oauth/authorize`;
+  const [loading, setLoading] = useState(false);
+
+  const handleConnect = async () => {
+    try {
+      setLoading(true);
+      const apiBase = import.meta.env.VITE_API_BASE_URL || '/api/v1';
+      const baseUrl = apiBase.startsWith('http') 
+        ? apiBase 
+        : `${window.location.origin}${apiBase}`;
+
+      const response = await fetch(`${baseUrl}/garmin/oauth/authorize`, {
+        method: 'GET',
+        headers: {
+          'Accept': 'application/json',
+        },
+        credentials: 'include',
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to initiate Garmin connection');
+      }
+
+      const data = await response.json();
+      if (data.url) {
+        window.location.href = data.url;
+      } else {
+        throw new Error('No redirect URL returned from server');
+      }
+    } catch (err: any) {
+      toast.error(err.message || 'Could not connect to Garmin');
+      setLoading(false);
+    }
   };
 
   return (
-    <button
+    <Button
       onClick={handleConnect}
-      className="px-4 py-2 bg-blue-600 text-white font-semibold rounded-md hover:bg-blue-700 transition-colors cursor-pointer"
+      disabled={loading}
+      size="sm"
+      className="bg-blue-600 hover:bg-blue-700 text-white"
     >
+      {loading ? <Loader2 className="w-4 h-4 mr-1 animate-spin" /> : <Activity className="w-4 h-4 mr-1" />}
       Connect Garmin
-    </button>
+    </Button>
   );
 }
 
