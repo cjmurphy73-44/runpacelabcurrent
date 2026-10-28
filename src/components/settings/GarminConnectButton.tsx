@@ -4,7 +4,7 @@ import { base44 } from '@/lib/base44Client';
 export function GarminConnectButton() {
   const handleConnect = async () => {
     try {
-      // Resolve the base44 serverless function route dynamically via SDK
+      // Resolve base44 serverless function route dynamically via SDK
       const functionUrl = base44.functions.getFunctionUrl('garmin_oauth');
       window.location.href = `${functionUrl}?action=authorize`;
     } catch (err) {
