@@ -2,7 +2,14 @@ import React from 'react';
 
 export function GarminConnectButton() {
   const handleConnect = () => {
-    window.location.href = '/api/v1/garmin/oauth/authorize';
+    // Fallback directly to your production API host/path if VITE_API_BASE_URL isn't injected
+    const apiBase = import.meta.env.VITE_API_BASE_URL || 'https://api.trainpacelab.com/api/v1';
+    
+    const baseUrl = apiBase.startsWith('http') 
+      ? apiBase 
+      : `${window.location.origin}${apiBase}`;
+    
+    window.location.href = `${baseUrl}/garmin/oauth/authorize`;
   };
 
   return (
