@@ -1,10 +1,11 @@
 from fastapi import FastAPI
-from backend.routers import readiness, workouts
+from backend.routers import readiness, workouts, garmin
 
 app = FastAPI(title="Run Pace Logic API", version="1.0.0")
 
 app.include_router(readiness.router)
 app.include_router(workouts.router)
+app.include_router(garmin.router)
 
 @app.get("/")
 def read_root():
