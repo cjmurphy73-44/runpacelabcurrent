@@ -5,11 +5,14 @@ const router = Router();
 
 const GARMIN_CLIENT_ID = process.env.GARMIN_CLIENT_ID || '';
 const GARMIN_CLIENT_SECRET = process.env.GARMIN_CLIENT_SECRET || '';
-const APP_BASE_URL = process.env.APP_BASE_URL || 'http://localhost:3000';
 
 // 1. Initiate Garmin OAuth Flow
 router.get('/garmin/oauth/authorize', (req, res) => {
-  const redirectUri = `${APP_BASE_URL}/api/v1/garmin/oauth/callback`;
+  const protocol = req.headers['x-forwarded-proto'] || req.protocol;
+  const host = req.get('host');
+  const baseUrl = process.env.APP_BASE_URL || `${protocol}://${host}`;
+  const redirectUri = `${baseUrl}/api/v1/garmin/oauth/callback`;
+  
   const authUrl = `https://connect.garmin.com/oauth2Confirm?client_id=${encodeURIComponent(
     GARMIN_CLIENT_ID
   )}&response_type=code&redirect_uri=${encodeURIComponent(redirectUri)}&scope=read_activities`;
@@ -30,7 +33,11 @@ router.get('/garmin/oauth/callback', async (req, res) => {
   }
 
   try {
-    const redirectUri = `${APP_BASE_URL}/api/v1/garmin/oauth/callback`;
+    const protocol = req.headers['x-forwarded-proto'] || req.protocol;
+    const host = req.get('host');
+    const baseUrl = process.env.APP_BASE_URL || `${protocol}://${host}`;
+    const redirectUri = `${baseUrl}/api/v1/garmin/oauth/callback`;
+
     const tokenResponse = await fetch('https://connect.garmin.com/oauth/token', {
       method: 'POST',
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
@@ -48,8 +55,6 @@ router.get('/garmin/oauth/callback', async (req, res) => {
     if (!tokenResponse.ok) {
       throw new Error(tokenData.message || 'Failed to exchange code for Garmin tokens');
     }
-
-    // TODO: Securely store tokenData (access_token, refresh_token, expires_at) against the user session
 
     res.redirect('/settings?success=garmin_connected');
   } catch (err: any) {
