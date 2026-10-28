@@ -7,13 +7,11 @@ export function GarminConnectButton() {
 
   const handleConnect = () => {
     setLoading(true);
-    const apiBase = import.meta.env.VITE_API_BASE_URL || '/api/v1';
-    const baseUrl = apiBase.startsWith('http') 
-      ? apiBase 
-      : `${window.location.origin}${apiBase}`;
+    // Explicitly target the deployed FastAPI backend URL in production,
+    // falling back to local proxy during development.
+    const apiBase = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api/v1';
     
-    // Direct browser navigation allows the server's 303 RedirectResponse to work naturally
-    window.location.href = `${baseUrl}/garmin/oauth/authorize`;
+    window.location.href = `${apiBase}/garmin/oauth/authorize`;
   };
 
   return (
