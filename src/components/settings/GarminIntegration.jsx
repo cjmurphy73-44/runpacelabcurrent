@@ -1,15 +1,9 @@
 import React from "react";
-import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Watch } from "lucide-react";
+import GarminConnectButton from "./GarminConnectButton";
 
 export function GarminIntegration() {
-  const handleConnect = () => {
-    const apiBase = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api/v1';
-    // Redirect to the backend OAuth authorization route
-    window.location.href = `${apiBase}/garmin/oauth/authorize`;
-  };
-
   return (
     <Card className="border border-border">
       <CardContent className="p-4 flex items-center justify-between">
@@ -22,9 +16,7 @@ export function GarminIntegration() {
             </p>
           </div>
         </div>
-        <Button onClick={handleConnect} size="sm">
-          Connect
-        </Button>
+        <GarminConnectButton />
       </CardContent>
     </Card>
   );

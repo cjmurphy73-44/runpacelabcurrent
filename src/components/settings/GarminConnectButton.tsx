@@ -1,5 +1,5 @@
 import React from 'react';
-import { base44 } from '@/lib/base44Client';
+import { base44 } from '@/api/base44Client';
 
 export function GarminConnectButton() {
   const handleConnect = async () => {
