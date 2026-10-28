@@ -11,9 +11,7 @@ export function GarminIntegration() {
           <Watch className="w-5 h-5 text-primary" />
           <div>
             <h3 className="text-sm font-medium">Garmin Connect</h3>
-            <p className="text-xs text-muted-foreground">
-              Direct Garmin sync for workouts, HRV, and daily health metrics.
-            </p>
+            <p className="text-xs text-muted-foreground">Direct Garmin sync for workouts, HRV, and daily health metrics.</p>
           </div>
         </div>
         <GarminConnectButton />
