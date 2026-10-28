@@ -2,8 +2,8 @@ import React from 'react';
 
 export function GarminConnectButton() {
   const handleConnect = () => {
-    // Fallback directly to your production API host/path if VITE_API_BASE_URL isn't injected
-    const apiBase = import.meta.env.VITE_API_BASE_URL || 'https://api.trainpacelab.com/api/v1';
+    // Default to relative /api/v1 so requests stay on trainpacelab.com
+    const apiBase = import.meta.env.VITE_API_BASE_URL || '/api/v1';
     
     const baseUrl = apiBase.startsWith('http') 
       ? apiBase 
