@@ -1,13 +1,25 @@
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Activity, Loader2 } from 'lucide-react';
+import { base44 } from '@/api/base44Client';
 
 export function GarminConnectButton() {
   const [loading, setLoading] = useState(false);
 
-  const handleConnect = () => {
+  const handleConnect = async () => {
     setLoading(true);
-    window.location.href = '/api/v1/garmin/oauth/authorize';
+    try {
+      const res = await base44.functions.invoke('garminSync', { action: 'authorize' });
+      if (res?.authorize_url) {
+        window.location.href = res.authorize_url;
+      } else {
+        alert(res?.error || 'Failed to initiate Garmin authorization');
+        setLoading(false);
+      }
+    } catch (err: any) {
+      alert(err.message || 'Failed to connect Garmin');
+      setLoading(false);
+    }
   };
 
   return (
