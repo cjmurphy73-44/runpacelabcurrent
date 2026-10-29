@@ -7,11 +7,7 @@ export function GarminConnectButton() {
 
   const handleConnect = () => {
     setLoading(true);
-    // Explicitly target the deployed FastAPI backend URL in production,
-    // falling back to local proxy during development.
-    const apiBase = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api/v1';
-    
-    window.location.href = `${apiBase}/garmin/oauth/authorize`;
+    window.location.href = '/api/v1/garmin/oauth/authorize';
   };
 
   return (
