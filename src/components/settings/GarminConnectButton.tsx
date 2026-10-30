@@ -10,14 +10,15 @@ export function GarminConnectButton() {
     setLoading(true);
     try {
       const res = await base44.functions.invoke('garminSync', { action: 'authorize' });
-      if (res?.authorize_url) {
-        window.location.href = res.authorize_url;
+      const data = res?.data || res;
+      if (data?.authorize_url) {
+        window.location.href = data.authorize_url;
       } else {
-        alert(res?.error || 'Failed to initiate Garmin authorization');
+        alert(data?.error || 'Failed to initiate Garmin authorization');
         setLoading(false);
       }
     } catch (err: any) {
-      alert(err.message || 'Failed to connect Garmin');
+      alert(err?.response?.data?.error || err.message || 'Failed to connect Garmin');
       setLoading(false);
     }
   };
