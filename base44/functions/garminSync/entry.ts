@@ -1,21 +1,55 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
-import { VALID_SPORTS, calcTrimp, normalizeSport, getOwnedAthlete, selfUrl } from '../../shared/workoutIngest.ts';
+import { VALID_SPORTS, calcTrimp, normalizeSport, getOwnedAthlete } from '../../shared/workoutIngest.ts';
 import { env, hmacBase64Url } from '../../shared/oauth.ts';
 import { normalizeGarminRecovery, ingestRecovery } from '../../shared/recoveryIngest.ts';
 import { getSyncLookbackDays } from '../../shared/syncLookback.ts';
+
+// Garmin's OAuth 2.0 endpoints are NOT on the data API host. The consent screen is
+// served by connect.garmin.com and tokens by diauth.garmin.com. Building the authorize
+// URL by appending "/oauth2/authorize" to the data API base sent the browser to
+// Garmin's gateway with a path no proxy serves, returning:
+//   "Unable to identify proxy for host: apis-secure and url: /oauth2/authorize".
+const DEFAULT_AUTHORIZE_URL = 'https://connect.garmin.com/oauth2Confirm';
+const DEFAULT_TOKEN_URL = 'https://diauth.garmin.com/di-oauth2-service/oauth/token';
+// Public URL of this function — the redirect_uri registered with Garmin. req.url inside
+// the runtime is the internal dispatcher address, which Garmin can never bounce back to.
+const DEFAULT_REDIRECT_URI = 'https://trainpacelab.base44.app/functions/garminSync';
 
 function requireConfig() {
   const clientId = env('GARMIN_CLIENT_ID');
   const clientSecret = env('GARMIN_CLIENT_SECRET');
   const apiBase = env('GARMIN_API_BASE');
-  return { clientId, clientSecret, apiBase, configured: Boolean(clientId && clientSecret && apiBase) };
+  return {
+    clientId,
+    clientSecret,
+    apiBase,
+    // Explicit, independently overridable endpoints — never derived from the data API base.
+    authorizeUrl: env('GARMIN_AUTHORIZE_URL') || DEFAULT_AUTHORIZE_URL,
+    tokenUrl: env('GARMIN_TOKEN_URL') || DEFAULT_TOKEN_URL,
+    // Consent only needs the OAuth client credentials; the data API base is for
+    // activity/recovery pulls and is not required to start an authorization.
+    oauthConfigured: Boolean(clientId && clientSecret),
+    dataConfigured: Boolean(apiBase),
+  };
+}
+
+function garminRedirectUri(): string {
+  return env('GARMIN_REDIRECT_URI') || DEFAULT_REDIRECT_URI;
+}
+
+// Where the athlete's browser lands after consent. The X-Base44-App-Url header carries
+// the public app origin; deriving it from req.url would strand them on the runtime host.
+function appOrigin(req: Request): string {
+  const header = req.headers.get('X-Base44-App-Url');
+  if (header) return header.replace(/\/+$/, '');
+  try { return new URL(garminRedirectUri()).origin; } catch { return 'https://trainpacelab.base44.app'; }
 }
 
 // Browser redirect: Garmin sends ?code=...&state=<athlete_id>.<sig>. No user session (it's a redirect
 // landing), so authenticate via state HMAC + resolve the owner from the athlete profile's created_by_id.
 async function handleOAuthCallback(req, base44) {
-  const { clientId, clientSecret, apiBase, configured } = requireConfig();
-  if (!configured) return Response.json({ error: 'Garmin not configured' }, { status: 503 });
+  const { clientId, clientSecret, tokenUrl, oauthConfigured } = requireConfig();
+  if (!oauthConfigured) return Response.json({ error: 'Garmin not configured' }, { status: 503 });
   const u = new URL(req.url);
   const code = u.searchParams.get('code');
   const state = u.searchParams.get('state') || '';
@@ -24,8 +58,8 @@ async function handleOAuthCallback(req, base44) {
   if (!athleteId || !sig) return Response.json({ error: 'Invalid state' }, { status: 400 });
   if (await hmacBase64Url(athleteId, clientSecret) !== sig) return Response.json({ error: 'Invalid state signature' }, { status: 401 });
 
-  const redirectUri = selfUrl(req);
-  const tokenRes = await fetch(`${apiBase}/oauth2/token`, {
+  const redirectUri = garminRedirectUri();
+  const tokenRes = await fetch(tokenUrl, {
     method: 'POST',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
     body: new URLSearchParams({ grant_type: 'authorization_code', code, redirect_uri: redirectUri, client_id: clientId, client_secret: clientSecret }),
@@ -48,21 +82,24 @@ async function handleOAuthCallback(req, base44) {
     status: 'connected', connected_at: now.toISOString(), last_sync_at: null,
   });
 
-  const html = `<!doctype html><meta http-equiv="refresh" content="2;url=${u.origin}/settings"><body style="font-family:system-ui;padding:3rem"><h2>Garmin connected</h2><p>Redirecting to your settings…</p></body>`;
+  const origin = appOrigin(req);
+  const html = `<!doctype html><meta http-equiv="refresh" content="2;url=${origin}/settings"><body style="font-family:system-ui;padding:3rem"><h2>Garmin connected</h2><p>Redirecting to your settings…</p><p><a href="${origin}/settings">Back to settings</a></p></body>`;
   return new Response(html, { headers: { 'Content-Type': 'text/html' } });
 }
 
 async function handleAuthorize(req, base44) {
   const user = await base44.auth.me();
   if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
-  const { clientId, clientSecret, apiBase, configured } = requireConfig();
-  if (!configured) return Response.json({ error: 'Garmin is not configured yet. Add GARMIN_CLIENT_ID, GARMIN_CLIENT_SECRET and GARMIN_API_BASE in your app secrets.' }, { status: 503 });
+  const { clientId, clientSecret, authorizeUrl, oauthConfigured } = requireConfig();
+  if (!oauthConfigured) return Response.json({ error: 'Garmin is not configured yet. Add GARMIN_CLIENT_ID and GARMIN_CLIENT_SECRET in your app secrets.' }, { status: 503 });
   const athlete = await getOwnedAthlete(base44, user.id);
   if (!athlete) return Response.json({ error: 'No athlete profile found' }, { status: 404 });
   const state = `${athlete.id}.${await hmacBase64Url(athlete.id, clientSecret)}`;
-  const redirectUri = selfUrl(req);
+  const redirectUri = garminRedirectUri();
   const params = new URLSearchParams({ client_id: clientId, response_type: 'code', redirect_uri: redirectUri, state });
-  return Response.json({ authorize_url: `${apiBase}/oauth2/authorize?${params.toString()}`, redirect_uri: redirectUri });
+  const url = `${authorizeUrl}?${params.toString()}`;
+  console.log('Garmin authorize →', authorizeUrl, '| redirect_uri:', redirectUri);
+  return Response.json({ authorize_url: url, redirect_uri: redirectUri });
 }
 
 async function handleStatus(base44) {
@@ -79,8 +116,8 @@ async function handleStatus(base44) {
 async function handleSyncHistorical(base44) {
   const user = await base44.auth.me();
   if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
-  const { apiBase, configured } = requireConfig();
-  if (!configured) return Response.json({ error: 'Garmin is not configured yet.' }, { status: 503 });
+  const { apiBase, dataConfigured } = requireConfig();
+  if (!dataConfigured) return Response.json({ error: 'Garmin is not configured yet.' }, { status: 503 });
   const athlete = await getOwnedAthlete(base44, user.id);
   if (!athlete) return Response.json({ error: 'No athlete profile found' }, { status: 404 });
   const conns = await base44.asServiceRole.entities.GarminConnection.filter({ athlete_id: athlete.id });
