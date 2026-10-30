@@ -561,15 +561,37 @@ async function syncHistoricalFor(athlete: any, accessToken: string, base44, look
   const records = (typeof contentText === 'string' && /Sport Records\b/.test(contentText))
     ? parseCorosRecordsText(contentText)
     : extractRecords(result);
-  const toCreate = [];
   let errors = 0;
-  let duplicates = 0;
+  const mappedRecords = [];
   for (const a of records) {
     const mapped = mapRecord(a, athlete);
     if (!mapped) { errors++; continue; }
-    const existing = await base44.asServiceRole.entities.WorkoutSession.filter({ athlete_id: athlete.id, date: mapped.date });
-    const dup = existing.some((s) => s.sport === mapped.sport && Math.abs((s.duration_minutes || 0) - mapped.duration_minutes) < 1 && Math.abs((s.distance_km || 0) - mapped.distance_km) < 0.1);
-    if (dup) { duplicates++; continue; }
+    mappedRecords.push(mapped);
+  }
+
+  // Batched duplicate check: read every date we may write to in a few $in queries instead of
+  // one entity_list per workout. A 100-workout pull used to fire 100 list calls back-to-back
+  // and trip the 140/minute entity limit.
+  const queryDates = [...new Set(mappedRecords.map((s) => s.date))];
+  const existingByDate = new Map<string, any[]>();
+  for (let i = 0; i < queryDates.length; i += 100) {
+    const page = await base44.asServiceRole.entities.WorkoutSession.filter(
+      { athlete_id: athlete.id, date: { $in: queryDates.slice(i, i + 100) } },
+      { limit: 500 },
+    );
+    for (const s of page.items) {
+      const bucket = existingByDate.get(s.date) || [];
+      bucket.push(s);
+      existingByDate.set(s.date, bucket);
+    }
+  }
+
+  let duplicates = 0;
+  const toCreate = [];
+  for (const mapped of mappedRecords) {
+    const sameDay = existingByDate.get(mapped.date) || [];
+    const isDuplicate = (s) => s.sport === mapped.sport && Math.abs((s.duration_minutes || 0) - mapped.duration_minutes) < 1 && Math.abs((s.distance_km || 0) - mapped.distance_km) < 0.1;
+    if (sameDay.some(isDuplicate) || toCreate.some((s) => s.date === mapped.date && isDuplicate(s))) { duplicates++; continue; }
     toCreate.push(mapped);
   }
   if (toCreate.length) {
@@ -718,7 +740,22 @@ async function syncRecoveryFor(athlete: any, accessToken: string, base44): Promi
   if (todayRecovery != null) dates.add(todayKey);
   if (dates.size === 0) throw new Error(toolErrors.join('; ') || 'No COROS recovery data returned');
 
+  // Preload both per-day lookups once for the whole window. Writing recovery used to make
+  // two entity_list calls per day inside ingestRecovery (DailyMetrics + WebhookEvent), which
+  // on its own could exceed the per-minute entity limit during a workout sync.
   const history = await base44.asServiceRole.entities.DailyMetrics.filter({ athlete_id: athlete.id }, '-date', 30);
+  const metricsByDate = new Map<string, any>();
+  for (const d of history) if (d?.date) metricsByDate.set(d.date, d);
+  const eventIds = new Set<string>();
+  const candidateIds = [...dates].map((d) => `coros:${athlete.id}:${d}:recovery`);
+  for (let i = 0; i < candidateIds.length; i += 100) {
+    const seen = await base44.asServiceRole.entities.WebhookEvent.filter(
+      { event_id: { $in: candidateIds.slice(i, i + 100) } },
+      { limit: 500 },
+    );
+    for (const e of seen.items) eventIds.add(e.event_id);
+  }
+
   let ingested = 0;
   let errors = 0;
   for (const date of dates) {
@@ -732,7 +769,7 @@ async function syncRecoveryFor(athlete: any, accessToken: string, base44): Promi
       provider_readiness_score: date === todayKey ? todayRecovery : null,
     };
     if (normalized.hrv == null && normalized.resting_hr == null && normalized.sleep_score == null && normalized.sleep_duration_hours == null && normalized.stress_score == null && normalized.provider_readiness_score == null) continue;
-    try { await ingestRecovery(base44, athlete.id, normalized, 'coros', history); ingested++; } catch { errors++; }
+    try { await ingestRecovery(base44, athlete.id, normalized, 'coros', history, { eventIds, metricsByDate }); ingested++; } catch { errors++; }
   }
   return { imported: ingested, errors, dates_found: dates.size, toolErrors };
 }

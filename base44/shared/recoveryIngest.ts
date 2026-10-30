@@ -187,12 +187,24 @@ export function normalizeSuuntoRecovery(r: any): NormalizedRecovery | null {
 
 // Upsert DailyMetrics with auto-override + holistic readiness; log idempotency.
 // `history` = recent DailyMetrics (any order) used to derive rolling baselines.
-export async function ingestRecovery(base44: any, athleteId: string, normalized: NormalizedRecovery, source: string, history: any[] = []) {
+// `preloaded` lets a multi-day sync hand in already-fetched lookups (one read for the whole
+// window) instead of this function making two entity_list calls per day. Callers that pass
+// nothing keep the original single-date behaviour.
+export async function ingestRecovery(
+  base44: any,
+  athleteId: string,
+  normalized: NormalizedRecovery,
+  source: string,
+  history: any[] = [],
+  preloaded?: { eventIds?: Set<string>; metricsByDate?: Map<string, any> },
+) {
   // Idempotency: recovery event keyed on provider + athlete + date.
   const eventId = `${source}:${athleteId}:${normalized.date}:recovery`;
   try {
-    const seen = await base44.asServiceRole.entities.WebhookEvent.filter({ event_id: eventId });
-    if (seen.length > 0) return { skipped: true, idempotent: true };
+    const seen = preloaded?.eventIds
+      ? preloaded.eventIds.has(eventId)
+      : (await base44.asServiceRole.entities.WebhookEvent.filter({ event_id: eventId })).length > 0;
+    if (seen) return { skipped: true, idempotent: true };
   } catch { /* fail open */ }
 
   const hrvBase = computeBaseline(history, 'hrv');
@@ -215,8 +227,9 @@ export async function ingestRecovery(base44: any, athleteId: string, normalized:
   }, { hrv: hrvBase, resting_hr: rhrBase, sleep_score: sleepBase, sleep_duration_hours: sleepDurBase });
 
   // Auto-override: wearable writes win over any manual entry for this date.
-  const existing = await base44.asServiceRole.entities.DailyMetrics.filter({ athlete_id: athleteId, date: normalized.date });
-  const rec = existing[0];
+  const rec = preloaded?.metricsByDate
+    ? preloaded.metricsByDate.get(normalized.date)
+    : (await base44.asServiceRole.entities.DailyMetrics.filter({ athlete_id: athleteId, date: normalized.date }))[0];
 
   const payload: any = {
     readiness_score: holistic,
@@ -242,6 +255,10 @@ export async function ingestRecovery(base44: any, athleteId: string, normalized:
     recordId = created.id;
   }
 
+  // Keep the caller's preloaded maps current so later days in the same sync see this write.
+  if (preloaded?.metricsByDate) preloaded.metricsByDate.set(normalized.date, { ...(rec || {}), athlete_id: athleteId, date: normalized.date, ...payload, id: recordId });
+
   try { await base44.asServiceRole.entities.WebhookEvent.create({ event_id: eventId, provider: source, athlete_id: athleteId, outcome: 'created' }); } catch { /* best-effort */ }
+  if (preloaded?.eventIds) preloaded.eventIds.add(eventId);
   return { skipped: false, daily_metrics_id: recordId, holistic_readiness: holistic };
 }
