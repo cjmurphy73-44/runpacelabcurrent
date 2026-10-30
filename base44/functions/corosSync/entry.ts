@@ -575,11 +575,12 @@ async function syncHistoricalFor(athlete: any, accessToken: string, base44, look
   const queryDates = [...new Set(mappedRecords.map((s) => s.date))];
   const existingByDate = new Map<string, any[]>();
   for (let i = 0; i < queryDates.length; i += 100) {
-    const page = await base44.asServiceRole.entities.WorkoutSession.filter(
+    const rows = await base44.asServiceRole.entities.WorkoutSession.filter(
       { athlete_id: athlete.id, date: { $in: queryDates.slice(i, i + 100) } },
-      { limit: 500 },
+      'date',
+      500,
     );
-    for (const s of page.items) {
+    for (const s of (Array.isArray(rows) ? rows : rows?.items || [])) {
       const bucket = existingByDate.get(s.date) || [];
       bucket.push(s);
       existingByDate.set(s.date, bucket);
@@ -751,9 +752,10 @@ async function syncRecoveryFor(athlete: any, accessToken: string, base44): Promi
   for (let i = 0; i < candidateIds.length; i += 100) {
     const seen = await base44.asServiceRole.entities.WebhookEvent.filter(
       { event_id: { $in: candidateIds.slice(i, i + 100) } },
-      { limit: 500 },
+      '-created_date',
+      500,
     );
-    for (const e of seen.items) eventIds.add(e.event_id);
+    for (const e of (Array.isArray(seen) ? seen : seen?.items || [])) eventIds.add(e.event_id);
   }
 
   let ingested = 0;
