@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 import { base44 } from "@/api/base44Client";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -56,7 +57,7 @@ export default function AthleteSettings() {
     try {
       const res = await base44.functions.invoke("updateAthleteProfile", { athlete_id: athlete?.id, updates: { profile_role: next } });
       setAthlete(res.data?.athlete || athlete);
-      setMessage({ type: "success", text: next === "coach" ? "Coach mode enabled — Roster is now in your nav." : "Coach mode disabled." });
+      setMessage({ type: "success", text: next === "coach" ? "Coach mode enabled — the Roster appears with Coach Pro." : "Coach mode disabled." });
     } catch (err) {
       setForm((f) => ({ ...f, profile_role: checked ? "athlete" : "coach" }));
       setMessage({ type: "error", text: err?.response?.data?.error || "Could not update coach mode." });
@@ -181,9 +182,12 @@ export default function AthleteSettings() {
         <h1 className="text-2xl font-heading font-bold">Athlete Settings</h1>
         <Alert>
           <ShieldAlert className="w-4 h-4" />
-          <AlertTitle>No athlete profile found</AlertTitle>
-          <AlertDescription>
-            Create your athlete profile from the dashboard first, then return here to manage it.
+          <AlertTitle>No athlete profile yet</AlertTitle>
+          <AlertDescription className="space-y-3">
+            <p>You'll need a profile before there's anything to manage here. It takes about a minute.</p>
+            <Button asChild size="sm" variant="outline">
+              <Link to="/plan">Set it up while building my plan</Link>
+            </Button>
           </AlertDescription>
         </Alert>
       </div>
@@ -331,13 +335,13 @@ export default function AthleteSettings() {
           <CardTitle className="font-heading flex items-center gap-2">
             <Users className="w-4 h-4 text-primary" /> Coach mode
           </CardTitle>
-          <CardDescription>Enable coach mode to manage an athlete roster and use the multi-athlete workspace.</CardDescription>
+          <CardDescription>Marks your profile as a coach. The Roster itself is part of the Coach Pro plan.</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="flex items-center justify-between gap-4">
             <div className="space-y-1">
               <p className="text-sm font-medium">Coach profile</p>
-              <p className="text-xs text-muted-foreground">Off = athlete-only. On = adds the Roster to your nav; multi-athlete tools are gated by the Team plan.</p>
+              <p className="text-xs text-muted-foreground">Off = athlete-only. On = your profile is marked as a coach. The Roster appears when you're on Coach Pro.</p>
             </div>
             <Switch checked={form.profile_role === "coach"} onCheckedChange={handleToggleCoach} disabled={togglingCoach || !athlete} />
           </div>

@@ -5,8 +5,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Plus, Trash2 } from "lucide-react";
+import PlanReadinessPanel from "@/components/trainingplan/PlanReadinessPanel";
 
-export default function TrainingPlanGenerator({ athleteId, onGenerated }) {
+export default function TrainingPlanGenerator({ athleteId, athlete, onAthleteUpdated, onGenerated }) {
   const [raceGoals, setRaceGoals] = useState([{ name: "", date: "", distance: "", target_time: "" }]);
   const [longTermGoal, setLongTermGoal] = useState("");
   const [loading, setLoading] = useState(false);
@@ -40,6 +41,8 @@ export default function TrainingPlanGenerator({ athleteId, onGenerated }) {
   };
 
   return (
+    <div className="space-y-4">
+    <PlanReadinessPanel athlete={athlete} onSaved={onAthleteUpdated} />
     <Card>
       <CardHeader><CardTitle className="text-lg font-heading">Generate Your Training Plan</CardTitle></CardHeader>
       <CardContent className="space-y-4">
@@ -84,7 +87,11 @@ export default function TrainingPlanGenerator({ athleteId, onGenerated }) {
         <Button onClick={handleGenerate} disabled={loading} className="w-full">
           {loading ? "Building your plan..." : "Generate Training Plan"}
         </Button>
+        <p className="text-xs text-muted-foreground">
+          A race is optional — leave the fields blank and we'll build a general fitness block.
+        </p>
       </CardContent>
     </Card>
+    </div>
   );
 }

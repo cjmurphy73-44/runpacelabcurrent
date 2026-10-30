@@ -2,10 +2,10 @@ import React, { useEffect, useState, useCallback } from "react";
 import { base44 } from "@/api/base44Client";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
-import { Sparkles, ShieldAlert, ClipboardList, ArrowRight } from "lucide-react";
-import { Link } from "react-router-dom";
+import { Sparkles, ShieldAlert } from "lucide-react";
 import HelpLink from "@/components/guide/HelpLink";
 import { useCoachInjurySignal } from "@/hooks/useCoachInjurySignal";
+import OnboardingFlow from "@/components/dashboard/OnboardingFlow";
 import TrainingPlanGenerator from "@/components/trainingplan/TrainingPlanGenerator";
 import TrainingPlanTimeline from "@/components/trainingplan/TrainingPlanTimeline";
 import TrainingPlanWeeklyBreakdown from "@/components/trainingplan/TrainingPlanWeeklyBreakdown";
@@ -27,9 +27,20 @@ export default function TrainingPlan() {
     try {
       const user = await base44.auth.me();
       if (!user) { setLoading(false); return; }
-      const profiles = await base44.entities.AthleteProfile.filter({ created_by_id: user.id });
-      if (profiles.length > 0) {
-        const activeAthlete = profiles[0];
+      // Same precedence as the dashboard: the profile linked on the user record first,
+      // then the most recently updated owned profile. Keeps the plan journey working
+      // even when the profile was created under a different identity.
+      let activeAthlete = null;
+      const linkedId = user.data?.athlete_profile_id;
+      if (linkedId) {
+        try { activeAthlete = await base44.entities.AthleteProfile.get(linkedId); }
+        catch (err) { console.warn("Linked athlete_profile_id not resolvable:", err); activeAthlete = null; }
+      }
+      if (!activeAthlete) {
+        const profiles = await base44.entities.AthleteProfile.filter({ created_by_id: user.id }, "-updated_date", 5);
+        activeAthlete = profiles[0] || null;
+      }
+      if (activeAthlete) {
         setAthlete(activeAthlete);
         const [drafts, activePlans] = await Promise.all([
           base44.entities.TrainingPlan.filter({ athlete_id: activeAthlete.id, status: "draft" }, "-created_date", 1).catch(() => []),
@@ -77,19 +88,24 @@ export default function TrainingPlan() {
   }
 
   if (!athlete) {
+    // Profile setup happens right here, in the Plan tab — the athlete is never sent to the
+    // dashboard or settings and then asked to come back. One short form, then straight on
+    // to plan creation.
     return (
-      <div className="max-w-md mx-auto text-center py-16 px-4 space-y-4">
-        <div className="w-14 h-14 rounded-full bg-primary/10 text-primary flex items-center justify-center mx-auto">
-          <ClipboardList className="w-7 h-7" />
+      <div className="max-w-2xl mx-auto space-y-4">
+        <div className="space-y-1">
+          <h1 className="text-xl font-heading font-bold">Build your plan</h1>
+          <p className="text-sm text-muted-foreground">
+            Your plan is built around your physiology, so we need a few basics first. Fill this in
+            and you'll continue straight into plan creation — you won't need to go anywhere else.
+          </p>
         </div>
-        <h2 className="text-xl font-heading font-bold">Set up your athlete profile first</h2>
-        <p className="text-sm text-muted-foreground">
-          Your training plan is built around your physiology, thresholds, and training history.
-          Create your athlete profile on the Dashboard, then come back here to generate your plan.
-        </p>
-        <Button asChild>
-          <Link to="/app">Go to Dashboard <ArrowRight className="w-4 h-4" /></Link>
-        </Button>
+        <OnboardingFlow
+          onCreated={(profile) => {
+            setAthlete(profile);
+            setShowGenerator(true);
+          }}
+        />
       </div>
     );
   }
@@ -102,6 +118,8 @@ export default function TrainingPlan() {
         )}
         <TrainingPlanGenerator
           athleteId={athlete.id}
+          athlete={athlete}
+          onAthleteUpdated={(updated) => setAthlete(updated)}
           onGenerated={(newPlan) => { setPlan(newPlan); setShowGenerator(false); }}
         />
       </div>

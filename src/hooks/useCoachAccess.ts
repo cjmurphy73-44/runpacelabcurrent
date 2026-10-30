@@ -9,14 +9,15 @@ export interface CoachAccess {
   plan: string;
   isPro: boolean;
   teamActive: boolean;
-  canUseCoachWorkspace: boolean; // coachMode + Team plan (admins bypass the paywall)
+  canUseCoachWorkspace: boolean; // Coach Pro plan (admins bypass the paywall)
 }
 
-// Hybrid coach-access model:
-//  - coachMode (nav visibility) = self-selected Coach profile (AthleteProfile.profile_role)
-//    OR platform role 'coach'/'admin'.
-//  - canUseCoachWorkspace (actual roster access) = Team plan active, OR platform admin.
-// Athletes (default) never see coaching navigation; coaches keep full athlete features.
+// Coach-access model:
+//  - coachMode = self-selected Coach profile (AthleteProfile.profile_role)
+//    OR platform role 'coach'/'admin'. Descriptive only.
+//  - canUseCoachWorkspace (roster visibility + access) = Coach Pro plan active, OR platform
+//    admin. The Roster is a paid Coach Pro surface, so an individual athlete on any
+//    non-coach plan never sees or reaches it.
 export function useCoachAccess(): CoachAccess {
   const { user } = useAuth();
   const { athlete, loading: athleteLoading } = useAthlete();
@@ -33,6 +34,6 @@ export function useCoachAccess(): CoachAccess {
     plan,
     isPro,
     teamActive,
-    canUseCoachWorkspace: isAdmin || (coachMode && teamActive),
+    canUseCoachWorkspace: isAdmin || teamActive,
   };
 }

@@ -147,9 +147,9 @@ export function sessionCalories(workout, athlete) {
 
 export function formatZoneMethod(method) {
   switch (method) {
-    case "stream": return "Second-by-second stream";
-    case "laps": return "From lap splits";
-    case "average": return "Estimated from average HR";
+    case "stream": return "Measured — device data";
+    case "laps": return "Measured — lap splits";
+    case "average": return "Estimated — summary only";
     default: return "No heart-rate data";
   }
 }

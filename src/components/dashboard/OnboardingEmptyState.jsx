@@ -21,10 +21,7 @@ export default function OnboardingEmptyState({ athlete, onAddManual }) {
           <h2 className="text-xl font-heading font-bold">Welcome to your training log{name}!</h2>
           <p className="text-sm text-muted-foreground">
             You don't have any activities yet. Connect COROS (or sync recovery from Oura, WHOOP, or Polar), or add a
-            manual session and we'll start tracking your fitness{" "}
-            <span className="font-medium text-foreground">CTL</span>, fatigue{" "}
-            <span className="font-medium text-foreground">ATL</span> and form{" "}
-            <span className="font-medium text-foreground">TSB</span> right away.
+            manual session and we'll start tracking how fit, how tired and how fresh you are right away.
           </p>
         </div>
         <div className="flex flex-col sm:flex-row gap-2 justify-center">

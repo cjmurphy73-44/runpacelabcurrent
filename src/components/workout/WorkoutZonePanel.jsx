@@ -1,12 +1,14 @@
 import React, { useMemo } from "react";
+import { Link } from "react-router-dom";
 import { Badge } from "@/components/ui/badge";
 import { Info } from "lucide-react";
 import HRZoneBreakdown from "@/components/workout/HRZoneBreakdown";
 import { sessionZoneDistribution, formatZoneMethod } from "@/lib/workoutAnalytics";
 
 // Time-in-zone panel. Zones are Karvonen (HR-reserve) based, so the boundaries shown
-// belong to this athlete; the method badge states whether the distribution is measured
-// (stream/laps) or estimated from average HR, rather than implying precision we lack.
+// belong to this athlete. The badge states whether the split is measured from device
+// data (second-by-second stream or lap splits) or derived from a summary average heart
+// rate, so a provider that only sends summaries is never presented as exact.
 export default function WorkoutZonePanel({ workout, athlete }) {
   const { zones, method, bounds } = useMemo(
     () => sessionZoneDistribution(workout, athlete),
@@ -28,14 +30,21 @@ export default function WorkoutZonePanel({ workout, athlete }) {
 
       {bounds && bounds.length === 6 && (
         <p className="text-[11px] text-muted-foreground font-mono">
-          HR reserve {bounds[0]}–{bounds[1]} · {bounds[1]}–{bounds[2]} · {bounds[2]}–{bounds[3]} · {bounds[3]}–{bounds[4]} · {bounds[4]}+ bpm
+          Your zone floors — Z1 {bounds[0]}+ · Z2 {bounds[1]}+ · Z3 {bounds[2]}+ · Z4 {bounds[3]}+ · Z5 {bounds[4]}+ · max {bounds[5]} bpm
         </p>
       )}
 
       {!measured && method !== "none" && (
         <p className="flex items-start gap-1.5 text-[11px] text-muted-foreground">
           <Info className="w-3 h-3 mt-0.5 shrink-0" />
-          No second-by-second data for this session, so the split is estimated from average heart rate. Import a .fit or .tcx with streams for exact zone time.
+          <span>
+            This session arrived as a summary with only an average heart rate, so the split below
+            is an estimate.{" "}
+            <Link to="/import" className="text-primary hover:underline">
+              Import the .fit or .tcx file
+            </Link>{" "}
+            to get exact per-second zone time.
+          </span>
         </p>
       )}
     </div>
