@@ -93,6 +93,59 @@
       "type": "number",
       "description": "Aerobic decoupling (Pa:HR) percentage between the first and second half of aerobic runs longer than 45 minutes"
     },
+    "zone_seconds": {
+      "type": "array",
+      "description": "Seconds accumulated in each of the five Heart-Rate-Reserve zones [Z1..Z5]. Computed from second-by-second streams or laps; a single-zone estimate from average HR only when neither exists (see zone_method).",
+      "items": {
+        "type": "number",
+        "minimum": 0
+      }
+    },
+    "zone_method": {
+      "type": "string",
+      "enum": [
+        "stream",
+        "laps",
+        "average",
+        "none"
+      ],
+      "description": "Which input produced zone_seconds: 'stream' (second-by-second), 'laps' (lap segments), 'average' (single-zone estimate from average HR) or 'none'."
+    },
+    "zone_bounds_bpm": {
+      "type": "array",
+      "description": "Snapshot of the athlete's Karvonen zone floors in bpm at ingest time: [Z1, Z2, Z3, Z4, Z5, max]. Stored so a later change to max/resting HR does not silently rewrite history.",
+      "items": {
+        "type": "number",
+        "minimum": 0
+      }
+    },
+    "active_calories": {
+      "type": "number",
+      "minimum": 0,
+      "description": "Active kilocalories for the session \u2014 the device-reported value when the provider sent one, otherwise a documented estimate (see calories_source / calories_basis)"
+    },
+    "calories_source": {
+      "type": "string",
+      "enum": [
+        "device",
+        "estimated",
+        "manual"
+      ],
+      "description": "Provenance of active_calories: 'device' (watch-reported, never overwritten by an estimate), 'estimated' (Keytel HR regression with optional heat correction) or 'manual' (athlete entry)"
+    },
+    "calories_basis": {
+      "type": "string",
+      "description": "Human-readable explanation of how active_calories was produced, e.g. 'Device-reported active calories' or 'Estimated \u00b7 Keytel heart-rate regression \u00b7 heat adjustment +6% (31\u00b0C, 78% humidity)'"
+    },
+    "temperature_c": {
+      "type": "number",
+      "description": "Ambient temperature in \u00b0C reported by the provider for this session, when available"
+    },
+    "humidity_pct": {
+      "type": "number",
+      "minimum": 0,
+      "description": "Ambient relative humidity in % reported by the provider for this session, when available"
+    },
     "streams": {
       "type": "array",
       "description": "Unified master telemetry stream reconciled from all bound WorkoutAssets (priority ladder FIT>TCX>CSV). Only stored for shorter sessions to avoid oversized records.",

@@ -10,9 +10,21 @@ const ZONE_META = [
   { label: "Z5 Anaerobic", from: "#3A0F3A", to: "#E879F9" },
 ];
 
+function minutes(seconds) {
+  const m = Math.round((Number(seconds) || 0) / 60);
+  if (!m) return "0 min";
+  const h = Math.floor(m / 60);
+  const rest = m % 60;
+  return h ? `${h}h ${rest}m` : `${rest} min`;
+}
+
 export default function HRZoneBreakdown({ zones }) {
   const data = useMemo(
-    () => ZONE_META.map((z, i) => ({ label: z.label, pct: Math.round((zones && zones[i] ? zones[i].pct : 0) || 0) })),
+    () => ZONE_META.map((z, i) => ({
+      label: z.label,
+      pct: Math.round((zones && zones[i] ? zones[i].pct : 0) || 0),
+      seconds: zones && zones[i] ? zones[i].seconds || 0 : 0,
+    })),
     [zones]
   );
 
@@ -34,7 +46,7 @@ export default function HRZoneBreakdown({ zones }) {
             cursor={{ fill: "#1F2937", fillOpacity: 0.4 }}
             contentStyle={{ background: "#121518", border: "1px solid #1F2937", borderRadius: 8, color: "#E5E7EB", fontSize: 12 }}
             labelStyle={{ color: "#9CA3AF" }}
-            formatter={(v) => [`${v}%`, "Time in zone"]}
+            formatter={(v, name, payload) => [`${v}% · ${minutes(payload?.payload?.seconds)}`, "Time in zone"]}
           />
           <Bar dataKey="pct" radius={[4, 4, 4, 4]} barSize={16} isAnimationActive={false}>
             {data.map((_, i) => (

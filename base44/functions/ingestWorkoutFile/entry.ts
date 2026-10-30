@@ -2,6 +2,8 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
 import { parseFitWithLaps, parseTcx, parseCsv, tryParseSummaryCsv, summarizeStream, SOURCE_PRIORITY, parseAssetFile } from '../../shared/workoutParsers.ts';
 import { calcTrimp, calcRTSS, computeNgpSeries, computeDecouplingAndEF } from '../../shared/physiology.ts';
 import { reconcileStreams, recomputePhysiology, dominantFileType } from '../../shared/streamReconcile.ts';
+import { resolveTimeInZone } from '../../shared/hrZones.ts';
+import { resolveActiveCalories } from '../../shared/calories.ts';
 import { assertSafeFileUrl } from '../../shared/urlGuard.ts';
 import { assertOwnsAthlete } from '../../shared/ownership.ts';
 import { reportError } from '../../shared/errorReport.ts';
@@ -201,11 +203,39 @@ Deno.serve(async (req) => {
       // Dominant source format reflects which asset type actually produced the master stream.
       const dominant = dominantFileType(assetPayloads) || fileType;
 
+      // Re-derive the zone distribution from the reconciled master stream now that a
+      // higher-priority asset may have supplied second-by-second HR.
+      const masterZones = resolveTimeInZone({
+        stream: masterStream,
+        laps: masterLaps,
+        avgHr: match.avg_hr ?? parsed.avg_hr ?? null,
+        durationSeconds: match.duration_seconds || parsed.duration_seconds || Math.round((match.duration_minutes || durationMinutes) * 60),
+        restHr,
+        maxHr,
+      });
+
       const update = {
         source_format: dominant,
         efficiency_factor: physio.efficiency_factor ?? incomingPhysio.efficiency_factor ?? undefined,
         aerobic_decoupling: physio.aerobic_decoupling ?? incomingPhysio.aerobic_decoupling ?? undefined,
+        zone_seconds: masterZones.zone_seconds,
+        zone_method: masterZones.zone_method,
+        zone_bounds_bpm: masterZones.zone_bounds_bpm,
       };
+
+      // Calories: only fill in when the session has none. A device-reported value is
+      // never replaced by an estimate when a second file is attached.
+      if (!match.active_calories) {
+        Object.assign(update, resolveActiveCalories({
+          durationMin: match.duration_minutes || durationMinutes,
+          avgHr: match.avg_hr ?? parsed.avg_hr ?? null,
+          weightKg: athlete.weight_kg,
+          age: athlete.age,
+          sex: athlete.sex,
+          temperatureC: match.temperature_c,
+          humidityPct: match.humidity_pct,
+        }));
+      }
 
       // Refresh laps from the reconciled set (keep existing if none reconciled).
       if (masterLaps.length > 0) update.laps = masterLaps;
@@ -252,6 +282,27 @@ Deno.serve(async (req) => {
       sessionTss = calcRTSS(parsed.duration_seconds, avg_ngp, athlete.functional_threshold_pace_ms);
     }
 
+    // True time-in-zone from the parsed stream (or laps), anchored to this athlete's
+    // own Karvonen boundaries — never from a fixed %-of-max table.
+    const zoneResult = resolveTimeInZone({
+      stream,
+      laps: parsedLaps,
+      avgHr: parsed.avg_hr,
+      durationSeconds: parsed.duration_seconds || Math.round(durationMinutes * 60),
+      restHr,
+      maxHr,
+    });
+
+    // Uploaded files carry no device calorie field, so this is always the labelled
+    // estimate path (no ambient data available from a file).
+    const energy = resolveActiveCalories({
+      durationMin: durationMinutes,
+      avgHr: parsed.avg_hr,
+      weightKg: athlete.weight_kg,
+      age: athlete.age,
+      sex: athlete.sex,
+    });
+
     const session = await base44.entities.WorkoutSession.create({
       athlete_id,
       date,
@@ -269,6 +320,10 @@ Deno.serve(async (req) => {
       session_tss: sessionTss,
       efficiency_factor: efficiency_factor ?? undefined,
       aerobic_decoupling: aerobic_decoupling ?? undefined,
+      zone_seconds: zoneResult.zone_seconds,
+      zone_method: zoneResult.zone_method,
+      zone_bounds_bpm: zoneResult.zone_bounds_bpm,
+      ...energy,
       laps: (parsedLaps && parsedLaps.length > 0) ? parsedLaps : undefined,
       streams: stream.length <= MAX_STREAM_SAMPLES ? storageStream(stream) : undefined,
     });

@@ -1,6 +1,9 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
 import { waitUntil } from 'base44:runtime';
-import { VALID_SPORTS, calcTrimp, normalizeSport, parseFitSummary } from '../../shared/workoutIngest.ts';
+import { VALID_SPORTS, calcTrimp, normalizeSport } from '../../shared/workoutIngest.ts';
+import { parseFitWithLaps } from '../../shared/workoutParsers.ts';
+import { resolveTimeInZone } from '../../shared/hrZones.ts';
+import { resolveActiveCalories } from '../../shared/calories.ts';
 import { isGarminHealthSummary, normalizeGarminRecovery, ingestRecovery } from '../../shared/recoveryIngest.ts';
 import { assertSafeFileUrl } from '../../shared/urlGuard.ts';
 import { constantTimeEqual } from '../../shared/crypto.ts';
@@ -53,14 +56,29 @@ Deno.serve(async (req) => {
     }
 
     const activity = body.activity || body.workout || body;
-    let summary = null, sourceFormat = 'webhook';
+    let summary = null, sourceFormat = 'webhook', fitStream = [], fitLaps = [];
     if (body.fit_file_url || activity.fit_file_url) {
       try {
         const fitUrl = body.fit_file_url || activity.fit_file_url;
         const urlCheck = assertSafeFileUrl(fitUrl);
         if (!urlCheck.ok) return Response.json({ error: 'fit_file_url not allowed' }, { status: 400 });
         const r = await fetch(fitUrl);
-        if (r.ok) { summary = parseFitSummary(new Uint8Array(await r.arrayBuffer())); sourceFormat = 'fit'; }
+        if (r.ok) {
+          // Parse the full FIT (not just its summary) so the push carries a real
+          // second-by-second stream — that is what makes true time-in-zone possible.
+          const parsed = parseFitWithLaps(new Uint8Array(await r.arrayBuffer()));
+          if (parsed) {
+            summary = {
+              ...parsed.summary,
+              derived_date: activity.date
+                || (activity.start_time ? String(activity.start_time).slice(0, 10) : null)
+                || new Date().toISOString().slice(0, 10),
+            };
+            fitStream = parsed.stream || [];
+            fitLaps = parsed.laps || [];
+            sourceFormat = 'fit';
+          }
+        }
       } catch { /* fall through to JSON summary */ }
     }
     if (!summary) {
@@ -83,6 +101,13 @@ Deno.serve(async (req) => {
     const sport = VALID_SPORTS.includes(summary.sport) ? summary.sport : 'running';
     const distanceKm = summary.distance_km || 0;
 
+    // Native device telemetry wins: Garmin reports active kilocalories from its own
+    // on-device model, and ambient temperature/humidity when the device measured them.
+    const positiveOrNull = (v) => { const n = Number(v); return Number.isFinite(n) && n > 0 ? n : null; };
+    const nativeKcal = positiveOrNull(activity.active_kilocalories ?? activity.activeCalories ?? activity.calories ?? body.active_kilocalories);
+    const temperatureC = positiveOrNull(activity.average_temperature ?? activity.avg_temperature ?? activity.temperature_c);
+    const humidityPct = positiveOrNull(activity.humidity ?? activity.average_humidity);
+
     const athlete = await base44.asServiceRole.entities.AthleteProfile.get(athleteId).catch(() => null);
     if (!athlete) return Response.json({ error: 'Athlete profile not found' }, { status: 404 });
 
@@ -100,6 +125,28 @@ Deno.serve(async (req) => {
     }
 
     const restHr = athlete.resting_hr || 60, maxHr = athlete.max_heart_rate || summary.max_hr || 190;
+    const zoneResult = resolveTimeInZone({
+      stream: fitStream,
+      laps: fitLaps,
+      avgHr: summary.avg_hr,
+      durationSeconds: Math.round(durationMinutes * 60),
+      restHr,
+      maxHr,
+    });
+    const energy = resolveActiveCalories({
+      nativeKcal,
+      durationMin: durationMinutes,
+      avgHr: summary.avg_hr,
+      weightKg: athlete.weight_kg,
+      age: athlete.age,
+      sex: athlete.sex,
+      temperatureC,
+      humidityPct,
+    });
+    const storedStream = fitStream.length > 0 && fitStream.length <= 3600
+      ? fitStream.map((p) => ({ time: p.time, heart_rate: p.heart_rate, altitude: p.altitude, distance: p.distance, cadence: p.cadence, speed: p.speed }))
+      : undefined;
+
     const session = await base44.asServiceRole.entities.WorkoutSession.create({
       athlete_id: athleteId,
       created_by_id: athlete.created_by_id,
@@ -112,6 +159,14 @@ Deno.serve(async (req) => {
       max_hr: summary.max_hr || undefined,
       source_format: sourceFormat,
       session_trimp: summary.avg_hr ? calcTrimp(durationMinutes, summary.avg_hr, restHr, maxHr, athlete.sex) : 0,
+      zone_seconds: zoneResult.zone_seconds,
+      zone_method: zoneResult.zone_method,
+      zone_bounds_bpm: zoneResult.zone_bounds_bpm,
+      temperature_c: temperatureC ?? undefined,
+      humidity_pct: humidityPct ?? undefined,
+      ...energy,
+      streams: storedStream,
+      laps: fitLaps.length > 0 ? fitLaps : undefined,
     });
 
     try { await base44.asServiceRole.entities.WebhookEvent.create({ event_id: eventId, provider: 'generic', athlete_id: athleteId, workout_session_id: session.id, outcome: 'created' }); } catch {}

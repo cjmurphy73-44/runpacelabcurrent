@@ -17,6 +17,7 @@ import AutonomicStressCard from "@/components/dashboard/AutonomicStressCard";
 import SleepEnergyCard from "@/components/dashboard/SleepEnergyCard";
 import HolisticFactorsLog from "@/components/dashboard/HolisticFactorsLog";
 import TodaySessionCard from "@/components/dashboard/TodaySessionCard";
+import WeeklyVolumeLine from "@/components/dashboard/WeeklyVolumeLine";
 import DashboardGreeting from "@/components/dashboard/DashboardGreeting";
 
 import HorizonStrip from "@/components/dashboard/HorizonStrip";
@@ -41,6 +42,7 @@ import PlannedActualReconciliation from "@/components/dashboard/PlannedActualRec
 import CoachBriefing from "@/components/dashboard/CoachBriefing";
 import PhysiologyStrip from "@/components/dashboard/PhysiologyStrip";
 import TodayFocusLine from "@/components/dashboard/TodayFocusLine";
+import WearableSyncBar from "@/components/dashboard/WearableSyncBar";
 import AnomalyAlertBanner from "@/components/dashboard/AnomalyAlertBanner";
 import AISynthesisCard from "@/components/dashboard/AISynthesisCard";
 import CorosReconnectBanner from "@/components/dashboard/CorosReconnectBanner";
@@ -234,9 +236,11 @@ export default function Home() {
         <section className="space-y-4">
           <SectionHeading index="01" title="Today's snapshot" description="Your form, readiness and prescribed session for today." icon={Sun} />
           <WidgetBoundary name="Today's focus"><TodayFocusLine athlete={athlete} /></WidgetBoundary>
+          <WidgetBoundary name="Wearable sync"><WearableSyncBar onSynced={() => loadAthleteData(athlete.id)} /></WidgetBoundary>
           <WidgetBoundary name="Physiology strip"><PhysiologyStrip athlete={athlete} /></WidgetBoundary>
           <WidgetBoundary name="Calibration meter"><CalibrationMeter athlete={athlete} athleteId={athlete.id} /></WidgetBoundary>
           <WidgetBoundary name="Today's session"><TodaySessionCard athleteId={athlete.id} /></WidgetBoundary>
+          <WidgetBoundary name="Weekly volume"><WeeklyVolumeLine athleteId={athlete.id} /></WidgetBoundary>
         </section>
 
         {/* 2 — Coaching: the AI read on the last two weeks sits directly under today's snapshot */}

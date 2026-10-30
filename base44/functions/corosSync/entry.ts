@@ -1,5 +1,7 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
 import { VALID_SPORTS, calcTrimp, normalizeSport, getOwnedAthlete } from '../../shared/workoutIngest.ts';
+import { resolveTimeInZone } from '../../shared/hrZones.ts';
+import { resolveActiveCalories } from '../../shared/calories.ts';
 import { env, hmacBase64Url } from '../../shared/oauth.ts';
 import { ingestRecovery } from '../../shared/recoveryIngest.ts';
 import { runPostWorkoutEvaluation } from '../../shared/postWorkoutAI.ts';
@@ -263,6 +265,26 @@ async function handleWebhook(req, base44) {
   const maxHr = athlete.max_heart_rate || summary.max_hr || 190;
   const sessionTrimp = summary.avg_hr ? calcTrimp(durationMinutes, summary.avg_hr, restHr, maxHr, athlete.sex) : 0;
 
+  const positiveOrNull = (v) => { const n = Number(v); return Number.isFinite(n) && n > 0 ? n : null; };
+  const nativeKcal = positiveOrNull(activity.calories ?? activity.active_calories ?? activity.active_kilocalories ?? body.calories);
+  const temperatureC = positiveOrNull(activity.temperature_c ?? activity.average_temperature ?? body.temperature_c);
+  const zoneResult = resolveTimeInZone({
+    laps: [],
+    avgHr: summary.avg_hr,
+    durationSeconds: Math.round(durationMinutes * 60),
+    restHr,
+    maxHr,
+  });
+  const energy = resolveActiveCalories({
+    nativeKcal,
+    durationMin: durationMinutes,
+    avgHr: summary.avg_hr,
+    weightKg: athlete.weight_kg,
+    age: athlete.age,
+    sex: athlete.sex,
+    temperatureC,
+  });
+
   const session = await base44.asServiceRole.entities.WorkoutSession.create({
     athlete_id: athleteId,
     created_by_id: athlete.created_by_id,
@@ -275,6 +297,11 @@ async function handleWebhook(req, base44) {
     max_hr: summary.max_hr || undefined,
     source_format: sourceFormat,
     session_trimp: sessionTrimp,
+    zone_seconds: zoneResult.zone_seconds,
+    zone_method: zoneResult.zone_method,
+    zone_bounds_bpm: zoneResult.zone_bounds_bpm,
+    temperature_c: temperatureC ?? undefined,
+    ...energy,
   });
 
   try { await base44.asServiceRole.functions.invoke('calculateDailyTRIMP', { athlete_id: athleteId, date }); } catch (e) { console.warn('calculateDailyTRIMP failed:', e); }
@@ -488,6 +515,10 @@ function parseCorosRecordsText(text: string): any[] {
     const distM = block.match(/Distance:\s*([\d.]+)\s*km/i);
     const hrM = block.match(/Avg HR:\s*(\d+)\s*bpm/i);
     const sportTypeM = block.match(/SportType:\s*(\d+)/);
+    // COROS reports the watch's own active energy in the same report block — the
+    // 1,204 kcal reading comes from here, and it must survive ingestion intact.
+    const calM = block.match(/Calories:\s*([\d.]+)\s*kcal/i);
+    const tempM = block.match(/(?:Temperature|Avg Temp):\s*(-?[\d.]+)\s*°?C/i);
     const startM = block.match(/startTimestamp=(\d+)/);
     const endM = block.match(/endTimestamp=(\d+)/);
     let durationSeconds = 0;
@@ -503,6 +534,8 @@ function parseCorosRecordsText(text: string): any[] {
       duration_seconds: durationSeconds,
       distance_km: distM ? Number(distM[1]) : 0,
       avg_heart_rate: hrM ? Number(hrM[1]) : null,
+      calories: calM ? Number(calM[1]) : null,
+      temperature_c: tempM ? Number(tempM[1]) : null,
     });
   }
   return records;
@@ -525,6 +558,29 @@ function mapRecord(a: any, athlete: any) {
   const maxHrRow = Number(a.max_heart_rate ?? a.maxHeartRate ?? a.max_hr) || null;
   const restHr = athlete.resting_hr || 60;
   const maxHr = athlete.max_heart_rate || maxHrRow || 190;
+  const nativeKcal = Number(a.calories ?? a.active_calories ?? a.active_kilocalories ?? a.kilocalories ?? 0) || null;
+  const temperatureC = Number(a.temperature_c ?? a.average_temperature ?? 0) || null;
+
+  // COROS MCP exposes summary records only (no per-second stream), so the zone
+  // distribution is anchored to the athlete's Karvonen boundaries and stored with
+  // zone_method 'average' — the UI labels it as a summary-derived estimate.
+  const zoneResult = resolveTimeInZone({
+    laps: [],
+    avgHr,
+    durationSeconds: Math.round(durationMinutes * 60),
+    restHr,
+    maxHr,
+  });
+  const energy = resolveActiveCalories({
+    nativeKcal,
+    durationMin: durationMinutes,
+    avgHr,
+    weightKg: athlete.weight_kg,
+    age: athlete.age,
+    sex: athlete.sex,
+    temperatureC,
+  });
+
   return {
     athlete_id: athlete.id,
     created_by_id: athlete.created_by_id,
@@ -537,6 +593,11 @@ function mapRecord(a: any, athlete: any) {
     max_hr: maxHrRow || undefined,
     source_format: 'webhook',
     session_trimp: avgHr ? calcTrimp(durationMinutes, avgHr, restHr, maxHr, athlete.sex) : 0,
+    zone_seconds: zoneResult.zone_seconds,
+    zone_method: zoneResult.zone_method,
+    zone_bounds_bpm: zoneResult.zone_bounds_bpm,
+    temperature_c: temperatureC ?? undefined,
+    ...energy,
   };
 }
 

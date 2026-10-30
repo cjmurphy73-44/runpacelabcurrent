@@ -8,6 +8,8 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
 import { waitUntil } from 'base44:runtime';
 import { VALID_SPORTS, calcTrimp, normalizeSport, getOwnedAthlete, selfUrl, parseFitSummary } from '../../shared/workoutIngest.ts';
+import { resolveTimeInZone } from '../../shared/hrZones.ts';
+import { resolveActiveCalories } from '../../shared/calories.ts';
 import { assertSafeFileUrl } from '../../shared/urlGuard.ts';
 import { recomputeCTLATLTSB } from '../../shared/ctlRecalc.ts';
 import { runPostWorkoutEvaluation } from '../../shared/postWorkoutAI.ts';
@@ -105,6 +107,30 @@ async function handleIngest(req, base44, apiKey, parsedBody) {
   const maxHr = athlete.max_heart_rate || summary.max_hr || 190;
   const sessionTrimp = summary.avg_hr ? calcTrimp(durationMinutes, summary.avg_hr, restHr, maxHr, athlete.sex) : 0;
 
+  // Generic payloads may carry the watch's own energy + ambient readings; otherwise
+  // the estimate runs and is stored with its basis.
+  const positiveOrNull = (v) => { const n = Number(v); return Number.isFinite(n) && n > 0 ? n : null; };
+  const nativeKcal = positiveOrNull(body.active_calories ?? body.active_kilocalories ?? body.calories ?? body.kilocalories);
+  const temperatureC = positiveOrNull(body.temperature_c ?? body.average_temperature);
+  const humidityPct = positiveOrNull(body.humidity_pct ?? body.humidity);
+  const zoneResult = resolveTimeInZone({
+    laps: [],
+    avgHr: summary.avg_hr,
+    durationSeconds: Math.round(durationMinutes * 60),
+    restHr,
+    maxHr,
+  });
+  const energy = resolveActiveCalories({
+    nativeKcal,
+    durationMin: durationMinutes,
+    avgHr: summary.avg_hr,
+    weightKg: athlete.weight_kg,
+    age: athlete.age,
+    sex: athlete.sex,
+    temperatureC,
+    humidityPct,
+  });
+
   const session = await base44.asServiceRole.entities.WorkoutSession.create({
     athlete_id: athlete.id,
     created_by_id: athlete.created_by_id,
@@ -117,6 +143,12 @@ async function handleIngest(req, base44, apiKey, parsedBody) {
     max_hr: summary.max_hr || undefined,
     source_format: sourceFormat,
     session_trimp: sessionTrimp,
+    zone_seconds: zoneResult.zone_seconds,
+    zone_method: zoneResult.zone_method,
+    zone_bounds_bpm: zoneResult.zone_bounds_bpm,
+    temperature_c: temperatureC ?? undefined,
+    humidity_pct: humidityPct ?? undefined,
+    ...energy,
   });
 
   try { await base44.asServiceRole.entities.WebhookEvent.create({ event_id: eventId, provider: 'generic', athlete_id: athlete.id, workout_session_id: session.id, outcome: 'created' }); } catch (e) { console.warn('WebhookEvent log failed:', e); }
@@ -243,11 +275,31 @@ async function handleStravaEvent(base44, body) {
 
   const restHr = athlete.resting_hr || 60, maxHr = athlete.max_heart_rate || 190;
   const avgHr = act.average_heartrate || null;
+  const positiveOrNull = (v) => { const n = Number(v); return Number.isFinite(n) && n > 0 ? n : null; };
+  const stravaZones = resolveTimeInZone({
+    laps: [],
+    avgHr,
+    durationSeconds: Math.round(durationMinutes * 60),
+    restHr,
+    maxHr,
+  });
+  const stravaEnergy = resolveActiveCalories({
+    nativeKcal: positiveOrNull(act.calories),
+    durationMin: durationMinutes,
+    avgHr,
+    weightKg: athlete.weight_kg,
+    age: athlete.age,
+    sex: athlete.sex,
+    temperatureC: positiveOrNull(act.average_temp),
+  });
   const session = await base44.asServiceRole.entities.WorkoutSession.create({
     athlete_id: conn.athlete_id, created_by_id: athlete.created_by_id, date, sport: VALID_SPORTS.includes(sport) ? sport : 'running',
     duration_minutes: Math.round(durationMinutes * 100) / 100, duration_seconds: Math.round(durationMinutes * 60),
     distance_km: distanceKm, avg_hr: avgHr || undefined, max_hr: act.max_heartrate || undefined,
     source_format: 'webhook', session_trimp: avgHr ? calcTrimp(durationMinutes, avgHr, restHr, maxHr, athlete.sex) : 0,
+    zone_seconds: stravaZones.zone_seconds, zone_method: stravaZones.zone_method, zone_bounds_bpm: stravaZones.zone_bounds_bpm,
+    temperature_c: positiveOrNull(act.average_temp) ?? undefined,
+    ...stravaEnergy,
   });
 
   try { await base44.asServiceRole.entities.WebhookEvent.create({ event_id: eventId, provider: 'strava', athlete_id: conn.athlete_id, workout_session_id: session.id, outcome: 'created' }); } catch {}

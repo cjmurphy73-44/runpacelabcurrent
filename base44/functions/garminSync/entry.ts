@@ -1,5 +1,7 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
 import { VALID_SPORTS, calcTrimp, normalizeSport, getOwnedAthlete } from '../../shared/workoutIngest.ts';
+import { resolveTimeInZone } from '../../shared/hrZones.ts';
+import { resolveActiveCalories } from '../../shared/calories.ts';
 import { env, hmacBase64Url } from '../../shared/oauth.ts';
 import { normalizeGarminRecovery, ingestRecovery } from '../../shared/recoveryIngest.ts';
 import { getSyncLookbackDays } from '../../shared/syncLookback.ts';
@@ -43,6 +45,56 @@ function appOrigin(req: Request): string {
   const header = req.headers.get('X-Base44-App-Url');
   if (header) return header.replace(/\/+$/, '');
   try { return new URL(garminRedirectUri()).origin; } catch { return 'https://trainpacelab.base44.app'; }
+}
+
+// Refresh the Garmin access token against the configured token endpoint — never the
+// data API base. Any rotated refresh token is persisted so the connection never
+// silently ages out; a rejected refresh means the grant is gone, so the row is flagged
+// 'expired' with a reconnect message instead of staying 'connected' and failing forever.
+async function refreshGarminToken(conn: any, base44: any, force = false): Promise<{ accessToken: string; expiresAt: string | null }> {
+  const { clientId, clientSecret, tokenUrl } = requireConfig();
+  const now = Date.now();
+  const expiresAt = conn.token_expires_at ? Date.parse(conn.token_expires_at) : 0;
+  if (!force && conn.access_token && expiresAt > now + 60_000) {
+    return { accessToken: conn.access_token, expiresAt: conn.token_expires_at || null };
+  }
+  if (!conn.refresh_token) {
+    throw new Error('Garmin authorization expired — reconnect your Garmin account.');
+  }
+  const r = await fetch(tokenUrl, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: new URLSearchParams({
+      grant_type: 'refresh_token',
+      refresh_token: conn.refresh_token,
+      client_id: clientId,
+      client_secret: clientSecret,
+    }),
+  });
+  const text = await r.text();
+  if (!r.ok) {
+    console.error('Garmin token refresh failed:', r.status, text.slice(0, 300));
+    if (r.status === 400 || r.status === 401 || /invalid_grant/i.test(text)) {
+      await base44.asServiceRole.entities.GarminConnection.update(conn.id, {
+        status: 'expired',
+        last_error: 'Garmin authorization expired — reconnect your Garmin account.',
+      });
+      throw new Error('Garmin authorization expired — reconnect your Garmin account.');
+    }
+    throw new Error(`Garmin token refresh failed (${r.status})`);
+  }
+  let tok: any = {};
+  try { tok = JSON.parse(text); } catch { throw new Error('Garmin token endpoint returned invalid JSON'); }
+  const newExpiry = new Date(now + (tok.expires_in || 3600) * 1000).toISOString();
+  await base44.asServiceRole.entities.GarminConnection.update(conn.id, {
+    access_token: tok.access_token || conn.access_token,
+    // Garmin may rotate the refresh token; keep the existing one when it doesn't.
+    refresh_token: tok.refresh_token || conn.refresh_token,
+    token_expires_at: newExpiry,
+    status: 'connected',
+    last_error: '',
+  });
+  return { accessToken: tok.access_token || conn.access_token, expiresAt: newExpiry };
 }
 
 // Browser redirect: Garmin sends ?code=...&state=<athlete_id>.<sig>. No user session (it's a redirect
@@ -109,8 +161,16 @@ async function handleStatus(base44) {
   if (!athlete) return Response.json({ connected: false });
   const conns = await base44.asServiceRole.entities.GarminConnection.filter({ athlete_id: athlete.id });
   const c = conns[0];
-  if (!c) return Response.json({ connected: false });
-  return Response.json({ connected: c.status === 'connected' && Boolean(c.access_token), status: c.status, connected_at: c.connected_at || null, last_sync_at: c.last_sync_at || null, last_error: c.last_error || null });
+  if (!c) return Response.json({ connected: false, needs_reconnect: false, status: 'disconnected' });
+  return Response.json({
+    connected: c.status === 'connected' && Boolean(c.access_token),
+    // An expired/erroring grant must be surfaced as "reconnect", never as a silent failure.
+    needs_reconnect: c.status === 'expired' || c.status === 'error',
+    status: c.status,
+    connected_at: c.connected_at || null,
+    last_sync_at: c.last_sync_at || null,
+    last_error: c.last_error || null,
+  });
 }
 
 async function handleSyncHistorical(base44) {
@@ -125,19 +185,13 @@ async function handleSyncHistorical(base44) {
   if (!conn || !conn.access_token) return Response.json({ error: 'Garmin account not connected' }, { status: 409 });
 
   let accessToken = conn.access_token;
-  const now = Date.now();
-  const expiresAt = conn.token_expires_at ? Date.parse(conn.token_expires_at) : 0;
-  if (expiresAt <= now + 60_000 && conn.refresh_token) {
-    try {
-      const r = await fetch(`${apiBase}/oauth2/token`, {
-        method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body: new URLSearchParams({ grant_type: 'refresh_token', refresh_token: conn.refresh_token, client_id: env('GARMIN_CLIENT_ID'), client_secret: env('GARMIN_CLIENT_SECRET') }),
-      });
-      if (r.ok) {
-        const tok = await r.json(); accessToken = tok.access_token;
-        await base44.asServiceRole.entities.GarminConnection.update(conn.id, { access_token: tok.access_token, refresh_token: tok.refresh_token || conn.refresh_token, token_expires_at: new Date(now + (tok.expires_in || 3600) * 1000).toISOString() });
-      }
-    } catch { /* best-effort */ }
+  try {
+    ({ accessToken } = await refreshGarminToken(conn, base44));
+  } catch (e) {
+    return Response.json(
+      { error: e.message, needs_reconnect: /reconnect/i.test(e.message) },
+      { status: /reconnect/i.test(e.message) ? 409 : 502 },
+    );
   }
 
   const lookbackDays = await getSyncLookbackDays(base44, user.id);
@@ -154,6 +208,29 @@ async function handleSyncHistorical(base44) {
     });
     const restHr = athlete.resting_hr || 60, maxHr = athlete.max_heart_rate || 190;
     const toCreate = [];
+
+    // Preload every session that could collide with this pull in one batched query.
+    // The old per-activity filter() fired one list call per workout, which is what
+    // tripped the platform's per-minute entity limit during a long backfill.
+    const pullDates = [...new Set(list.map((a) =>
+      a.date || (a.start_time ? String(a.start_time).slice(0, 10) : null) || (a.timestamp ? String(a.timestamp).slice(0, 10) : null)
+    ).filter(Boolean))];
+    const existingByDate = new Map<string, any[]>();
+    for (let i = 0; i < pullDates.length; i += 100) {
+      const rows = await base44.asServiceRole.entities.WorkoutSession.filter(
+        { athlete_id: athlete.id, date: { $in: pullDates.slice(i, i + 100) } },
+        'date',
+        500,
+      );
+      for (const s of (Array.isArray(rows) ? rows : rows?.items || [])) {
+        const bucket = existingByDate.get(s.date) || [];
+        bucket.push(s);
+        existingByDate.set(s.date, bucket);
+      }
+    }
+
+    const positiveOrNull = (v) => { const n = Number(v); return Number.isFinite(n) && n > 0 ? n : null; };
+
     for (const a of list) {
       const date = a.date || (a.start_time ? a.start_time.slice(0, 10) : null) || (a.timestamp ? a.timestamp.slice(0, 10) : null);
       const durationSeconds = Number(a.duration_seconds ?? a.duration ?? a.elapsed_time ?? 0);
@@ -161,10 +238,53 @@ async function handleSyncHistorical(base44) {
       if (!date || isNaN(Date.parse(date)) || durationMinutes < 1 || durationMinutes > 1440) { errors++; continue; }
       const sport = normalizeSport(a.sport || a.activity_type || a.type);
       let distanceKm = Number(a.distance_km ?? 0); if (!distanceKm && a.distance_m) distanceKm = a.distance_m / 1000;
-      const existing = await base44.asServiceRole.entities.WorkoutSession.filter({ athlete_id: athlete.id, date });
-      if (existing.some((s) => s.sport === sport && Math.abs((s.duration_minutes||0) - durationMinutes) < 1 && Math.abs((s.distance_km||0) - distanceKm) < 0.1)) continue;
+      const sameDay = existingByDate.get(date) || [];
+      const isDuplicate = (s) => s.sport === sport && Math.abs((s.duration_minutes || 0) - durationMinutes) < 1 && Math.abs((s.distance_km || 0) - distanceKm) < 0.1;
+      if (sameDay.some(isDuplicate) || toCreate.some((s) => s.date === date && isDuplicate(s))) continue;
+
       const avgHr = Number(a.avg_heart_rate ?? a.average_heart_rate) || null;
-      toCreate.push({ athlete_id: athlete.id, created_by_id: athlete.created_by_id, date, sport, duration_minutes: Math.round(durationMinutes*100)/100, duration_seconds: Math.round(durationMinutes*60), distance_km: Math.round(distanceKm*100)/100, avg_hr: avgHr || undefined, max_hr: Number(a.max_heart_rate) || undefined, source_format: 'webhook', session_trimp: avgHr ? calcTrimp(durationMinutes, avgHr, restHr, maxHr, athlete.sex) : 0 });
+      const maxHrRow = Number(a.max_heart_rate) || null;
+      // Garmin's own active-calorie and ambient readings, when the account supplies them.
+      const nativeKcal = positiveOrNull(a.active_kilocalories ?? a.activeCalories ?? a.calories);
+      const temperatureC = positiveOrNull(a.average_temperature ?? a.avg_temperature ?? a.temperature_c);
+      const humidityPct = positiveOrNull(a.humidity ?? a.average_humidity);
+      const zoneResult = resolveTimeInZone({
+        laps: [],
+        avgHr,
+        durationSeconds: Math.round(durationMinutes * 60),
+        restHr,
+        maxHr,
+      });
+      const energy = resolveActiveCalories({
+        nativeKcal,
+        durationMin: durationMinutes,
+        avgHr,
+        weightKg: athlete.weight_kg,
+        age: athlete.age,
+        sex: athlete.sex,
+        temperatureC,
+        humidityPct,
+      });
+
+      toCreate.push({
+        athlete_id: athlete.id,
+        created_by_id: athlete.created_by_id,
+        date,
+        sport,
+        duration_minutes: Math.round(durationMinutes * 100) / 100,
+        duration_seconds: Math.round(durationMinutes * 60),
+        distance_km: Math.round(distanceKm * 100) / 100,
+        avg_hr: avgHr || undefined,
+        max_hr: maxHrRow || undefined,
+        source_format: 'webhook',
+        session_trimp: avgHr ? calcTrimp(durationMinutes, avgHr, restHr, maxHr, athlete.sex) : 0,
+        zone_seconds: zoneResult.zone_seconds,
+        zone_method: zoneResult.zone_method,
+        zone_bounds_bpm: zoneResult.zone_bounds_bpm,
+        temperature_c: temperatureC ?? undefined,
+        humidity_pct: humidityPct ?? undefined,
+        ...energy,
+      });
     }
     for (let i = 0; i < toCreate.length; i += 500) await base44.asServiceRole.entities.WorkoutSession.bulkCreate(toCreate.slice(i, i + 500));
     imported = toCreate.length;
