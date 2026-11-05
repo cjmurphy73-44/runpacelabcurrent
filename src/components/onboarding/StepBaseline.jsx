@@ -6,13 +6,22 @@ import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from "@/
 import { RACE_DISTANCES } from "@/science/daniels";
 import BaselinePreviewCard from "@/components/onboarding/BaselinePreviewCard";
 
-function AdvInput({ label, value, onChange, placeholder }) {
+function AdvInput({ label, value, onChange, placeholder, hint }) {
   return (
     <div>
       <Label className="text-xs">{label}</Label>
       <Input type="number" value={value ?? ""} onChange={onChange} placeholder={placeholder} />
+      {hint && <p className="text-[11px] text-muted-foreground mt-1">{hint}</p>}
     </div>
   );
+}
+
+// m/s → min/km, so the advanced field reads in the units people actually run in.
+function paceHint(mps) {
+  const v = Number(mps);
+  if (!v || v <= 0) return null;
+  const secPerKm = 1000 / v;
+  return `≈ ${Math.floor(secPerKm / 60)}:${String(Math.round(secPerKm % 60)).padStart(2, "0")} /km`;
 }
 
 // Step 2 — the one number the whole plan is anchored to. Two ways in:
@@ -115,7 +124,13 @@ export default function StepBaseline({ form, set, setForm, derived, eff, overrid
             <AccordionContent className="space-y-3">
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                 <AdvInput label="VDOT" value={eff("vdot") ?? ""} onChange={override("vdot")} />
-                <AdvInput label="Threshold pace (m/s)" value={eff("thresholdPaceMs") ?? ""} onChange={override("thresholdPaceMs")} placeholder="e.g. 4.17" />
+                <AdvInput
+                  label="Threshold pace (m/s)"
+                  value={eff("thresholdPaceMs") ?? ""}
+                  onChange={override("thresholdPaceMs")}
+                  placeholder="e.g. 4.17"
+                  hint={paceHint(eff("thresholdPaceMs"))}
+                />
                 <AdvInput label="Max HR" value={eff("maxHr") ?? ""} onChange={override("maxHr")} />
                 <AdvInput label="LTHR" value={eff("lactateThresholdHr") ?? ""} onChange={override("lactateThresholdHr")} />
                 <AdvInput label="Seed CTL" value={eff("seedCtl") ?? ""} onChange={override("seedCtl")} />

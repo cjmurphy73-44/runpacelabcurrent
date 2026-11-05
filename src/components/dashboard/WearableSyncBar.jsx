@@ -24,7 +24,9 @@ export default function WearableSyncBar({ onSynced }) {
       }
     };
     const [coros, garmin] = await Promise.all([read("corosSync"), read("garminSync")]);
-    setStatus({ coros, garmin });
+    // Both reads failing is an unknown state, not "nothing connected" — the bar must
+    // not tell someone their watch isn't linked when we simply couldn't ask.
+    setStatus({ coros, garmin, unknown: !coros && !garmin });
   }, []);
 
   useEffect(() => { loadStatus(); }, [loadStatus]);
@@ -78,6 +80,15 @@ export default function WearableSyncBar({ onSynced }) {
   };
 
   if (!status) return null;
+
+  if (status.unknown) {
+    return (
+      <div className="flex items-center justify-between gap-3 rounded-lg border border-border px-3 py-2 text-xs text-muted-foreground">
+        <span className="flex items-center gap-2"><AlertTriangle className="w-3.5 h-3.5" /> Couldn't check your device connections.</span>
+        <Button size="sm" variant="ghost" onClick={loadStatus} className="whitespace-nowrap">Retry</Button>
+      </div>
+    );
+  }
 
   if (connected.length === 0 && !needsReconnect) {
     return (

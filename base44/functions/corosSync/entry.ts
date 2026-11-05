@@ -60,14 +60,19 @@ function appOrigin(req: Request): string {
 function escapeHtml(s: string): string {
   return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 }
+// The consent window is closed when we opened it (the app refreshes status on focus),
+// so the SPA is never force-reloaded or bounced through a redirect. Someone who
+// landed here directly gets a plain confirmation with one link back.
 function callbackPage(kind: 'success' | 'error', title: string, detail: string, origin: string): Response {
   const color = kind === 'success' ? '#16a34a' : '#dc2626';
   const heading = kind === 'success' ? 'COROS connected' : escapeHtml(title);
-  const refresh = kind === 'success' ? '2' : '15';
-  const html = `<!doctype html><meta charset="utf-8"><meta http-equiv="refresh" content="${refresh};url=${escapeHtml(origin)}/settings"><body style="font-family:system-ui;padding:3rem;max-width:520px;margin:auto">
+  const closeScript = kind === 'success'
+    ? '<script>try{if(window.opener&&!window.opener.closed){window.close()}}catch(e){}</script>'
+    : '';
+  const html = `<!doctype html><meta charset="utf-8"><title>${heading}</title><body style="font-family:system-ui;padding:3rem;max-width:520px;margin:auto">
 <h2 style="color:${color}">${heading}</h2>
 <p style="color:#374151;white-space:pre-wrap">${escapeHtml(detail)}</p>
-<p style="margin-top:1.5rem"><a href="${escapeHtml(origin)}/settings">Back to settings</a></p></body>`;
+<p style="margin-top:1.5rem"><a href="${escapeHtml(origin)}/settings">Back to settings</a></p>${closeScript}</body>`;
   return new Response(html, { status: 200, headers: { 'Content-Type': 'text/html' } });
 }
 

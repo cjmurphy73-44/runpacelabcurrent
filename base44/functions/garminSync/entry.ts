@@ -134,8 +134,14 @@ async function handleOAuthCallback(req, base44) {
     status: 'connected', connected_at: now.toISOString(), last_sync_at: null,
   });
 
+  // Close the consent window we opened so the dashboard resumes untouched (it refreshes
+  // connection status on focus). No meta refresh — nothing force-reloads or redirect-loops.
   const origin = appOrigin(req);
-  const html = `<!doctype html><meta http-equiv="refresh" content="2;url=${origin}/settings"><body style="font-family:system-ui;padding:3rem"><h2>Garmin connected</h2><p>Redirecting to your settings…</p><p><a href="${origin}/settings">Back to settings</a></p></body>`;
+  const html = `<!doctype html><meta charset="utf-8"><title>Garmin connected</title><body style="font-family:system-ui;padding:3rem;max-width:520px;margin:auto">
+<h2>Garmin connected</h2>
+<p style="color:#374151">Your workouts, sleep, HRV and resting heart rate will sync from now on.</p>
+<p style="margin-top:1.5rem"><a href="${origin}/settings">Back to settings</a></p>
+<script>try{if(window.opener&&!window.opener.closed){window.close()}}catch(e){}</script></body>`;
   return new Response(html, { headers: { 'Content-Type': 'text/html' } });
 }
 

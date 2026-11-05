@@ -102,7 +102,11 @@ export default function WorkoutDetailModal({ workout, athlete, children, onChang
           <WorkoutMetricTile label="Avg HR" value={workout.avg_hr ? `${workout.avg_hr} bpm` : "—"} />
           <WorkoutMetricTile label="Max HR" value={workout.max_hr ? `${workout.max_hr} bpm` : "—"} />
           <WorkoutMetricTile label="Norm. Pace/Power" value={pacePower} />
-          <WorkoutMetricTile label="Calories" value={calories.kcal ? `${calories.kcal} kcal` : "—"} />
+          <WorkoutMetricTile
+            label="Calories"
+            value={calories.kcal ? `${calories.kcal} kcal` : "—"}
+            hint={calories.kcal ? (calories.source === "device" ? "measured" : "estimated") : null}
+          />
           <WorkoutMetricTile label="Efficiency Factor" value={workout.efficiency_factor ? Number(workout.efficiency_factor).toFixed(2) : "—"} />
         </div>
 
