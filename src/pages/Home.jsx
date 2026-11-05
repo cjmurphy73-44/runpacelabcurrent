@@ -19,6 +19,7 @@ import HolisticFactorsLog from "@/components/dashboard/HolisticFactorsLog";
 import TodaySessionCard from "@/components/dashboard/TodaySessionCard";
 import WeeklyVolumeLine from "@/components/dashboard/WeeklyVolumeLine";
 import DashboardGreeting from "@/components/dashboard/DashboardGreeting";
+import DashboardQuickActions from "@/components/dashboard/DashboardQuickActions";
 
 import HorizonStrip from "@/components/dashboard/HorizonStrip";
 import LoadFatigueChart from "@/components/dashboard/LoadFatigueChart";
@@ -234,6 +235,7 @@ export default function Home() {
         ) : (
           <>
           <DashboardGreeting athlete={athlete} />
+          <WidgetBoundary name="Quick actions"><DashboardQuickActions /></WidgetBoundary>
           <div className="space-y-8">
         <AnomalyAlertBanner />
         {/* 1 — Today's snapshot */}

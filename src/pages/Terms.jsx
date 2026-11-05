@@ -18,7 +18,8 @@ export default function Terms() {
       <h2>2. Subscriptions and billing</h2>
       <ul>
         <li>Free tier: limited wearable sync lookback, manual imports, and a weekly AI-coach message cap.</li>
-        <li>Pro (A$19/month) and Team (A$49/month): billed monthly via Stripe until cancelled.</li>
+        <li>Paid plans — Pro (A$9/month), Unlimited (A$19/month) and Coach Pro (A$29/month): billed monthly via
+        Stripe until cancelled.</li>
         <li>Plans renew automatically. You can cancel at any time; cancellation stops future renewals but does not
         refund the current paid period except where required by law.</li>
         <li>We may change pricing with reasonable notice; existing subscribers keep the current rate until renewal.</li>
@@ -27,7 +28,7 @@ export default function Terms() {
       <p>
         You agree not to misuse the Service, including: submitting data that is not your own without consent,
         attempting to reverse-engineer the physiology models, scraping the Service, or using the Service to provide
-        medical advice. Coaches using the Team plan are responsible for the privacy of any athlete data they import.
+        medical advice. Coaches using the Coach Pro plan are responsible for the privacy of any athlete data they import.
       </p>
       <h2>4. Intellectual property</h2>
       <p>
