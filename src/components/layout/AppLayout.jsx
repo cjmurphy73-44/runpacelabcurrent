@@ -12,7 +12,7 @@ import ThemeToggle from "@/components/layout/ThemeToggle";
 import MobileTabBar from "@/components/layout/MobileTabBar";
 import PageErrorBoundary from "@/components/common/PageErrorBoundary";
 import PageTransition from "@/components/layout/PageTransition";
-import { PRIMARY_NAV } from "@/components/layout/navItems";
+import { PRIMARY_NAV, COACH_NAV } from "@/components/layout/navItems";
 import PlanBadge from "@/components/billing/PlanBadge";
 import { OfflineSyncProvider, NetworkStatusBadge, SyncErrorBoundary } from "@/components/layout/offlineSyncAdapters";
 
@@ -53,8 +53,9 @@ export default function AppLayout() {
                 <div className="hidden sm:block shrink-0">
                   <NetworkStatusBadge />
                 </div>
-                <nav className="hidden lg:flex items-center gap-1 min-w-0">
+                <nav className="hidden lg:flex items-center gap-1 min-w-0 overflow-x-auto">
                   {PRIMARY_NAV.map((n) => navLink(n.to, n.label, n.icon))}
+                  {navLink(COACH_NAV.to, COACH_NAV.label, COACH_NAV.icon)}
                   {isCoach && navLink("/roster", "Roster", Users)}
                   <ToolsDropdown />
                 </nav>

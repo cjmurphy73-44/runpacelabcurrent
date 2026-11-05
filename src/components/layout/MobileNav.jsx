@@ -8,26 +8,35 @@ import {
   SheetTrigger,
   SheetClose,
 } from "@/components/ui/sheet";
-import { Menu, Users, Upload, Sparkles, Sun, Moon, Gauge, LayoutDashboard } from "lucide-react";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
+import {
+  Menu, Users, Upload, Sparkles, Sun, Moon, Gauge, LayoutDashboard,
+  ChevronDown, Wrench,
+} from "lucide-react";
 import { useUIPreferences } from "@/context/UIPreferencesContext";
 import { useAuth } from "@/lib/AuthContext";
 import ModeSwitch from "@/components/layout/ModeSwitch";
 import { useCoachAccess } from "@/hooks/useCoachAccess";
 import { cn } from "@/lib/utils";
-import { PRIMARY_NAV, CALCULATORS, INSIGHTS, LABS } from "@/components/layout/navItems";
+import { PRIMARY_NAV, COACH_NAV, TOOL_GROUPS } from "@/components/layout/navItems";
 
 /**
- * MobileNav — a slide-out sheet that holds the full navigation surface on
- * small screens, so the top bar can stay minimal (logo + account + this
- * trigger). Surfaces primary routes, tools, the Standard/Geek mode switch,
- * and the import/upgrade actions in one organised place instead of cramming
- * them all into the header row.
+ * MobileNav — the slide-out sheet holding the full navigation surface on small
+ * screens. It is a viewport-height column: the "Menu" header stays put while the
+ * body scrolls, so every destination stays reachable in split-screen and short
+ * layouts. Only the four primary training destinations are listed up front; the
+ * tools stay collapsed until opened.
  */
 export default function MobileNav() {
   const [open, setOpen] = useState(false);
+  const [toolsOpen, setToolsOpen] = useState(false);
   const location = useLocation();
   const { theme, toggleTheme } = useUIPreferences();
-  const { isPro, coachMode, canUseCoachWorkspace } = useCoachAccess();
+  const { isPro, canUseCoachWorkspace } = useCoachAccess();
   const { user } = useAuth();
 
   const isActive = (to) => location.pathname === to;
@@ -39,7 +48,10 @@ export default function MobileNav() {
     );
 
   const toolClass =
-    "flex items-center gap-3 px-3 py-3 rounded-md text-sm text-foreground hover:bg-accent min-h-[44px]";
+    "flex items-center gap-3 px-3 py-2.5 rounded-md text-sm text-foreground hover:bg-accent min-h-[44px]";
+
+  const groupLabel =
+    "px-1 pt-2 pb-1 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground";
 
   return (
     <Sheet open={open} onOpenChange={setOpen}>
@@ -52,22 +64,17 @@ export default function MobileNav() {
           <Menu className="w-5 h-5" />
         </button>
       </SheetTrigger>
-      <SheetContent side="right" className="w-[300px] sm:w-80 p-0">
-        <SheetHeader className="px-5 pt-5 pb-3">
+      <SheetContent
+        side="right"
+        className="flex flex-col h-[100dvh] max-h-[100dvh] w-[300px] max-w-[86vw] sm:w-80 p-0"
+      >
+        <SheetHeader className="shrink-0 px-5 pt-5 pb-3 border-b border-border">
           <SheetTitle className="text-left">Menu</SheetTitle>
         </SheetHeader>
 
-        <div className="overflow-y-auto px-3 pb-6 space-y-5">
-          {/* Standard / Geek mode */}
-          <div className="px-2">
-            <ModeSwitch fullWidth />
-            <p className="mt-1.5 px-1 text-[11px] text-muted-foreground">
-              Standard keeps it plain. Geek adds full terms, formulas and advanced metrics.
-            </p>
-          </div>
-
-          {/* Primary nav */}
-          <nav className="space-y-1">
+        <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain px-3 py-4 space-y-4 pb-[calc(1.5rem+env(safe-area-inset-bottom))]">
+          {/* Primary training destinations — the short, fixed list */}
+          <nav className="space-y-1" aria-label="Primary navigation">
             {PRIMARY_NAV.map((n) => (
               <SheetClose asChild key={n.to}>
                 <Link to={n.to} className={primaryClass(n.to)} aria-current={isActive(n.to) ? "page" : undefined}>
@@ -76,6 +83,16 @@ export default function MobileNav() {
                 </Link>
               </SheetClose>
             ))}
+            <SheetClose asChild>
+              <Link
+                to={COACH_NAV.to}
+                className={primaryClass(COACH_NAV.to)}
+                aria-current={isActive(COACH_NAV.to) ? "page" : undefined}
+              >
+                <COACH_NAV.icon className="w-5 h-5" />
+                {COACH_NAV.label}
+              </Link>
+            </SheetClose>
             {canUseCoachWorkspace && (
               <SheetClose asChild>
                 <Link to="/roster" className={primaryClass("/roster")} aria-current={isActive("/roster") ? "page" : undefined}>
@@ -86,52 +103,47 @@ export default function MobileNav() {
             )}
           </nav>
 
-          {/* Tools */}
-          <div className="px-2 space-y-1">
-            <p className="px-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-1">
-              Calculators
+          {/* Everything else, collapsed until asked for */}
+          <Collapsible open={toolsOpen} onOpenChange={setToolsOpen}>
+            <CollapsibleTrigger asChild>
+              <button
+                type="button"
+                className="flex w-full items-center justify-between gap-3 px-3 py-3 rounded-md text-sm font-medium text-muted-foreground hover:bg-accent min-h-[44px]"
+                aria-expanded={toolsOpen}
+              >
+                <span className="flex items-center gap-3">
+                  <Wrench className="w-5 h-5" />
+                  More tools
+                </span>
+                <ChevronDown className={cn("w-4 h-4 transition-transform duration-200", toolsOpen && "rotate-180")} />
+              </button>
+            </CollapsibleTrigger>
+            <CollapsibleContent className="pt-1 space-y-1">
+              {TOOL_GROUPS.map((group) => (
+                <div key={group.label} className="space-y-0.5">
+                  <p className={groupLabel}>{group.label}</p>
+                  {group.items.map((t) => (
+                    <SheetClose asChild key={t.to}>
+                      <Link to={t.to} className={toolClass} aria-current={isActive(t.to) ? "page" : undefined}>
+                        <t.icon className="w-5 h-5 text-muted-foreground" />
+                        {t.label}
+                      </Link>
+                    </SheetClose>
+                  ))}
+                </div>
+              ))}
+            </CollapsibleContent>
+          </Collapsible>
+
+          {/* Standard / Geek mode */}
+          <div className="px-2 pt-1">
+            <ModeSwitch fullWidth />
+            <p className="mt-1.5 px-1 text-[11px] text-muted-foreground">
+              Standard keeps it plain. Geek adds full terms, formulas and advanced metrics.
             </p>
-            {CALCULATORS.map((t) => (
-              <SheetClose asChild key={t.to}>
-                <Link to={t.to} className={toolClass}>
-                  <t.icon className="w-5 h-5 text-muted-foreground" />
-                  {t.label}
-                </Link>
-              </SheetClose>
-            ))}
-            <p className="px-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-1 mt-3">
-              Insights
-            </p>
-            {INSIGHTS.map((t) => (
-              <SheetClose asChild key={t.to}>
-                <Link to={t.to} className={toolClass}>
-                  <t.icon className="w-5 h-5 text-muted-foreground" />
-                  {t.label}
-                </Link>
-              </SheetClose>
-            ))}
-            <p className="px-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-1 mt-3">
-              Labs
-            </p>
-            {LABS.map((t) => (
-              <SheetClose asChild key={t.to}>
-                <Link
-                  to={t.to}
-                  className={toolClass}
-                  onClick={(e) => {
-                    // Force navigation if touch event is being finicky,
-                    // though SheetClose usually handles this.
-                    console.log("Navigating to:", t.to);
-                  }}
-                >
-                  <t.icon className="w-5 h-5 text-muted-foreground" />
-                  {t.label}
-                </Link>
-              </SheetClose>
-            ))}
           </div>
 
-          {/* Theme toggle */}
+          {/* Appearance */}
           <div className="px-2">
             <button
               type="button"
@@ -148,7 +160,7 @@ export default function MobileNav() {
             </button>
           </div>
 
-          {/* Actions */}
+          {/* Account-level actions */}
           <div className="px-2 pt-3 border-t border-border space-y-1">
             {user?.role === "admin" && (
               <>
