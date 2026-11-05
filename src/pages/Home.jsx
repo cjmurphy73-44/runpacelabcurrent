@@ -45,7 +45,7 @@ import TodayFocusLine from "@/components/dashboard/TodayFocusLine";
 import WearableSyncBar from "@/components/dashboard/WearableSyncBar";
 import AnomalyAlertBanner from "@/components/dashboard/AnomalyAlertBanner";
 import AISynthesisCard from "@/components/dashboard/AISynthesisCard";
-import CorosReconnectBanner from "@/components/dashboard/CorosReconnectBanner";
+import ConnectionHealthBanner from "@/components/dashboard/ConnectionHealthBanner";
 import { Sun, TrendingUp, Activity, MessageCircle, HeartPulse, ArrowRight, Plus, LogIn, MessageSquare } from "lucide-react";
 
 export default function Home() {
@@ -217,7 +217,7 @@ export default function Home() {
   return (
     <FitnessProvider athleteId={athlete.id}>
       <PageShell maxWidth="max-w-7xl">
-        <WidgetBoundary name="COROS reconnect"><CorosReconnectBanner /></WidgetBoundary>
+        <WidgetBoundary name="Connection health"><ConnectionHealthBanner /></WidgetBoundary>
         {isEmpty ? (
           <section className="space-y-6">
             <SectionHeading
