@@ -1,9 +1,9 @@
 import React from "react";
-import { Watch, Activity, CircleDot, Share2, Heart } from "lucide-react";
+import { Watch, Activity, CircleDot, Share2, Heart, Smartphone } from "lucide-react";
 import { WEARABLES, syncGuideFor } from "@/lib/wearableCatalog";
 import { Card, CardContent } from "@/components/ui/card";
 
-const ICONS = { Watch, Activity, CircleDot, Share2, Heart };
+const ICONS = { Watch, Activity, CircleDot, Share2, Heart, Smartphone };
 
 function WearableIcon({ name, className = "" }) {
   const Ico = ICONS[name] ?? Watch;

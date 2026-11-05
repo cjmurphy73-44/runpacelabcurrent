@@ -37,7 +37,7 @@ import WidgetBoundary from "@/components/common/WidgetBoundary";
 import WorkoutLogWizard from "@/components/workout/WorkoutLogWizard";
 import BetaFeedbackModal from "@/components/feedback/BetaFeedbackModal";
 import CalibrationMeter from "@/components/dashboard/CalibrationMeter";
-import OnboardingEmptyState from "@/components/dashboard/OnboardingEmptyState";
+import FirstDataPanel from "@/components/onboarding/FirstDataPanel";
 import PlannedActualReconciliation from "@/components/dashboard/PlannedActualReconciliation";
 import CoachBriefing from "@/components/dashboard/CoachBriefing";
 import PhysiologyStrip from "@/components/dashboard/PhysiologyStrip";
@@ -222,10 +222,14 @@ export default function Home() {
           <section className="space-y-6">
             <SectionHeading
               title="Welcome"
-              description="You're set up — now let's log your first session and watch the engine respond."
+              description="You're set up — bring in your first data and we'll take it from there."
               icon={Sun}
             />
-            <OnboardingEmptyState athlete={athlete} onAddManual={() => setManualOpen(true)} />
+            <FirstDataPanel
+              athlete={athlete}
+              onAddManual={() => setManualOpen(true)}
+              onRefresh={() => loadAthleteData(athlete.id)}
+            />
           </section>
         ) : (
           <>
