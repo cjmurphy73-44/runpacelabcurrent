@@ -165,6 +165,13 @@ export default async function(req) {
         await logEvent("ack_only");
         return Response.json({ received: true, error: "Missing user_id or plan in subscription metadata" });
       }
+      // A subscription can exist before payment settles (incomplete / unpaid / past_due).
+      // This path only mirrors a live subscription; the paid checkout event is what grants
+      // access for delayed payment methods, so nothing is provisioned here until it's live.
+      if (sub.status !== "active" && sub.status !== "trialing") {
+        await logEvent("ack_only");
+        return Response.json({ received: true, pending: sub.status });
+      }
       const status = sub.status === "active" || sub.status === "trialing" ? "active" : sub.status === "past_due" ? "past_due" : "canceled";
       const periodEnd = periodEndIso(sub);
       await provision(userId, plan, status, sub.customer, sub.id, periodEnd);
