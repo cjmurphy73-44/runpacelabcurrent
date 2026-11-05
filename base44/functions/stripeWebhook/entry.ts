@@ -100,18 +100,32 @@ export default async function(req) {
       try { await sr.entities.WebhookEvent.create({ event_id: eventId, provider: "stripe", outcome }); } catch (e) { console.warn("WebhookEvent log failed:", e); }
     };
 
-    if ((event.type === "checkout.session.completed" || event.type === "checkout.session.async_payment_succeeded") && event.data?.object?.metadata?.base44_test_checkout === "true") {
+    // Paid access is granted by Stripe Checkout only, and only once payment is actually
+    // confirmed. checkout.session.completed can arrive while a delayed payment method is
+    // still pending, so both that event and the later async success run through this
+    // branch — the payment_status check below is what makes it safe.
+    const isCheckoutEvent = event.type === "checkout.session.completed" || event.type === "checkout.session.async_payment_succeeded";
+
+    if (isCheckoutEvent && event.data?.object?.metadata?.base44_test_checkout === "true") {
       // Base44 merchant self-test charge, not a customer order.
       return Response.json({ received: true, ignored: "base44_test_checkout" });
     }
 
-    if (event.type === "checkout.session.completed") {
+    if (isCheckoutEvent) {
       const s = event.data.object;
       const userId = s.client_reference_id;
       if (!userId) {
         await logEvent("ack_only");
         return Response.json({ received: true, error: "No client_reference_id on session" });
       }
+
+      // Never grant on an unpaid session — wait for the confirmed payment event.
+      const paid = s.payment_status === "paid" || s.payment_status === "no_payment_required";
+      if (!paid) {
+        await logEvent("ack_only");
+        return Response.json({ received: true, pending: s.payment_status || "unknown" });
+      }
+
       const sub = await getSubscription(apiKey, s.subscription);
       const plan = sub ? planFromPrice(sub, priceIds) : null;
       // Do NOT default to "pro" — if we can't identify the price, reject so the
@@ -121,6 +135,22 @@ export default async function(req) {
         await logEvent("ack_only");
         return Response.json({ received: true, error: "Could not resolve plan from subscription price" });
       }
+
+      // Amount/currency integrity: what the buyer was charged must match the price the
+      // plan was resolved from, so a session can never unlock a tier it did not pay for.
+      const price = sub?.items?.data?.[0]?.price;
+      const expected = Number(price?.unit_amount);
+      const charged = Number(s.amount_total);
+      const currencyMismatch = !!(s.currency && price?.currency && s.currency !== price.currency);
+      const amountMismatch = Number.isFinite(expected) && expected > 0 && (!Number.isFinite(charged) || charged > expected);
+      if (currencyMismatch || amountMismatch) {
+        console.error("stripeWebhook: amount/currency mismatch — not provisioning", {
+          sessionId: s.id, charged, expected, currency: s.currency, priceCurrency: price?.currency,
+        });
+        await logEvent("ack_only");
+        return Response.json({ received: true, error: "Amount or currency mismatch" });
+      }
+
       const periodEnd = periodEndIso(sub);
       await provision(userId, plan, "active", s.customer, s.subscription, periodEnd);
       await logEvent("created");
