@@ -7,6 +7,7 @@ import { useToast } from "@/components/ui/use-toast";
 import { Send, Loader2, Lock } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useCoachMessageLimit } from "@/hooks/useCoachMessageLimit";
+import useKeyboardInset from "@/hooks/useKeyboardInset";
 
 const AGENT_NAME = "early_version_ai_coach";
 
@@ -20,6 +21,7 @@ export default function CoachChat() {
   const [awaitingReply, setAwaitingReply] = useState(false);
   const bottomRef = useRef(null);
   const { usedThisWeek, remaining, limitReached, isPro } = useCoachMessageLimit(messages);
+  const keyboardInset = useKeyboardInset();
 
   useEffect(() => {
     (async () => {
@@ -102,7 +104,11 @@ export default function CoachChat() {
         )}
         <div ref={bottomRef} />
       </div>
-      <form onSubmit={handleSend} className="flex items-center gap-2 border-t border-border pt-3">
+      <form
+        onSubmit={handleSend}
+        className="relative z-20 flex items-center gap-2 border-t border-border bg-background pt-3"
+        style={keyboardInset ? { transform: `translateY(-${keyboardInset}px)` } : undefined}
+      >
         <Input
           value={input}
           onChange={(e) => setInput(e.target.value)}

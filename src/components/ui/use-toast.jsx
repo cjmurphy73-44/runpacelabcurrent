@@ -2,7 +2,9 @@
 import { useState, useEffect } from "react";
 
 const TOAST_LIMIT = 20;
-const TOAST_REMOVE_DELAY = 1000000;
+const TOAST_REMOVE_DELAY = 300;
+// Success/informational notices clear themselves; errors stay until dismissed.
+const TOAST_DEFAULT_DURATION = 4500;
 
 const actionTypes = {
   ADD_TOAST: "ADD_TOAST",
@@ -110,7 +112,7 @@ function dispatch(action) {
   });
 }
 
-function toast({ ...props }) {
+function toast({ duration, ...props }) {
   const id = genId();
 
   const update = (props) =>
@@ -119,8 +121,10 @@ function toast({ ...props }) {
       toast: { ...props, id },
     });
 
-  const dismiss = () =>
+  const dismiss = () => {
+    _clearFromRemoveQueue(id);
     dispatch({ type: actionTypes.DISMISS_TOAST, toastId: id });
+  };
 
   dispatch({
     type: actionTypes.ADD_TOAST,
@@ -133,6 +137,10 @@ function toast({ ...props }) {
       },
     },
   });
+
+  // Auto-dismiss success/info notices; errors (destructive) stay until closed.
+  const ms = duration ?? (props.variant === "destructive" ? Infinity : TOAST_DEFAULT_DURATION);
+  if (Number.isFinite(ms)) setTimeout(dismiss, ms);
 
   return {
     id,
@@ -157,8 +165,11 @@ function useToast() {
   return {
     ...state,
     toast,
-    dismiss: (toastId) => dispatch({ type: actionTypes.DISMISS_TOAST, toastId }),
+    dismiss: (toastId) => {
+      if (toastId) _clearFromRemoveQueue(toastId);
+      dispatch({ type: actionTypes.DISMISS_TOAST, toastId });
+    },
   };
 }
 
-export { useToast, toast }; 
+export { useToast, toast };
