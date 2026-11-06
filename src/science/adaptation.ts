@@ -34,6 +34,7 @@ export const HIGH_RAMP_RATE = 'HIGH_RAMP_RATE';
 export const OVERREACHING_RISK = 'OVERREACHING_RISK';
 
 export type AdaptationFlagCode =
+  | "ELEVATED_AEROBIC_DECOUPLING"
   | typeof ACWR_SPIKE_WARNING
   | typeof HIGH_RAMP_RATE
   | typeof OVERREACHING_RISK;
