@@ -66,13 +66,13 @@ export default function MobileNav() {
       </SheetTrigger>
       <SheetContent
         side="right"
-        className="flex flex-col h-[100dvh] max-h-[100dvh] w-[300px] max-w-[86vw] sm:w-80 p-0"
+        className="flex flex-col h-[100dvh] max-h-[100dvh] w-[300px] max-w-[86vw] sm:w-80 p-0 overflow-hidden"
       >
         <SheetHeader className="shrink-0 px-5 pt-5 pb-3 border-b border-border">
           <SheetTitle className="text-left">Menu</SheetTitle>
         </SheetHeader>
 
-        <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain px-3 py-4 space-y-4 pb-[calc(1.5rem+env(safe-area-inset-bottom))]">
+        <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain touch-pan-y [-webkit-overflow-scrolling:touch] px-3 py-4 space-y-4 pb-[calc(1.5rem+env(safe-area-inset-bottom))]">
           {/* Primary training destinations — the short, fixed list */}
           <nav className="space-y-1" aria-label="Primary navigation">
             {PRIMARY_NAV.map((n) => (
