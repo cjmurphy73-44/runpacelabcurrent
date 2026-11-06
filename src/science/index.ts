@@ -7,3 +7,7 @@ export * from './readiness';
 export * from './norwegianEngine';
 export * from './models/fitnessFatigueOde';
 export * from './environment';
+export * from './normalization';
+export * from './decoupling';
+export * from './adaptation';
+export * from './athleteState';
