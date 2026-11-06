@@ -1,6 +1,7 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
 import { parseFitWithLaps, parseTcx, parseCsv, tryParseSummaryCsv, summarizeStream, SOURCE_PRIORITY, parseAssetFile } from '../../shared/workoutParsers.ts';
 import { calcTrimp, calcRTSS, computeNgpSeries, computeDecouplingAndEF } from '../../shared/physiology.ts';
+import { cyclingNormalization, buildAthleteStateSummary } from '../../shared/athleteState.ts';
 import { reconcileStreams, recomputePhysiology, dominantFileType } from '../../shared/streamReconcile.ts';
 import { resolveTimeInZone } from '../../shared/hrZones.ts';
 import { resolveActiveCalories } from '../../shared/calories.ts';
@@ -282,6 +283,21 @@ Deno.serve(async (req) => {
       sessionTss = calcRTSS(parsed.duration_seconds, avg_ngp, athlete.functional_threshold_pace_ms);
     }
 
+    // Cycling's own convention: Coggan Normalized Power (30 s rolling average,
+    // 4th power, 4th root) → TSS against FTP. When usable power exists it is the
+    // primary load, so the HR impulse is not double-counted into the day.
+    if (sessionSport === 'cycling') {
+      const bike = cyclingNormalization(
+        stream,
+        athlete.ftp_watts,
+        parsed.duration_seconds || Math.round(durationMinutes * 60),
+      );
+      if (bike) {
+        sessionTss = bike.tss;
+        sessionTrimp = 0;
+      }
+    }
+
     // True time-in-zone from the parsed stream (or laps), anchored to this athlete's
     // own Karvonen boundaries — never from a fixed %-of-max table.
     const zoneResult = resolveTimeInZone({
@@ -343,7 +359,11 @@ Deno.serve(async (req) => {
     await base44.functions.invoke('calculateDailyTRIMP', { athlete_id, date });
     await base44.functions.invoke('postWorkoutAIEvaluation', { athlete_id, workout_session_id: session.id });
 
-    return Response.json({ success: true, workout_session: session, attached: false });
+    // Deterministic state handed back to the caller (and recomputed identically
+    // inside the AI evaluation before any prose is written).
+    const stateSummary = await buildAthleteStateSummary(base44, session).catch(() => null);
+
+    return Response.json({ success: true, workout_session: session, attached: false, athlete_state_summary: stateSummary });
   } catch (error) {
     try { await reportError(base44, { source: 'ingestWorkoutFile', message: error.message, stack: error.stack, severity: 'High' }); } catch {}
     return Response.json({ error: error.message }, { status: 500 });

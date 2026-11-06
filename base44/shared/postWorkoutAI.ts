@@ -4,6 +4,7 @@
 // implementation. Takes a base44 client and runs entity writes + LLM against it.
 
 import { sendAthletePush } from './pushNotifications.ts';
+import { buildAthleteStateSummary } from './athleteState.ts';
 
 const MAX_LLM_ATTEMPTS = 2;
 const FALLBACK_BACKOFF_MS = 800;
@@ -18,7 +19,10 @@ const EVAL_SCHEMA = {
   required: ['intensity', 'feedback'],
 };
 
-function buildPrompt(workout: any, athlete_id: string) {
+function buildPrompt(workout: any, athlete_id: string, stateSummary: any) {
+  const stateBlock = stateSummary
+    ? `\nDeterministic training state, computed in code. Treat every value as ground truth: do not recompute, re-derive or contradict it. Your job is the prose around these numbers.\n${JSON.stringify(stateSummary)}\n`
+    : '';
   return `Analyze this workout session for athlete ${athlete_id}:
       Sport: ${workout.sport}
       Duration: ${workout.duration_minutes} mins
@@ -26,18 +30,24 @@ function buildPrompt(workout: any, athlete_id: string) {
       Avg HR: ${workout.avg_hr} bpm
       Max HR: ${workout.max_hr} bpm
       TRIMP: ${workout.session_trimp}
+      ${stateBlock}
       Provide a JSON object with:
       - "intensity": one of "easy" | "moderate" | "hard" | "very_hard" (the dominant physiological intensity of the session)
       - "feedback": 2-3 concise coaching takeaways and training guidance as a single string paragraph
       - "highlights": array of 2-4 short bullet strings of the key insights.`;
 }
 
-async function invokeWithRetry(base44: any, workout: any, athlete_id: string): Promise<any> {
+async function invokeWithRetry(
+  base44: any,
+  workout: any,
+  athlete_id: string,
+  stateSummary: any,
+): Promise<any> {
   let lastErr: any = null;
   for (let attempt = 1; attempt <= MAX_LLM_ATTEMPTS; attempt++) {
     try {
       const res: any = await base44.asServiceRole.integrations.Core.InvokeLLM({
-        prompt: buildPrompt(workout, athlete_id),
+        prompt: buildPrompt(workout, athlete_id, stateSummary),
         response_json_schema: EVAL_SCHEMA,
       });
       if (res && (res.feedback || res.intensity)) return res;
@@ -63,12 +73,21 @@ async function upsertFeedback(base44: any, workout_id: string, athlete_id: strin
 export async function runPostWorkoutEvaluation(base44: any, workout_id: string, athlete_id: string) {
   const workout = await base44.asServiceRole.entities.WorkoutSession.get(workout_id);
 
+  // Deterministic math first, prose second: every caller (upload, COROS, Garmin)
+  // gets the same structured state in the prompt without wiring it individually.
+  let stateSummary: any = null;
+  try {
+    stateSummary = await buildAthleteStateSummary(base44, workout);
+  } catch (stateErr: any) {
+    console.warn('AthleteStateSummary unavailable:', stateErr?.message);
+  }
+
   let feedbackRecord: any;
   let coachMsg: any = null;
   let failed = false;
 
   try {
-    const aiEvaluation: any = await invokeWithRetry(base44, workout, athlete_id);
+    const aiEvaluation: any = await invokeWithRetry(base44, workout, athlete_id, stateSummary);
     const feedbackText = aiEvaluation?.feedback ? aiEvaluation.feedback : String(aiEvaluation);
     const intensity = aiEvaluation?.intensity ? aiEvaluation.intensity : 'moderate';
     const highlights = Array.isArray(aiEvaluation?.highlights) ? aiEvaluation.highlights : [];

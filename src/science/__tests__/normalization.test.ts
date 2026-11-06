@@ -212,7 +212,8 @@ describe('normalization: cross-training fallback', () => {
       zoneSeconds: [600, 600, 600, 600, 600],
     });
     expect(result.method).toBe('edwards_trimp');
-    expect(result.load).toBe(45);
+    // 5 × 10 min at zone weights 1..5 = 10 + 20 + 30 + 40 + 50
+    expect(result.load).toBe(150);
   });
 
   it('falls back for cycling without power data', () => {

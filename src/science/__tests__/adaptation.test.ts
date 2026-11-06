@@ -42,10 +42,12 @@ describe('adaptation: load series', () => {
   it('builds a monotonic CTL on a constant load', () => {
     const series = buildLoadSeries(days(60, 50));
     expect(series[0].ctl).toBeLessThan(series[30].ctl);
-    // CTL with a 42-day constant is still converging after 60 days of load.
+    // CTL (42-day) is still converging after 60 days while ATL (7-day) is settled,
+    // so form sits negative by exactly that gap — the closed-form expectation.
     expect(series[59].ctl).toBeGreaterThan(35);
     expect(series[59].ctl).toBeLessThan(50);
-    expect(series[59].tsb).toBeCloseTo(0, 0);
+    expect(series[59].atl).toBeCloseTo(50, 0);
+    expect(series[59].tsb).toBeCloseTo(series[59].ctl - series[59].atl, 1);
   });
 });
 
@@ -53,8 +55,8 @@ describe('adaptation: ACWR', () => {
   it('sits near 1.0 on a stable chronic load', () => {
     const acwr = acuteChronicRatio(days(60, 50));
     expect(acwr).not.toBeNull();
-    expect(acwr!).toBeGreaterThan(0.9);
-    expect(acwr!).toBeLessThan(1.1);
+    expect(acwr!).toBeGreaterThan(0.95);
+    expect(acwr!).toBeLessThan(1.05);
   });
 
   it('returns null when the history is shorter than a week', () => {
@@ -91,7 +93,8 @@ describe('adaptation: CTL ramp rate', () => {
   it('stays quiet on a gradual ramp', () => {
     const history = days(60, 45);
     const assessment = evaluateAdaptation(history);
-    expect(assessment.ctl_ramp_7d).toBeCloseTo(0, 1);
+    // Constant load still ramps slightly while CTL converges, but never past the cap.
+    expect(assessment.ctl_ramp_7d!).toBeLessThan(7);
     expect(assessment.flags).not.toContain(HIGH_RAMP_RATE);
   });
 
