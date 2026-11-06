@@ -88,7 +88,9 @@
   "devDependencies": {
     "@eslint/js": "^9.19.0",
     "@testing-library/react": "^16.3.3",
-    "@types/node": "^22.20.1",
+    "@types/express": "^5.0.6",
+    "@types/node": "^22.20.5",
+    "@types/node-fetch": "^2.6.13",
     "@types/react": "^18.2.66",
     "@types/react-dom": "^18.2.22",
     "@vitejs/plugin-basic-ssl": "^2.3.0",
@@ -103,6 +105,7 @@
     "eslint-plugin-unused-imports": "^4.3.0",
     "globals": "^15.14.0",
     "happy-dom": "^20.14.5",
+    "node-fetch": "^3.3.2",
     "postcss": "^8.5.26",
     "tailwindcss": "^3.4.17",
     "ts-node": "^10.9.2",
