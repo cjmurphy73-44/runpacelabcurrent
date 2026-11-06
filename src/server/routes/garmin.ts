@@ -1,7 +1,7 @@
-import { Router } from "express";
+import express from "express";
 import fetch from 'node-fetch';
 
-const router = Router();
+const router = express.Router();
 
 const GARMIN_CLIENT_ID = process.env.GARMIN_CLIENT_ID || '';
 const GARMIN_CLIENT_SECRET = process.env.GARMIN_CLIENT_SECRET || '';
