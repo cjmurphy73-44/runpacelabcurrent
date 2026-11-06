@@ -1,6 +1,7 @@
 import * as express from "express";
 import fetch from 'node-fetch';
 
+// @ts-ignore
 const router = express.Router();
 
 const GARMIN_CLIENT_ID = process.env.GARMIN_CLIENT_ID || '';
