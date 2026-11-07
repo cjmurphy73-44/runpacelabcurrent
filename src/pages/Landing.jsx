@@ -35,7 +35,7 @@ const PILLARS = [
   {
     icon: HeartPulse,
     title: "Grounded in your real data",
-    body: "Every insight is tied to your actual telemetry — heart rate, pace, recovery scores, and race history. Where AI adds value, it's parsing and synthesizing your real numbers. Where it doesn't, it stays out of the way. No hallucinated prescriptions, no generic advice dressed up as personalised.",
+    body: "Every insight is tied to your actual telemetry — heart rate, pace, recovery scores, and race history. Where AI adds value, it's parsing and synthesizing your real numbers. Where it doesn't, it stays out of the way. Every recommendation is generated from your own training history.",
   },
   {
     icon: Activity,
@@ -47,7 +47,7 @@ const PILLARS = [
 const FEATURES = [
   { icon: BrainCircuit, title: "Adaptive physiology engine", body: "Daily CTL/ATL/TSB modeling, HR-based TRIMP, and VDOT calibration that reshapes your plan as you train." },
   { icon: Watch, title: "Wearable sync", body: "Automatic workout and recovery sync from COROS today, plus FIT, TCX, or CSV upload from any watch. Recovery sync from Oura, WHOOP, Polar, Withings, and Fitbit is ready once credentials are configured. Multi-file reconciliation unifies multiple files into one master record." },
-  { icon: Sparkles, title: "Modest, grounded AI", body: "Post-workout insights, micro-adjustments, and race strategy synthesised from your real telemetry — not generic advice scraped from the internet." },
+  { icon: Sparkles, title: "Modest, grounded AI", body: "Post-workout insights, micro-adjustments, and race strategy synthesised from your real telemetry — built from your own training history." },
   { icon: Users, title: "Coach workspace", body: "Manage a roster, compare athletes side-by-side, and assign plans. Built for squads and individual coaches alike." },
   { icon: ShieldCheck, title: "Injury-aware loading", body: "Your injury history shapes prehab routines and load caps so the plan pushes you forward without breaking you." },
   { icon: Dumbbell, title: "Structured workout export", body: "Send .fit workouts straight to your watch so prescribed intervals land on your wrist, ready to run." },
@@ -64,7 +64,7 @@ const FAQ = [
   { q: "Which wearables are supported?", a: "COROS has direct automated sync today (workouts + recovery). Recovery sync from Oura, WHOOP, Polar, Withings, and Fitbit is built and ready once the team adds each provider's credentials. For Garmin and Strava, upload FIT, TCX, or CSV files from any device, or use a COROS watch as a bridge. Multi-file reconciliation unifies them into one master record." },
   { q: "Is this only for runners?", a: "No. TrainPaceLab is multi-sport — running, cycling, swimming, triathlon, and strength all feed the same physiology model so your training load reflects everything you do." },
   { q: "How does the physiology model work?", a: "Standard platforms model fitness as a single exponential curve of past mileage. TrainPaceLab distinguishes the metabolic and autonomic cost of different session types — threshold work, aerobic volume, VO2max intervals — so your training load reflects what your body actually experienced, not just how many minutes you ran." },
-  { q: "What does the AI actually do?", a: "It parses messy multi-source data, generates post-workout insights, suggests micro-adjustments, and builds race strategy — all grounded in your real telemetry. It does not hallucinate training prescriptions or hand out generic advice. Where the math is deterministic, the math runs. Where language adds value, the AI synthesises." },
+  { q: "What does the AI actually do?", a: "It parses messy multi-source data, generates post-workout insights, suggests micro-adjustments, and builds race strategy — all grounded in your real telemetry. Where the math is deterministic, the math runs, and language is used only to summarise the result. Where language adds value, the AI synthesises." },
   { q: "Can I get access without paying during the beta?", a: "Yes. If you have an access code from the team, redeem it on the pricing page for instant full access until the code's expiry — no checkout required." },
 ];
 
@@ -102,7 +102,7 @@ export default function Landing() {
           <div className="grid lg:grid-cols-2 gap-10 items-center">
             <div className="max-w-xl">
               <span className="inline-flex items-center gap-1.5 rounded-full border border-primary/40 bg-primary/10 px-3 py-1 text-xs font-semibold uppercase tracking-wider text-primary">
-                <Sparkles className="w-3.5 h-3.5" /> Zero AI-Slop · Runner-built
+                <Sparkles className="w-3.5 h-3.5" /> Physiology-led · Runner-built
               </span>
               <h1 className="mt-5 font-heading text-4xl sm:text-6xl font-bold tracking-tight leading-[1.05]">
                 Train to your physiology, <span className="text-primary">not a template.</span>
@@ -119,7 +119,7 @@ export default function Landing() {
               </div>
               <div className="mt-6 flex flex-wrap items-center gap-x-5 gap-y-2 text-xs font-medium text-muted-foreground">
                 <span className="flex items-center gap-1.5"><Ban className="w-3.5 h-3.5 text-primary" />No templated plans</span>
-                <span className="flex items-center gap-1.5"><Ban className="w-3.5 h-3.5 text-primary" />No hallucinated advice</span>
+                <span className="flex items-center gap-1.5"><Ban className="w-3.5 h-3.5 text-primary" />No black-box advice</span>
                 <span className="flex items-center gap-1.5"><Ban className="w-3.5 h-3.5 text-primary" />No data mining</span>
               </div>
             </div>

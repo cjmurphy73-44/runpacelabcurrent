@@ -18,7 +18,7 @@ const PILLARS = [
   {
     icon: FlaskConical,
     title: "Transparent, not a black box",
-    body: "You can see what feeds every metric and what it assumes. The implementation stays ours; the methodology is yours to inspect. No hallucinated prescriptions — where the math is deterministic, the math runs.",
+    body: "You can see what feeds every metric and what it assumes. The implementation stays ours; the methodology is yours to inspect. Where the math is deterministic, the math runs.",
   },
   {
     icon: Users,
