@@ -9,7 +9,8 @@ describe('banisterEngine', () => {
   });
 
   it('should simulate steady load (40-50km/week roughly 50 TSS/day)', () => {
-    const tssSeries = new Array(60).fill(50);
+    // 120 days needed for 42-day CTL time constant to reach >45 asymptotic equilibrium
+    const tssSeries = new Array(120).fill(50);
     const results = simulateBanisterSeries(tssSeries);
     const final = results[results.length - 1];
 
@@ -25,21 +26,20 @@ describe('banisterEngine', () => {
     const tssSeries = [100, 0, 0, 0, 0, 0, 0, 0, 0, 0];
     const results = simulateBanisterSeries(tssSeries);
 
-    // Day 0: 100 TSS
-    // Day 1: Decay (100 -> ~86 for CTL, ~25 for ATL)
-    expect(results[1].atl).toBeLessThan(results[1].ctl);
+    // Day 0: 100 TSS -> ATL spikes higher and faster than CTL
+    expect(results[1].atl).toBeGreaterThan(results[1].ctl);
   });
 
   it('should verify 14-day taper window (positive TSB recovery)', () => {
     // Build some initial fitness/fatigue
-    const initialTss = new Array(30).fill(60);
+    const initialTss = new Array(42).fill(60);
     const initialState = simulateBanisterSeries(initialTss).pop()!;
 
-    // Taper: 0 TSS for 14 days
-    const taperSeries = new Array(14).fill(0);
+    // Taper: 10 TSS for 14 days
+    const taperSeries = new Array(14).fill(10);
     const results = simulateBanisterSeries(taperSeries, initialState);
+    const final = results[results.length - 1];
 
-    // TSB should increase (get less negative/more positive)
-    expect(results[results.length - 1].tsb).toBeGreaterThan(initialState.tsb);
+    expect(final.tsb).toBeGreaterThan(0);
   });
 });
