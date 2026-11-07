@@ -54,7 +54,7 @@ export default function RacePrediction() {
       <Card>
         <CardHeader>
           <CardTitle className="font-heading">Your recent result</CardTitle>
-          <CardDescription>One recent race or a known VDOT — the model does the rest.</CardDescription>
+          <CardDescription>One recent race or a known VDOT, the model does the rest.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">

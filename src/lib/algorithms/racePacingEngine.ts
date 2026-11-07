@@ -1,7 +1,7 @@
 // src/lib/algorithms/racePacingEngine.ts
 // Race pacing & strategy engine: Minetti grade-adjusted pace (GAP), heat/humidity
 // pace adjustment, and a glycogen-aware split-execution strategy. Pure functions —
-// no React, no I/O — so the same module can drive the on-screen splits, the race
+// no React, no I/O, so the same module can drive the on-screen splits, the race
 // strategy builder, and any backend side calculation.
 
 export type SplitPhase = 'start' | 'steady' | 'finish';
@@ -114,7 +114,7 @@ export function targetPaceForSplit(input: RacePaceInput): number {
 // --- Build a full split plan across a race ----------------------------------
 export interface SplitPlanOptions {
   flatPaceSecPerKm: number;
-  /** Grade per segment, parallel to nothing — a single constant grade, or pass per
+  /** Grade per segment, parallel to nothing, a single constant grade, or pass per
    *  segment via buildRaceSplits's segmentGrades array. */
   grade?: number;
   airTempF: number;

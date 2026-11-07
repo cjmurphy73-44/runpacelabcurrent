@@ -11,7 +11,7 @@ export default function PeakOutputsGrid({ power, pace }) {
   if (!hasPower && !hasPace) {
     return (
       <p className="text-sm text-muted-foreground">
-        No detailed telemetry streams stored yet — peak power/pace blocks populate once shorter workouts with second-by-second data are uploaded.
+        No detailed telemetry streams stored yet, peak power/pace blocks populate once shorter workouts with second-by-second data are uploaded.
       </p>
     );
   }

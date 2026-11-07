@@ -60,11 +60,11 @@ export default function OcrVerificationModal({ open, image_url, parsed, athleteI
         file_name: "ocr-screenshot",
       };
 
-      // Client-side guard via the shared TelemetryParser — rejects bogus date/duration
+      // Client-side guard via the shared TelemetryParser, rejects bogus date/duration
       // before the round-trip to the bulk-ingest backend.
       const sanitized = sanitizeSession({ athlete_id: athleteId, ...row });
       if (!sanitized) {
-        throw new Error("Sanitization rejected the session — check the date and duration (must be 1 min – 24 h).");
+        throw new Error("Sanitization rejected the session, check the date and duration (must be 1 min – 24 h).");
       }
 
       // Persist through the existing ingestion pipeline (server-side sanitize + dedup + TRIMP).
@@ -103,7 +103,7 @@ export default function OcrVerificationModal({ open, image_url, parsed, athleteI
         </DialogHeader>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {/* Left — original screenshot */}
+          {/* Left, original screenshot */}
           <div className="space-y-2">
             <Label className="text-xs uppercase tracking-wide text-muted-foreground">Original Screenshot</Label>
             <div className="rounded-lg border border-border overflow-hidden bg-muted/30">
@@ -126,7 +126,7 @@ export default function OcrVerificationModal({ open, image_url, parsed, athleteI
             </div>
           </div>
 
-          {/* Right — editable pre-filled form */}
+          {/* Right, editable pre-filled form */}
           <div className="space-y-3">
             {FIELDS.map((f) => {
               const flaggedField = isFlagged(f.key);
@@ -163,7 +163,7 @@ export default function OcrVerificationModal({ open, image_url, parsed, athleteI
             {error && <p className="text-sm text-destructive">{error}</p>}
             {done && (
               <p className="text-sm text-accent-emerald inline-flex items-center gap-1">
-                <CheckCircle2 className="w-4 h-4" /> Saved — recalculating load metrics…
+                <CheckCircle2 className="w-4 h-4" /> Saved, recalculating load metrics…
               </p>
             )}
           </div>

@@ -40,7 +40,7 @@ export default function BetaFeedbackModal({ open, onClose }) {
       });
       const ok = res?.data?.success || res?.success;
       if (ok) {
-        toast({ title: "Feedback sent", description: "Thanks — the team will review it." });
+        toast({ title: "Feedback sent", description: "Thanks, the team will review it." });
         setMessage("");
         setEmail("");
         onClose?.();
@@ -52,7 +52,7 @@ export default function BetaFeedbackModal({ open, onClose }) {
       try {
         const fallback = `${message}\n\nFrom: ${email || "(anonymous)"}`;
         await navigator.clipboard.writeText(fallback);
-        toast({ title: "Saved to clipboard instead", description: "Copy failed to reach the server — paste it into a message to the team.", variant: "destructive" });
+        toast({ title: "Saved to clipboard instead", description: "Copy failed to reach the server, paste it into a message to the team.", variant: "destructive" });
       } catch {
         toast({ title: e?.message || "Could not send feedback", variant: "destructive" });
       }
@@ -67,7 +67,7 @@ export default function BetaFeedbackModal({ open, onClose }) {
         <DialogHeader>
           <DialogTitle>Send beta feedback</DialogTitle>
           <DialogDescription>
-            Spotted a bug or have an idea? Let the team know — it helps shape the beta.
+            Spotted a bug or have an idea? Let the team know, it helps shape the beta.
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-4">

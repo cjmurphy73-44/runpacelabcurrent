@@ -17,7 +17,7 @@ export const GLOSSARY: Record<string, GlossaryEntry> = {
   },
   tsb: {
     title: "Training Stress Balance (TSB / Form)",
-    body: "CTL minus ATL — how fresh vs fatigued you are. Optimal training: +5 to −15. Race-fresh: +10 to +25. Below −30 = overtraining risk.",
+    body: "CTL minus ATL, how fresh vs fatigued you are. Optimal training: +5 to −15. Race-fresh: +10 to +25. Below −30 = overtraining risk.",
   },
   vdot: {
     title: "VDOT · VO₂max",
@@ -25,7 +25,7 @@ export const GLOSSARY: Record<string, GlossaryEntry> = {
   },
   threshold_pace: {
     title: "Threshold pace (T-pace)",
-    body: "The running pace you can sustain for about an hour — roughly at your lactate-threshold HR. Derived from recent threshold-intensity runs when available, else from your VDOT until a real threshold effort verifies it.",
+    body: "The running pace you can sustain for about an hour, roughly at your lactate-threshold HR. Derived from recent threshold-intensity runs when available, else from your VDOT until a real threshold effort verifies it.",
   },
   ftp: {
     title: "Functional Threshold Power (FTP)",
@@ -33,15 +33,15 @@ export const GLOSSARY: Record<string, GlossaryEntry> = {
   },
   lthr: {
     title: "Lactate Threshold Heart Rate (LTHR)",
-    body: "The heart rate at which blood lactate starts accumulating faster than it's cleared — about a one-hour sustainable HR, the top of your aerobic zone.",
+    body: "The heart rate at which blood lactate starts accumulating faster than it's cleared, about a one-hour sustainable HR, the top of your aerobic zone.",
   },
   trimp: {
     title: "TRIMP",
-    body: "TRaining IMPulse — Banister's heart-rate-based training stress score for a single session.",
+    body: "TRaining IMPulse, Banister's heart-rate-based training stress score for a single session.",
   },
   rtss: {
     title: "rTSS",
-    body: "Running Training Stress Score — a pace-based stress score used when heart rate isn't available.",
+    body: "Running Training Stress Score, a pace-based stress score used when heart rate isn't available.",
   },
   ef: {
     title: "Efficiency Factor (EF)",
@@ -65,11 +65,11 @@ export const GLOSSARY: Record<string, GlossaryEntry> = {
   },
   readiness: {
     title: "Readiness",
-    body: "A 0–100 aggregate recovery score blending sleep, HRV and recent training load — higher means more ready to absorb a hard session.",
+    body: "A 0–100 aggregate recovery score blending sleep, HRV and recent training load, higher means more ready to absorb a hard session.",
   },
 };
 
 export function glossary(key: string): string {
   const e = GLOSSARY[key];
-  return e ? `${e.title} — ${e.body}` : "";
+  return e ? `${e.title}, ${e.body}` : "";
 }

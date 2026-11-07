@@ -43,7 +43,7 @@ export default function OdeModelChart({ athlete }) {
   }, [dailyMetrics]);
 
   // Recompute the ODE model locally with the athlete's personal time constants.
-  // This runs entirely client-side — no backend call — so the sliders are instant.
+  // This runs entirely client-side, no backend call, so the sliders are instant.
   const odeStates = useMemo(() => {
     if (dailyHistory.length === 0) return [];
     return calculateFitnessFatigueOde(dailyHistory, {
@@ -114,7 +114,7 @@ export default function OdeModelChart({ athlete }) {
       </CardHeader>
       <CardContent className="space-y-4">
         <p className="text-xs text-muted-foreground">
-          A coupled differential-equation model with separate gain constants for fitness and fatigue —
+          A coupled differential-equation model with separate gain constants for fitness and fatigue,
           closer to the physiology of supercompensation than the single-EWMA approximation. Adjust your
           personal time constants below to match your individual rate of decay.
         </p>
@@ -146,7 +146,7 @@ export default function OdeModelChart({ athlete }) {
           <div className="space-y-3">
             <div>
               <div className="flex items-center justify-between mb-1.5">
-                <label className="text-xs text-muted-foreground">τ₁ — Fitness decay (days)</label>
+                <label className="text-xs text-muted-foreground">τ₁, Fitness decay (days)</label>
                 <span className="font-mono text-sm font-semibold tabular-nums text-foreground">{tau1}</span>
               </div>
               <Slider value={[tau1]} min={7} max={90} step={1} onValueChange={(v) => setTau1(v[0])} />
@@ -154,7 +154,7 @@ export default function OdeModelChart({ athlete }) {
             </div>
             <div>
               <div className="flex items-center justify-between mb-1.5">
-                <label className="text-xs text-muted-foreground">τ₂ — Fatigue decay (days)</label>
+                <label className="text-xs text-muted-foreground">τ₂, Fatigue decay (days)</label>
                 <span className="font-mono text-sm font-semibold tabular-nums text-foreground">{tau2}</span>
               </div>
               <Slider value={[tau2]} min={3} max={30} step={1} onValueChange={(v) => setTau2(v[0])} />

@@ -57,7 +57,7 @@ export default function AthleteSettings() {
     try {
       const res = await base44.functions.invoke("updateAthleteProfile", { athlete_id: athlete?.id, updates: { profile_role: next } });
       setAthlete(res.data?.athlete || athlete);
-      setMessage({ type: "success", text: next === "coach" ? "Coach mode enabled — the Roster appears with Coach Pro." : "Coach mode disabled." });
+      setMessage({ type: "success", text: next === "coach" ? "Coach mode enabled, the Roster appears with Coach Pro." : "Coach mode disabled." });
     } catch (err) {
       setForm((f) => ({ ...f, profile_role: checked ? "athlete" : "coach" }));
       setMessage({ type: "error", text: err?.response?.data?.error || "Could not update coach mode." });
@@ -147,7 +147,7 @@ export default function AthleteSettings() {
     setMessage(null);
     try {
       await base44.functions.invoke("resetAthleteData", { athlete_id: athlete.id });
-      setMessage({ type: "success", text: "All data reset. Your profile remains — you can re-import workouts anytime." });
+      setMessage({ type: "success", text: "All data reset. Your profile remains, you can re-import workouts anytime." });
     } catch (err) {
       setMessage({ type: "error", text: err?.response?.data?.error || "Could not reset your data." });
     }
@@ -368,7 +368,7 @@ export default function AthleteSettings() {
           <CardTitle className="font-heading flex items-center gap-2">
             <Link2 className="w-4 h-4 text-primary" /> More wearables
           </CardTitle>
-          <CardDescription>Free OAuth recovery sources — Oura, Whoop, Withings, Polar, Fitbit, Suunto.</CardDescription>
+          <CardDescription>Free OAuth recovery sources, Oura, Whoop, Withings, Polar, Fitbit, Suunto.</CardDescription>
         </CardHeader>
         <CardContent>
           <WearableIntegrations athleteId={athlete.id} />

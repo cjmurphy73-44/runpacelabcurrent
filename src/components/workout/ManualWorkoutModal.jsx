@@ -96,7 +96,7 @@ export default function ManualWorkoutModal({ open, onClose, athleteId, onSaved }
         <DialogHeader>
           <DialogTitle>Add a manual workout</DialogTitle>
           <DialogDescription>
-            Quick-test the engine — no device required. CTL/ATL/TSB refresh as soon as you save.
+            Quick-test the engine, no device required. CTL/ATL/TSB refresh as soon as you save.
           </DialogDescription>
         </DialogHeader>
         <form className="space-y-4" onSubmit={handleSubmit}>

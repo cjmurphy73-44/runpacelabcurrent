@@ -35,7 +35,7 @@ Deno.serve(async (req) => {
     if (!athlete) return Response.json({ error: 'Athlete profile not found' }, { status: 404 });
 
     const recentSessions = await base44.entities.WorkoutSession.filter({ athlete_id }, '-date', 500);
-    // Baseline-test enrichment is optional — the PhysiologicalBaselines entity may not be
+    // Baseline-test enrichment is optional, the PhysiologicalBaselines entity may not be
     // configured for this app, so a missing schema shouldn't fail the whole plan generation.
     let latestBaseline = null;
     try {
@@ -91,7 +91,7 @@ Deno.serve(async (req) => {
 
     const tierKey = athlete.training_tier_preference === 'moderate' ? 'intermediate' : (athlete.training_tier_preference || 'conservative');
 
-    const prompt = `You are an elite sports scientist and running/endurance coach, writing a race-anchored, physiologically-grounded training plan of exceptional technical depth — comparable to a plan written by a human exercise physiologist who has studied the athlete's full training history. Be specific and concrete everywhere: real heart-rate ranges, real paces, real durations. Never write vague filler like "run easy" without a number attached.
+    const prompt = `You are an elite sports scientist and running/endurance coach, writing a race-anchored, physiologically-grounded training plan of exceptional technical depth, comparable to a plan written by a human exercise physiologist who has studied the athlete's full training history. Be specific and concrete everywhere: real heart-rate ranges, real paces, real durations. Never write vague filler like "run easy" without a number attached.
 
 ATHLETE PROFILE:
 - Name: ${athlete.first_name} ${athlete.last_name}
@@ -108,29 +108,29 @@ ATHLETE PROFILE:
 - Injury history: ${athlete.injury_history || 'none reported'}
 ${latestBaseline ? `- Latest baseline test (${latestBaseline.recorded_date}): VO2Max ${latestBaseline.vo2max_ml_kg_min || 'n/a'} ml/kg/min, FTP ${latestBaseline.functional_threshold_power_watts || 'n/a'}W, LTHR ${latestBaseline.lactate_threshold_hr_bpm || 'n/a'} bpm` : '- No baseline test on file'}
 - Training history on file: ${totalSessions} sessions / ${totalKm.toFixed(0)}km / ~${weeksOfData} weeks of data
-${trainingPaces ? `- Daniels training paces (server-derived) — Easy: ${trainingPaces.easy.formatted}, Marathon: ${trainingPaces.marathon.formatted}, Threshold: ${trainingPaces.threshold.formatted}, Interval: ${trainingPaces.interval.formatted}, Repetition: ${trainingPaces.repetition.formatted}` : '- Daniels training paces: unknown (set a VDOT estimate on the profile)'}
-${equivalentTimes ? `- Equivalent race times (server-derived) — 5K: ${equivalentTimes.fiveKm.formatted}, 10K: ${equivalentTimes.tenKm.formatted}, Half: ${equivalentTimes.halfMarathon.formatted}, Marathon: ${equivalentTimes.marathon.formatted}` : ''}
-${thresholdPace && thresholdPace.paceMs ? `- Derived running threshold pace: ${formatPaceFromMs(thresholdPace.paceMs)}/km (${thresholdPace.source}; ${thresholdPace.observedRunCount} qualifying runs in last 42 days)` : '- Derived running threshold pace: unknown — set a VDOT or log threshold-intensity runs'}
+${trainingPaces ? `- Daniels training paces (server-derived), Easy: ${trainingPaces.easy.formatted}, Marathon: ${trainingPaces.marathon.formatted}, Threshold: ${trainingPaces.threshold.formatted}, Interval: ${trainingPaces.interval.formatted}, Repetition: ${trainingPaces.repetition.formatted}` : '- Daniels training paces: unknown (set a VDOT estimate on the profile)'}
+${equivalentTimes ? `- Equivalent race times (server-derived), 5K: ${equivalentTimes.fiveKm.formatted}, 10K: ${equivalentTimes.tenKm.formatted}, Half: ${equivalentTimes.halfMarathon.formatted}, Marathon: ${equivalentTimes.marathon.formatted}` : ''}
+${thresholdPace && thresholdPace.paceMs ? `- Derived running threshold pace: ${formatPaceFromMs(thresholdPace.paceMs)}/km (${thresholdPace.source}; ${thresholdPace.observedRunCount} qualifying runs in last 42 days)` : '- Derived running threshold pace: unknown, set a VDOT or log threshold-intensity runs'}
 
-RACE GOALS (chronological): ${sortedGoals.length > 0 ? JSON.stringify(sortedGoals) : 'None specified — build a general fitness-building block'}
+RACE GOALS (chronological): ${sortedGoals.length > 0 ? JSON.stringify(sortedGoals) : 'None specified, build a general fitness-building block'}
 LONG-TERM GOAL: ${long_term_goal || 'Not specified'}
 
-Generate exactly ${cappedWeeks} weeks for the "${tierKey}" tier only, using these EXACT calendar dates (do not invent your own) — one macrocycle row and one weekly_plans entry per week, every day's "date" must be one of the 7 days listed for that week:
+Generate exactly ${cappedWeeks} weeks for the "${tierKey}" tier only, using these EXACT calendar dates (do not invent your own), one macrocycle row and one weekly_plans entry per week, every day's "date" must be one of the 7 days listed for that week:
 ${JSON.stringify(weekDates)}
 
-STRUCTURE REQUIRED (keep prose tight — this is a working plan, not an essay):
-1. plan_title — descriptive, mentions the primary goal and block length.
-2. athlete_summary — 3-4 sentences synthesizing VDOT/HR zones/CTL-ATL-TSB/injury context into a physiological narrative.
-3. goal_architecture — for each key race distance/metric, current value + a milestone per race goal.
-4. pace_zones — Z1 Recovery through Z5 VO2max (+ rep pace if relevant), each with pace range, HR range, purpose, derived from THIS athlete's own LT1/LT2/VDOT/max HR.
-5. prehab_routine — a daily 8-10 minute injury-prevention routine targeting the athlete's injury_history (if none, a sensible general running prehab routine). Brief "why" for each exercise.
-6. macrocycle — one row per week: phase name, key session, deload flag (deload before/after race weeks and periodically).
-7. weekly_plans — one entry per week: theme, totals (one string e.g. "~55km / ~5h30 / ~320 TSS"), and all 7 days filled using the exact dates given. Each day: session_type, sport, title, prescribed_duration_minutes, prescribed_intensity_zone (e.g. "Z2","Z4","Rest"), and a concise description with concrete HR/pace targets and structure (warm-up/main/cool-down). Taper weeks reduce volume ~30-40%. Race weeks include race-week scheduling and a short race-day pacing strategy in that day's description.
-8. nutrition_system — fueling by session type (before/during/after) with CHO/protein grams where relevant.
-9. hrv_framework — table mapping HRV/resting-HR deviations to specific training adjustments.
-10. injury_audit_questions — short weekly self-check checklist tailored to this athlete's injury history.
-11. injury_red_flags — symptoms meaning stop immediately and seek assessment.
-${needsPhase2Note ? `12. phase2_note — since the true goal horizon (${totalWeeks} weeks) extends beyond this ${cappedWeeks}-week block, a short narrative on what comes next and that it will be recalibrated after this block's race result.` : '12. phase2_note — empty string, this plan already covers the full goal horizon.'}`;
+STRUCTURE REQUIRED (keep prose tight, this is a working plan, not an essay):
+1. plan_title, descriptive, mentions the primary goal and block length.
+2. athlete_summary, 3-4 sentences synthesizing VDOT/HR zones/CTL-ATL-TSB/injury context into a physiological narrative.
+3. goal_architecture, for each key race distance/metric, current value + a milestone per race goal.
+4. pace_zones, Z1 Recovery through Z5 VO2max (+ rep pace if relevant), each with pace range, HR range, purpose, derived from THIS athlete's own LT1/LT2/VDOT/max HR.
+5. prehab_routine, a daily 8-10 minute injury-prevention routine targeting the athlete's injury_history (if none, a sensible general running prehab routine). Brief "why" for each exercise.
+6. macrocycle, one row per week: phase name, key session, deload flag (deload before/after race weeks and periodically).
+7. weekly_plans, one entry per week: theme, totals (one string e.g. "~55km / ~5h30 / ~320 TSS"), and all 7 days filled using the exact dates given. Each day: session_type, sport, title, prescribed_duration_minutes, prescribed_intensity_zone (e.g. "Z2","Z4","Rest"), and a concise description with concrete HR/pace targets and structure (warm-up/main/cool-down). Taper weeks reduce volume ~30-40%. Race weeks include race-week scheduling and a short race-day pacing strategy in that day's description.
+8. nutrition_system, fueling by session type (before/during/after) with CHO/protein grams where relevant.
+9. hrv_framework, table mapping HRV/resting-HR deviations to specific training adjustments.
+10. injury_audit_questions, short weekly self-check checklist tailored to this athlete's injury history.
+11. injury_red_flags, symptoms meaning stop immediately and seek assessment.
+${needsPhase2Note ? `12. phase2_note, since the true goal horizon (${totalWeeks} weeks) extends beyond this ${cappedWeeks}-week block, a short narrative on what comes next and that it will be recalibrated after this block's race result.` : '12. phase2_note, empty string, this plan already covers the full goal horizon.'}`;
 
     const plan = await base44.asServiceRole.integrations.Core.InvokeLLM({
       prompt,
@@ -217,7 +217,7 @@ ${needsPhase2Note ? `12. phase2_note — since the true goal horizon (${totalWee
     });
 
     // Validate the AI-generated plan before persisting. The LLM is advisory;
-    // the server is authoritative — reject malformed/bounded-output plans
+    // the server is authoritative, reject malformed/bounded-output plans
     // rather than trusting and storing them.
     const validation = validatePlanStructure(plan, weekDates);
     if (!validation.valid) {

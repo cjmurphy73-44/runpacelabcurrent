@@ -25,7 +25,7 @@ export default function ReadinessScoreCard() {
     return sorted[0] || null;
   }, [dailyMetrics]);
 
-  // Instant local computation — displayed immediately while the server-authoritative
+  // Instant local computation, displayed immediately while the server-authoritative
   // score loads. Kept as a fallback so the card never goes blank.
   const localHolistic = useMemo(() => {
     if (!today) return null;
@@ -68,7 +68,7 @@ export default function ReadinessScoreCard() {
     return () => { cancelled = true; };
   }, [today?.id]);
 
-  // Server verdict is authoritative once it arrives — including a null score
+  // Server verdict is authoritative once it arrives, including a null score
   // meaning "Insufficient Data", which overrides any stale stored value so
   // the card never shows a contradictory number after the server says no data.
   // Before the server responds, the local computation is the instant fallback.
@@ -99,7 +99,7 @@ export default function ReadinessScoreCard() {
           <div className="space-y-2">
             <Badge variant="secondary">No data yet</Badge>
             <p className="text-xs text-muted-foreground">
-              Connect Garmin or COROS to auto-ingest overnight HRV, sleep, and resting HR — or log today's metrics manually.
+              Connect Garmin or COROS to auto-ingest overnight HRV, sleep, and resting HR, or log today's metrics manually.
             </p>
           </div>
         ) : (
@@ -112,7 +112,7 @@ export default function ReadinessScoreCard() {
 
             {serverSignalCount != null && serverSignalCount > 0 && (
               <p className="text-[11px] text-muted-foreground">
-                Based on {serverSignalCount} signal{serverSignalCount === 1 ? "" : "s"}{serverReadiness?.has_baseline ? " with rolling baseline" : " — no baseline yet"}.
+                Based on {serverSignalCount} signal{serverSignalCount === 1 ? "" : "s"}{serverReadiness?.has_baseline ? " with rolling baseline" : ", no baseline yet"}.
               </p>
             )}
 

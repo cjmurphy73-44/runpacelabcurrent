@@ -88,7 +88,7 @@ export default function TrainingPlan() {
   }
 
   if (!athlete) {
-    // Profile setup happens right here, in the Plan tab — the athlete is never sent to the
+    // Profile setup happens right here, in the Plan tab, the athlete is never sent to the
     // dashboard or settings and then asked to come back. One short form, then straight on
     // to plan creation.
     return (
@@ -97,7 +97,7 @@ export default function TrainingPlan() {
           <h1 className="text-xl font-heading font-bold">Build your plan</h1>
           <p className="text-sm text-muted-foreground">
             Your plan is built around your physiology, so we need a few basics first. Fill this in
-            and you'll continue straight into plan creation — you won't need to go anywhere else.
+            and you'll continue straight into plan creation, you won't need to go anywhere else.
           </p>
         </div>
         <OnboardingFlow
@@ -135,7 +135,7 @@ export default function TrainingPlan() {
           <Sparkles className="w-4 h-4" />
           <AlertTitle>Review your new plan</AlertTitle>
           <AlertDescription className="flex items-center justify-between flex-wrap gap-3 mt-1">
-            <span>This plan is a draft — nothing has been added to your calendar yet. Review the macrocycle below, then confirm to commit it.</span>
+            <span>This plan is a draft, nothing has been added to your calendar yet. Review the macrocycle below, then confirm to commit it.</span>
             <div className="flex gap-2 shrink-0">
               <Button variant="outline" size="sm" onClick={() => setShowGenerator(true)}>Discard & Regenerate</Button>
               <Button size="sm" onClick={handleCommit} disabled={committing}>
@@ -157,7 +157,7 @@ export default function TrainingPlan() {
           <ShieldAlert className="w-4 h-4" />
           <AlertTitle>Coach-directed hold active</AlertTitle>
           <AlertDescription>
-            Running sessions in this plan are paused per your recent coach conversation — treat upcoming run days as rest or recovery (rest, cross-train on the bike/pool, or easy strength) until you're cleared.
+            Running sessions in this plan are paused per your recent coach conversation, treat upcoming run days as rest or recovery (rest, cross-train on the bike/pool, or easy strength) until you're cleared.
             <span className="block italic mt-1">{injury.summary}</span>
           </AlertDescription>
         </Alert>

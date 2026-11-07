@@ -57,7 +57,7 @@ export function usePlannedActualReconciliation(athleteId) {
   // site; the result lands as `lastAdjustment` and surfaces as a coaching toast.
   const triggerReplan = useCallback(async (sessionId) => {
     if (!isPro) {
-      setLastAdjustment({ sessionId, summary: 'Adaptive re-planning is a Pro feature — upgrade to let your coach auto-rebalance your week.', ok: false, gated: true });
+      setLastAdjustment({ sessionId, summary: 'Adaptive re-planning is a Pro feature, upgrade to let your coach auto-rebalance your week.', ok: false, gated: true });
       return;
     }
     setAdjustingId(sessionId);
@@ -125,14 +125,14 @@ export function usePlannedActualReconciliation(athleteId) {
         }
       }
 
-      // Overdue = pending (not matched this pass — strict or plausible — and not previously
+      // Overdue = pending (not matched this pass, strict or plausible, and not previously
       // completed) with date < today. A plausible match (e.g. 21% over-duration) must NOT
-      // surface here — it belongs in the reviewable list for user confirm instead.
+      // surface here, it belongs in the reviewable list for user confirm instead.
       const matchedScheduledIds = new Set(
         all.filter((m) => m.matchStatus !== 'UNMATCHED').map((m) => m.scheduledWorkoutId)
       );
       const tK = tKey;
-      // Unmarked plan sessions older than 7 days are silently dropped — not shown, not
+      // Unmarked plan sessions older than 7 days are silently dropped, not shown, not
       // mutated (the pending record stays in the DB). Only sessions within the last week
       // surface as overdue for the user to skip or confirm.
       const overdueCutoff = new Date(today); overdueCutoff.setDate(overdueCutoff.getDate() - 7);
@@ -192,13 +192,13 @@ export function usePlannedActualReconciliation(athleteId) {
     }
   }, [confirmingId, load, triggerReplan, trainingPlanSessionRepo, workoutSessionRepo]);
 
-  // Acknowledge an auto-link — no DB write (already linked); just dismiss from the verify queue.
+  // Acknowledge an auto-link, no DB write (already linked); just dismiss from the verify queue.
   const confirmAutoLink = useCallback((match) => {
     setLastConfirmed(match.sessionId);
     setAutoLinked((prev) => prev.filter((m) => m.sessionId !== match.sessionId));
   }, []);
 
-  // Reject an auto-link — unlink the workout and reset the plan session to pending.
+  // Reject an auto-link, unlink the workout and reset the plan session to pending.
   const rejectAutoLink = useCallback(async (match) => {
     if (!match || rejectingId) return false;
     setRejectingId(match.sessionId);
@@ -235,7 +235,7 @@ export function usePlannedActualReconciliation(athleteId) {
     }
   }, [skippingId, triggerReplan, trainingPlanSessionRepo]);
 
-  // Quick "mark off" for today's planned sessions — marks the plan session completed
+  // Quick "mark off" for today's planned sessions, marks the plan session completed
   // without linking an uploaded activity (user did the session, no file needed).
   const markCompleted = useCallback(async (sessionId) => {
     if (!sessionId || markingId) return false;

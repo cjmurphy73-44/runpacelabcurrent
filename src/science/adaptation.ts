@@ -198,7 +198,7 @@ export function evaluateAdaptation(
       severity: 'critical',
       value: acwr,
       threshold: acwrThreshold,
-      message: `Acute:chronic ratio ${acwr} exceeds ${acwrThreshold} — load spiked faster than the chronic base.`,
+      message: `Acute:chronic ratio ${acwr} exceeds ${acwrThreshold}, load spiked faster than the chronic base.`,
     });
   }
   if (ramp !== null && ramp > rampThreshold) {

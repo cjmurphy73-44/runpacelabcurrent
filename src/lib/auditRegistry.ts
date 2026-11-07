@@ -15,7 +15,7 @@ export interface AuditEntry {
 export const AUDIT_REGISTRY: Record<string, AuditEntry> = {
   acwr: {
     title: "Acute:Chronic Workload Ratio",
-    summary: "Flags load spikes for review — how this week's load compares to your 28-day base.",
+    summary: "Flags load spikes for review, how this week's load compares to your 28-day base.",
     formula:
       "ACWR = mean(load, last 7d) ÷ mean(load, last 28d)\n\nBands (advisory, not diagnostic):\n  ≤ 1.20  Green\n  1.20–1.50  Yellow\n  > 1.50  Red\n\nload = TRIMP when HR available, else rTSS.",
     inputs: [
@@ -25,7 +25,7 @@ export const AUDIT_REGISTRY: Record<string, AuditEntry> = {
       "Requires ≥ 14 days of data to compute",
     ],
     citation:
-      "Gabbett, T.J. 2016. The training-injury prevention paradox. Br J Sports Med.\n⚠ Impellizzeri et al. 2020 (BJSM): ACWR's injury predictive power is not supported by appropriately controlled studies — flags for review, not injury causation.",
+      "Gabbett, T.J. 2016. The training-injury prevention paradox. Br J Sports Med.\n⚠ Impellizzeri et al. 2020 (BJSM): ACWR's injury predictive power is not supported by appropriately controlled studies, flags for review, not injury causation.",
     notes:
       "ACWR is correlational, not causal. The UI distinguishes performance optimisation from injury prevention.",
   },
@@ -40,7 +40,7 @@ export const AUDIT_REGISTRY: Record<string, AuditEntry> = {
       "Age & sex (for HR zone derivation)",
     ],
     citation: "Daniels, J. 2013. Daniels' Running Formula (2nd ed.).",
-    notes: "Rejects efforts < 180 s or < 1200 m — the formula inflates VDOT for sprints.",
+    notes: "Rejects efforts < 180 s or < 1200 m, the formula inflates VDOT for sprints.",
   },
   decoupling: {
     title: "Aerobic Decoupling (Pa:HR)",
@@ -77,7 +77,7 @@ export const AUDIT_REGISTRY: Record<string, AuditEntry> = {
       "Configurable τc (fitness) and τa (fatigue) time constants",
     ],
     citation: "Coggan, A. 2003. Training Stress Score & the Performance Manager Chart (PMC).",
-    notes: "EWMA conflates intensity and volume — two equal-TSS days at different intensity contribute identically.",
+    notes: "EWMA conflates intensity and volume, two equal-TSS days at different intensity contribute identically.",
   },
   trimp: {
     title: "Banister TRIMP",
@@ -92,7 +92,7 @@ export const AUDIT_REGISTRY: Record<string, AuditEntry> = {
       "Sex (banding coefficients)",
     ],
     citation: "Banister, E.W. 1991. Modeling elite athletic performance. In MacDougall, Wenger & Green (eds), Physiological Testing of the High-Performance Athlete (2nd ed.).",
-    notes: "Over-counts intervals — a steady run and threshold intervals at the same average HR score identically.",
+    notes: "Over-counts intervals, a steady run and threshold intervals at the same average HR score identically.",
   },
 };
 

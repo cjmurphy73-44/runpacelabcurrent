@@ -27,7 +27,7 @@ import { Plus, RefreshCw, KanbanSquare, ChevronLeft, ChevronRight, Check, X, Cal
 // Hybrid Training Board:
 //  - Week spine (Mon–Sun) with today highlighted; each day row shows the
 //    prescribed session(s) plus the actual logged workout for that date.
-//    Tap to Complete / Skip (no drag — fiddly on mobile).
+//    Tap to Complete / Skip (no drag, fiddly on mobile).
 //  - "Coming up" backlog of prescribed sessions beyond this week, with a
 //    one-tap "→ This week" move.
 // Status is read from the session's own status field (skipped ≠ done), not a
@@ -216,7 +216,7 @@ export default function TrainingKanban() {
   return (
     <PageShell
       title="Training Board"
-      description="Your week at a glance — prescribed vs. what you actually did. Tap to complete or skip."
+      description="Your week at a glance, prescribed vs. what you actually did. Tap to complete or skip."
       icon={KanbanSquare}
       maxWidth="max-w-3xl"
       action={
@@ -235,7 +235,7 @@ export default function TrainingKanban() {
       {!plan && (
         <Card>
           <CardContent className="py-6 text-center text-sm text-muted-foreground">
-            No active plan — generate one on the Plan page before adding sessions.
+            No active plan, generate one on the Plan page before adding sessions.
             Existing sessions still show below.
           </CardContent>
         </Card>

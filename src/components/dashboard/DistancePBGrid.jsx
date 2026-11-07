@@ -9,7 +9,7 @@ export default function DistancePBGrid({ allTimePBs, seasonPBs }) {
   if (populated.length === 0) {
     return (
       <p className="text-sm text-muted-foreground">
-        No race-distance efforts recorded yet — upload runs matching standard distances (5K, 10K, Half, etc.) to populate this ledger.
+        No race-distance efforts recorded yet, upload runs matching standard distances (5K, 10K, Half, etc.) to populate this ledger.
       </p>
     );
   }

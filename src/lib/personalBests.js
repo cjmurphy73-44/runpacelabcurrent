@@ -186,7 +186,7 @@ function bestAverageOverWindow(stream, durationSec, key) {
 }
 
 // Scans all sessions with stored streams for peak sustained power (any sport) and pace (running) over
-// standard durations (1/5/20/60 min), pulled directly from raw telemetry — not just whole-session averages.
+// standard durations (1/5/20/60 min), pulled directly from raw telemetry, not just whole-session averages.
 export function findPeakOutputs(sessions) {
   const power = {};
   const pace = {};

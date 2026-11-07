@@ -29,7 +29,7 @@ export default function RecoveryCenterView({ athleteId }) {
           {loading ? (
             <div className="flex items-center text-sm text-muted-foreground"><Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading…</div>
           ) : rows.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No recovery data yet — upload a file or log today's metrics.</p>
+            <p className="text-sm text-muted-foreground">No recovery data yet, upload a file or log today's metrics.</p>
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full text-sm">

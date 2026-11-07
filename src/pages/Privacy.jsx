@@ -12,7 +12,7 @@ export default function Privacy() {
         <li><strong>Account data:</strong> name, email, role, and profile settings you provide.</li>
         <li><strong>Physiology data:</strong> height, weight, age, sex, heart-rate thresholds, FTP, and injury history.</li>
         <li><strong>Training & recovery telemetry:</strong> workout sessions, streams, laps, and daily recovery
-        metrics (sleep, HRV, readiness) — uploaded manually or synced from wearables.</li>
+        metrics (sleep, HRV, readiness), uploaded manually or synced from wearables.</li>
         <li><strong>Wearable connection data:</strong> OAuth tokens for Garmin, Strava, and COROS, used only to pull
         your activities on your behalf.</li>
         <li><strong>Usage data:</strong> feature interactions used to improve the Service.</li>

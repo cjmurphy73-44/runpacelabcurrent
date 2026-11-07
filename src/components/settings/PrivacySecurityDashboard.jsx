@@ -107,7 +107,7 @@ export default function PrivacySecurityDashboard({ athleteId }) {
           <Lock className="w-5 h-5 text-success shrink-0 mt-0.5" />
           <div className="space-y-1">
             <div className="flex items-center gap-2">
-              <p className="text-sm font-medium">Row-Level Security — Active</p>
+              <p className="text-sm font-medium">Row-Level Security, Active</p>
               <Badge variant="outline" className="text-success border-success/40 bg-success/10 text-[10px]">Enforced</Badge>
             </div>
             <p className="text-xs text-muted-foreground">
@@ -121,7 +121,7 @@ export default function PrivacySecurityDashboard({ athleteId }) {
         <div className="flex items-start gap-3 rounded-md border border-border bg-muted/20 p-4">
           <Database className="w-5 h-5 text-primary shrink-0 mt-0.5" />
           <div className="space-y-1">
-            <p className="text-sm font-medium">AI layer — No raw data shared</p>
+            <p className="text-sm font-medium">AI layer, No raw data shared</p>
             <p className="text-xs text-muted-foreground">
               The AI coach receives only anonymized numeric state vectors (Form, TSB, ODE values) to render
               summaries. Your raw heart rate, GPS, and health telemetry never enter third-party AI pipelines.
@@ -158,7 +158,7 @@ export default function PrivacySecurityDashboard({ athleteId }) {
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 rounded-md border border-border p-4">
           <div className="space-y-1">
             <p className="text-sm font-medium">Export all my math & telemetry</p>
-            <p className="text-xs text-muted-foreground">Download your full history — daily metrics, ODE states, workout sessions — as open JSON.</p>
+            <p className="text-xs text-muted-foreground">Download your full history, daily metrics, ODE states, workout sessions, as open JSON.</p>
           </div>
           <Button onClick={handleExport} disabled={exporting} variant="outline" className="gap-2 shrink-0">
             {exporting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}

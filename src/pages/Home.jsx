@@ -89,8 +89,8 @@ export default function Home() {
     let cancelled = false;
     (async () => {
       try {
-        if (!user) return; // signed-out — show the sign-in prompt below
-        // Prefer the profile explicitly linked on the user (fetch it directly by ID —
+        if (!user) return; // signed-out, show the sign-in prompt below
+        // Prefer the profile explicitly linked on the user (fetch it directly by ID:
         // a filter by created_by_id misses profiles created under a different identity,
         // e.g. an earlier auth account or a service-role backend function, which is
         // exactly why a Gmail re-login "lost" an existing profile full of data).
@@ -117,7 +117,7 @@ export default function Home() {
           await ensureProfileLinked(user, profile);
           await loadAthleteData(profile.id);
         }
-        // No profile found is NOT an error — it means onboarding is required.
+        // No profile found is NOT an error, it means onboarding is required.
         // Only a thrown query counts as a loadError (transient RLS/network blip),
         // which must show a retry, not the onboarding wall (avoids duplicate creation).
       } catch (err) {
@@ -172,7 +172,7 @@ export default function Home() {
   if (!athlete) {
     if (loadError) {
       // The profile query itself failed (transient RLS/network blip). Showing onboarding
-      // here would let the user create a duplicate profile — so offer a retry instead.
+      // here would let the user create a duplicate profile, so offer a retry instead.
       return (
         <div className="py-8 max-w-md mx-auto">
           <Card className="border-dashed text-center">
@@ -181,7 +181,7 @@ export default function Home() {
                 <Activity className="w-6 h-6 text-accent-foreground" />
               </div>
               <h2 className="text-lg font-heading font-semibold">Couldn't reach your profile</h2>
-              <p className="text-sm text-muted-foreground">We hit a snag loading your data. This is usually momentary — try again.</p>
+              <p className="text-sm text-muted-foreground">We hit a snag loading your data. This is usually momentary, try again.</p>
               <Button onClick={() => window.location.reload()}>Retry</Button>
             </CardContent>
           </Card>
@@ -190,7 +190,7 @@ export default function Home() {
     }
     if (profileExists) {
       // A profile exists but failed to load (transient RLS/network error). Show a retry
-      // instead of the onboarding wall — the wall would let the user create a duplicate.
+      // instead of the onboarding wall, the wall would let the user create a duplicate.
       return (
         <div className="py-8 max-w-md mx-auto">
           <Card className="border-dashed text-center">
@@ -199,7 +199,7 @@ export default function Home() {
                 <Activity className="w-6 h-6 text-accent-foreground" />
               </div>
               <h2 className="text-lg font-heading font-semibold">Couldn't load your profile</h2>
-              <p className="text-sm text-muted-foreground">Your athlete profile exists but the dashboard hit a snag loading it. This is usually a momentary blip — try again.</p>
+              <p className="text-sm text-muted-foreground">Your athlete profile exists but the dashboard hit a snag loading it. This is usually a momentary blip, try again.</p>
               <Button onClick={() => window.location.reload()}>Retry</Button>
             </CardContent>
           </Card>
@@ -223,7 +223,7 @@ export default function Home() {
           <section className="space-y-6">
             <SectionHeading
               title="Welcome"
-              description="You're set up — bring in your first data and we'll take it from there."
+              description="You're set up, bring in your first data and we'll take it from there."
               icon={Sun}
             />
             <FirstDataPanel
@@ -238,7 +238,7 @@ export default function Home() {
           <WidgetBoundary name="Quick actions"><DashboardQuickActions /></WidgetBoundary>
           <div className="space-y-8">
         <AnomalyAlertBanner />
-        {/* 1 — Today's snapshot */}
+        {/* 1, Today's snapshot */}
         <section className="space-y-4">
           <SectionHeading index="01" title="Today's snapshot" description="Your form, readiness and prescribed session for today." icon={Sun} />
           <WidgetBoundary name="Today's focus"><TodayFocusLine athlete={athlete} /></WidgetBoundary>
@@ -249,13 +249,13 @@ export default function Home() {
           <WidgetBoundary name="Weekly volume"><WeeklyVolumeLine athleteId={athlete.id} /></WidgetBoundary>
         </section>
 
-        {/* 2 — Coaching: the AI read on the last two weeks sits directly under today's snapshot */}
+        {/* 2, Coaching: the AI read on the last two weeks sits directly under today's snapshot */}
         <section className="space-y-4">
           <SectionHeading index="02" title="Coaching" description="Your coach's read on the last two weeks." icon={MessageCircle} />
           <WidgetBoundary name="Coach briefing"><CoachBriefing athlete={athlete} /></WidgetBoundary>
         </section>
 
-        {/* 3 — Recent activity */}
+        {/* 3, Recent activity */}
         <section className="space-y-4">
           <SectionHeading
             index="03"
@@ -279,7 +279,7 @@ export default function Home() {
           </div>
         </section>
 
-        {/* 4 — Coach notes (collapsible) */}
+        {/* 4, Coach notes (collapsible) */}
         <CollapsibleSection
           title="Coach notes"
           subtitle="Advice & AI messages tuned to your trend"
@@ -292,7 +292,7 @@ export default function Home() {
           </div>
         </CollapsibleSection>
 
-        {/* 5 — Load & Form (deep — collapses in Simplified mode) */}
+        {/* 5, Load & Form (deep, collapses in Simplified mode) */}
         <CollapsibleSection
           title={isGeek ? "Load & Form (CTL / ATL / TSB)" : "Fitness & freshness over time"}
           subtitle={isGeek ? "Chronic, acute and balance of training stress" : "How fit and how fresh you are"}
@@ -303,7 +303,7 @@ export default function Home() {
           <WidgetBoundary name="Horizon strip"><HorizonStrip athleteId={athlete.id} /></WidgetBoundary>
         </CollapsibleSection>
 
-        {/* 6 — Planned vs. Actual (collapsible) */}
+        {/* 6, Planned vs. Actual (collapsible) */}
         <CollapsibleSection
           title="Planned vs. Actual"
           subtitle="Reconciliation across your recent sessions"
@@ -312,7 +312,7 @@ export default function Home() {
           <WidgetBoundary name="Planned vs actual"><PlannedActualReconciliation athleteId={athlete.id} /></WidgetBoundary>
         </CollapsibleSection>
 
-        {/* 7 — Recovery & Readiness (collapsible) */}
+        {/* 7, Recovery & Readiness (collapsible) */}
         <CollapsibleSection
           title="Recovery & Readiness"
           subtitle={isGeek ? "Sleep, HRV, autonomic stress & lifestyle" : "Sleep, recovery signal & how you feel"}
@@ -372,7 +372,7 @@ export default function Home() {
         athleteId={athlete.id}
         onSaved={() => { trackWorkoutIngested(); loadAthleteData(athlete.id); }}
       />
-      {/* Prominent beta feedback entry — a floating button so testers reach
+      {/* Prominent beta feedback entry, a floating button so testers reach
           the feedback channel without digging into the account menu. */}
       <button
         type="button"

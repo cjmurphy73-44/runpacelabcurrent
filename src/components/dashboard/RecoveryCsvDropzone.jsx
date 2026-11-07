@@ -76,7 +76,7 @@ export default function RecoveryCsvDropzone({ athleteId }) {
     }
 
     try {
-      // UPSERT into DailyMetrics per date — never touch the computed total_trimp / ctl / atl / tsb,
+      // UPSERT into DailyMetrics per date, never touch the computed total_trimp / ctl / atl / tsb,
       // which recalculateCTLATLTSB owns.
       const existing = await base44.entities.DailyMetrics.filter({ athlete_id: athleteId }, "-date", 2000);
       const byDate = new Map(existing.map((m) => [m.date, m.id]));
@@ -95,7 +95,7 @@ export default function RecoveryCsvDropzone({ athleteId }) {
       if (updates.length) await base44.entities.DailyMetrics.bulkUpdate(updates);
       if (creates.length) await base44.entities.DailyMetrics.bulkCreate(creates);
       await reload();
-      setStatus({ type: "success", message: `Synced ${parsed.length} recovery record(s) — ${updates.length} updated, ${creates.length} new.` });
+      setStatus({ type: "success", message: `Synced ${parsed.length} recovery record(s), ${updates.length} updated, ${creates.length} new.` });
     } catch (e) {
       setStatus({ type: "error", message: "Import failed: " + e.message });
     }

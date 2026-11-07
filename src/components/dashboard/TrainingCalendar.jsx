@@ -45,7 +45,7 @@ export default function TrainingCalendar({ athleteId, currentTsb }) {
       {injury.holdReason && (
         <Alert variant="destructive">
           <ShieldAlert className="w-4 h-4" />
-          <AlertTitle>Coach hold — running paused</AlertTitle>
+          <AlertTitle>Coach hold, running paused</AlertTitle>
           <AlertDescription>
             Running days below are replaced by rest / recovery per your coach conversation. <span className="italic">{injury.summary}</span>
           </AlertDescription>

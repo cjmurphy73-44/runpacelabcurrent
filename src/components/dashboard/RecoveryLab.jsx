@@ -31,7 +31,7 @@ export default function RecoveryLab({ athleteId }) {
             {loading ? (
               <p className="text-sm text-muted-foreground">Loading...</p>
             ) : rows.length === 0 ? (
-              <p className="text-sm text-muted-foreground">No biometric data yet — drop a file or log today's metrics.</p>
+              <p className="text-sm text-muted-foreground">No biometric data yet, drop a file or log today's metrics.</p>
             ) : (
               <table className="w-full text-sm">
                 <thead>

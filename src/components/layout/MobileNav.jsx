@@ -25,7 +25,7 @@ import { cn } from "@/lib/utils";
 import { PRIMARY_NAV, COACH_NAV, TOOL_GROUPS } from "@/components/layout/navItems";
 
 /**
- * MobileNav — the slide-out sheet holding the full navigation surface on small
+ * MobileNav, the slide-out sheet holding the full navigation surface on small
  * screens. It is a viewport-height column: the "Menu" header stays put while the
  * body scrolls, so every destination stays reachable in split-screen and short
  * layouts. Only the four primary training destinations are listed up front; the
@@ -73,7 +73,7 @@ export default function MobileNav() {
         </SheetHeader>
 
         <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain touch-pan-y [-webkit-overflow-scrolling:touch] px-3 py-4 space-y-4 pb-[calc(1.5rem+env(safe-area-inset-bottom))]">
-          {/* Primary training destinations — the short, fixed list */}
+          {/* Primary training destinations, the short, fixed list */}
           <nav className="space-y-1" aria-label="Primary navigation">
             {PRIMARY_NAV.map((n) => (
               <SheetClose asChild key={n.to}>

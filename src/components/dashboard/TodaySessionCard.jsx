@@ -54,7 +54,7 @@ export default function TodaySessionCard({ athleteId }) {
             <div className="space-y-3">
               <Alert variant="destructive">
                 <ShieldAlert className="w-4 h-4" />
-                <AlertTitle>Coach hold — running paused</AlertTitle>
+                <AlertTitle>Coach hold, running paused</AlertTitle>
                 <AlertDescription className="space-y-1">
                   <p>{injury.summary}</p>
                   {injury.evidence[0]?.snippet && (
@@ -111,7 +111,7 @@ export default function TodaySessionCard({ athleteId }) {
             <Moon className="w-8 h-8 text-primary" />
             <div>
               <p className="font-heading font-bold text-lg">Rest Day</p>
-              <p className="text-sm text-muted-foreground">No session scheduled — focus on recovery.</p>
+              <p className="text-sm text-muted-foreground">No session scheduled, focus on recovery.</p>
             </div>
           </div>
         )}
@@ -121,14 +121,14 @@ export default function TodaySessionCard({ athleteId }) {
             <AlertTriangle className="w-4 h-4" />
             <AlertTitle>Recovery Alert</AlertTitle>
             <AlertDescription>
-              {hrvAdvice?.action || "Your HRV is notably below baseline — consider easing today's intensity or swapping to recovery."}
+              {hrvAdvice?.action || "Your HRV is notably below baseline, consider easing today's intensity or swapping to recovery."}
             </AlertDescription>
           </Alert>
         )}
 
         {!anomaly && session && !(injury.level === "hold" && session.sport?.toLowerCase().startsWith("run")) && (
           <div className="flex items-center gap-1 text-xs text-muted-foreground">
-            <CheckCircle2 className="w-3.5 h-3.5 text-primary" /> Readiness normal — proceed as prescribed.
+            <CheckCircle2 className="w-3.5 h-3.5 text-primary" /> Readiness normal, proceed as prescribed.
           </div>
         )}
       </CardContent>

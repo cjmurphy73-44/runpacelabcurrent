@@ -9,12 +9,12 @@ import { ONBOARDING_COPY } from "../../constants/onboardingCopy";
 // Plain-language meaning of each tier, shown BEFORE the τ maths so the
 // choice is made on how it feels, not on jargon.
 const TIER_PLAIN = {
-  conservative: "The gentlest ramp. Fatigue clears quickly and your form barely swings — best if you're injury-prone or coming back from a break.",
+  conservative: "The gentlest ramp. Fatigue clears quickly and your form barely swings, best if you're injury-prone or coming back from a break.",
   moderate: "The classic build. Fitness grows over about six weeks while day-to-day fatigue fades within a week. Right for most athletes.",
   aggressive: "Sharp and fast. Big fitness swings and quicker peaks, with more risk. Best for a short, focused race block.",
 };
 
-// Step 3 — what they train with (drives the sync instructions they'll see)
+// Step 3, what they train with (drives the sync instructions they'll see)
 // and how hard they want to be pushed.
 export default function StepHardware({ form, setForm }) {
   return (

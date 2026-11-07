@@ -125,7 +125,7 @@ export default function AnomalyAlertBanner({ athleteId, maxHr }) {
       out.push({
         key: "acwr",
         severity: acwr > 1.8 ? "high" : "med",
-        title: `${acwrLabel} spike — ${acwr.toFixed(2)}`,
+        title: `${acwrLabel} spike, ${acwr.toFixed(2)}`,
         detail: "Acute load is well above your chronic base. Reduce volume this week.",
         actionLabel: "Suggest load reduction",
         actionKind: "load",
@@ -136,7 +136,7 @@ export default function AnomalyAlertBanner({ athleteId, maxHr }) {
       out.push({
         key: "ef",
         severity: efDrop >= 15 ? "high" : "med",
-        title: `Efficiency drop — −${efDrop.toFixed(0)}%`,
+        title: `Efficiency drop, −${efDrop.toFixed(0)}%`,
         detail: "Your run efficiency (NGP/HR) has fallen sharply over the last 7 days.",
         actionLabel: "Suggest rest day",
         actionKind: "rest",
@@ -177,7 +177,7 @@ export default function AnomalyAlertBanner({ athleteId, maxHr }) {
           sport: "other",
           prescribed_duration_minutes: 0,
           prescribed_intensity_zone: "Rest",
-          rationale_text: "Coach-suggested rest day — anomaly alert",
+          rationale_text: "Coach-suggested rest day, anomaly alert",
           status: "pending",
         });
       } else {
@@ -188,7 +188,7 @@ export default function AnomalyAlertBanner({ athleteId, maxHr }) {
           sport: "running",
           prescribed_duration_minutes: 20,
           prescribed_intensity_zone: "Z1 Recovery",
-          rationale_text: "Coach-suggested load reduction — ACWR spike",
+          rationale_text: "Coach-suggested load reduction, ACWR spike",
           status: "pending",
         });
       }
@@ -258,7 +258,7 @@ export default function AnomalyAlertBanner({ athleteId, maxHr }) {
       })}
       {!plan && (
         <p className="text-xs text-muted-foreground px-1">
-          Tip: one-click suggestions need an active plan — generate one on the Plan page.
+          Tip: one-click suggestions need an active plan, generate one on the Plan page.
         </p>
       )}
     </div>

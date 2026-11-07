@@ -24,7 +24,7 @@ export default function CoachMessageFeed({ messages = [] }) {
       </CardHeader>
       <CardContent className="space-y-4">
         {briefing.length === 0 && messages.length === 0 ? (
-          <p className="text-sm text-muted-foreground">No analysis yet — coach updates appear once you log workouts and metrics.</p>
+          <p className="text-sm text-muted-foreground">No analysis yet, coach updates appear once you log workouts and metrics.</p>
         ) : (
           <>
             <div className="space-y-3">

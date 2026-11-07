@@ -24,7 +24,7 @@ export default function WearableSyncBar({ onSynced }) {
       }
     };
     const [coros, garmin] = await Promise.all([read("corosSync"), read("garminSync")]);
-    // Both reads failing is an unknown state, not "nothing connected" — the bar must
+    // Both reads failing is an unknown state, not "nothing connected", the bar must
     // not tell someone their watch isn't linked when we simply couldn't ask.
     setStatus({ coros, garmin, unknown: !coros && !garmin });
   }, []);

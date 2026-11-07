@@ -24,17 +24,11 @@ const STATS = [
 export default function ProductPreview() {
   return (
     <div className="rounded-lg border border-border bg-card shadow-xl overflow-hidden">
-      <div className="flex items-center gap-1.5 px-4 py-3 border-b border-border bg-muted/50">
-        <span className="w-2.5 h-2.5 rounded-full bg-destructive/60" />
-        <span className="w-2.5 h-2.5 rounded-full bg-amber-400/70" />
-        <span className="w-2.5 h-2.5 rounded-full bg-emerald-500/60" />
-        <span className="ml-3 text-xs text-muted-foreground font-mono">trainpacelab.base44.app/app</span>
-      </div>
       <div className="p-5 space-y-4">
         <div className="flex items-center justify-between">
           <div>
             <p className="text-xs text-muted-foreground uppercase tracking-wider">Today</p>
-            <p className="font-heading font-semibold text-lg">Tuesday — Quality session</p>
+            <p className="font-heading font-semibold text-lg">Tuesday, Quality session</p>
           </div>
           <Badge className="bg-success/15 text-success border border-success/30">Ready</Badge>
         </div>
@@ -54,7 +48,7 @@ export default function ProductPreview() {
           ))}
         </div>
         <div className="rounded-md border border-border p-3">
-          <p className="text-xs text-muted-foreground mb-2">Fitness vs Fatigue — 8 weeks</p>
+          <p className="text-xs text-muted-foreground mb-2">Fitness vs Fatigue, 8 weeks</p>
           <div className="h-28">
             <ResponsiveContainer width="100%" height="100%">
               <AreaChart data={TREND} margin={{ top: 4, right: 4, bottom: 0, left: -28 }}>

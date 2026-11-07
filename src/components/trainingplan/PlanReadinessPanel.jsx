@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label";
 import { HeartPulse, Loader2 } from "lucide-react";
 
 // Collects the physiology values that actually change a generated plan's targets, inline
-// inside the Plan tab — no trip to Settings. Everything here is optional: a plan can still
+// inside the Plan tab, no trip to Settings. Everything here is optional: a plan can still
 // be built without them, its pace/HR targets just stay generic.
 export function missingPlanInputs(athlete) {
   if (!athlete) return [];
@@ -79,7 +79,7 @@ export default function PlanReadinessPanel({ athlete, onSaved }) {
           <div>
             <Label className="text-xs">Resting heart rate (bpm)</Label>
             <Input type="number" min="0" value={form.resting_hr} onChange={set("resting_hr")} placeholder="e.g. 52" />
-            <p className="text-[11px] text-muted-foreground mt-1">Your watch usually shows this — take it first thing in the morning.</p>
+            <p className="text-[11px] text-muted-foreground mt-1">Your watch usually shows this, take it first thing in the morning.</p>
           </div>
           <div>
             <Label className="text-xs">VDOT estimate (optional)</Label>

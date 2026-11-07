@@ -12,7 +12,7 @@ function WearableIcon({ name, className = "" }) {
 
 // Onboarding step: asks the athlete which wearables / tracking ecosystems they
 // use so the dashboard can tailor sync instructions to their actual hardware.
-// Multi-select chip grid — users pick whatever they actually own/use.
+// Multi-select chip grid, users pick whatever they actually own/use.
 export default function WearableStep({ selected = [], onToggle }) {
   const toggle = (key) => {
     if (selected.includes(key)) onToggle(selected.filter((k) => k !== key));
@@ -26,7 +26,7 @@ export default function WearableStep({ selected = [], onToggle }) {
         <span className="text-[10px] uppercase tracking-wider font-semibold text-muted-foreground">Optional</span>
       </div>
       <p className="text-xs text-muted-foreground -mt-1">
-        Pick everything you train with — we'll tailor your sync instructions to your stack. You can change this anytime in Settings. Skip if you're not sure.
+        Pick everything you train with, we'll tailor your sync instructions to your stack. You can change this anytime in Settings. Skip if you're not sure.
       </p>
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 pt-1">
         {WEARABLES.map((w) => {

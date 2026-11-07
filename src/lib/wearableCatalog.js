@@ -3,8 +3,8 @@
 // enum so the selection round-trips through the database intact.
 //
 // status:
-//   auto_sync   — a real OAuth connection exists in the app, data pulls in
-//   manual_only — no web-readable feed; the athlete uploads an export instead
+//   auto_sync  , a real OAuth connection exists in the app, data pulls in
+//   manual_only, no web-readable feed; the athlete uploads an export instead
 export const WEARABLES = [
   {
     key: "coros",
@@ -13,7 +13,7 @@ export const WEARABLES = [
     status: "auto_sync",
     blurb: "Workouts and recovery",
     instructions:
-      "Connect COROS once under Connect a device — new runs and recovery metrics then pull in on demand or on the nightly sync.",
+      "Connect COROS once under Connect a device, new runs and recovery metrics then pull in on demand or on the nightly sync.",
   },
   {
     key: "garmin",
@@ -31,7 +31,7 @@ export const WEARABLES = [
     status: "auto_sync",
     blurb: "Every recorded activity",
     instructions:
-      "Connect Strava under Connect a device — each new activity is fetched automatically after it uploads.",
+      "Connect Strava under Connect a device, each new activity is fetched automatically after it uploads.",
   },
   {
     key: "polar",
@@ -67,7 +67,7 @@ export const WEARABLES = [
     status: "manual_only",
     blurb: "Export, then upload",
     instructions:
-      "Apple doesn't let a web app read Health directly — export a .fit or .csv workout from your phone and upload it under Import workout files.",
+      "Apple doesn't let a web app read Health directly, export a .fit or .csv workout from your phone and upload it under Import workout files.",
   },
   {
     key: "apple_health",
@@ -86,7 +86,7 @@ export const WEARABLE_MAP = WEARABLES.reduce((acc, w) => {
 }, {});
 
 // Returns the ordered guide entries for the athlete's selected providers.
-// Always an array — callers map over it and check `.length`.
+// Always an array, callers map over it and check `.length`.
 export function syncGuideFor(selected = []) {
   const keys = Array.isArray(selected) ? selected : [];
   return keys

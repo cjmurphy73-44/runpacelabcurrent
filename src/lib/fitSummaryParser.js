@@ -3,7 +3,7 @@
 // can compile hundreds of .fit files locally in the browser quickly.
 
 const GARMIN_EPOCH_OFFSET_SEC = 631065600; // seconds between Unix epoch and FIT epoch (1989-12-31)
-const MAX_DURATION_SECONDS = 24 * 60 * 60; // reject sessions longer than 24h — sign of corrupted/misread timestamp data
+const MAX_DURATION_SECONDS = 24 * 60 * 60; // reject sessions longer than 24h, sign of corrupted/misread timestamp data
 
 const SPORT_MAP = {
   0: "other",
@@ -48,14 +48,14 @@ function average(values) {
 
 // FIT timestamps are seconds since the FIT/Garmin epoch (1989-12-31) per the spec. Modern
 // workouts have raw values well past 1e9, so the previous `< 1e9` heuristic skipped the offset for
-// current files and decoded 2025/2026 workouts as 2005/2006 — always add the epoch offset.
+// current files and decoded 2025/2026 workouts as 2005/2006, always add the epoch offset.
 function fitTimestampToISOString(rawTimestamp) {
   const unixSeconds = rawTimestamp + GARMIN_EPOCH_OFFSET_SEC;
   return new Date(unixSeconds * 1000).toISOString();
 }
 
 // A RAW timestamp minus another can yield billions of seconds when the earliest record's timestamp
-// is missing/corrupt — a real workout never spans more than 24h, so treat any larger span as invalid
+// is missing/corrupt, a real workout never spans more than 24h, so treat any larger span as invalid
 // (returns 0) and let the caller fall back to a record-count-based elapsed estimate.
 function sanitizeSpan(span) {
   if (typeof span !== "number" || !isFinite(span) || span <= 0 || span > 86400) return 0;
@@ -71,7 +71,7 @@ function assertBounds(offset, size, byteLength) {
 }
 
 // Decodes the FIT "session" message (global mesg num 18) when present. Some files (notably
-// certain third-party exports) omit it entirely — in that case we fall back to aggregating
+// certain third-party exports) omit it entirely, in that case we fall back to aggregating
 // "lap" (19) or "record" (20) messages, which are captured during the same single pass.
 export function parseFitSummary(arrayBuffer) {
   const bytes = new Uint8Array(arrayBuffer);
@@ -168,7 +168,7 @@ export function parseFitSummary(arrayBuffer) {
         records.push(rec);
       }
     } catch (err) {
-      if (err instanceof RangeError) break; // truncated/corrupt record — stop parsing, keep what we have
+      if (err instanceof RangeError) break; // truncated/corrupt record, stop parsing, keep what we have
       throw err;
     }
   }
@@ -213,13 +213,13 @@ export function parseFitSummary(arrayBuffer) {
   // Prefer total_timer_time (active time) over total_elapsed_time (includes pauses) when present.
   const elapsedSeconds = session.total_timer_time || session.total_elapsed_time || 0;
   if (elapsedSeconds > MAX_DURATION_SECONDS) {
-    throw new Error(`Duration exceeds 24 hours (${Math.round(elapsedSeconds / 3600)}h) — likely corrupted timestamp data`);
+    throw new Error(`Duration exceeds 24 hours (${Math.round(elapsedSeconds / 3600)}h), likely corrupted timestamp data`);
   }
   // A real workout is never under ~1 minute; durations of a few seconds mean the session frame had
-  // no elapsed/timer field and the parser fell back to a tiny record count — drop these as unusable
+  // no elapsed/timer field and the parser fell back to a tiny record count, drop these as unusable
   // so they don't pollute the log as 0.05-min "workouts".
   if (elapsedSeconds < 60) {
-    throw new Error(`Duration ${Math.round(elapsedSeconds)}s is below the 60s minimum — not a usable workout`);
+    throw new Error(`Duration ${Math.round(elapsedSeconds)}s is below the 60s minimum, not a usable workout`);
   }
 
   return {

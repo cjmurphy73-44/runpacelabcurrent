@@ -4,7 +4,7 @@ import { cn } from "@/lib/utils";
 import { useUIPreferences } from "@/context/UIPreferencesContext";
 
 /**
- * CollapsibleSection — a progressive-disclosure wrapper for optional/secondary
+ * CollapsibleSection, a progressive-disclosure wrapper for optional/secondary
  * ("under the surface") detail. Renders a compact trigger row that expands to
  * reveal its children. Defaults to collapsed so the primary view stays calm;
  * advanced metrics / seldom-used controls live behind a single click.

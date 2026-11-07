@@ -9,12 +9,12 @@ import { Zap, Gauge, ShieldAlert, HeartPulse } from "lucide-react";
 
 // Map the threshold-engine provenance strings to clear on-tile sub-labels.
 // We deliberately keep the literal "VDOT"/"vdot" wording OFF the tile (it reads
-// like a glitch) — the full provenance is still available via the hover tooltip.
+// like a glitch), the full provenance is still available via the hover tooltip.
 function humanThresholdSource(source) {
   if (!source) return "";
   const map = {
     "VDOT Daniels T-pace": "Estimated · log a threshold run to verify",
-    "VDOT only — cross-training in progress": "Cross-training · estimated until a run verifies",
+    "VDOT only, cross-training in progress": "Cross-training · estimated until a run verifies",
     "Stored baseline": "From your stored baseline",
     "Set VDOT or a baseline": "Set VDOT or a baseline",
   };

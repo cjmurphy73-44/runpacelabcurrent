@@ -80,12 +80,12 @@ export default function RecoveryUpload({ athleteId }) {
         .filter((r) => NUMERIC_FIELDS.some((f) => r[f] !== undefined));
 
       if (parsed.length === 0) {
-        setStatus({ type: "error", message: "No valid rows — need a date plus at least one recovery metric (HRV, sleep score, resting HR or readiness)." });
+        setStatus({ type: "error", message: "No valid rows, need a date plus at least one recovery metric (HRV, sleep score, resting HR or readiness)." });
         setUploading(false);
         return;
       }
 
-      // UPSERT recovery fields into DailyMetrics per date — never touch computed load columns.
+      // UPSERT recovery fields into DailyMetrics per date, never touch computed load columns.
       const existing = await base44.entities.DailyMetrics.filter({ athlete_id: athleteId }, "-date", 2000);
       const byDate = new Map(existing.map((m) => [m.date, m.id]));
       const updates = [];
@@ -99,7 +99,7 @@ export default function RecoveryUpload({ athleteId }) {
       if (updates.length) await base44.entities.DailyMetrics.bulkUpdate(updates);
       if (creates.length) await base44.entities.DailyMetrics.bulkCreate(creates);
       await reload();
-      setStatus({ type: "success", message: `Synced ${parsed.length} record(s) — ${updates.length} updated, ${creates.length} new.` });
+      setStatus({ type: "success", message: `Synced ${parsed.length} record(s), ${updates.length} updated, ${creates.length} new.` });
       setFile(null);
     } catch (err) {
       setStatus({ type: "error", message: err.message || "Import failed." });

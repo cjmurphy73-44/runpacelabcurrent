@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 
 // One dashboard banner for every connection that has stopped delivering data.
 // Covers Garmin as well as COROS, says what stopped and what is safe, and starts
-// re-authorization right here — no detour into settings just to find a button.
+// re-authorization right here, no detour into settings just to find a button.
 const PROVIDERS = [
   { fn: "corosSync", label: "COROS" },
   { fn: "garminSync", label: "Garmin" },
@@ -25,7 +25,7 @@ export default function ConnectionHealthBanner() {
         const s = res?.data || res || {};
         return s?.needs_reconnect ? { fn, label, reason: s.last_error || null } : null;
       } catch {
-        // A failed check is unknown, not "expired" — never nag about a connection
+        // A failed check is unknown, not "expired", never nag about a connection
         // we couldn't read.
         return null;
       }

@@ -18,7 +18,7 @@ Deno.serve(async (req) => {
     const athlete = await base44.entities.AthleteProfile.get(athlete_id);
     if (!athlete) return Response.json({ error: 'Athlete profile not found' }, { status: 404 });
 
-    // Baseline-test enrichment is optional — the PhysiologicalBaselines entity may not be
+    // Baseline-test enrichment is optional, the PhysiologicalBaselines entity may not be
     // configured for this app, so a missing schema shouldn't fail the whole strategy.
     let latestBaseline = null;
     try {
@@ -37,7 +37,7 @@ Deno.serve(async (req) => {
       thresholdPace = deriveRunningThresholdPace(recentSessions, athlete.vdot_estimate, athlete.functional_threshold_pace_ms, athlete.lactate_threshold_hr);
     } catch (_e) { /* best-effort enrichment */ }
 
-    // Taper length and emphasis scale with event category — a mile taper is short and sharpening-focused,
+    // Taper length and emphasis scale with event category, a mile taper is short and sharpening-focused,
     // an ultra taper is long and recovery-focused. This keeps the plan physiologically appropriate to distance.
     const EVENT_TAPER_DAYS = {
       '800m': 7, '1500m': 7, 'Mile': 7,
@@ -63,7 +63,7 @@ ${thresholdPace && thresholdPace.paceMs ? `- Derived running threshold pace (ser
 
 Target event: ${event_type}
 
-Produce a structured ${taperDays}-day exponential taper plan (day 1 = ${taperDays} days out, day ${taperDays} = race day) appropriate to this event's distance — short track/middle-distance events taper fast with sharpening intensity, road races taper progressively, and ultra-endurance events use a longer, recovery-weighted taper — that progressively reduces training volume while retaining short high-intensity efforts to preserve blood plasma volume and neuromuscular sharpness. Also produce a race-day physiological execution strategy with specific heart rate and/or power caps mapped to this athlete's exact thresholds, including fueling/pacing guidance appropriate to the event's duration (e.g. carb intake per hour for ultras).`;
+Produce a structured ${taperDays}-day exponential taper plan (day 1 = ${taperDays} days out, day ${taperDays} = race day) appropriate to this event's distance, short track/middle-distance events taper fast with sharpening intensity, road races taper progressively, and ultra-endurance events use a longer, recovery-weighted taper, that progressively reduces training volume while retaining short high-intensity efforts to preserve blood plasma volume and neuromuscular sharpness. Also produce a race-day physiological execution strategy with specific heart rate and/or power caps mapped to this athlete's exact thresholds, including fueling/pacing guidance appropriate to the event's duration (e.g. carb intake per hour for ultras).`;
 
     const result = await base44.integrations.Core.InvokeLLM({
       prompt,

@@ -54,7 +54,7 @@ export default function Imports() {
         <div className="space-y-1">
           <h1 className="text-2xl font-heading font-bold">Imports & Sync</h1>
           <p className="text-sm text-muted-foreground">
-            Let's set up your athlete profile first — then you can connect devices and import workouts here.
+            Let's set up your athlete profile first, then you can connect devices and import workouts here.
           </p>
         </div>
         <OnboardingFlow onCreated={(profile) => setAthlete(profile)} />
@@ -74,13 +74,13 @@ export default function Imports() {
         <HelpLink section="connect-data" label="How to export from your watch" />
       </div>
 
-      {/* Quick manual log — for users with no device yet */}
+      {/* Quick manual log, for users with no device yet */}
       <Card className="border-dashed bg-muted/30">
         <CardContent className="pt-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
           <div>
             <p className="font-heading font-semibold">No device handy? Log one manually.</p>
             <p className="text-sm text-muted-foreground">
-              Add a quick session and your CTL / ATL / TSB refresh instantly — no file needed.
+              Add a quick session and your CTL / ATL / TSB refresh instantly, no file needed.
             </p>
           </div>
           <Button onClick={() => setManualOpen(true)}>
@@ -89,9 +89,9 @@ export default function Imports() {
         </CardContent>
       </Card>
 
-      {/* 1 — Connect a device (automated sync) */}
+      {/* 1, Connect a device (automated sync) */}
       <section className="space-y-3">
-        <SectionHeading index="01" title="Connect a device" description="Automated sync — new activities and recovery flow in without you lifting a finger." icon={Watch} />
+        <SectionHeading index="01" title="Connect a device" description="Automated sync, new activities and recovery flow in without you lifting a finger." icon={Watch} />
         <div className="space-y-3">
           <CorosIntegration athleteId={athlete.id} />
           <GarminIntegration athleteId={athlete.id} />
@@ -100,7 +100,7 @@ export default function Imports() {
             <CardContent className="pt-4 flex items-center justify-between gap-3">
               <div>
                 <p className="text-sm font-medium">More recovery wearables</p>
-                <p className="text-xs text-muted-foreground">Oura, Whoop, Withings, Polar, Fitbit, Suunto — connect them in Settings.</p>
+                <p className="text-xs text-muted-foreground">Oura, Whoop, Withings, Polar, Fitbit, Suunto, connect them in Settings.</p>
               </div>
               <Button asChild variant="outline" size="sm">
                 <Link to="/settings"><Settings className="w-4 h-4" /> Open Settings</Link>
@@ -110,25 +110,25 @@ export default function Imports() {
         </div>
       </section>
 
-      {/* 2 — Import workout files */}
+      {/* 2, Import workout files */}
       <section className="space-y-3">
         <SectionHeading index="02" title="Import workout files" description="Bulk-upload .fit or .csv exports from your watch or training platform." icon={Upload} />
         <BulkWorkoutImport athleteId={athlete.id} onUploaded={() => {}} />
         <p className="text-xs text-muted-foreground">
           Supports <span className="font-medium">.fit</span> and <span className="font-medium">.csv</span> from Strava, COROS, Garmin and others.
-          {" "}<span className="font-medium">.gpx</span> isn't supported yet — convert it to FIT/CSV or use a device connection above.
+          {" "}<span className="font-medium">.gpx</span> isn't supported yet, convert it to FIT/CSV or use a device connection above.
         </p>
       </section>
 
-      {/* 3 — Recovery & sleep */}
+      {/* 3, Recovery & sleep */}
       <section className="space-y-3">
         <SectionHeading index="03" title="Recovery & sleep" description="Log today's HRV, sleep and resting HR manually, or bulk-import a CSV/JSON export from Oura, WHOOP, Garmin or Apple Health." icon={HeartPulse} />
         <RecoveryImportSection athleteId={athlete.id} />
       </section>
 
-      {/* 4 — Lab results */}
+      {/* 4, Lab results */}
       <section className="space-y-3">
-        <SectionHeading index="04" title="Lab results" description="Blood panels, VO₂max, lactate-at-threshold — feed your recovery baselines and AI synthesis." icon={FlaskConical} />
+        <SectionHeading index="04" title="Lab results" description="Blood panels, VO₂max, lactate-at-threshold, feed your recovery baselines and AI synthesis." icon={FlaskConical} />
         <Card>
           <CardContent className="pt-5">
             <LabResultsImport athleteId={athlete.id} />
@@ -137,9 +137,9 @@ export default function Imports() {
         <p className="text-xs text-muted-foreground">One row per metric per date.</p>
       </section>
 
-      {/* 5 — Advanced webhook / API */}
+      {/* 5, Advanced webhook / API */}
       <section className="space-y-3">
-        <SectionHeading index="05" title="Webhook & API" description="Advanced — push workout summaries from your own scripts, Zapier, or Make." icon={Webhook} />
+        <SectionHeading index="05" title="Webhook & API" description="Advanced, push workout summaries from your own scripts, Zapier, or Make." icon={Webhook} />
         <WebhookSyncPanel athleteId={athlete.id} />
       </section>
 

@@ -40,24 +40,24 @@ export default function WorkoutDetailModal({ workout, athlete, children, onChang
     const out = [];
     if (load) {
       out.push(
-        `Session load ${Math.round(load)} ${workout.session_trimp ? "TRIMP — Banister's heart-rate impulse, the stress that feeds your fitness curve" : "rTSS — pace-based stress used when no heart-rate data exists"}.`
+        `Session load ${Math.round(load)} ${workout.session_trimp ? "TRIMP, Banister's heart-rate impulse, the stress that feeds your fitness curve" : "rTSS, pace-based stress used when no heart-rate data exists"}.`
       );
     }
     if (workout.efficiency_factor) {
       out.push(
-        `Efficiency factor ${Number(workout.efficiency_factor).toFixed(2)} — ${workout.sport === "cycling" ? "watts" : "pace"} produced per heartbeat. A rising trend across similar sessions is an aerobic gain.`
+        `Efficiency factor ${Number(workout.efficiency_factor).toFixed(2)}, ${workout.sport === "cycling" ? "watts" : "pace"} produced per heartbeat. A rising trend across similar sessions is an aerobic gain.`
       );
     }
     if (workout.aerobic_decoupling != null && Math.abs(workout.aerobic_decoupling) >= 5) {
       out.push(
-        `Aerobic decoupling ${Number(workout.aerobic_decoupling).toFixed(1)}% — the second half cost more for the same output, which points to fatigue, heat or fuelling.`
+        `Aerobic decoupling ${Number(workout.aerobic_decoupling).toFixed(1)}%, the second half cost more for the same output, which points to fatigue, heat or fuelling.`
       );
     }
     if (calories.source === "device") {
       out.push("Energy comes from the watch's own model, which accounts for motion and your profile. It is never replaced by a formula here.");
     }
     if (workout.zone_method === "average") {
-      out.push("Zone time is estimated from average heart rate for this session — attach a .fit or .tcx export for exact second-by-second zones.");
+      out.push("Zone time is estimated from average heart rate for this session, attach a .fit or .tcx export for exact second-by-second zones.");
     }
     return out;
   }, [workout, calories.source, load]);

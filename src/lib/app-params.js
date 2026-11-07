@@ -10,7 +10,7 @@ function getAppParamValue(name, { defaultValue = null, removeFromUrl = false, pe
   let value = urlParams.get(name);
 
   // Persist bootstrap params (app_id, app_base_url) to localStorage so they
-  // survive the full-page reload that follows an OAuth redirect — the
+  // survive the full-page reload that follows an OAuth redirect, the
   // redirect URL carries access_token but NOT app_id/app_base_url, so
   // without this the SDK re-initialises with appId=null and every entity
   // call 404s ("Invalid id value -> Object not found"). Only persist when
@@ -64,7 +64,7 @@ export function getAppParams() {
 
   // Resolve app_id with stale-storage guard: the URL value (present on normal
   // page loads) is authoritative; if absent (post-OAuth redirect), fall back to
-  // localStorage, but ONLY if it matches this app's known id — a stale value
+  // localStorage, but ONLY if it matches this app's known id, a stale value
   // left by a different Base44 app in the same browser would otherwise init the
   // SDK with the wrong appId and 404 every entity call. Final fallback is the
   // hardcoded published id so the client can never initialise with appId=null.

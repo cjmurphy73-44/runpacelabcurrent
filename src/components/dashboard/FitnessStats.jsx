@@ -15,7 +15,7 @@ export default function FitnessStats({ athlete }) {
           {loading ? (
             <p className="text-sm text-muted-foreground">Loading...</p>
           ) : history.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No data yet — upload a workout to start tracking.</p>
+            <p className="text-sm text-muted-foreground">No data yet, upload a workout to start tracking.</p>
           ) : (
             <PerformanceChart data={history} />
           )}

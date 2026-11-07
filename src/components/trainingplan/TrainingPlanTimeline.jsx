@@ -58,7 +58,7 @@ export default function TrainingPlanTimeline({ plan }) {
           {active && (
             <div className="rounded-lg border border-border p-4 space-y-2 text-sm">
               <div className="flex items-center justify-between flex-wrap gap-2">
-                <p className="font-medium">Week {active.week_number} — {active.phase}</p>
+                <p className="font-medium">Week {active.week_number}, {active.phase}</p>
                 <span className="text-xs text-muted-foreground">{active.start_date} – {active.end_date}</span>
               </div>
               <p className="text-muted-foreground">Key session: {active.key_session}</p>

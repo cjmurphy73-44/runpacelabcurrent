@@ -34,7 +34,7 @@ export function hasFeature(plan: string | null | undefined, feature: GatedFeatur
   return (FEATURE_BY_PLAN[plan] ?? []).includes(feature);
 }
 
-// DEFERRED FOLLOW-UP — Pro fair-use meter (not yet enforced).
+// DEFERRED FOLLOW-UP, Pro fair-use meter (not yet enforced).
 // Intended Pro caps once the meter is built: 1 plan generation + 1 AI deep-dive per week.
 // Until the meter exists, Pro AI calls are not metered; Pro copy says "fair-use limits"
 // and only Unlimited/Coach Pro are advertised as uncapped.

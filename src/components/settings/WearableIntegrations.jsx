@@ -6,9 +6,9 @@ import WipBadge from "@/components/common/WipBadge";
 
 // Metadata for each free OAuth wearable. icon: a lucide icon name string rendered below.
 const PROVIDERS = [
-  { key: "oura", label: "Oura Ring", blurb: "Readiness, HRV, sleep, RHR — the richest recovery ring." },
-  { key: "whoop", label: "Whoop", blurb: "Recovery score, HRV, RHR, sleep — recovery-first strap." },
-  { key: "withings", label: "Withings", blurb: "Sleep, HRV, RHR, body comp — health-first wearables." },
+  { key: "oura", label: "Oura Ring", blurb: "Readiness, HRV, sleep, RHR, the richest recovery ring." },
+  { key: "whoop", label: "Whoop", blurb: "Recovery score, HRV, RHR, sleep, recovery-first strap." },
+  { key: "withings", label: "Withings", blurb: "Sleep, HRV, RHR, body comp, health-first wearables." },
   { key: "polar", label: "Polar", blurb: "Nightly Recharge recovery, sleep, HRV via AccessLink." },
   { key: "fitbit", label: "Fitbit", blurb: "Sleep score, HRV, resting HR via Fitbit Web API." },
   { key: "suunto", label: "Suunto", blurb: "Sleep + activity summary (recovery is thin)." },
@@ -103,7 +103,7 @@ function ProviderCard({ provider, athleteId }) {
               )}
             </p>
             <p className="text-xs text-muted-foreground truncate">
-              {loading ? "Checking…" : connected ? (status?.last_sync_at ? `Last sync ${new Date(status.last_sync_at).toLocaleString()}` : "Connected — use Sync to pull recovery") : blurb}
+              {loading ? "Checking…" : connected ? (status?.last_sync_at ? `Last sync ${new Date(status.last_sync_at).toLocaleString()}` : "Connected, use Sync to pull recovery") : blurb}
             </p>
             {connected && status?.last_error && (
               <p className="text-xs text-destructive mt-0.5 truncate">{status.last_error}</p>
@@ -139,7 +139,7 @@ export default function WearableIntegrations({ athleteId }) {
   return (
     <div className="space-y-3">
       <p className="text-xs text-muted-foreground">
-        Free OAuth recovery sources — connect your ring or strap to sync sleep, HRV, and readiness automatically.
+        Free OAuth recovery sources, connect your ring or strap to sync sleep, HRV, and readiness automatically.
       </p>
       {PROVIDERS.map((p) => (
         <ProviderCard key={p.key} provider={p} athleteId={athleteId} />

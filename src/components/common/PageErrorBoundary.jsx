@@ -4,7 +4,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { AlertTriangle } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 
-// Crash signatures already reported this session — prevents a render loop from
+// Crash signatures already reported this session, prevents a render loop from
 // flooding Airtable with duplicate User Error Reports rows.
 const reportedCrashes = new Set();
 
@@ -66,7 +66,7 @@ export default class PageErrorBoundary extends React.Component {
             </div>
             <h2 className="font-heading font-bold text-lg">Something went wrong</h2>
             <p className="text-sm text-muted-foreground">
-              This view hit an unexpected error. Your data is safe — try again, or reload the page to recover.
+              This view hit an unexpected error. Your data is safe, try again, or reload the page to recover.
             </p>
             {this.state.error?.message ? (
               <p className="text-xs text-muted-foreground font-mono break-all bg-muted rounded-md p-2">

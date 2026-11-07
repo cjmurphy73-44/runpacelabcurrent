@@ -26,7 +26,7 @@ export default function AdvancedAnalytics() {
 
   if (error) {
     // Profile lookup failed (transient RLS/network blip). Don't imply the
-    // profile is missing — offer retry and a link to profile settings.
+    // profile is missing, offer retry and a link to profile settings.
     return (
       <PageShell title="Advanced Analytics" description="Long-term fitness trends, workload distributions, and race taper planning.">
         <div className="max-w-md mx-auto py-12">
@@ -37,7 +37,7 @@ export default function AdvancedAnalytics() {
               </div>
               <h2 className="text-lg font-heading font-semibold">Couldn't reach your profile</h2>
               <p className="text-sm text-muted-foreground">
-                We hit a snag loading your data. This is usually momentary — try again, or check your profile settings.
+                We hit a snag loading your data. This is usually momentary, try again, or check your profile settings.
               </p>
               <div className="flex items-center justify-center gap-2">
                 <Button onClick={() => window.location.reload()}>Retry</Button>

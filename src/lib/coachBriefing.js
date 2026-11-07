@@ -1,4 +1,4 @@
-// Pure helper — derives a short, dated "coach briefing" from current fitness data.
+// Pure helper, derives a short, dated "coach briefing" from current fitness data.
 // Used by CoachMessageFeed so the dashboard's "Coach updates" reflects live analysis
 // of recent workouts and trends, not just stored CoachMessage records.
 
@@ -22,7 +22,7 @@ function fmtDate(d) {
   }
 }
 
-// Signed integer label: "+5" / "-2" — never "+-2".
+// Signed integer label: "+5" / "-2", never "+-2".
 function sign(n) {
   return `${n >= 0 ? "+" : ""}${n.toFixed(0)}`;
 }
@@ -53,7 +53,7 @@ export function computeCoachBriefing(workoutSessions, dailyMetrics) {
     if (last.session_trimp) extra.push(`TRIMP ${Math.round(last.session_trimp)}`);
     updates.push({
       tone: "neutral",
-      title: `Last session — ${fmtDate(last.date)}`,
+      title: `Last session, ${fmtDate(last.date)}`,
       text: `${parts.join(" · ")}${extra.length ? ` (${extra.join(", ")})` : ""}.`,
     });
   }
@@ -74,9 +74,9 @@ export function computeCoachBriefing(workoutSessions, dailyMetrics) {
       ? `${fmtMin(last7Dur)} over the last 7 days vs ${fmtMin(prior7Dur)} the week prior. `
       : `${fmtMin(last7Dur)} over the last 7 days. `;
     const note = trend === "up"
-      ? "Volume is climbing — keep an eye on recovery."
+      ? "Volume is climbing, keep an eye on recovery."
       : trend === "down"
-        ? "A lighter week — good for absorbing prior load."
+        ? "A lighter week, good for absorbing prior load."
         : "Load is steady week-over-week.";
     updates.push({
       tone: trend === "up" ? "warning" : trend === "down" ? "positive" : "neutral",
@@ -91,9 +91,9 @@ export function computeCoachBriefing(workoutSessions, dailyMetrics) {
   if (latestMetric && typeof latestMetric.calculated_tsb === "number") {
     const tsbNow = latestMetric.calculated_tsb;
     let tone = "neutral";
-    let msg = `Form is balanced (${sign(tsbNow)}) — productive training zone.`;
-    if (tsbNow > 20) { tone = "positive"; msg = `Form is high (${sign(tsbNow)}) — you are primed for quality or racing.`; }
-    else if (tsbNow < -15) { tone = "warning"; msg = `Form is negative (${tsbNow.toFixed(0)}) — accumulated fatigue; prioritize recovery.`; }
+    let msg = `Form is balanced (${sign(tsbNow)}), productive training zone.`;
+    if (tsbNow > 20) { tone = "positive"; msg = `Form is high (${sign(tsbNow)}), you are primed for quality or racing.`; }
+    else if (tsbNow < -15) { tone = "warning"; msg = `Form is negative (${tsbNow.toFixed(0)}), accumulated fatigue; prioritize recovery.`; }
     let ctlNote = "";
     if (weekAgo && typeof latestMetric.calculated_ctl === "number" && typeof weekAgo.calculated_ctl === "number") {
       const d = latestMetric.calculated_ctl - weekAgo.calculated_ctl;
@@ -110,7 +110,7 @@ export function computeCoachBriefing(workoutSessions, dailyMetrics) {
   if (hrvNow != null && hrvPrev != null && hrvPrev > 0) {
     const pct = ((hrvNow - hrvPrev) / hrvPrev) * 100;
     const note = pct < -8
-      ? " Autonomic recovery is trending down — consider an easier day."
+      ? " Autonomic recovery is trending down, consider an easier day."
       : pct > 8
         ? " Recovery trending up nicely."
         : " Stable.";
@@ -137,7 +137,7 @@ export function computeCoachBriefing(workoutSessions, dailyMetrics) {
     updates.push({
       tone: d > 0 ? "warning" : "positive",
       title: "Resting HR",
-      text: `7-day avg ${rhrNow.toFixed(0)} bpm (${d >= 0 ? "+" : ""}${d.toFixed(0)} vs prior week). ${d > 0 ? "Rising RHR can signal accumulating fatigue." : "Improving — a good sign."}`,
+      text: `7-day avg ${rhrNow.toFixed(0)} bpm (${d >= 0 ? "+" : ""}${d.toFixed(0)} vs prior week). ${d > 0 ? "Rising RHR can signal accumulating fatigue." : "Improving, a good sign."}`,
     });
   }
 

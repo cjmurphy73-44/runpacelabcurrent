@@ -93,7 +93,7 @@ export default function Support() {
           <Card>
             <CardContent className="p-8 text-center">
               <CheckCircle2 className="w-12 h-12 text-success mx-auto mb-4" />
-              <h2 className="font-heading text-xl font-semibold">Thanks — message received</h2>
+              <h2 className="font-heading text-xl font-semibold">Thanks, message received</h2>
               <p className="mt-2 text-sm text-muted-foreground">
                 We'll review your message and get back to you{email ? ` at ${email}` : ""} if needed. For billing issues, you can also manage your subscription directly from the billing portal.
               </p>

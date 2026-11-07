@@ -4,7 +4,7 @@
 // Takes the Daniels T-pace anchored to the athlete's VDOT and reconciles it
 // against recent ACTUAL runs (empirical), while accounting for cross-training
 // (rides / swims / strength / other) so an injured or cross-training athlete
-// gets an honest "VDOT only — cross-training in progress" verdict instead of
+// gets an honest "VDOT only, cross-training in progress" verdict instead of
 // trusting a stale, possibly-wrong stored value.
 //
 // Returns the running threshold pace in m/s plus a human-readable source label.
@@ -19,11 +19,11 @@ export interface ThresholdPaceResult {
 }
 
 const WINDOW_DAYS = 42;
-const MIN_THR_DUR_S = 18 * 60;  // sustained-effort floor — short jogs excluded
+const MIN_THR_DUR_S = 18 * 60;  // sustained-effort floor, short jogs excluded
 const FASTEST_K = 8;             // recency-weighted mean of the fastest K qualifying runs
 const HR_BAND = 0.08;            // a run counts as threshold-intensity if avg HR is within ±8% of LTHR
 const PACE_BAND = 0.12;          // (no LTHR) fallback gate around the Daniels T-pace
-const MAX_SANE_PACE_MS = 1000 / 150; // 2:30/km — anything faster over >10km is mislabeled cycling
+const MAX_SANE_PACE_MS = 1000 / 150; // 2:30/km, anything faster over >10km is mislabeled cycling
 
 function isRun(sport?: string): boolean {
   return !!sport && sport.toLowerCase().startsWith('run');
@@ -75,7 +75,7 @@ export function deriveRunningThresholdPace(
 
   const runs = recent.filter((s: any) => isRun(s.sport));
   // Empirical anchor: consider EVERY recent run, but only keep the ones that were
-  // actually a threshold-intensity effort — avg HR near lactate-threshold HR when
+  // actually a threshold-intensity effort, avg HR near lactate-threshold HR when
   // available, else pace within the Daniels T-pace band. Easy jogs and short
   // outings do NOT anchor a threshold pace; they're not threshold efforts. Also
   // apply the running-plausibility guard to drop impossible paces (cycling data
@@ -92,10 +92,10 @@ export function deriveRunningThresholdPace(
         // Gate by actual intensity: near-threshold HR runs.
         intensityOk = Math.abs(s.avg_hr - lactateThresholdHr) / lactateThresholdHr <= HR_BAND;
       } else if (baseline) {
-        // No LTHR — gate by pace proximity to the Daniels T-pace.
+        // No LTHR, gate by pace proximity to the Daniels T-pace.
         intensityOk = pace >= baseline * (1 - PACE_BAND) && pace <= baseline * (1 + PACE_BAND);
       } else {
-        intensityOk = true; // nothing to gate on — last resort
+        intensityOk = true; // nothing to gate on, last resort
       }
       return intensityOk ? { pace, age } : null;
     })
@@ -133,10 +133,10 @@ export function deriveRunningThresholdPace(
       source = `From 1 recent run`;
     }
   } else if (baseline != null) {
-    // No threshold-intensity runs to verify against — be honest about why.
+    // No threshold-intensity runs to verify against, be honest about why.
     paceMs = baseline;
     source = crossTrainCount > 0
-      ? 'VDOT only — cross-training in progress'
+      ? 'VDOT only, cross-training in progress'
       : 'VDOT Daniels T-pace';
   } else if (storedFtpMs && storedFtpMs > 0) {
     paceMs = storedFtpMs;

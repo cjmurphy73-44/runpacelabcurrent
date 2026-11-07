@@ -7,7 +7,7 @@ import {
 
 // Plain-language Garmin connection state. Mirrors the COROS card: the athlete can
 // tell at a glance whether data is flowing, what is being synced, when it last
-// worked, and what to do about it — without reading an error code.
+// worked, and what to do about it, without reading an error code.
 const SYNCED = "Workouts, sleep, HRV and resting heart rate";
 
 function whenLabel(iso) {
@@ -31,7 +31,7 @@ export default function GarminConnectionCard({ athleteId }) {
       const res = await base44.functions.invoke("garminSync", { action: "status" });
       setStatus(res?.data || res || null);
     } catch (e) {
-      // A failed check must not read as "not connected" — that would send someone
+      // A failed check must not read as "not connected", that would send someone
       // through a reconnect they don't need. The state is explicitly unknown.
       setStatus({ unknown: true });
       setError(e?.response?.data?.error || "Couldn't check your Garmin connection just now.");
@@ -78,7 +78,7 @@ export default function GarminConnectionCard({ athleteId }) {
         const imported = Number(data?.imported || 0);
         const recovery = Number(data?.recovery_imported || 0);
         if (!imported && !recovery) {
-          setInfo("Already up to date — no new workouts or recovery days since the last sync.");
+          setInfo("Already up to date, no new workouts or recovery days since the last sync.");
         } else {
           const parts = [];
           if (imported) parts.push(`${imported} workout${imported === 1 ? "" : "s"}`);
@@ -115,9 +115,9 @@ export default function GarminConnectionCard({ athleteId }) {
     : unknown
       ? "Connection state unavailable right now."
       : connected
-        ? lastSync ? `Last sync ${lastSync}` : "Connected — sync whenever you're ready"
+        ? lastSync ? `Last sync ${lastSync}` : "Connected, sync whenever you're ready"
         : needsReconnect
-          ? "Authorization expired — reconnect to resume syncing"
+          ? "Authorization expired, reconnect to resume syncing"
           : "Not connected";
 
   return (
@@ -147,7 +147,7 @@ export default function GarminConnectionCard({ athleteId }) {
               <p className="text-xs text-destructive mt-1">{status.last_error}</p>
             )}
             {needsReconnect && (
-              <p className="text-xs text-muted-foreground mt-1">Your imported workouts are safe — reconnecting resumes new data only.</p>
+              <p className="text-xs text-muted-foreground mt-1">Your imported workouts are safe, reconnecting resumes new data only.</p>
             )}
           </div>
         </div>
@@ -176,7 +176,7 @@ export default function GarminConnectionCard({ athleteId }) {
       {info && <p className="text-sm text-primary break-words">{info}</p>}
       <p className="text-xs text-muted-foreground">
         Prefer not to connect an account? Export a <span className="font-medium">.fit</span> or{" "}
-        <span className="font-medium">.csv</span> from Garmin Connect and upload it under Import workout files — it
+        <span className="font-medium">.csv</span> from Garmin Connect and upload it under Import workout files, it
         carries the same measured data.
       </p>
     </div>

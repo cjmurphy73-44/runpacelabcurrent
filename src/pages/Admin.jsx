@@ -106,7 +106,7 @@ export default function Admin() {
     try {
       const res = await base44.functions.invoke("airtableSync", { action: "sync_business_snapshot" });
       const d = res.data || res;
-      setSyncMsg(`Pushed snapshot — MRR $${d.snapshot?.mrr_usd ?? 0}, ${d.snapshot?.users ?? 0} users, ${d.snapshot?.athletes ?? 0} athletes. Airtable: ${d.airtable?.system_health?.updated ?? 0} metrics, ${d.airtable?.user_segments?.updated ?? 0} segments updated.`);
+      setSyncMsg(`Pushed snapshot, MRR $${d.snapshot?.mrr_usd ?? 0}, ${d.snapshot?.users ?? 0} users, ${d.snapshot?.athletes ?? 0} athletes. Airtable: ${d.airtable?.system_health?.updated ?? 0} metrics, ${d.airtable?.user_segments?.updated ?? 0} segments updated.`);
     } catch (e) {
       setSyncErr(e?.response?.data?.error || e?.message || "Sync failed.");
     }
@@ -214,7 +214,7 @@ export default function Admin() {
               </div>
               <span className="text-xs text-muted-foreground truncate flex-1 min-w-0 text-right">
                 {c.last_sync_at ? `Last sync ${new Date(c.last_sync_at).toLocaleString()}` : "Never synced"}
-                {c.last_error ? ` — ${c.last_error}` : ""}
+                {c.last_error ? `, ${c.last_error}` : ""}
               </span>
               <Badge variant={c.status === "connected" ? "default" : "outline"} className="capitalize shrink-0">{c.status || "—"}</Badge>
             </div>

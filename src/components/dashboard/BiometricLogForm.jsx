@@ -27,7 +27,7 @@ export default function BiometricLogForm({ athleteId }) {
     if (form.resting_hr !== "") payload.resting_hr = Number(form.resting_hr);
     if (form.readiness_score !== "") payload.readiness_score = Number(form.readiness_score);
     try {
-      // UPSERT today's DailyMetrics — only the recovery fields, never the computed load columns.
+      // UPSERT today's DailyMetrics, only the recovery fields, never the computed load columns.
       if (existing) {
         await base44.entities.DailyMetrics.update(existing.id, payload);
       } else {

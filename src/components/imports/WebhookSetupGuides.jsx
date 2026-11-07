@@ -30,7 +30,7 @@ export default function WebhookSetupGuides({ webhookUrl, apiKey }) {
         <AccordionContent className="space-y-2 text-sm">
           <p>1. Register an app at <code className="font-mono">developers.strava.com</code>; set its Callback domain to this app's domain.</p>
           <p>2. Create a push subscription: <code className="font-mono">POST https://www.strava.com/api/v3/push_subscriptions</code> with <code className="font-mono">callback_url</code> = your Webhook URL and <code className="font-mono">verify_token</code> = your API key.</p>
-          <p>3. Strava verifies the subscription with a GET <code className="font-mono">hub.challenge</code> — this endpoint echoes it automatically.</p>
+          <p>3. Strava verifies the subscription with a GET <code className="font-mono">hub.challenge</code>, this endpoint echoes it automatically.</p>
           <p className="text-xs text-amber-600">
             Note: Strava webhooks deliver activity references, not full data. For full per-activity import via Strava OAuth (a follow-up), use Strava's GPX/FIT export in the Bulk File Upload tab in the meantime.
           </p>

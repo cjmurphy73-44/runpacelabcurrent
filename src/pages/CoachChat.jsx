@@ -26,7 +26,7 @@ export default function CoachChat() {
   useEffect(() => {
     (async () => {
       // Only bind to conversations explicitly named "Coach Chat". Never fall back to
-      // existing[0] — that would grab orphaned E2E/test threads (e.g. the old
+      // existing[0], that would grab orphaned E2E/test threads (e.g. the old
       // "E2E coach audit (auto)" conversation) and show 49 test messages to a real user.
       const existing = await base44.agents.listConversations({ agent_name: AGENT_NAME });
       let convo = (existing || []).find((c) => c?.metadata?.name === "Coach Chat");
@@ -71,7 +71,7 @@ export default function CoachChat() {
       console.error("CoachChat send failed", err);
       toast({
         title: "Message not sent",
-        description: "Network hiccup or rate limit — please try again.",
+        description: "Network hiccup or rate limit, please try again.",
         variant: "destructive",
       });
     } finally {
@@ -123,7 +123,7 @@ export default function CoachChat() {
         <div className="text-xs text-center text-muted-foreground pt-2">
           {limitReached ? (
             <span className="text-destructive">
-              {usedThisWeek}/5 coach messages used this week —{' '}
+              {usedThisWeek}/5 coach messages used this week.{' '}
               <Link to="/subscribe" className="text-primary font-medium inline-flex items-center gap-1">
                 <Lock className="w-3 h-3" />Upgrade to Pro
               </Link>{' '}

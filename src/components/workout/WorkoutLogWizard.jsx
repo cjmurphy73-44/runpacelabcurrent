@@ -22,9 +22,9 @@ import { useToast } from "@/components/ui/use-toast";
 import { UploadCloud, Check, Download } from "lucide-react";
 
 // Multi-step workout log wizard (replaces the flat ManualWorkoutModal):
-//  Step 1 — basic details (title, date, sport)
-//  Step 2 — metrics (duration, distance, RPE) + optional file dropzone
-//  Step 3 — summary preview + confirm → save → success state w/ download
+//  Step 1, basic details (title, date, sport)
+//  Step 2, metrics (duration, distance, RPE) + optional file dropzone
+//  Step 3, summary preview + confirm → save → success state w/ download
 
 const SPORTS = [
   { value: "running", label: "Run" },
@@ -139,7 +139,7 @@ export default function WorkoutLogWizard({ open, onClose, athleteId, onSaved }) 
 
   const downloadSummary = () => {
     const lines = [
-      "TrainPaceLab — Workout Summary",
+      "TrainPaceLab, Workout Summary",
       "================================",
       `Title:    ${title || "(untitled)"}`,
       `Date:     ${saved.date}`,
@@ -189,7 +189,7 @@ export default function WorkoutLogWizard({ open, onClose, athleteId, onSaved }) 
           <DialogDescription>
             {saved
               ? "Your session has been saved."
-              : "A 3-step wizard — details, metrics, then confirm."}
+              : "A 3-step wizard, details, metrics, then confirm."}
           </DialogDescription>
         </DialogHeader>
 
@@ -314,7 +314,7 @@ export default function WorkoutLogWizard({ open, onClose, athleteId, onSaved }) 
                   <label className="flex flex-col items-center justify-center gap-2 border-2 border-dashed border-border rounded-md py-6 cursor-pointer hover:bg-accent transition-colors">
                     <UploadCloud className="w-6 h-6 text-muted-foreground" />
                     <span className="text-sm text-muted-foreground">
-                      {file ? file.name : "Drop or click — .fit / .csv"}
+                      {file ? file.name : "Drop or click, .fit / .csv"}
                     </span>
                     <input
                       type="file"
@@ -325,7 +325,7 @@ export default function WorkoutLogWizard({ open, onClose, athleteId, onSaved }) 
                   </label>
                   {file && (
                     <p className="text-xs text-muted-foreground">
-                      File parsed server-side — duration/distance auto-detected.
+                      File parsed server-side, duration/distance auto-detected.
                     </p>
                   )}
                 </div>

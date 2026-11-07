@@ -57,7 +57,7 @@ export function estimateCalories(workout, athlete) {
 // Session zone + energy resolution
 // ---------------------------------------------------------------------------
 // Zones are Karvonen (Heart-Rate-Reserve) based, anchored to THIS athlete's resting
-// and max HR — never a fixed %-of-max table. Resolution order matches the backend:
+// and max HR, never a fixed %-of-max table. Resolution order matches the backend:
 // stored zone_seconds → second-by-second stream → laps → average-HR estimate. The
 // method travels with the data so the UI can label an estimate as an estimate.
 
@@ -147,9 +147,9 @@ export function sessionCalories(workout, athlete) {
 
 export function formatZoneMethod(method) {
   switch (method) {
-    case "stream": return "Measured — device data";
-    case "laps": return "Measured — lap splits";
-    case "average": return "Estimated — summary only";
+    case "stream": return "Measured, device data";
+    case "laps": return "Measured, lap splits";
+    case "average": return "Estimated, summary only";
     default: return "No heart-rate data";
   }
 }
@@ -160,7 +160,7 @@ export function normalizedPacePower(workout) {
 
   const durationMin = workout.duration_minutes || workout.duration_seconds / 60;
 
-  // Cycling has no meaningful running "pace" — show speed (km/h) instead, never min/km.
+  // Cycling has no meaningful running "pace", show speed (km/h) instead, never min/km.
   if (workout.sport === "cycling") {
     const kmh = workout.distance_km / (durationMin / 60);
     return `${kmh.toFixed(1)} km/h`;

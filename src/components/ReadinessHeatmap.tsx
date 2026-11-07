@@ -7,7 +7,7 @@ interface ReadinessHeatmapProps {
   loading?: boolean;
 }
 
-// Quantum Polar status palette — hairline cells, subtle tinted fills, the app's
+// Quantum Polar status palette, hairline cells, subtle tinted fills, the app's
 // shared semantic colors (emerald/amber/destructive) and a faint muted no-data cell.
 const STATUS_STYLES: Record<ReadinessDay["status"], string> = {
   optimal: "bg-accent-emerald/15 border-accent-emerald/40 text-accent-emerald",

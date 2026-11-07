@@ -10,9 +10,9 @@ function greeting() {
 
 function formContext(tsb) {
   if (tsb == null || isNaN(tsb)) return null;
-  if (tsb >= 5) return "You're fresh — a great day for a quality session.";
-  if (tsb <= -10) return "You're carrying fatigue — consider an easy day or rest.";
-  return "You're in a balanced range — train to plan.";
+  if (tsb >= 5) return "You're fresh, a great day for a quality session.";
+  if (tsb <= -10) return "You're carrying fatigue, consider an easy day or rest.";
+  return "You're in a balanced range, train to plan.";
 }
 
 export default function DashboardGreeting({ athlete }) {

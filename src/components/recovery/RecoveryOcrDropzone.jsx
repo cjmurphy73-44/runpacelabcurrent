@@ -32,7 +32,7 @@ export default function RecoveryOcrDropzone({ athleteId }) {
     try {
       const upload = await base44.integrations.Core.UploadFile({ file });
       const image_url = upload?.file_url;
-      if (!image_url) throw new Error("Upload failed — no file URL returned.");
+      if (!image_url) throw new Error("Upload failed, no file URL returned.");
       setQueue((q) => q.map((it) => (it.id === id ? { ...it, image_url, status: "reading" } : it)));
       const res = await base44.functions.invoke("parseRecoveryScreenshot", { image_url });
       const parsed = res?.data;
@@ -69,7 +69,7 @@ export default function RecoveryOcrDropzone({ athleteId }) {
           >
             <UploadCloud className="w-5 h-5 text-muted-foreground" />
             <p className="text-sm font-medium">Drop a recovery screenshot</p>
-            <p className="text-xs text-muted-foreground">WHOOP, Oura, Garmin, Apple Health — review & save</p>
+            <p className="text-xs text-muted-foreground">WHOOP, Oura, Garmin, Apple Health, review & save</p>
           </div>
           <input
             ref={inputRef}

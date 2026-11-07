@@ -20,7 +20,7 @@ export function usePaceCalibration() {
   const [accepted, setAccepted] = useState(false);
 
   useEffect(() => {
-    // Placeholder drift detection — a real engine would compare recent
+    // Placeholder drift detection, a real engine would compare recent
     // threshold efforts against the stored FTP. For now we surface a
     // suggested 5% adjustment so the accept flow is exercisable.
     const timer = setTimeout(() => {

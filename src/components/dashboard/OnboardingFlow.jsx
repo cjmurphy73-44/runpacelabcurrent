@@ -177,7 +177,7 @@ export default function OnboardingFlow({ onCreated }) {
 
           <p className="flex items-start gap-1.5 text-xs text-muted-foreground leading-relaxed">
             <ShieldCheck className="w-3.5 h-3.5 mt-0.5 shrink-0 text-primary" />
-            Your physiology data stays yours — it's used only to build your plan and estimates. Never sold, never shared.
+            Your physiology data stays yours, it's used only to build your plan and estimates. Never sold, never shared.
           </p>
         </form>
       </CardContent>

@@ -99,7 +99,7 @@ export default function CoachBriefing({ athlete }) {
   const ranSignature = useRef("");
 
   const payload = useMemo(() => buildPayload(athlete, workoutSessions, dailyMetrics), [athlete, workoutSessions, dailyMetrics]);
-  // A stable signature so we don't re-run the LLM on every render — only when the underlying data actually changes.
+  // A stable signature so we don't re-run the LLM on every render, only when the underlying data actually changes.
   const signature = useMemo(() => JSON.stringify(payload), [payload]);
   const hasData = payload.sessions_last_14d.length > 0 || payload.metrics_last_14d.length > 0;
 
@@ -111,11 +111,11 @@ export default function CoachBriefing({ athlete }) {
 
 Use ONLY the data below. Do not invent sessions or metrics that aren't present. If a signal is missing, say so briefly rather than guessing.
 
-Write in second person ("you"), warm but direct, no hype. Avoid jargon — prefer plain language a motivated amateur understands.
+Write in second person ("you"), warm but direct, no hype. Avoid jargon, prefer plain language a motivated amateur understands.
 
 Cover:
 - What they've actually been doing (volume, consistency, sport mix) over the last ~14 days.
-- How their performance / abilities are trending (fitness building, form, readiness, recovery signals) — trend direction, not just current values.
+- How their performance / abilities are trending (fitness building, form, readiness, recovery signals), trend direction, not just current values.
 - One or two things to watch or adjust next.
 
 Keep the assessment to 2–4 sentences. Then give 3–5 highlights as short bullets, each tagged positive / neutral / warning.
@@ -165,7 +165,7 @@ ${JSON.stringify(payload)}`;
           <p className="text-sm text-muted-foreground">Reading your training data…</p>
         ) : !hasData ? (
           <p className="text-sm text-muted-foreground">
-            Not enough recent data for a briefing yet — log a couple of sessions or sync a wearable and your coach's read on the last two weeks will appear here.
+            Not enough recent data for a briefing yet, log a couple of sessions or sync a wearable and your coach's read on the last two weeks will appear here.
           </p>
         ) : busy && !briefing ? (
           <div className="space-y-2">

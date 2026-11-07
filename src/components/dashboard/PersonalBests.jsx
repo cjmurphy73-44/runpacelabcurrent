@@ -13,7 +13,7 @@ export default function PersonalBests() {
 
   if (loading || !isFetched) return <p className="text-sm text-muted-foreground">Loading...</p>;
   if (!workoutSessions || workoutSessions.length === 0) {
-    return <p className="text-sm text-muted-foreground">No workouts yet — upload a session to start tracking personal bests.</p>;
+    return <p className="text-sm text-muted-foreground">No workouts yet, upload a session to start tracking personal bests.</p>;
   }
 
   return (

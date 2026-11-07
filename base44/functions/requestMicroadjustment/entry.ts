@@ -59,7 +59,7 @@ Deno.serve(async (req) => {
 
     // Validate every adjustment against the supplied upcoming sessions before
     // applying. Only adjustments targeting a known upcoming session id, with
-    // in-bounds values, are accepted — nothing partial is persisted.
+    // in-bounds values, are accepted, nothing partial is persisted.
     const validation = validateAdjustments(llmResult.adjustments || [], upcoming);
     if (validation.accepted.length === 0) {
       return Response.json({ success: true, adjusted: [], rejected: validation.rejected, summary: 'No valid adjustments to apply.' });

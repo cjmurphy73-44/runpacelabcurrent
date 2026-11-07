@@ -1,5 +1,5 @@
 // base44/shared/athleteState.ts
-// Server-side deterministic AthleteStateSummary — the exact JSON handed to the
+// Server-side deterministic AthleteStateSummary, the exact JSON handed to the
 // post-workout LLM, computed entirely in code ("hardcode math / AI prose").
 //
 // This is the Deno mirror of src/science/athleteState.ts: the frontend module is
@@ -8,9 +8,9 @@
 // summary from either side is interchangeable.
 //
 // Provenance:
-//   measured_device      — the wearable reported the value (native calories,
+//   measured_device     , the wearable reported the value (native calories,
 //                          per-second / per-lap zone time).
-//   calculated_estimate  — our equations produced the value (normalized load,
+//   calculated_estimate , our equations produced the value (normalized load,
 //                          zone estimate from average HR).
 
 const ACWR_SPIKE_THRESHOLD = 1.5;

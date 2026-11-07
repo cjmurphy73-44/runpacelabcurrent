@@ -57,7 +57,7 @@ export default class WidgetBoundary extends React.Component {
               {this.props.name ? `${this.props.name} couldn't load` : "This widget couldn't load"}
             </p>
             <p className="text-xs text-muted-foreground mt-0.5">
-              Your data is safe — the rest of the dashboard is unaffected.
+              Your data is safe, the rest of the dashboard is unaffected.
             </p>
           </div>
           <button

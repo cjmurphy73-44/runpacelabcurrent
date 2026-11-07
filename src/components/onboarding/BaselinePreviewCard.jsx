@@ -15,7 +15,7 @@ function Metric({ icon: Icon, label, value }) {
 }
 
 // Shows the values derived from the effort the athlete just entered, so the
-// estimate never appears out of nowhere — and states plainly that it is an
+// estimate never appears out of nowhere, and states plainly that it is an
 // estimate until a real race or threshold effort confirms it.
 export default function BaselinePreviewCard({ derived, eff, showZones = true }) {
   if (!derived) return null;

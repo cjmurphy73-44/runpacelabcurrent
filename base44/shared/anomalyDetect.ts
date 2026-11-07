@@ -1,7 +1,7 @@
 // base44/shared/anomalyDetect.ts
 // Pure exception-detection logic ported from src/hooks/useAnomalyAlerts.ts so the
 // backend synthesizeExceptions function and the frontend hook share identical
-// rules. Plain module — no Deno.serve.
+// rules. Plain module, no Deno.serve.
 
 export interface AnomalyAlert {
   id: string;
@@ -32,7 +32,7 @@ export function detectAnomalies(metrics: any[] = [], workouts: any[] = [], athle
       id: 'fatigue-risk',
       severity: tsb < -30 ? 'danger' : 'warning',
       title: 'Acute fatigue building',
-      detail: `Your form (TSB) is ${Math.round(tsb)} — fatigue is outpacing fitness. Keep hard sessions short and prioritise recovery.`,
+      detail: `Your form (TSB) is ${Math.round(tsb)}, fatigue is outpacing fitness. Keep hard sessions short and prioritise recovery.`,
       cue: "Swap today's quality session for an easy or rest day unless you're tapering into a race.",
     });
   }
@@ -67,7 +67,7 @@ export function detectAnomalies(metrics: any[] = [], workouts: any[] = [], athle
           severity: 'warning',
           title: 'HRV trending down',
           detail: `HRV (${todayHrv.toFixed(0)}ms) is ${Math.round(hrvDropPct)}% below your rolling baseline (${hrvBase.toFixed(0)}ms).`,
-          cue: 'Autonomic recovery is lagging — back off intensity today.',
+          cue: 'Autonomic recovery is lagging, back off intensity today.',
         });
       }
     }
@@ -99,7 +99,7 @@ export function detectAnomalies(metrics: any[] = [], workouts: any[] = [], athle
         id: 'monotony',
         severity: 'warning',
         title: 'Training monotony',
-        detail: 'The last week is all one sport at similar intensity — monotony blunts adaptation and raises injury risk.',
+        detail: 'The last week is all one sport at similar intensity, monotony blunts adaptation and raises injury risk.',
         cue: 'Add a cross-training day or a clear easy/recovery run to vary the stimulus.',
       });
     }

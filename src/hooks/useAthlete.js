@@ -5,8 +5,8 @@ import { useAuth } from "@/lib/AuthContext";
 
 // Resolves the signed-in user's athlete profile using the same precedence as
 // the dashboard: the profile explicitly linked on the user record
-// (user.data.athlete_profile_id) first — RLS allows that read even when
-// created_by_id doesn't match — then a fallback to the most recently updated
+// (user.data.athlete_profile_id) first, RLS allows that read even when
+// created_by_id doesn't match, then a fallback to the most recently updated
 // profile owned by this user. Exposes `error` so callers can distinguish a
 // confirmed-missing profile (onboarding needed) from a transient lookup
 // failure (retry / link to settings).

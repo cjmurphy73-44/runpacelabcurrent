@@ -46,7 +46,7 @@ export default function WebhookSyncPanel({ athleteId }) {
   };
 
   const regenerate = async () => {
-    if (!window.confirm("Regenerating your API key will invalidate the old URL — any service still using the old key will stop syncing. Continue?")) return;
+    if (!window.confirm("Regenerating your API key will invalidate the old URL, any service still using the old key will stop syncing. Continue?")) return;
     await generate();
   };
 
@@ -72,7 +72,7 @@ export default function WebhookSyncPanel({ athleteId }) {
             <WebhookIcon className="w-4 h-4 text-primary" /> Your webhook endpoint
           </CardTitle>
           <CardDescription>
-            POST workout summaries to this URL to auto-import. Each URL carries a personal API key — keep it private.
+            POST workout summaries to this URL to auto-import. Each URL carries a personal API key, keep it private.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">

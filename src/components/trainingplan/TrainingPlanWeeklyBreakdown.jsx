@@ -41,7 +41,7 @@ export default function TrainingPlanWeeklyBreakdown({ weeklyPlans }) {
               >
                 {isOpen ? <ChevronDown className="w-4 h-4 shrink-0" /> : <ChevronRight className="w-4 h-4 shrink-0" />}
                 <div className="flex-1 min-w-0">
-                  <p className="font-medium text-sm">Week {week.week_number} — {week.theme}</p>
+                  <p className="font-medium text-sm">Week {week.week_number}, {week.theme}</p>
                   <p className="text-xs text-muted-foreground">{week.totals}</p>
                 </div>
                 {distribution.length > 0 && (

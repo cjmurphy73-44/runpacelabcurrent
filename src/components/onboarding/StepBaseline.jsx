@@ -24,13 +24,13 @@ function paceHint(mps) {
   return `≈ ${Math.floor(secPerKm / 60)}:${String(Math.round(secPerKm % 60)).padStart(2, "0")} /km`;
 }
 
-// Step 2 — the one number the whole plan is anchored to. Two ways in:
+// Step 2, the one number the whole plan is anchored to. Two ways in:
 // a recent race, or (for someone brand new) an easy run / weekly mileage.
 export default function StepBaseline({ form, set, setForm, derived, eff, override }) {
   return (
     <div className="space-y-5">
       <p className="text-sm text-muted-foreground">
-        One recent effort is enough. Pick whichever you have — everything else is derived from it.
+        One recent effort is enough. Pick whichever you have, everything else is derived from it.
       </p>
 
       <div className="flex gap-1 rounded-md border border-border p-0.5 w-full sm:w-fit">
@@ -46,7 +46,7 @@ export default function StepBaseline({ form, set, setForm, derived, eff, overrid
           onClick={() => setForm((f) => ({ ...f, noviceMode: true }))}
           className={`flex-1 sm:flex-none px-3 h-8 rounded-[5px] text-xs font-medium ${form.noviceMode ? "bg-primary text-primary-foreground" : "text-muted-foreground"}`}
         >
-          I'm new — no race yet
+          I'm new, no race yet
         </button>
       </div>
 
@@ -54,7 +54,7 @@ export default function StepBaseline({ form, set, setForm, derived, eff, overrid
         <div className="space-y-4">
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <Label>Recent easy run — distance (km)</Label>
+              <Label>Recent easy run, distance (km)</Label>
               <Input type="number" min="0" step="0.1" value={form.easyDistance} onChange={set("easyDistance")} placeholder="e.g. 5" />
             </div>
             <div>
@@ -68,9 +68,9 @@ export default function StepBaseline({ form, set, setForm, derived, eff, overrid
               <Select value={form.effort} onValueChange={(v) => setForm((f) => ({ ...f, effort: v }))}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="easy">Easy — could chat the whole way</SelectItem>
-                  <SelectItem value="steady">Steady — breathing noticeable</SelectItem>
-                  <SelectItem value="hard">Hard — couldn't hold much longer</SelectItem>
+                  <SelectItem value="easy">Easy, could chat the whole way</SelectItem>
+                  <SelectItem value="steady">Steady, breathing noticeable</SelectItem>
+                  <SelectItem value="hard">Hard, couldn't hold much longer</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -80,7 +80,7 @@ export default function StepBaseline({ form, set, setForm, derived, eff, overrid
             </div>
           </div>
           <p className="text-xs text-muted-foreground">
-            No easy run handy? Just enter your weekly mileage — we'll estimate from that.
+            No easy run handy? Just enter your weekly mileage, we'll estimate from that.
           </p>
         </div>
       ) : (

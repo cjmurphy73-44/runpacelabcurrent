@@ -37,7 +37,7 @@ export default function WearableSyncGuide({ selectedWearables = [], compact = fa
       <CardContent className="pt-5 space-y-3">
         <div className="text-sm font-medium flex items-center gap-2">
           <Watch className="w-4 h-4 text-primary" />
-          Your hardware stack — getting data in
+          Your hardware stack, getting data in
         </div>
         <div className="space-y-3">
           {guide.map((g) => {

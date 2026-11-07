@@ -1,7 +1,7 @@
 import React from "react";
 
 /**
- * ConditionalSurface — renders children only when a context condition is met,
+ * ConditionalSurface, renders children only when a context condition is met,
  * so data-driven sections (injury card, race card, push-setup panel, etc.)
  * stay hidden until the underlying data exists. Keeps the default view clean
  * without cluttering empty space.

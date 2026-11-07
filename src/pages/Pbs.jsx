@@ -55,7 +55,7 @@ function RaceLedger() {
             <p className="text-sm text-muted-foreground">Loading ledger…</p>
           ) : !workoutSessions || workoutSessions.length === 0 ? (
             <p className="text-sm text-muted-foreground">
-              No sessions recorded yet — upload a workout to start building your ledger.
+              No sessions recorded yet, upload a workout to start building your ledger.
             </p>
           ) : (
             <div className="space-y-6 pt-2">

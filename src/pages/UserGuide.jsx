@@ -99,7 +99,7 @@ export default function UserGuide() {
             </Card>
           </GuideSection>
 
-          <GuideSection id="connect-data" icon={Watch} title="Connect your watch or app" description="Step-by-step for every source TrainPaceLab can use — live now or on the roadmap.">
+          <GuideSection id="connect-data" icon={Watch} title="Connect your watch or app" description="Step-by-step for every source TrainPaceLab can use, live now or on the roadmap.">
             <div className="flex flex-wrap gap-2 mb-2">
               <Badge variant="outline" className="bg-emerald-100 text-emerald-700 border-emerald-200">Live now</Badge>
               <Badge variant="outline" className="bg-blue-100 text-blue-700 border-blue-200">Coming soon</Badge>
@@ -108,7 +108,7 @@ export default function UserGuide() {
               {PROVIDERS.map((p) => <ProviderExportCard key={p.id} provider={p} />)}
             </div>
             <p className="text-xs text-muted-foreground">
-              Don't see your device? You can still upload any .FIT/.TCX/.CSV file manually on the Imports page — and we keep adding providers. <Link to="/import" className="text-primary hover:underline">Go to Imports →</Link>
+              Don't see your device? You can still upload any .FIT/.TCX/.CSV file manually on the Imports page, and we keep adding providers. <Link to="/import" className="text-primary hover:underline">Go to Imports →</Link>
             </p>
           </GuideSection>
 
@@ -135,7 +135,7 @@ export default function UserGuide() {
                   <CardContent className="pt-4 space-y-1">
                     <div className="flex items-baseline gap-2 flex-wrap">
                       <span className="font-heading font-semibold">{m.term}</span>
-                      <span className="text-xs text-muted-foreground italic">— {m.plain}</span>
+                      <span className="text-xs text-muted-foreground italic">({m.plain})</span>
                     </div>
                     <p className="text-sm">{m.what}</p>
                     <p className="text-xs text-muted-foreground"><span className="font-medium text-foreground">What to look for: </span>{m.look}</p>
@@ -143,23 +143,23 @@ export default function UserGuide() {
                 </Card>
               ))}
             </div>
-            <p className="text-xs text-muted-foreground">Prefer less jargon? Toggle <span className="font-medium">Simplified</span> mode in the header — it swaps technical terms for plain English across the app.</p>
+            <p className="text-xs text-muted-foreground">Prefer less jargon? Toggle <span className="font-medium">Simplified</span> mode in the header, it swaps technical terms for plain English across the app.</p>
           </GuideSection>
 
           <GuideSection id="recovery" icon={HeartPulse} title="Recovery & health" description="How recovery data flows in and what your readiness score means.">
-            <p>Recovery metrics (HRV, sleep, resting heart rate) come from a connected wearable automatically, or you can log them manually in the Recovery Center. When a wearable provides data for a day, it overrides any manual entry — the device is authoritative.</p>
+            <p>Recovery metrics (HRV, sleep, resting heart rate) come from a connected wearable automatically, or you can log them manually in the Recovery Center. When a wearable provides data for a day, it overrides any manual entry, the device is authoritative.</p>
             <p>Your <span className="font-medium">Readiness</span> score blends HRV, sleep, resting HR, stress/Body Battery and your current Form into one 0–100 number that's comparable across devices. Your watch's own readiness score is shown next to it so you can compare.</p>
             <p className="text-xs text-muted-foreground"><Link to="/recovery" className="text-primary hover:underline">Open the Recovery Center →</Link></p>
           </GuideSection>
 
           <GuideSection id="plans" icon={CalendarRange} title="Training plans" description="How an adaptive plan is generated and how to read it.">
             <p>On the Plan page, generate a plan anchored to your goal race. We use your VDOT, heart-rate zones, current Form, injury history and chosen training philosophy to build day-by-day sessions for your tier.</p>
-            <p>A new plan starts as a <span className="font-medium">draft</span> — review the macrocycle and weekly breakdown, then Confirm to commit it to your calendar. As you complete sessions, we reconcile actuals against the prescription and the adaptive engine can re-plan if you drift.</p>
+            <p>A new plan starts as a <span className="font-medium">draft</span>, review the macrocycle and weekly breakdown, then Confirm to commit it to your calendar. As you complete sessions, we reconcile actuals against the prescription and the adaptive engine can re-plan if you drift.</p>
             <p className="text-xs text-muted-foreground"><Link to="/plan" className="text-primary hover:underline">Go to your plan →</Link></p>
           </GuideSection>
 
           <GuideSection id="coaching" icon={MessageCircle} title="Coaching & AI coach" description="Your in-app coach and, on the Team plan, a multi-athlete roster.">
-            <p>The <Link to="/coach" className="text-primary hover:underline">Coach</Link> page is your conversation with the AI coach — ask for plan tweaks, race strategy, micro-adjustments, or post-workout feedback. It can read your data and call planning tools on your behalf.</p>
+            <p>The <Link to="/coach" className="text-primary hover:underline">Coach</Link> page is your conversation with the AI coach, ask for plan tweaks, race strategy, micro-adjustments, or post-workout feedback. It can read your data and call planning tools on your behalf.</p>
             <p>Coaches on the Team plan can manage a roster of athletes, compare them side by side, and assign plans. Enable Coach mode in Settings to reveal the Roster.</p>
           </GuideSection>
 
@@ -174,16 +174,16 @@ export default function UserGuide() {
             </div>
           </GuideSection>
 
-          <GuideSection id="whats-coming" icon={Lightbulb} title="What's coming" description="We're actively adding more sources and features — here's what to expect.">
+          <GuideSection id="whats-coming" icon={Lightbulb} title="What's coming" description="We're actively adding more sources and features, here's what to expect.">
             <p>The following providers are wired in but awaiting developer-app approval or an on-device bridge:</p>
             <ul className="list-disc pl-5 space-y-1 text-muted-foreground">
-              <li>Oura, Whoop, Withings, Polar — free OAuth recovery sync (pending each provider's developer portal).</li>
-              <li>Suunto — pending developer access.</li>
-              <li>Apple Health, Fitbit, Samsung Health — via an on-device Health Connect/HealthKit bridge.</li>
+              <li>Oura, Whoop, Withings, Polar, free OAuth recovery sync (pending each provider's developer portal).</li>
+              <li>Suunto, pending developer access.</li>
+              <li>Apple Health, Fitbit, Samsung Health, via an on-device Health Connect/HealthKit bridge.</li>
             </ul>
             <Card className="bg-muted/40">
               <CardContent className="pt-4 text-xs text-muted-foreground">
-                We can always add more — if there's a device or app you'd like supported, send feedback from the menu and we'll prioritise it.
+                We can always add more, if there's a device or app you'd like supported, send feedback from the menu and we'll prioritise it.
               </CardContent>
             </Card>
           </GuideSection>

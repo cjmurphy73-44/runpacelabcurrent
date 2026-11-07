@@ -2,13 +2,13 @@ import React from "react";
 import { FlaskConical, Calculator, Activity, Users } from "lucide-react";
 import Reveal from "@/components/landing/Reveal";
 
-// A taste of the science — not a deep technical breakdown, but enough to
+// A taste of the science, not a deep technical breakdown, but enough to
 // signal that this is built by people who know maths and racing, not templates.
 const PILLARS = [
   {
     icon: Calculator,
     title: "Built on real mathematics",
-    body: "Daily CTL/ATL/TSB modelling, HR-based TRIMP, and VDOT calibration — not a mileage counter dressed up as intelligence. Two-compartment ODE fitness/fatigue modelling sits alongside the industry-standard EWMA so you can compare both.",
+    body: "Daily CTL/ATL/TSB modelling, HR-based TRIMP, and VDOT calibration, not a mileage counter dressed up as intelligence. Two-compartment ODE fitness/fatigue modelling sits alongside the industry-standard EWMA so you can compare both.",
   },
   {
     icon: Activity,
@@ -23,7 +23,7 @@ const PILLARS = [
   {
     icon: Users,
     title: "Multi-sport by design",
-    body: "Running, cycling, swimming, triathlon, and strength all feed the same physiology model — because your training load reflects everything you do, not just the miles you run.",
+    body: "Running, cycling, swimming, triathlon, and strength all feed the same physiology model, because your training load reflects everything you do, not just the miles you run.",
   },
 ];
 
@@ -36,7 +36,7 @@ export default function ScienceExplainedSection() {
         </span>
         <h2 className="mt-5 font-heading text-3xl sm:text-4xl font-bold">A taste of the science behind it</h2>
         <p className="mt-3 text-muted-foreground">
-          You don't need a sports science degree to use it — but it's reassuring to know the people
+          You don't need a sports science degree to use it, but it's reassuring to know the people
           who built it have one. Here's the short version of what makes TrainPaceLab different.
         </p>
       </div>

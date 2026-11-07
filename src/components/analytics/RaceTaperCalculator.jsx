@@ -71,7 +71,7 @@ export default function RaceTaperCalculator({ athlete }) {
     <Card>
       <CardHeader>
         <CardTitle className="font-heading flex items-center gap-2"><CalendarClock className="w-4 h-4 text-primary" /> Race taper calculator</CardTitle>
-        <CardDescription>Exponential volume taper that keeps intensity and sheds fatigue — modelled on Bosquet et al. (2007).</CardDescription>
+        <CardDescription>Exponential volume taper that keeps intensity and sheds fatigue, modelled on Bosquet et al. (2007).</CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
@@ -153,7 +153,7 @@ export default function RaceTaperCalculator({ athlete }) {
           </div>
         </div>
         <p className="text-xs text-muted-foreground">
-          Model: daily volume = peak daily × 0.85·e^(−1.05·progress), clamped ≥10%; race day is a short activation tune-up. Keep intensity race-specific throughout — only volume is tapered.
+          Model: daily volume = peak daily × 0.85·e^(−1.05·progress), clamped ≥10%; race day is a short activation tune-up. Keep intensity race-specific throughout, only volume is tapered.
         </p>
       </CardContent>
     </Card>

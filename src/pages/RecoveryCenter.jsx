@@ -36,7 +36,7 @@ export default function RecoveryCenter() {
       <PageShell maxWidth="max-w-5xl">
         <SectionHeading
           title="Recovery Center"
-          description="Log and review your daily recovery metrics — HRV, sleep, resting heart rate and readiness."
+          description="Log and review your daily recovery metrics, HRV, sleep, resting heart rate and readiness."
           icon={HeartPulse}
         />
         <p className="text-sm text-muted-foreground">Create your athlete profile on the dashboard first, then return here.</p>
@@ -49,7 +49,7 @@ export default function RecoveryCenter() {
       <PageShell maxWidth="max-w-5xl">
         <SectionHeading
           title="Recovery Center"
-          description="Log and review your daily recovery metrics — HRV, sleep, resting heart rate and readiness."
+          description="Log and review your daily recovery metrics, HRV, sleep, resting heart rate and readiness."
           icon={HeartPulse}
         />
         <RecoveryCenterView athleteId={athlete.id} />

@@ -116,7 +116,7 @@ export default function PowerPaceHistograms({ athleteId, maxHr, ftpWatts }) {
     <Card>
       <CardHeader>
         <CardTitle className="font-heading flex items-center gap-2"><Activity className="w-4 h-4 text-primary" /> Workload distribution</CardTitle>
-        <CardDescription>{activeMode.hint}{!hasData && " — no matching sessions yet."}</CardDescription>
+        <CardDescription>{activeMode.hint}{!hasData && ", no matching sessions yet."}</CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="flex flex-wrap gap-1">

@@ -59,7 +59,7 @@ export default function TrainingPlanExtras({ plan }) {
           </AccordionItem>
 
           <AccordionItem value="injury">
-            <AccordionTrigger className="text-sm font-heading">Injury Prevention — Weekly Audit</AccordionTrigger>
+            <AccordionTrigger className="text-sm font-heading">Injury Prevention, Weekly Audit</AccordionTrigger>
             <AccordionContent className="space-y-3">
               {plan.injury_audit_questions?.length > 0 && (
                 <ul className="list-disc list-inside text-sm space-y-1 text-muted-foreground">
@@ -68,7 +68,7 @@ export default function TrainingPlanExtras({ plan }) {
               )}
               {plan.injury_red_flags?.length > 0 && (
                 <div className="bg-destructive/10 border border-destructive/30 rounded-md p-3 space-y-1">
-                  <p className="text-sm font-medium flex items-center gap-1"><AlertTriangle className="w-4 h-4" /> Red flags — stop immediately</p>
+                  <p className="text-sm font-medium flex items-center gap-1"><AlertTriangle className="w-4 h-4" /> Red flags, stop immediately</p>
                   <ul className="list-disc list-inside text-sm text-muted-foreground">
                     {plan.injury_red_flags.map((r, idx) => <li key={idx}>{r}</li>)}
                   </ul>

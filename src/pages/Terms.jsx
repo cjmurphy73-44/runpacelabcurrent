@@ -18,7 +18,7 @@ export default function Terms() {
       <h2>2. Subscriptions and billing</h2>
       <ul>
         <li>Free tier: limited wearable sync lookback, manual imports, and a weekly AI-coach message cap.</li>
-        <li>Paid plans — Pro (A$9/month), Unlimited (A$19/month) and Coach Pro (A$29/month): billed monthly via
+        <li>Paid plans, Pro (A$9/month), Unlimited (A$19/month) and Coach Pro (A$29/month): billed monthly via
         Stripe until cancelled.</li>
         <li>Plans renew automatically. You can cancel at any time; cancellation stops future renewals but does not
         refund the current paid period except where required by law.</li>

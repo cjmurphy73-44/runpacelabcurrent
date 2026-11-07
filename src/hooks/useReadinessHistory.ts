@@ -16,7 +16,7 @@ const STATUS_BANDS: { min: number; status: ReadinessDay["status"] }[] = [
 ];
 
 /**
- * scoreFromMetric — mirrors the synthesis in useCoachingInsights. Prefers a
+ * scoreFromMetric, mirrors the synthesis in useCoachingInsights. Prefers a
  * device-reported readiness_score; otherwise synthesizes from the component
  * signals (HRV score, raw HRV, sleep score, resting HR vs baseline) that wearables
  * sync into DailyMetrics. Returns null when no signal is present for the day.
@@ -47,7 +47,7 @@ function statusForScore(score: number): ReadinessDay["status"] {
 }
 
 /**
- * useReadinessHistory — fetches the athlete's DailyMetrics for the trailing
+ * useReadinessHistory, fetches the athlete's DailyMetrics for the trailing
  * `days` window and renders each day into a ReadinessDay (chronological, oldest
  * first). Throws into `error` on auth/profile failure; surfaces `loading`.
  */

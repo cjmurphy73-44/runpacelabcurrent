@@ -26,7 +26,7 @@ export default function CorosIntegration({ athleteId }) {
   useEffect(() => { loadStatus(); }, [loadStatus]);
 
   const connect = async () => {
-    if (!window.confirm("Before we open COROS: make sure you're already logged into coros.com in this browser and ready to approve quickly — COROS's authorization window is only about a minute. Continue?")) return;
+    if (!window.confirm("Before we open COROS: make sure you're already logged into coros.com in this browser and ready to approve quickly, COROS's authorization window is only about a minute. Continue?")) return;
     setConnecting(true); setError(null); setInfo(null);
     try {
       const res = await base44.functions.invoke("corosSync", { action: "authorize" });
@@ -125,9 +125,9 @@ export default function CorosIntegration({ athleteId }) {
                 : connected
                   ? status?.last_sync_at
                     ? `Last sync ${new Date(status.last_sync_at).toLocaleString()}`
-                    : "Connected — use Sync historical to pull activities"
+                    : "Connected, use Sync historical to pull activities"
                   : needsReconnect
-                    ? "Authorization expired — reconnect to resume syncing"
+                    ? "Authorization expired, reconnect to resume syncing"
                     : "Not connected"}
             </p>
             {needsReconnect && (

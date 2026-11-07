@@ -4,7 +4,7 @@ import { TrendingUp, TrendingDown, Minus } from "lucide-react";
 
 // Session-level impact on the fitness curve, read straight from the stored EWMA
 // daily values: this training day's CTL/ATL/TSB versus the previous day with data.
-// No new maths — the numbers stay exactly what recalculateCTLATLTSB produced.
+// No new maths, the numbers stay exactly what recalculateCTLATLTSB produced.
 function Delta({ value, suffix = "" }) {
   if (value === null || value === undefined || Number.isNaN(value)) return null;
   const rounded = Math.round(value * 10) / 10;
@@ -66,7 +66,7 @@ export default function WorkoutFitnessImpact({ workout, athleteId }) {
   if (!current) {
     return (
       <p className="text-[11px] text-muted-foreground">
-        Fitness curve not calculated for this day yet — it updates once the day's load is reconciled.
+        Fitness curve not calculated for this day yet, it updates once the day's load is reconciled.
       </p>
     );
   }

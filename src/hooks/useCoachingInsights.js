@@ -4,7 +4,7 @@ import { adjustPaceForEnvironment, calculateDewPoint } from "@/math/environmenta
 import { computeInjurySignal } from "@/lib/coachInjurySignal";
 
 /**
- * useCoachingInsights — ENG-01
+ * useCoachingInsights, ENG-01
  * Aggregates the athlete's readiness score, location-based weather pace
  * adjustment, and coaching feedback into a daily-briefing payload for the
  * Intelligence Hub. Returns { data, loading, error }.
@@ -68,7 +68,7 @@ export function useCoachingInsights() {
     const elevationM = openMeteo?.elevation ?? 0;
     if (typeof tempC !== "number" || typeof rh !== "number") {
       return {
-        weatherAdvice: "Weather data came back incomplete — try again shortly.",
+        weatherAdvice: "Weather data came back incomplete, try again shortly.",
         weatherConditions: null,
         weatherError: "Incomplete weather payload.",
       };
@@ -92,9 +92,9 @@ export function useCoachingInsights() {
 
     let advice;
     if (pctSlowdown <= 0) {
-      advice = `Conditions at your location are benign (${tempC.toFixed(0)}°C, ${rh.toFixed(0)}% RH, dew point ${dewPointC}°C) — no pace adjustment needed. Train at your planned easy pace of ${env.formattedAdjustedPace}.`;
+      advice = `Conditions at your location are benign (${tempC.toFixed(0)}°C, ${rh.toFixed(0)}% RH, dew point ${dewPointC}°C), no pace adjustment needed. Train at your planned easy pace of ${env.formattedAdjustedPace}.`;
     } else {
-      advice = `Live conditions near you — ${tempC.toFixed(0)}°C, ${rh.toFixed(0)}% humidity, dew point ${dewPointC}°C — warrant slowing easy pace by ~${pctSlowdown}%. Target: ${env.formattedAdjustedPace} (${env.paceImpactSecondsPerKm >= 0 ? "+" : ""}${env.paceImpactSecondsPerKm}s/km vs. baseline).`;
+      advice = `Live conditions near you, ${tempC.toFixed(0)}°C, ${rh.toFixed(0)}% humidity, dew point ${dewPointC}°C, warrant slowing easy pace by ~${pctSlowdown}%. Target: ${env.formattedAdjustedPace} (${env.paceImpactSecondsPerKm >= 0 ? "+" : ""}${env.paceImpactSecondsPerKm}s/km vs. baseline).`;
     }
 
     return {
@@ -158,7 +158,7 @@ export function useCoachingInsights() {
               signals.push(latest.hrv_score);
               labels.push("HRV");
             } else if (typeof latest.hrv === "number" && latest.hrv > 0) {
-              // Raw HRV in ms — normalize very roughly: most healthy 20–100ms.
+              // Raw HRV in ms, normalize very roughly: most healthy 20–100ms.
               const norm = Math.max(0, Math.min(100, (latest.hrv - 10) / 0.9));
               signals.push(norm);
               labels.push("HRV");
@@ -184,7 +184,7 @@ export function useCoachingInsights() {
 
         if (readinessScore === null) {
           readinessExplanation =
-            "No biometric data on file. The readiness score needs at least one daily signal — HRV, sleep score, or a resting heart-rate reading — which your wearable syncs into the Recovery Center (or you log manually there). Once that lands, today's score will compute automatically.";
+            "No biometric data on file. The readiness score needs at least one daily signal, HRV, sleep score, or a resting heart-rate reading, which your wearable syncs into the Recovery Center (or you log manually there). Once that lands, today's score will compute automatically.";
         }
 
         // --- Weather (location-based) ---

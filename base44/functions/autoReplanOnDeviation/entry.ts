@@ -77,7 +77,7 @@ Next ${upcoming.length} upcoming prescribed sessions to re-shape:
 ${JSON.stringify(upcoming.map((s) => ({ id: s.id, date: s.date, sport: s.sport, duration: s.prescribed_duration_minutes, zone: s.prescribed_intensity_zone })))}
 
 Adaptive rules:
-- If the athlete SKIPPED a key session, redistribute that load sensibly across the next sessions — do not simply pile the missed volume onto the very next day.
+- If the athlete SKIPPED a key session, redistribute that load sensibly across the next sessions, do not simply pile the missed volume onto the very next day.
 - If the session was PARTIAL (under-done) and TSB is positive, the next session can stay or slightly increase. If TSB is negative, ease the next session.
 - If the session was EXCESS (over-done), pull the next session back to absorb the extra fatigue; reduce intensity before reducing duration.
 - Keep changes conservative and physiologically defensible.
@@ -106,7 +106,7 @@ Return an adjustment for EVERY session id listed.`,
 
     // Validate every adjustment against the supplied upcoming sessions before
     // applying. Only adjustments targeting a known upcoming session id, with
-    // in-bounds values, are accepted — nothing partial is persisted.
+    // in-bounds values, are accepted, nothing partial is persisted.
     const validation = validateAdjustments(llmResult.adjustments || [], upcoming);
     if (validation.accepted.length === 0) {
       return Response.json({
@@ -128,7 +128,7 @@ Return an adjustment for EVERY session id listed.`,
     });
 
     // Notify the athlete's mobile device that their plan was auto-adjusted
-    // (native builds only — fails silently until push credentials are configured).
+    // (native builds only, fails silently until push credentials are configured).
     await sendAthletePush(base44, session.athlete_id, {
       title: 'Training plan auto-adjusted',
       content: summary,

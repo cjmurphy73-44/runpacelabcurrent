@@ -3,7 +3,7 @@ import { useServices } from "@/services/providers/ServiceContext";
 import { computeInjurySignal } from "@/lib/coachInjurySignal";
 
 /**
- * useCoachInjurySignal — surfaces the latest injury/recovery signal parsed from the
+ * useCoachInjurySignal, surfaces the latest injury/recovery signal parsed from the
  * athlete's coach conversation so every surface (Today's Session, Intelligence Hub,
  * Training Plan, Calendar) can react consistently to a coach-directed hold.
  *

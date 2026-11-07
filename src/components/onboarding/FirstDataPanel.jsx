@@ -79,11 +79,11 @@ export default function FirstDataPanel({ athlete, onAddManual, onRefresh }) {
             <h2 className="text-xl font-heading font-bold">You're set up{name}.</h2>
             <p className="text-sm text-muted-foreground">
               We've built a starting model of your fitness. One workout is all it takes to switch the
-              dashboard on — pick whichever way of getting data in suits you.
+              dashboard on, pick whichever way of getting data in suits you.
             </p>
           </div>
 
-          {/* What we already know — with its source stated plainly. */}
+          {/* What we already know, with its source stated plainly. */}
           <div className="rounded-lg border border-border bg-muted/20 p-4 space-y-3">
             <div className="flex items-center justify-between gap-3 flex-wrap">
               <p className="text-sm font-medium flex items-center gap-2">
@@ -115,7 +115,7 @@ export default function FirstDataPanel({ athlete, onAddManual, onRefresh }) {
                 <Watch className="w-5 h-5 text-primary" />
                 <p className="mt-2 text-sm font-medium">Connect a device</p>
                 <p className="text-xs text-muted-foreground mt-1">
-                  COROS, Garmin or Strava — workouts and recovery sync by themselves.
+                  COROS, Garmin or Strava, workouts and recovery sync by themselves.
                 </p>
               </Link>
               <Link
@@ -158,7 +158,7 @@ export default function FirstDataPanel({ athlete, onAddManual, onRefresh }) {
                   loading ? "Checking…"
                     : hasWorkouts
                       ? `${counts.workouts} session${counts.workouts === 1 ? "" : "s"}${counts.lastDate ? ` · latest ${counts.lastDate}` : ""}`
-                      : "Nothing yet — use any option above"
+                      : "Nothing yet, use any option above"
                 }
               />
               <DataRow
@@ -168,7 +168,7 @@ export default function FirstDataPanel({ athlete, onAddManual, onRefresh }) {
                   loading ? "Checking…"
                     : hasRecovery
                       ? `${counts.recoveryDays} day${counts.recoveryDays === 1 ? "" : "s"} of sleep / HRV / resting HR`
-                      : "None yet — connect a wearable or log a quick check-in"
+                      : "None yet, connect a wearable or log a quick check-in"
                 }
               />
             </ul>
@@ -212,7 +212,7 @@ function DataRow({ ok, label, detail }) {
       )}
       <div className="min-w-0">
         <span className="font-medium">{label}</span>
-        <span className="text-muted-foreground"> — {detail}</span>
+        <span className="text-muted-foreground">, {detail}</span>
       </div>
     </li>
   );

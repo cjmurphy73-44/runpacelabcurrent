@@ -30,7 +30,7 @@ export default function WorkoutZonePanel({ workout, athlete }) {
 
       {bounds && bounds.length === 6 && (
         <p className="text-[11px] text-muted-foreground font-mono">
-          Your zone floors — Z1 {bounds[0]}+ · Z2 {bounds[1]}+ · Z3 {bounds[2]}+ · Z4 {bounds[3]}+ · Z5 {bounds[4]}+ · max {bounds[5]} bpm
+          Your zone floors, Z1 {bounds[0]}+ · Z2 {bounds[1]}+ · Z3 {bounds[2]}+ · Z4 {bounds[3]}+ · Z5 {bounds[4]}+ · max {bounds[5]} bpm
         </p>
       )}
 

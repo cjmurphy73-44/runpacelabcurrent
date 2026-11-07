@@ -99,10 +99,10 @@ export function computeInjurySignal(messages, { now = new Date() } = {}) {
   let holdReason = null;
   const head = evidence[0];
   if (level === "hold") {
-    summary = `Coach-directed running hold from your conversation on ${fmt(head?.date)} — running is on hold. Today's run has been auto-swapped to rest/recovery (cross-train at easy effort) until the coach clears you.`;
+    summary = `Coach-directed running hold from your conversation on ${fmt(head?.date)}, running is on hold. Today's run has been auto-swapped to rest/recovery (cross-train at easy effort) until the coach clears you.`;
     holdReason = summary;
   } else if (level === "caution") {
-    summary = `Recent coach conversation on ${fmt(head?.date)} flagged a niggle or soreness — back off if symptoms persist and check with the coach before any hard effort.`;
+    summary = `Recent coach conversation on ${fmt(head?.date)} flagged a niggle or soreness, back off if symptoms persist and check with the coach before any hard effort.`;
   }
 
   return { level, evidence, lastInjuryDate, summary, holdReason };

@@ -83,7 +83,7 @@ export default function AISynthesisCard({ athleteId }) {
             </Button>
           </div>
         ) : rateLimited ? (
-          <p className="text-sm text-muted-foreground">You've reached today's AI synthesis limit — it resets tomorrow.</p>
+          <p className="text-sm text-muted-foreground">You've reached today's AI synthesis limit, it resets tomorrow.</p>
         ) : error ? (
           <div className="space-y-2">
             <p className="text-sm text-destructive">{error}</p>
@@ -91,7 +91,7 @@ export default function AISynthesisCard({ athleteId }) {
           </div>
         ) : data?.empty ? (
           <p className="text-sm text-muted-foreground">
-            Not enough data for a synthesis yet — log a couple of sessions or sync a wearable and your daily exception-based insight will appear here.
+            Not enough data for a synthesis yet, log a couple of sessions or sync a wearable and your daily exception-based insight will appear here.
           </p>
         ) : data ? (
           <>

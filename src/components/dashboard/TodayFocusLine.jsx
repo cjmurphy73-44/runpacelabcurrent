@@ -10,18 +10,18 @@ function buildFocus(readiness, tsb) {
   if (!hasR && !hasT) return null;
 
   if (hasR && readiness < 40) {
-    return { tone: "text-danger", text: "Readiness is low — keep today easy or rest." };
+    return { tone: "text-danger", text: "Readiness is low, keep today easy or rest." };
   }
   if (hasT && tsb <= -25) {
-    return { tone: "text-danger", text: "Fatigue is deep — prioritise recovery before adding intensity." };
+    return { tone: "text-danger", text: "Fatigue is deep, prioritise recovery before adding intensity." };
   }
   if (hasR && readiness >= 70 && hasT && tsb >= -10) {
-    return { tone: "text-success", text: "Green light — you're ready for the prescribed session, quality included." };
+    return { tone: "text-success", text: "Green light, you're ready for the prescribed session, quality included." };
   }
   if (hasR && readiness >= 70) {
-    return { tone: "text-success", text: "Recovery looks good — train as planned, watch accumulated fatigue." };
+    return { tone: "text-success", text: "Recovery looks good, train as planned, watch accumulated fatigue." };
   }
-  return { tone: "text-warning", text: "Moderate readiness — train to plan but stay at the easy end if you feel flat." };
+  return { tone: "text-warning", text: "Moderate readiness, train to plan but stay at the easy end if you feel flat." };
 }
 
 export default function TodayFocusLine({ athlete }) {

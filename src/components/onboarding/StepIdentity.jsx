@@ -3,7 +3,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
-// Step 1 — only what every calculation downstream actually needs.
+// Step 1, only what every calculation downstream actually needs.
 export default function StepIdentity({ form, set, setForm }) {
   return (
     <div className="space-y-5">
@@ -41,7 +41,7 @@ export default function StepIdentity({ form, set, setForm }) {
           </SelectContent>
         </Select>
         <p className="text-xs text-muted-foreground mt-1.5">
-          Used only for physiological estimates — never shared.
+          Used only for physiological estimates, never shared.
         </p>
       </div>
     </div>

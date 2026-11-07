@@ -22,7 +22,7 @@ const UserNotRegisteredError = () => {
           </div>
           <h1 className="font-heading text-xl font-bold">Access restricted</h1>
           <p className="text-sm text-muted-foreground">
-            Your account isn't registered to use this app yet. If you just signed up, try reloading — otherwise sign out and back in with the right account.
+            Your account isn't registered to use this app yet. If you just signed up, try reloading, otherwise sign out and back in with the right account.
           </p>
           <div className="flex gap-2 justify-center pt-1">
             <Button variant="outline" onClick={handleRetry} className="gap-2">

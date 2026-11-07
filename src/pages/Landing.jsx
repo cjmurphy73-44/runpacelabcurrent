@@ -16,7 +16,7 @@ import PublicFooter from "@/components/layout/PublicFooter";
 import Reveal from "@/components/landing/Reveal";
 import ThemeToggle from "@/components/layout/ThemeToggle";
 
-// Real photography from Unsplash — no AI-generated imagery.
+// Real photography from Unsplash, no AI-generated imagery.
 const HERO_IMG = "https://images.unsplash.com/photo-1452626038306-27d8e0dbf6e4?w=1400&auto=format&fit=crop&q=80";
 const STEP_IMGS = [
   "https://images.unsplash.com/photo-1556909114-44e3e9399a2e?w=1000&auto=format&fit=crop&q=80",
@@ -30,12 +30,12 @@ const PILLARS = [
   {
     icon: Calculator,
     title: "Beyond simple fitness curves",
-    body: "Most platforms model training load as a single exponential — one number for fitness, one for fatigue. But a threshold session and a recovery jog impose fundamentally different physiological costs. TrainPaceLab models stress with the specificity the body actually responds to.",
+    body: "Most platforms model training load as a single exponential, one number for fitness, one for fatigue. But a threshold session and a recovery jog impose fundamentally different physiological costs. TrainPaceLab models stress with the specificity the body actually responds to.",
   },
   {
     icon: HeartPulse,
     title: "Grounded in your real data",
-    body: "Every insight is tied to your actual telemetry — heart rate, pace, recovery scores, and race history. Where AI adds value, it's parsing and synthesizing your real numbers. Where it doesn't, it stays out of the way. Every recommendation is generated from your own training history.",
+    body: "Every insight is tied to your actual telemetry, heart rate, pace, recovery scores, and race history. Where AI adds value, it's parsing and synthesizing your real numbers. Where it doesn't, it stays out of the way. Every recommendation is generated from your own training history.",
   },
   {
     icon: Activity,
@@ -47,7 +47,7 @@ const PILLARS = [
 const FEATURES = [
   { icon: BrainCircuit, title: "Adaptive physiology engine", body: "Daily CTL/ATL/TSB modeling, HR-based TRIMP, and VDOT calibration that reshapes your plan as you train." },
   { icon: Watch, title: "Wearable sync", body: "Automatic workout and recovery sync from COROS today, plus FIT, TCX, or CSV upload from any watch. Recovery sync from Oura, WHOOP, Polar, Withings, and Fitbit is ready once credentials are configured. Multi-file reconciliation unifies multiple files into one master record." },
-  { icon: Sparkles, title: "Modest, grounded AI", body: "Post-workout insights, micro-adjustments, and race strategy synthesised from your real telemetry — built from your own training history." },
+  { icon: Sparkles, title: "Modest, grounded AI", body: "Post-workout insights, micro-adjustments, and race strategy synthesised from your real telemetry, built from your own training history." },
   { icon: Users, title: "Coach workspace", body: "Manage a roster, compare athletes side-by-side, and assign plans. Built for squads and individual coaches alike." },
   { icon: ShieldCheck, title: "Injury-aware loading", body: "Your injury history shapes prehab routines and load caps so the plan pushes you forward without breaking you." },
   { icon: Dumbbell, title: "Structured workout export", body: "Send .fit workouts straight to your watch so prescribed intervals land on your wrist, ready to run." },
@@ -55,17 +55,17 @@ const FEATURES = [
 
 const STEPS = [
   { icon: Watch, title: "Connect your wearables", body: "Sync COROS automatically today, or upload FIT, TCX, and CSV from any watch. Recovery sync from Oura, WHOOP, Polar, Withings, and Fitbit is ready once credentials are configured." },
-  { icon: BrainCircuit, title: "We model your physiology", body: "Daily CTL/ATL/TSB, HR-based TRIMP, and VDOT calibration build a living picture of your fitness and fatigue — with the specificity to distinguish a threshold session from a recovery jog." },
-  { icon: Sparkles, title: "Get an adaptive plan that reads your body", body: "Your plan reshapes every session as you train. When recovery is low, tomorrow eases. When you're ready to absorb work, it pushes — grounded in your numbers, not a static checklist." },
+  { icon: BrainCircuit, title: "We model your physiology", body: "Daily CTL/ATL/TSB, HR-based TRIMP, and VDOT calibration build a living picture of your fitness and fatigue, with the specificity to distinguish a threshold session from a recovery jog." },
+  { icon: Sparkles, title: "Get an adaptive plan that reads your body", body: "Your plan reshapes every session as you train. When recovery is low, tomorrow eases. When you're ready to absorb work, it pushes, grounded in your numbers, not a static checklist." },
 ];
 
 const FAQ = [
   { q: "Do I need a paid plan to try it?", a: "No. The free tier gives you the dashboard, physiology lab, wearable sync with 90 days of history, 10 file imports a day, and 20 AI coach messages a week. Upgrade only when you want full history, adaptive re-planning, and structured workout export." },
   { q: "Which wearables are supported?", a: "COROS has direct automated sync today (workouts + recovery). Recovery sync from Oura, WHOOP, Polar, Withings, and Fitbit is built and ready once the team adds each provider's credentials. For Garmin and Strava, upload FIT, TCX, or CSV files from any device, or use a COROS watch as a bridge. Multi-file reconciliation unifies them into one master record." },
-  { q: "Is this only for runners?", a: "No. TrainPaceLab is multi-sport — running, cycling, swimming, triathlon, and strength all feed the same physiology model so your training load reflects everything you do." },
-  { q: "How does the physiology model work?", a: "Standard platforms model fitness as a single exponential curve of past mileage. TrainPaceLab distinguishes the metabolic and autonomic cost of different session types — threshold work, aerobic volume, VO2max intervals — so your training load reflects what your body actually experienced, not just how many minutes you ran." },
-  { q: "What does the AI actually do?", a: "It parses messy multi-source data, generates post-workout insights, suggests micro-adjustments, and builds race strategy — all grounded in your real telemetry. Where the math is deterministic, the math runs, and language is used only to summarise the result. Where language adds value, the AI synthesises." },
-  { q: "Can I get access without paying during the beta?", a: "Yes. If you have an access code from the team, redeem it on the pricing page for instant full access until the code's expiry — no checkout required." },
+  { q: "Is this only for runners?", a: "No. TrainPaceLab is multi-sport, running, cycling, swimming, triathlon, and strength all feed the same physiology model so your training load reflects everything you do." },
+  { q: "How does the physiology model work?", a: "Standard platforms model fitness as a single exponential curve of past mileage. TrainPaceLab distinguishes the metabolic and autonomic cost of different session types, threshold work, aerobic volume, VO2max intervals, so your training load reflects what your body actually experienced, not just how many minutes you ran." },
+  { q: "What does the AI actually do?", a: "It parses messy multi-source data, generates post-workout insights, suggests micro-adjustments, and builds race strategy, all grounded in your real telemetry. Where the math is deterministic, the math runs, and language is used only to summarise the result. Where language adds value, the AI synthesises." },
+  { q: "Can I get access without paying during the beta?", a: "Yes. If you have an access code from the team, redeem it on the pricing page for instant full access until the code's expiry, no checkout required." },
 ];
 
 export default function Landing() {
@@ -109,7 +109,7 @@ export default function Landing() {
               </h1>
               <p className="mt-5 text-lg text-muted-foreground max-w-lg">
                 TrainPaceLab models your training load with the specificity the body actually responds to,
-                then reshapes your plan around your real recovery — so you arrive at your race fit, fresh,
+                then reshapes your plan around your real recovery, so you arrive at your race fit, fresh,
                 and healthy.
               </p>
               <div className="mt-8">
@@ -136,7 +136,7 @@ export default function Landing() {
           <div className="mb-12 max-w-2xl">
             <h2 className="font-heading text-3xl sm:text-4xl font-bold">A different kind of training platform</h2>
             <p className="mt-3 text-muted-foreground">
-              Most apps log what happened. TrainPaceLab understands why your body responded the way it did —
+              Most apps log what happened. TrainPaceLab understands why your body responded the way it did,
               and uses that to shape what comes next.
             </p>
           </div>
@@ -168,7 +168,7 @@ export default function Landing() {
           <h2 className="mt-4 font-heading text-3xl sm:text-4xl font-bold">A dashboard that reads your body</h2>
           <p className="mt-3 text-muted-foreground">
             Fitness, fatigue, and form update daily from your real sessions and recovery. Readiness blends sleep,
-            HRV, resting heart rate, and training stress into one number — so you know whether to push or back off
+            HRV, resting heart rate, and training stress into one number, so you know whether to push or back off
             before you lace up.
           </p>
         </div>
@@ -200,7 +200,7 @@ export default function Landing() {
         </div>
       </section>
 
-      {/* How it works — three photo-led steps */}
+      {/* How it works, three photo-led steps */}
       <section className="border-y border-border bg-muted/40">
         <div className="max-w-6xl mx-auto px-4 py-16">
           <div className="mb-10">
@@ -269,14 +269,14 @@ export default function Landing() {
             </span>
             <h2 className="mt-4 font-heading text-3xl sm:text-4xl font-bold">Your body doesn't adapt on a spreadsheet.</h2>
             <p className="mt-4 text-muted-foreground">
-              Traditional training load models treat every minute of running as the same stress — a threshold
+              Traditional training load models treat every minute of running as the same stress, a threshold
               progression and an easy jog both feed one fitness number. But your body knows the difference. So
               does TrainPaceLab.
             </p>
             <p className="mt-3 text-muted-foreground">
               By distinguishing the metabolic and autonomic cost of different session types, and folding in your
               real recovery signals, the platform pushes when you're ready to absorb it and pulls back when you're
-              not — so you arrive at your race fit, fresh, and healthy.
+              not, so you arrive at your race fit, fresh, and healthy.
             </p>
           </div>
           <Image

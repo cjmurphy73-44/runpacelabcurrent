@@ -36,7 +36,7 @@ function buildSummary(latest, workouts, labs, anomalies) {
   parts.push(`Recent sessions: ${recentSessions || 'none'}`);
   const labSummary = (labs || []).slice(0, 6).map((l) => `${l.date} ${l.metric_name}=${l.value}${l.unit||''}`).join(' | ');
   parts.push(`Lab results: ${labSummary || 'none'}`);
-  const flags = anomalies.map((a) => `${a.severity.toUpperCase()}: ${a.title} — ${a.detail}`).join(' | ');
+  const flags = anomalies.map((a) => `${a.severity.toUpperCase()}: ${a.title}, ${a.detail}`).join(' | ');
   parts.push(`Detected anomalies: ${flags || 'none'}`);
   return parts.join('\n');
 }
@@ -105,7 +105,7 @@ export default async function(req) {
         synthesisText = `${top.title}. ${top.cue || top.detail}`;
         confidence = top.severity === 'danger' ? 'low' : 'medium';
       } else {
-        synthesisText = 'Your recovery and load signals are within stable ranges — keep the routine and watch for any sharp change tomorrow.';
+        synthesisText = 'Your recovery and load signals are within stable ranges, keep the routine and watch for any sharp change tomorrow.';
         confidence = 'high';
       }
     }

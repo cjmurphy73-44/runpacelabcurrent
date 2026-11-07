@@ -6,7 +6,7 @@ import WipBadge from "@/components/common/WipBadge";
 // Direct Strava OAuth/webhook sync is not production-ready yet (Strava API
 // approval + webhook subscription wiring is still in progress). This card is
 // intentionally a non-interactive "Coming Soon" surface so users don't hit dead
-// buttons — manual .fit upload via the Import page is the working path today,
+// buttons, manual .fit upload via the Import page is the working path today,
 // or automatic sync via a connected COROS watch.
 export default function StravaIntegration({ athleteId }) {
   return (
@@ -27,7 +27,7 @@ export default function StravaIntegration({ athleteId }) {
         <Button
           size="sm"
           disabled
-          title="Direct Strava sync is coming soon — export .fit files for now."
+          title="Direct Strava sync is coming soon, export .fit files for now."
         >
           <Activity className="w-4 h-4 mr-1" /> Connect
         </Button>
@@ -35,7 +35,7 @@ export default function StravaIntegration({ athleteId }) {
       <p className="text-xs text-muted-foreground">
         <span className="font-medium text-foreground">Today:</span> export
         <span className="font-medium"> .fit</span> files from Strava
-        (Activity → ⋯ → Export original) and upload them on the Import page —
+        (Activity → ⋯ → Export original) and upload them on the Import page,
         or connect a COROS watch for automatic sync right now.
       </p>
     </div>

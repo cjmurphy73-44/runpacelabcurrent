@@ -18,7 +18,7 @@ function addDays(dateKey, n) {
 }
 
 // Rough load estimate for a scheduled (not-yet-completed) session, based on
-// prescribed duration and intensity zone — used only for forward projection.
+// prescribed duration and intensity zone, used only for forward projection.
 function estimateProjectedLoad(planned) {
   const duration = planned.prescribed_duration_minutes || planned.duration_minutes || 0;
   if (!duration) return 0;
@@ -43,27 +43,27 @@ export function getTsbZoneInfo(tsbValue) {
     return {
       label: "Fresh",
       badgeClass: "bg-success/10 text-success border-success/30",
-      advice: "Well-rested — a good window for a hard effort or race.",
+      advice: "Well-rested, a good window for a hard effort or race.",
     };
   }
   if (tsbValue >= -10) {
     return {
       label: "Neutral",
       badgeClass: "bg-primary/10 text-primary border-primary/30",
-      advice: "Balanced form — maintain your current training load.",
+      advice: "Balanced form, maintain your current training load.",
     };
   }
   if (tsbValue >= -25) {
     return {
       label: "Optimal",
       badgeClass: "bg-warning/10 text-warning border-warning/30",
-      advice: "Productive fatigue — good for building fitness. Monitor recovery.",
+      advice: "Productive fatigue, good for building fitness. Monitor recovery.",
     };
   }
   return {
     label: "High Risk",
     badgeClass: "bg-danger/10 text-danger border-danger/30",
-    advice: "Deep fatigue — high injury/illness risk. Prioritize recovery.",
+    advice: "Deep fatigue, high injury/illness risk. Prioritize recovery.",
   };
 }
 

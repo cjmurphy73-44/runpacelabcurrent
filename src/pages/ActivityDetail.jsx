@@ -129,7 +129,7 @@ export default function ActivityDetail() {
       const updated = await base44.entities.WorkoutSession.update(workout.id, { date: dateDraft });
       setWorkout(updated);
       try { await base44.functions.invoke("recalculateCTLATLTSB", { athlete_id: workout.athlete_id }); } catch (e) { console.warn("recalc after date patch failed", e); }
-      setPatchMsg({ ok: true, text: "Date updated — load metrics recalculated." });
+      setPatchMsg({ ok: true, text: "Date updated, load metrics recalculated." });
       setEditingDate(false);
     } catch (e) {
       setPatchMsg({ ok: false, text: e?.response?.data?.error || "Could not update date." });
@@ -245,7 +245,7 @@ export default function ActivityDetail() {
       <section className="space-y-4">
         <SectionHeading
           title="Attached files"
-          description="Every raw source format bound to this session — streams and laps are reconciled under strict priority (FIT > TCX > CSV)."
+          description="Every raw source format bound to this session, streams and laps are reconciled under strict priority (FIT > TCX > CSV)."
           icon={Files}
         />
         <Card>
@@ -370,7 +370,7 @@ export default function ActivityDetail() {
             ) : (
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
                 <Sparkles className="w-4 h-4 animate-pulse" />
-                Your coach is analysing this session — insights will appear here automatically.
+                Your coach is analysing this session, insights will appear here automatically.
               </div>
             )}
           </CardContent>

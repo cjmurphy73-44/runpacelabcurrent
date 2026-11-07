@@ -88,7 +88,7 @@ export default function TrainingPlanGenerator({ athleteId, athlete, onAthleteUpd
           {loading ? "Building your plan..." : "Generate Training Plan"}
         </Button>
         <p className="text-xs text-muted-foreground">
-          A race is optional — leave the fields blank and we'll build a general fitness block.
+          A race is optional, leave the fields blank and we'll build a general fitness block.
         </p>
       </CardContent>
     </Card>

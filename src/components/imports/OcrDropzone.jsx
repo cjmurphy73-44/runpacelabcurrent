@@ -22,7 +22,7 @@ export default function OcrDropzone({ athleteId, onSaved }) {
     try {
       const upload = await base44.integrations.Core.UploadFile({ file });
       const image_url = upload?.file_url;
-      if (!image_url) throw new Error("Upload failed — no file URL returned.");
+      if (!image_url) throw new Error("Upload failed, no file URL returned.");
       setQueue((q) => q.map((it) => (it.id === id ? { ...it, image_url, status: "reading" } : it)));
       const res = await base44.functions.invoke("parseWorkoutScreenshot", { image_url });
       const parsed = res?.data;
@@ -71,7 +71,7 @@ export default function OcrDropzone({ athleteId, onSaved }) {
             <UploadCloud className="w-6 h-6 text-muted-foreground" />
             <p className="text-sm font-medium">Drop workout screenshots</p>
             <p className="text-xs text-muted-foreground inline-flex items-center gap-1">
-              <ImageIcon className="w-3 h-3" /> Select multiple images — each is OCRed and queued for review
+              <ImageIcon className="w-3 h-3" /> Select multiple images, each is OCRed and queued for review
             </p>
           </div>
           <input

@@ -257,7 +257,7 @@ export default function Operations() {
   return (
     <PageShell
       title="Operations dashboard"
-      description="Aggregate operational health and business activity — owner view only."
+      description="Aggregate operational health and business activity, owner view only."
       actions={
         <Button variant="outline" size="sm" onClick={load}>
           <RefreshCw className="w-3.5 h-3.5 mr-1" />
@@ -265,7 +265,7 @@ export default function Operations() {
         </Button>
       }
     >
-      {/* Operations overview — stat tiles */}
+      {/* Operations overview, stat tiles */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4 mb-6">
         <StatTile
           icon={Users}
@@ -302,7 +302,7 @@ export default function Operations() {
         />
       </div>
 
-      {/* Business — stat tiles */}
+      {/* Business, stat tiles */}
       <h2 className="font-heading font-bold text-lg mb-3">Business & subscriptions</h2>
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4 mb-6">
         <StatTile
@@ -338,7 +338,7 @@ export default function Operations() {
         />
       </div>
 
-      {/* Launch checklist — external and operational tasks that cannot be
+      {/* Launch checklist, external and operational tasks that cannot be
           verified from inside the app. Keeps the operator honest about what
           still needs manual sign-off before going fully live. */}
       <h2 className="font-heading font-bold text-lg mb-3 mt-8">Launch checklist</h2>
@@ -385,7 +385,7 @@ export default function Operations() {
       </Card>
 
       <p className="text-xs text-muted-foreground mt-6">
-        All figures are aggregate counts — no individual athlete records or health
+        All figures are aggregate counts, no individual athlete records or health
         details are exposed on this dashboard.
       </p>
     </PageShell>

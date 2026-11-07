@@ -89,7 +89,7 @@ export function buildWorkoutFile(session: StructuredSession): BuiltWorkoutFile {
 
   const payload = {
     fileType: 'TrainPaceLab Structured Workout v1',
-    format: 'structured-text — Garmin Connect Workout Builder compatible',
+    format: 'structured-text, Garmin Connect Workout Builder compatible',
     workoutName: `${(session.sport ?? 'workout').replace(/^./, (c) => c.toUpperCase())} — ${session.date ?? 'session'}`,
     sport: session.sport ?? 'running',
     scheduledDate: session.date ?? null,

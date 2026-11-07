@@ -39,7 +39,7 @@ export function computePhenotypeInsights(dailyMetrics, biometricTelemetry) {
       type: "discordance",
       severity: "positive",
       title: "Autonomic vs. Mechanical Discordance",
-      narrative: `TSB is deeply negative at ${latest.calculated_tsb.toFixed(1)}, yet your 7-day HRV average of ${recentHrvAvg.toFixed(1)}ms sits at the ${pct.toFixed(0)}th percentile of your rolling 60-day baseline (${hrvBaselineMean.toFixed(1)}ms). Your autonomic nervous system isn't registering the mechanical load as stress — this points to an athlete who absorbs high volume exceptionally well. Standard "rest now" advice is likely premature here; continued loading is probably well-tolerated as long as resting HR and sleep stay stable.`,
+      narrative: `TSB is deeply negative at ${latest.calculated_tsb.toFixed(1)}, yet your 7-day HRV average of ${recentHrvAvg.toFixed(1)}ms sits at the ${pct.toFixed(0)}th percentile of your rolling 60-day baseline (${hrvBaselineMean.toFixed(1)}ms). Your autonomic nervous system isn't registering the mechanical load as stress, this points to an athlete who absorbs high volume exceptionally well. Standard "rest now" advice is likely premature here; continued loading is probably well-tolerated as long as resting HR and sleep stay stable.`,
     });
   }
 
@@ -53,7 +53,7 @@ export function computePhenotypeInsights(dailyMetrics, biometricTelemetry) {
       type: "red_flag",
       severity: "danger",
       title: "Sympathetic Fatigue Red Flag",
-      narrative: `ATL has dropped from ${priorAtlAvg.toFixed(1)} to ${recentAtlAvg.toFixed(1)} over the last two weeks — normally a "freshening" signal — but HRV has fallen to the ${hrvPct.toFixed(0)}th percentile of baseline (${recentHrvAvg.toFixed(1)}ms vs. ${hrvBaselineMean.toFixed(1)}ms) while resting HR has climbed to ${recentRhrAvg.toFixed(1)}bpm, ${(recentRhrAvg - rhrBaselineMean).toFixed(1)}bpm above baseline. This divergence between falling training load and rising autonomic stress is a classic marker of functional overreaching. TSB alone (currently ${latest.calculated_tsb.toFixed(1)}) is masking systemic fatigue — prioritize recovery despite "fresh" numbers.`,
+      narrative: `ATL has dropped from ${priorAtlAvg.toFixed(1)} to ${recentAtlAvg.toFixed(1)} over the last two weeks, normally a "freshening" signal, but HRV has fallen to the ${hrvPct.toFixed(0)}th percentile of baseline (${recentHrvAvg.toFixed(1)}ms vs. ${hrvBaselineMean.toFixed(1)}ms) while resting HR has climbed to ${recentRhrAvg.toFixed(1)}bpm, ${(recentRhrAvg - rhrBaselineMean).toFixed(1)}bpm above baseline. This divergence between falling training load and rising autonomic stress is a classic marker of functional overreaching. TSB alone (currently ${latest.calculated_tsb.toFixed(1)}) is masking systemic fatigue, prioritize recovery despite "fresh" numbers.`,
     });
   }
 
@@ -77,7 +77,7 @@ export function computePhenotypeInsights(dailyMetrics, biometricTelemetry) {
         type: "holistic_multiplier",
         severity: "warning",
         title: "Holistic Stress Multiplier",
-        narrative: `Over the last 14 days: ${highSoreness} high-soreness day(s), ${medSoreness} medium-soreness day(s), ${underFueled} under-fueled day(s), and ${travelDays} travel/jet-lag day(s) combine into a stress multiplier of ${multiplier.toFixed(2)}x. This compresses your ideal TSB peaking window from +${baseLow} to +${baseHigh} down to +${adjustedLow.toFixed(0)} to +${adjustedHigh.toFixed(0)} — you'll need a fresher (higher) TSB than usual to feel and perform your best right now.`,
+        narrative: `Over the last 14 days: ${highSoreness} high-soreness day(s), ${medSoreness} medium-soreness day(s), ${underFueled} under-fueled day(s), and ${travelDays} travel/jet-lag day(s) combine into a stress multiplier of ${multiplier.toFixed(2)}x. This compresses your ideal TSB peaking window from +${baseLow} to +${baseHigh} down to +${adjustedLow.toFixed(0)} to +${adjustedHigh.toFixed(0)}, you'll need a fresher (higher) TSB than usual to feel and perform your best right now.`,
       });
     }
   }

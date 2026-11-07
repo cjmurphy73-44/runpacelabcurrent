@@ -1,7 +1,7 @@
 import React, { useMemo } from "react";
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, Cell, LabelList } from "recharts";
 
-// Pro-Athlete Obsidian theme — dark HR-zone chart surface, gradient zone boundary fills.
+// Pro-Athlete Obsidian theme, dark HR-zone chart surface, gradient zone boundary fills.
 const ZONE_META = [
   { label: "Z1 Recovery", from: "#1E3A5F", to: "#38BDF8" },
   { label: "Z2 Endurance", from: "#0F4D3A", to: "#34D399" },

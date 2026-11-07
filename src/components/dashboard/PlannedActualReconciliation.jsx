@@ -69,13 +69,13 @@ export default function PlannedActualReconciliation({ athleteId }) {
 
       <FeatureGate feature="adaptive_replan" plan={plan} />
 
-      {/* Auto-linked — verify or unlink */}
+      {/* Auto-linked, verify or unlink */}
       {autoLinked.length > 0 && (
         <Card>
           <CardContent className="pt-6 space-y-3">
             <div className="flex items-center gap-2 text-sm font-medium text-foreground">
               <Check className="w-4 h-4 text-success" />
-              {autoLinked.length} session{autoLinked.length === 1 ? "" : "s"} auto-linked at ≥90% — verify this is what you did, or unlink.
+              {autoLinked.length} session{autoLinked.length === 1 ? "" : "s"} auto-linked at ≥90%, verify this is what you did, or unlink.
             </div>
             <ul className="divide-y divide-border">
               {autoLinked.map((m) => {
@@ -125,13 +125,13 @@ export default function PlannedActualReconciliation({ athleteId }) {
         </Card>
       )}
 
-      {/* Today's planned sessions — quick mark off */}
+      {/* Today's planned sessions, quick mark off */}
       {todaySessions.length > 0 && (
         <Card>
           <CardContent className="pt-6 space-y-3">
             <div className="flex items-center gap-2 text-sm font-medium text-foreground">
               <Sun className="w-4 h-4 text-warning" />
-              {todaySessions.length} session{todaySessions.length === 1 ? "" : "s"} planned for today — mark off when done.
+              {todaySessions.length} session{todaySessions.length === 1 ? "" : "s"} planned for today, mark off when done.
             </div>
             <ul className="divide-y divide-border">
               {todaySessions.map((s) => {
@@ -180,7 +180,7 @@ export default function PlannedActualReconciliation({ athleteId }) {
         </Card>
       )}
 
-      {/* Overdue planned sessions — mark as skipped */}
+      {/* Overdue planned sessions, mark as skipped */}
       {overdue.length > 0 && (
         <Card>
           <CardContent className="pt-6 space-y-3">
@@ -268,7 +268,7 @@ export default function PlannedActualReconciliation({ athleteId }) {
                       {confirmed ? "Linked" : isConfirming ? "Linking…" : m.matchStatus === "PLAUSIBLE" ? "That was it" : "Confirm match"}
                     </Button>
                     {m.matchStatus === "PLAUSIBLE" && !confirmed && (
-                      <span className="w-full text-[11px] text-primary">Outside ±20% — looks close enough to confirm?</span>
+                      <span className="w-full text-[11px] text-primary">Outside ±20%, looks close enough to confirm?</span>
                     )}
                   </li>
                 );

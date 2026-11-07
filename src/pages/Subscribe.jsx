@@ -159,7 +159,7 @@ export default function Subscribe() {
       </div>
 
       <p className="text-xs text-muted-foreground -mt-1">
-        All plans billed monthly in AUD via Stripe. Cancel anytime from your billing portal — access continues until the end of the current period. No refunds for partial months; see our <Link to="/refund" className="text-primary hover:underline">refund policy</Link>.
+        All plans billed monthly in AUD via Stripe. Cancel anytime from your billing portal, access continues until the end of the current period. No refunds for partial months; see our <Link to="/refund" className="text-primary hover:underline">refund policy</Link>.
       </p>
 
       <Card className="mt-6 border-dashed">
@@ -168,7 +168,7 @@ export default function Subscribe() {
             <Ticket className="w-4 h-4 text-primary" />
             <h3 className="font-heading font-semibold text-sm">Have an access code?</h3>
           </div>
-          <p className="text-sm text-muted-foreground mb-3">Beta testers and coaches can redeem a code for instant access — no checkout required.</p>
+          <p className="text-sm text-muted-foreground mb-3">Beta testers and coaches can redeem a code for instant access, no checkout required.</p>
           <div className="flex flex-col sm:flex-row gap-2">
             <Input
               placeholder="TPL-XXXX-XXXX-XXXX"

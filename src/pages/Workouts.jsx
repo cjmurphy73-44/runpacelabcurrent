@@ -85,7 +85,7 @@ export default function Workouts() {
               </div>
               <h2 className="text-lg font-heading font-semibold">Couldn't reach your profile</h2>
               <p className="text-sm text-muted-foreground">
-                We hit a snag loading your data. This is usually momentary — try again.
+                We hit a snag loading your data. This is usually momentary, try again.
               </p>
               <div className="flex items-center justify-center gap-2">
                 <Button onClick={() => window.location.reload()}>Retry</Button>

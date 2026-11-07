@@ -37,7 +37,7 @@ export default function DataSovereigntySection() {
           <p className="mt-3 text-muted-foreground">
             Big fitness platforms treat your telemetry as raw material to mine, selling anonymized aggregates,
             training ML models on private routes, and serving ads against your health trends. TrainPaceLab is
-            built differently — four ironclad guarantees that make your trust as rigorous as your training.
+            built differently, four ironclad guarantees that make your trust as rigorous as your training.
           </p>
         </div>
         <div className="grid gap-6 sm:grid-cols-2">
