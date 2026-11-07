@@ -4,6 +4,7 @@ import { Label } from "@/components/ui/label";
 import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from "@/components/ui/accordion";
 import WearableStep from "@/components/onboarding/WearableStep";
 import { TIER_OPTIONS, TIER_EXPLAINER } from "@/lib/trainingTiers";
+import { ONBOARDING_COPY } from "../../constants/onboardingCopy";
 
 // Plain-language meaning of each tier, shown BEFORE the τ maths so the
 // choice is made on how it feels, not on jargon.
@@ -20,14 +21,14 @@ export default function StepHardware({ form, setForm }) {
     <div className="space-y-6">
       <div className="rounded-lg border border-border p-4 space-y-3 bg-muted/20">
         <div className="flex items-center gap-2 text-sm font-medium">
-          <Watch className="w-4 h-4 text-primary" /> What do you train with?
+          <Watch className="w-4 h-4 text-primary" /> {ONBOARDING_COPY.dataConnectionModal.title}
         </div>
         <WearableStep
           selected={form.wearables}
           onToggle={(keys) => setForm((f) => ({ ...f, wearables: keys }))}
         />
         <p className="text-xs text-muted-foreground">
-          We'll show you the exact steps for your devices after this — you can connect them straight away.
+          {ONBOARDING_COPY.dataConnectionModal.trustMessage}
         </p>
       </div>
 
