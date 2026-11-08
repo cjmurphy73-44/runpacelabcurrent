@@ -1,9 +1,9 @@
-import React, { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
-import { AlertTriangle, Loader2, Link2 } from "lucide-react";
-import { base44 } from "@/api/base44Client";
+import React, { useState } from "react";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import { AlertCircle, CheckCircle2, RefreshCw, WifiOff } from "lucide-react";
 
+<<<<<<< Updated upstream
 // One dashboard banner for every connection that has stopped delivering data.
 // Covers Garmin as well as COROS, says what stopped and what is safe, and starts
 // re-authorization right here, no detour into settings just to find a button.
@@ -38,65 +38,95 @@ export default function ConnectionHealthBanner() {
 
   const reconnect = async ({ fn, label }) => {
     setBusy(fn); setError(null);
+=======
+export default function ConnectionHealthBanner({ 
+  provider = "Garmin", 
+  status = "active", // 'active' | 'expired' | 'error' | 'disconnected'
+  lastSyncedAt = null,
+  onReconnect,
+  onSyncNow 
+}) {
+  const [syncing, setSyncing] = useState(false);
+
+  const handleSync = async () => {
+    if (!onSyncNow) return;
+    setSyncing(true);
+>>>>>>> Stashed changes
     try {
-      const res = await base44.functions.invoke(fn, { action: "authorize" });
-      const data = res?.data || res;
-      const url = data?.authorize_url;
-      if (!url) throw new Error(data?.error || `Couldn't start the ${label} connection.`);
-      if (window.self !== window.top) {
-        const popup = window.open(url, "_blank");
-        if (!popup) throw new Error("Your browser blocked the sign-in window. Allow pop-ups, or reconnect from Settings.");
-        window.addEventListener("focus", () => setBusy(null), { once: true });
-        return;
-      }
-      window.location.href = url;
-    } catch (e) {
-      setError(e?.response?.data?.error || e?.data?.error || e?.message || `Couldn't reconnect ${label}.`);
-      setBusy(null);
+      await onSyncNow();
+    } finally {
+      setSyncing(false);
     }
   };
 
-  if (!broken.length) return null;
+  const getStatusConfig = () => {
+    switch (status) {
+      case "active":
+        return {
+          icon: <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0" />,
+          bg: "bg-emerald-500/10 border-emerald-500/20 text-emerald-700 dark:text-emerald-400",
+          label: "Connected & Healthy",
+        };
+      case "expired":
+        return {
+          icon: <AlertCircle className="w-4 h-4 text-amber-500 shrink-0" />,
+          bg: "bg-amber-500/10 border-amber-500/20 text-amber-700 dark:text-amber-400",
+          label: "Token Expired — Reconnect Required",
+        };
+      case "error":
+        return {
+          icon: <WifiOff className="w-4 h-4 text-destructive shrink-0" />,
+          bg: "bg-destructive/10 border-destructive/20 text-destructive",
+          label: "Sync Error Detected",
+        };
+      default:
+        return {
+          icon: <WifiOff className="w-4 h-4 text-muted-foreground shrink-0" />,
+          bg: "bg-muted/50 border-border text-muted-foreground",
+          label: "Not Connected",
+        };
+    }
+  };
+
+  const config = getStatusConfig();
 
   return (
-    <div className="p-3 rounded-md border border-warning/40 bg-warning/10 space-y-3">
-      <div className="flex items-start gap-2">
-        <AlertTriangle className="w-4 h-4 text-warning mt-0.5 shrink-0" />
-        <div className="min-w-0 space-y-1">
-          <p className="text-sm">
-            {broken.length === 1
-              ? `Your ${broken[0].label} link expired, so new workouts and recovery data aren't syncing.`
-              : `Your ${broken.map((b) => b.label).join(" and ")} links expired, so new workouts and recovery data aren't syncing.`}
-          </p>
-          <p className="text-xs text-muted-foreground">
-            {broken.find((b) => b.reason)?.reason
-              ? `${broken.find((b) => b.reason).reason} `
-              : ""}Everything already imported is safe.
-          </p>
+    <div className={`flex items-center justify-between p-3 rounded-lg border text-sm ${config.bg}`}>
+      <div className="flex items-center gap-2.5">
+        {config.icon}
+        <div>
+          <span className="font-medium">{provider}:</span> {config.label}
+          {lastSyncedAt && status === "active" && (
+            <span className="ml-2 text-xs opacity-75">
+              (Last synced {lastSyncedAt})
+            </span>
+          )}
         </div>
       </div>
-
-      <div className="flex flex-col sm:flex-row sm:flex-wrap gap-2">
-        {broken.map((p) => (
-          <Button
-            key={p.fn}
-            size="sm"
-            onClick={() => reconnect(p)}
-            disabled={busy === p.fn}
-            className="min-h-[44px] w-full sm:w-auto"
+      
+      <div className="flex items-center gap-2">
+        {status === "active" ? (
+          <Button 
+            variant="outline" 
+            size="sm" 
+            onClick={handleSync} 
+            disabled={syncing}
+            className="h-8 text-xs bg-background/50 hover:bg-background"
           >
-            {busy === p.fn
-              ? <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-              : <Link2 className="w-4 h-4 mr-2" />}
-            Reconnect {p.label}
+            <RefreshCw className={`w-3.5 h-3.5 mr-1.5 ${syncing ? "animate-spin" : ""}`} />
+            {syncing ? "Syncing..." : "Sync Now"}
           </Button>
-        ))}
-        <Button asChild size="sm" variant="ghost" className="min-h-[44px] w-full sm:w-auto">
-          <Link to="/settings">Connection details</Link>
-        </Button>
+        ) : (
+          <Button 
+            variant="default" 
+            size="sm" 
+            onClick={onReconnect}
+            className="h-8 text-xs"
+          >
+            Reconnect {provider}
+          </Button>
+        )}
       </div>
-
-      {error && <p className="text-xs text-destructive">{error}</p>}
     </div>
   );
 }
