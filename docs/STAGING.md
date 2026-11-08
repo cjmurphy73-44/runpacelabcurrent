@@ -28,6 +28,30 @@ Before deployment, authenticate the CLI and explicitly link an isolated checkout
 to the existing staging app. Do not repeat the create step below. Production
 deployment state and rollback checkpoint still require verification.
 
+## Infrastructure reconciliation and Odysseus preservation (2026-11-09)
+
+The previously local `fix/tpl-infra-001` branch is now available on origin
+at `76b37bc`, nine commits ahead of `main` (`3f386d4`). It overlaps this
+staging PR and CI PR #5; do not merge its full commit stack into either PR
+without a file-by-file reconciliation and exact-head validation.
+
+**Merge blocker:** the infrastructure comparison removes the tracked
+`odysseus` gitlink. The owner's Mac reports modified content in that
+submodule. Removing a gitlink from the parent repository does not prove
+that its nested repository, working files, local commits or dependencies
+are preserved. Before accepting that removal, inventory the nested Git
+repository, its remotes, status, reachable commits, untracked files and
+relative-path dependencies. Make a separately verified backup or independent
+checkout with all local work preserved. Do not reset, clean, delete or
+relocate the owner's directory through an unattended job.
+
+The external-sync guard on the infrastructure branch enables provider
+activity only when both `TPL_ENVIRONMENT=production` and
+`TPL_EXTERNAL_SYNC_ENABLED=true`. Keep staging fail-closed, and verify
+production runtime configuration and release implications **read-only**
+before any protected main merge. A green offline test is not proof of
+hosted staging isolation or production integration continuity.
+
 ## Reprovisioning runbook
 
 1. Authenticate with `npx base44 login` in the environment doing provisioning.
