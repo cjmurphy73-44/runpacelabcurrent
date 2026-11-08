@@ -21,3 +21,8 @@ files. They now return authenticated 503 responses without touching data. Their
 consent flow belongs to PR 3. The unused decorator-based AthleteInvite schema is
 preserved in `_archive/unsupported-base44/` rather than shipped as an unsupported
 entity format. No working invitation flow is represented as completed.
+
+An orphan `odysseus` gitlink had no `.gitmodules` URL and caused checkout itself
+to fail during credential cleanup. Its exact commit pointer is retained in
+`_archive/unsupported-base44/orphan-gitlink.json`; the broken gitlink is removed
+from the app index. No Odysseus source was checked out or removed.
