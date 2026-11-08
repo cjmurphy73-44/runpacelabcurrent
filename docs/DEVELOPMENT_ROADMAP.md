@@ -2,6 +2,23 @@
 
 Updated: 2026-11-08. Brand: TrainPaceLab only.
 
+## Persistent execution backlog and preservation update
+
+9 November 2026: [MVP_ATOMIC_BACKLOG.md](MVP_ATOMIC_BACKLOG.md) is the canonical
+atomic execution index across frontend, backend, UI/UX, integrations, security,
+billing, tests and staging acceptance. It decomposes this roadmap; it does not
+replace its gates or claim existing implementations are accepted. Read it from
+`chore/codex-team-setup` until merged. Use one stable task ID per run, maximum
+45 minutes, and update evidence/state rather than maintaining competing queues.
+Existing UX and TPL-DATA/TPL-BRAND IDs are mapped there; reuse existing PRs.
+
+Odysseus is a protected independent project. Read
+[ODYSSEUS_PRESERVATION.md](ODYSSEUS_PRESERVATION.md) before reconciliation.
+Do not delete, move or merge removal of its Git tracking until local files,
+modified/untracked work, history and launch dependencies have verified
+preservation. A commit pointer alone does not meet this requirement. No production
+deployment or production data change is authorized by this update.
+
 ## Product direction and team setup
 
 The launch target is a dependable Garmin/COROS athlete journey, trustworthy
@@ -260,6 +277,17 @@ by athlete payoff, not speculative refactoring:
 These items do not authorize unattended feature work before the foundation gates.
 
 ## Visual quality and brand asset workstream
+
+The asset work includes updating existing assets as well as creating missing
+ones. Execute the atomic `TPL-ASSET-001` through `TPL-ASSET-008` entries in the
+backlog: inventory/licensing, logo/wordmark variants, favicon/PWA set, imagery
+selection and improvement, synthetic product screenshots, responsive delivery,
+accessibility and measured performance. These map to TPL-BRAND-001 through 004;
+they are not a second competing queue. Inspect each asset in its actual product
+surface. Retain editable originals and provenance, and rework or omit weak
+imagery rather than shipping decoration. Do not invent measured athlete charts.
+Bound each run to one asset set or surface, and keep data-fidelity work prioritized
+when its prerequisites are satisfied.
 
 This supports the core athlete journey and does not delay eligible data-fidelity
 repairs. Avoid broad visual redesigns while foundational defects remain open.
