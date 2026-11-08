@@ -4,22 +4,17 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Button } from "@/components/ui/button";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Cell } from "recharts";
 import { Loader2, Activity } from "lucide-react";
+import { hasVerifiedStreams } from "@/lib/streamValidity";
 
 const MODES = [
   { id: "pace", label: "Run pace", hint: "Distribution of session pace (min/km)" },
   { id: "power", label: "Cycling power", hint: "Distribution of session power (watts)" },
-  { id: "hr", label: "HR zones", hint: "Time in zone (minutes), % of HRmax" },
+  { id: "hr", label: "HR zones", hint: "Time in zone (minutes), from per-second heart rate" },
 ];
 
 const ZONE_COLORS = ["hsl(var(--zone-1))", "hsl(var(--zone-2))", "hsl(var(--zone-3))", "hsl(var(--zone-4))", "hsl(var(--zone-5))"];
 
-const ZONES = [
-  { label: "Z1 ≤60%", max: 0.6 },
-  { label: "Z2 60–70%", max: 0.7 },
-  { label: "Z3 70–80%", max: 0.8 },
-  { label: "Z4 80–90%", max: 0.9 },
-  { label: "Z5 >90%", max: Infinity },
-];
+const ZONE_BARS = ["Z1", "Z2", "Z3", "Z4", "Z5"];
 
 const PACE_BINS = [200, 240, 270, 300, 330, 360, 390, 420, Infinity];
 const POWER_BINS = [0, 100, 150, 200, 250, 300, 350, 400, Infinity];
@@ -84,18 +79,20 @@ export default function PowerPaceHistograms({ athleteId, maxHr, ftpWatts }) {
     return counts;
   }, [sessions]);
 
+  // Real time in zone only. Minutes come from sessions that carry a verified
+  // second-by-second stream; a session's average heart rate is never spread across a
+  // zone here, so summary-only imports cannot shape this chart.
   const hrData = useMemo(() => {
-    const minutes = ZONES.map((z) => ({ ...z, minutes: 0 }));
-    if (!maxHr) return minutes;
+    const bars = ZONE_BARS.map((label) => ({ label, minutes: 0 }));
     for (const s of sessions) {
-      if (!s.avg_hr || !s.duration_minutes) continue;
-      const ratio = s.avg_hr / maxHr;
-      let idx = ZONES.findIndex((z) => ratio <= z.max);
-      if (idx === -1) idx = ZONES.length - 1;
-      minutes[idx].minutes += s.duration_minutes;
+      if (s.zone_method !== "stream" || !hasVerifiedStreams(s)) continue;
+      const seconds = Array.isArray(s.zone_seconds) ? s.zone_seconds : [];
+      seconds.forEach((sec, i) => {
+        if (i < bars.length) bars[i].minutes += (Number(sec) || 0) / 60;
+      });
     }
-    return minutes;
-  }, [sessions, maxHr]);
+    return bars.map((b) => ({ ...b, minutes: Math.round(b.minutes * 10) / 10 }));
+  }, [sessions]);
 
   if (loading) {
     return (
@@ -121,7 +118,7 @@ export default function PowerPaceHistograms({ athleteId, maxHr, ftpWatts }) {
       <CardContent className="space-y-4">
         <div className="flex flex-wrap gap-1">
           {MODES.map((m) => (
-            <Button key={m.id} size="sm" variant={mode === m.id ? "default" : "outline"} onClick={() => setMode(m.id)} disabled={m.id === "hr" && !maxHr}>
+            <Button key={m.id} size="sm" variant={mode === m.id ? "default" : "outline"} onClick={() => setMode(m.id)}>
               {m.label}
             </Button>
           ))}

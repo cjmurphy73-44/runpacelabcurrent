@@ -207,9 +207,12 @@ export function buildAthleteStateSummary(input: AthleteStateInput): AthleteState
     });
 
   const hasStream = Array.isArray(input.stream) && input.stream.length > 0;
-  const zoneMethod = input.zoneMethod || 'none';
+  // Zones are a stream-derived quantity. Anything else is reported as absent rather
+  // than estimated, so a summary-only session cannot feed a synthetic distribution
+  // into the athlete summary the coach reads.
+  const zoneMethod = input.zoneMethod === 'stream' ? 'stream' : 'none';
   const zoneSeconds = [0, 0, 0, 0, 0].map((_, i) =>
-    finite(input.zoneSeconds?.[i]) ? (input.zoneSeconds as number[])[i] : 0,
+    zoneMethod === 'stream' && finite(input.zoneSeconds?.[i]) ? (input.zoneSeconds as number[])[i] : 0,
   );
 
   const avgPace =

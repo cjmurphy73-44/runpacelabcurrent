@@ -566,9 +566,9 @@ function mapRecord(a: any, athlete: any) {
   const nativeKcal = Number(a.calories ?? a.active_calories ?? a.active_kilocalories ?? a.kilocalories ?? 0) || null;
   const temperatureC = Number(a.temperature_c ?? a.average_temperature ?? 0) || null;
 
-  // COROS MCP exposes summary records only (no per-second stream), so the zone
-  // distribution is anchored to the athlete's Karvonen boundaries and stored with
-  // zone_method 'average' — the UI labels it as a summary-derived estimate.
+  // COROS MCP exposes summary records only (no per-second stream). Summary imports get
+  // no zone distribution at all: resolveTimeInZone returns 'none' with empty zones, so
+  // no estimated split is ever written and the session stays out of zone analytics.
   const zoneResult = resolveTimeInZone({
     laps: [],
     avgHr,

@@ -31,11 +31,13 @@ function hasUsableStream(session) {
   return Array.isArray(session.streams) && session.streams.length > 10;
 }
 
-// A session needs work when it has no per-second stream, or when its zones were
-// computed from an average heart rate even though a stream may now be recoverable.
+// A session needs work when it holds a stale synthetic zone split to clear, or when it
+// has no per-second stream but a raw file to refetch. A summary-only session with no
+// attached file can never gain zones, so it is not re-scanned on every run.
 function isCandidate(session) {
-  if (!hasUsableStream(session)) return true;
-  return session.zone_method === 'average' || session.zone_method === 'none' || !session.zone_method;
+  if (session.zone_method === 'average' || session.zone_method === 'laps') return true;
+  if (hasUsableStream(session)) return false;
+  return Boolean(session.raw_file_url);
 }
 
 function typeFromName(name) {
@@ -193,23 +195,18 @@ async function processSession(base44, athlete, session, restHr, maxHr) {
   }
 
   if (payloads.length === 0) {
-    // Nothing full to recover: keep the available summary data, but make sure its
-    // zones are actually derived from the stored average heart rate.
-    if (hasUsableStream(session) && session.zone_method && session.zone_method !== 'none') {
-      return { outcome: 'summary_only', updated: false };
-    }
-    const zoneResult = resolveTimeInZone({
-      stream: session.streams, laps: session.laps, avgHr: session.avg_hr, durationSeconds, restHr, maxHr,
-    });
-    const update = {
-      zone_seconds: zoneResult.zone_seconds,
-      zone_method: zoneResult.zone_method,
-      zone_bounds_bpm: zoneResult.zone_bounds_bpm,
-    };
+    // Nothing full to recover. The session keeps its stored summary metrics, but it
+    // never receives a zone distribution: zones require a real per-second stream, so
+    // any previously estimated split is cleared instead of refreshed.
+    const update: any = {};
     if (!session.session_trimp && !session.session_tss && session.avg_hr) {
       update.session_trimp = calcTrimp(durationMinutes, session.avg_hr, restHr, maxHr, athlete.sex);
     }
-    return { outcome: 'summary_only', updated: Boolean(session.avg_hr || session.laps?.length), update };
+    if (session.zone_method && session.zone_method !== 'none') {
+      update.zone_seconds = [0, 0, 0, 0, 0];
+      update.zone_method = 'none';
+    }
+    return { outcome: 'summary_only', updated: Object.keys(update).length > 0, update };
   }
 
   const { masterStream, masterLaps } = reconcileStreams(payloads);
