@@ -56,3 +56,21 @@ Use synthetic sessions only. Verify:
 
 No production deployment or merge is implied by this document. Main remains gated
 on staging verification and the repository's independent approval requirements.
+
+## Follow-up: session and calendar recovery
+
+Today and Calendar now use user/athlete/date-keyed queries. A failed first load
+is an unknown schedule with Retry, not a confirmed rest day. A failed refresh
+retains the last loaded prescription with an explicit stale-data notice.
+
+AI adjustment uses a bounded mutation state instead of a manually toggled busy
+flag. Success requires the endpoint's success flag and adjusted list. No-op,
+confirmed save, failed request and failed post-save refresh have distinct copy.
+Both successful and failed requests invalidate Today/Calendar because a backend
+failure could follow partial writes. Calendar UI state resets on athlete changes.
+
+An actual-session render regression now covers the missed removed injury reference;
+the reference is removed. The old Readiness normal line is also removed because
+no HRV anomaly is not evidence that readiness is normal. Existing readiness maths
+are otherwise unchanged. Eight additional component tests cover these journeys.
+These states also require real staging UI verification before main/release.

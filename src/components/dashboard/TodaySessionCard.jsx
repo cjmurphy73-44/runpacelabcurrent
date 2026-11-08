@@ -1,4 +1,7 @@
-import React, { useEffect, useState } from "react";
+import React from "react";
+import { useQuery } from "@tanstack/react-query";
+import { useAuth } from "@/lib/AuthContext";
+import { Button } from "@/components/ui/button";
 import { base44 } from "@/api/base44Client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import ZoneBadge from "@/components/ui/ZoneBadge";
@@ -18,21 +21,21 @@ function detectAnomaly(biometricTelemetry) {
 
 export default function TodaySessionCard({ athleteId }) {
   const { biometricTelemetry } = useFitness() || {};
-  const [session, setSession] = useState(undefined);
-  const [plan, setPlan] = useState(null);
-
-  useEffect(() => {
-    if (!athleteId) return;
-    (async () => {
-      const todayStr = moment().format("YYYY-MM-DD");
+  const { user } = useAuth();
+  const todayStr = moment().format("YYYY-MM-DD");
+  const query = useQuery({
+    queryKey: ['athlete-plan', user?.id, athleteId, 'today', todayStr],
+    enabled: Boolean(user?.id && athleteId), retry: false,
+    queryFn: async () => {
       const [sessions, plans] = await Promise.all([
         base44.entities.TrainingPlanSession.filter({ athlete_id: athleteId, date: todayStr }),
         base44.entities.TrainingPlan.filter({ athlete_id: athleteId, status: "active" }, "-created_date", 1),
       ]);
-      setSession(sessions?.[0] || null);
-      setPlan(plans?.[0] || null);
-    })();
-  }, [athleteId]);
+      return { session: sessions?.[0] || null, plan: plans?.[0] || null };
+    },
+  });
+  const session = query.data?.session;
+  const plan = query.data?.plan;
 
   const anomaly = detectAnomaly(biometricTelemetry);
   const isRunning = session?.sport?.toLowerCase() === "running";
@@ -47,8 +50,12 @@ export default function TodaySessionCard({ athleteId }) {
       </CardHeader>
       <CardContent className="space-y-4">
         <CoachSignalNotice athleteId={athleteId} />
+        {query.isError && <Alert><AlertTitle>Could not refresh today's session</AlertTitle><AlertDescription>
+          {query.data ? 'Showing the last loaded prescription.' : 'Your schedule is unavailable; this does not mean today is a rest day.'}
+          <Button variant="outline" size="sm" disabled={query.isFetching} onClick={() => query.refetch()}>Retry session</Button>
+        </AlertDescription></Alert>}
         {session === undefined ? (
-          <p className="text-sm text-muted-foreground">Loading...</p>
+          <p role="status" className="text-sm text-muted-foreground">{!athleteId ? "Choose an athlete to view today's session." : query.isError ? "Session not loaded." : "Loading session..."}</p>
         ) : session ? (
           <div className="space-y-3">
             <div className="flex items-center gap-2 flex-wrap">
@@ -101,9 +108,9 @@ export default function TodaySessionCard({ athleteId }) {
           </Alert>
         )}
 
-        {!anomaly && session && !(injury.level === "hold" && session.sport?.toLowerCase().startsWith("run")) && (
+        {!anomaly && session && (
           <div className="flex items-center gap-1 text-xs text-muted-foreground">
-            <CheckCircle2 className="w-3.5 h-3.5 text-primary" /> Readiness normal, proceed as prescribed.
+            <CheckCircle2 className="w-3.5 h-3.5 text-primary" /> Saved training prescription.
           </div>
         )}
       </CardContent>
