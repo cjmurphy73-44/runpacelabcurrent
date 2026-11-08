@@ -1,5 +1,7 @@
-import { describe, expect, it } from 'vitest';
-import { isExternalSyncEnabled } from './externalSyncGuard.ts';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import { externalSyncBlockedResponse, isExternalSyncEnabled } from './externalSyncGuard.ts';
+
+afterEach(() => vi.unstubAllGlobals());
 
 describe('isExternalSyncEnabled', () => {
   it('always disables external sync in staging', () => {
@@ -17,5 +19,27 @@ describe('isExternalSyncEnabled', () => {
     expect(isExternalSyncEnabled('development', 'true')).toBe(false);
     expect(isExternalSyncEnabled(undefined, 'true')).toBe(false);
     expect(isExternalSyncEnabled(undefined, undefined)).toBe(false);
+  });
+});
+
+describe('externalSyncBlockedResponse runtime configuration', () => {
+  it('fails closed when the runtime is absent', async () => {
+    vi.stubGlobal('Deno', undefined);
+    const response = externalSyncBlockedResponse();
+    expect(response?.status).toBe(503);
+    expect(await response?.json()).toEqual({ error: 'External sync is disabled for this environment.' });
+  });
+
+  it.each(['TPL_ENVIRONMENT', 'TPL_EXTERNAL_SYNC_ENABLED'])('fails closed when reading %s is denied', (deniedName) => {
+    vi.stubGlobal('Deno', { env: { get: (name: string) => {
+      if (name === deniedName) throw new Error('Permission denied');
+      return name === 'TPL_ENVIRONMENT' ? 'production' : 'true';
+    } } });
+    expect(externalSyncBlockedResponse()?.status).toBe(503);
+  });
+
+  it('permits the explicitly opted-in production configuration only', () => {
+    vi.stubGlobal('Deno', { env: { get: (name: string) => name === 'TPL_ENVIRONMENT' ? 'production' : 'true' } });
+    expect(externalSyncBlockedResponse()).toBeNull();
   });
 });
