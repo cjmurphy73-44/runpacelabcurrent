@@ -2,41 +2,15 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
 import { VALID_SPORTS, calcTrimp, normalizeSport, getOwnedAthlete } from '../../shared/workoutIngest.ts';
 import { resolveTimeInZone } from '../../shared/hrZones.ts';
 import { resolveActiveCalories } from '../../shared/calories.ts';
-import { env, hmacBase64Url } from '../../shared/oauth.ts';
+import { hmacBase64Url } from '../../shared/oauth.ts';
+import { garminConfig, garminRedirectUri, refreshGarminToken } from '../../shared/garminAuth.ts';
 import { normalizeGarminRecovery, ingestRecovery } from '../../shared/recoveryIngest.ts';
 import { getSyncLookbackDays } from '../../shared/syncLookback.ts';
 
-// Garmin's OAuth 2.0 endpoints are NOT on the data API host. The consent screen is
-// served by connect.garmin.com and tokens by diauth.garmin.com. Building the authorize
-// URL by appending "/oauth2/authorize" to the data API base sent the browser to
-// Garmin's gateway with a path no proxy serves, returning:
-//   "Unable to identify proxy for host: apis-secure and url: /oauth2/authorize".
-const DEFAULT_AUTHORIZE_URL = 'https://connect.garmin.com/oauth2Confirm';
-const DEFAULT_TOKEN_URL = 'https://diauth.garmin.com/di-oauth2-service/oauth/token';
-// Public URL of this function — the redirect_uri registered with Garmin. req.url inside
-// the runtime is the internal dispatcher address, which Garmin can never bounce back to.
-const DEFAULT_REDIRECT_URI = 'https://trainpacelab.base44.app/functions/garminSync';
-
+// OAuth configuration and token refresh live in shared/garminAuth.ts so the
+// backfill function refetches stored activities with the same connection logic.
 function requireConfig() {
-  const clientId = env('GARMIN_CLIENT_ID');
-  const clientSecret = env('GARMIN_CLIENT_SECRET');
-  const apiBase = env('GARMIN_API_BASE');
-  return {
-    clientId,
-    clientSecret,
-    apiBase,
-    // Explicit, independently overridable endpoints — never derived from the data API base.
-    authorizeUrl: env('GARMIN_AUTHORIZE_URL') || DEFAULT_AUTHORIZE_URL,
-    tokenUrl: env('GARMIN_TOKEN_URL') || DEFAULT_TOKEN_URL,
-    // Consent only needs the OAuth client credentials; the data API base is for
-    // activity/recovery pulls and is not required to start an authorization.
-    oauthConfigured: Boolean(clientId && clientSecret),
-    dataConfigured: Boolean(apiBase),
-  };
-}
-
-function garminRedirectUri(): string {
-  return env('GARMIN_REDIRECT_URI') || DEFAULT_REDIRECT_URI;
+  return garminConfig();
 }
 
 // Where the athlete's browser lands after consent. The X-Base44-App-Url header carries
@@ -45,56 +19,6 @@ function appOrigin(req: Request): string {
   const header = req.headers.get('X-Base44-App-Url');
   if (header) return header.replace(/\/+$/, '');
   try { return new URL(garminRedirectUri()).origin; } catch { return 'https://trainpacelab.base44.app'; }
-}
-
-// Refresh the Garmin access token against the configured token endpoint — never the
-// data API base. Any rotated refresh token is persisted so the connection never
-// silently ages out; a rejected refresh means the grant is gone, so the row is flagged
-// 'expired' with a reconnect message instead of staying 'connected' and failing forever.
-async function refreshGarminToken(conn: any, base44: any, force = false): Promise<{ accessToken: string; expiresAt: string | null }> {
-  const { clientId, clientSecret, tokenUrl } = requireConfig();
-  const now = Date.now();
-  const expiresAt = conn.token_expires_at ? Date.parse(conn.token_expires_at) : 0;
-  if (!force && conn.access_token && expiresAt > now + 60_000) {
-    return { accessToken: conn.access_token, expiresAt: conn.token_expires_at || null };
-  }
-  if (!conn.refresh_token) {
-    throw new Error('Garmin authorization expired — reconnect your Garmin account.');
-  }
-  const r = await fetch(tokenUrl, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-    body: new URLSearchParams({
-      grant_type: 'refresh_token',
-      refresh_token: conn.refresh_token,
-      client_id: clientId,
-      client_secret: clientSecret,
-    }),
-  });
-  const text = await r.text();
-  if (!r.ok) {
-    console.error('Garmin token refresh failed:', r.status, text.slice(0, 300));
-    if (r.status === 400 || r.status === 401 || /invalid_grant/i.test(text)) {
-      await base44.asServiceRole.entities.GarminConnection.update(conn.id, {
-        status: 'expired',
-        last_error: 'Garmin authorization expired — reconnect your Garmin account.',
-      });
-      throw new Error('Garmin authorization expired — reconnect your Garmin account.');
-    }
-    throw new Error(`Garmin token refresh failed (${r.status})`);
-  }
-  let tok: any = {};
-  try { tok = JSON.parse(text); } catch { throw new Error('Garmin token endpoint returned invalid JSON'); }
-  const newExpiry = new Date(now + (tok.expires_in || 3600) * 1000).toISOString();
-  await base44.asServiceRole.entities.GarminConnection.update(conn.id, {
-    access_token: tok.access_token || conn.access_token,
-    // Garmin may rotate the refresh token; keep the existing one when it doesn't.
-    refresh_token: tok.refresh_token || conn.refresh_token,
-    token_expires_at: newExpiry,
-    status: 'connected',
-    last_error: '',
-  });
-  return { accessToken: tok.access_token || conn.access_token, expiresAt: newExpiry };
 }
 
 // Browser redirect: Garmin sends ?code=...&state=<athlete_id>.<sig>. No user session (it's a redirect

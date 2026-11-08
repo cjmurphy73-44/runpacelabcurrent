@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import PageShell from "@/components/layout/PageShell";
 import { Button } from "@/components/ui/button";
+import TelemetryBackfillPanel from "@/components/operations/TelemetryBackfillPanel";
 import {
   Users,
   Activity,
@@ -383,6 +384,9 @@ export default function Operations() {
           />
         </CardContent>
       </Card>
+
+      <h2 className="font-heading font-bold text-lg mb-3 mt-8">Data maintenance</h2>
+      <TelemetryBackfillPanel />
 
       <p className="text-xs text-muted-foreground mt-6">
         All figures are aggregate counts, no individual athlete records or health
