@@ -1,6 +1,6 @@
 # CI checks
 
-Every PR to main runs five independent checks: `Typecheck`, `Lint`, `Build`,
+Every PR, including stacked branches, runs five independent checks: `Typecheck`, `Lint`, `Build`,
 `Backend`, and `Tests`. Matrix fail-fast is disabled. `CI required` fails if any
 check fails, is cancelled or is skipped. No check needs production secrets or a
 Base44 login. Require these names in the main ruleset before merging.
