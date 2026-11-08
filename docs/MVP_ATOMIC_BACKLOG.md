@@ -188,7 +188,7 @@ originals matter more than generator output. Map to roadmap TPL-BRAND-001..004.
 
 | ID | Atomic deliverable | Depends on | Acceptance / state |
 | --- | --- | --- | --- |
-| TPL-ASSET-001 | Inventory one asset family (BRAND-001) | None | Ready. Logo/icons/screenshots/photos/illustrations get source/license, placement, duplicates and keep/rework/remove decision; no unique file deleted blindly. |
+| TPL-ASSET-001 | Inventory one asset family (BRAND-001) | None | Source/local-file inventory complete: [ASSET_INVENTORY.md](ASSET_INVENTORY.md) and [15 structured records](assets/asset-inventory.json). One temporary registration PNG preserved; six photo URLs, identity/icon/social references and illustrative preview mapped. Remote rights, dimensions, quality and hosted layouts unverified. No asset or runtime change. |
 | TPL-ASSET-002 | Update original vector logo/wordmark set (BRAND-002) | G0, ASSET-001 | TrainPaceLab-only mark and wordmark, mono/light/dark variants, editable original and small-size legibility. Split mark and wordmark if needed. |
 | TPL-ASSET-003 | Update favicon/app/PWA icon references (BRAND-002) | ASSET-002 | Required sizes and manifests match actual assets; loading, touch/header and iPad/split-screen clipping checked. |
 | TPL-ASSET-004 | Improve one imagery/illustration surface (BRAND-003) | G0, ASSET-001 | Purpose, relevance, quality and lawful provenance; stress/response illustration clearly synthetic, no fabricated athlete evidence; rework or omit weak imagery. |
@@ -220,11 +220,12 @@ recommendations do not enter this index as approved work automatically.
 
 ## Next run
 
-Select **TPL-ASSET-001**: inventory the existing logo/icon/imagery family,
-provenance and actual placements. Do not delete or redesign assets in the inventory.
-TPL-REC-001 is completed offline; TPL-REC-002 remains blocked by original-Mac
-preservation/restore evidence in TPL-ODY-002. Do not integrate branches or merge
-Odysseus removal to work around that prerequisite.
+Select **TPL-G0-002** if scoped secure target access is available: read-only
+verify the existing staging identity, privacy and inactive workflows. Do not create
+another staging app or publish anything. TPL-ASSET-001 and the offline slice of
+TPL-REC-001 are complete; asset implementation still waits G0. TPL-REC-002 remains
+blocked on original-Mac preservation/restore evidence in TPL-ODY-002. Do not merge
+Odysseus removal or fabricate remote acceptance to work around these prerequisites.
 
 
 ## Run update: TPL-REC-001, 9 November 2026
@@ -241,3 +242,16 @@ matching infrastructure PR was found, and no PR-triggered exact-head run was
 returned; do not claim CI success. PR #4 separately advanced to `832e038` with
 preservation documentation only. No integration, deployment, runtime-code or
 Odysseus tracking change was made by this task. G0 remains open.
+
+
+## Run update: TPL-ASSET-001, 9 November 2026
+
+Source/local-file inventory covers 15 records at UI head b5a5d923. The only local
+raster is a temporary Garmin-registration TPL PNG, preserved in place. Favicons,
+touch/PWA and social images are remote references with unverified bytes/rights;
+six Unsplash URLs need individual provenance and relevance review. ProductPreview
+is synthetic code/data without a visible illustrative label. No remote photo was
+fetched or judged, no logo was selected from external design boards, and no asset
+was deleted, redesigned or deployed. The inventory maps existing ASSET-002..008
+work; it does not create new scope or unlock G0. CI branch 5750f63 adds source-only
+acceptance documentation and does not establish fresh hosted invitation evidence.
