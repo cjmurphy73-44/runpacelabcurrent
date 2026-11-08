@@ -26,3 +26,11 @@ An orphan `odysseus` gitlink had no `.gitmodules` URL and caused checkout itself
 to fail during credential cleanup. Its exact commit pointer is retained in
 `_archive/unsupported-base44/orphan-gitlink.json`; the broken gitlink is removed
 from the app index. No Odysseus source was checked out or removed.
+
+## TPL-G0-001: exact-head CI and invitation review (2026-11-09)
+
+Reviewed PR #5 at `5db1f34f16d693d624bf754bfa6e28e4c2a7d182` against its patch and the branch source. The workflow defines five independent matrix jobs (`Typecheck`, `Lint`, `Build`, `Backend`, `Tests`) and an always-run `CI required` aggregation job. The existing [successful Actions run 42438784757](https://github.com/cjmurphy73-44/runpacelabcurrent/actions/runs/42438784757) is historical evidence for this head, **not** a newly executed test. The GitHub commit-status endpoint returned only a successful `Vercel` status; that endpoint does not enumerate the Actions check runs, so it cannot independently re-attest all six required checks. Fresh check-run verification remains necessary before a protected merge.
+
+The reviewed `inviteAthlete` and `acceptInvite` entrypoints both delegate to `invitationUnavailable`. Its source checks the caller via `auth.me()`, returns 401 for unauthenticated callers and 503 for authenticated callers, with no explicit entity-write path. This is **source-only** fail-closed evidence, not a hosted authentication or no-write test. Verify both endpoints with distinct synthetic identities in isolated staging before accepting the change. The archived `AthleteInvite.ts` is a source move, not proof of hosted schema compatibility or preservation of records. Offline validation still cannot certify runtime permissions; the three catalog RLS warnings remain open.
+
+**Gate decision:** `TPL-G0-001` review recorded, but staging/runtime acceptance, independent PR approval and Odysseus preservation are outstanding. PR #5 must remain unmerged. No production or staging deployment was performed for this review.
