@@ -29,16 +29,22 @@ export function useOfflineSync() {
 }
 
 // --- NETWORK STATUS BADGE UI COMPONENT ---
-export function NetworkStatusBadge() {
+export function NetworkStatusBadge({ compact = false }) {
   const ctx = useContext(OfflineSyncContext);
   const isOnline = ctx?.isOnline ?? navigator.onLine;
   const syncInProgress = ctx?.syncInProgress ?? false;
   const queueCount = ctx?.pendingCount ?? 0;
   const syncNow = ctx?.syncNow;
+  const statusText = !isOnline
+    ? `Offline (${queueCount} queued)`
+    : syncInProgress ? "Syncing changes..."
+    : queueCount > 0 ? `Syncing (${queueCount})` : "Online";
 
   return (
     <div className="flex items-center space-x-2 min-w-0">
       <div
+        role="status"
+        title={statusText}
         className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold border transition-all min-w-0 ${
           !isOnline
             ? "bg-warning/10 text-warning border-warning/30 shadow-sm"
@@ -54,14 +60,8 @@ export function NetworkStatusBadge() {
             !isOnline ? "bg-warning" : syncInProgress ? "bg-primary" : queueCount > 0 ? "bg-accent-foreground" : "bg-success"
           }`}
         />
-        <span className="truncate">
-          {!isOnline
-            ? `Offline (${queueCount} queued)`
-            : syncInProgress
-            ? "Syncing changes..."
-            : queueCount > 0
-            ? `Syncing (${queueCount})`
-            : "Online & Synced"}
+        <span className={compact ? "sr-only" : "truncate"}>
+          {statusText}
         </span>
         {queueCount > 0 && isOnline && !syncInProgress && syncNow && (
           <button

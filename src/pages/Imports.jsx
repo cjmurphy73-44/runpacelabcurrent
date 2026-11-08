@@ -91,16 +91,16 @@ export default function Imports() {
 
       {/* 1, Connect a device (automated sync) */}
       <section className="space-y-3">
-        <SectionHeading index="01" title="Connect a device" description="Automated sync, new activities and recovery flow in without you lifting a finger." icon={Watch} />
+        <SectionHeading index="01" title="Connect a device" description="Check each provider's availability and connection status. File upload is available when direct sync is not." icon={Watch} />
         <div className="space-y-3">
           <CorosIntegration athleteId={athlete.id} />
           <GarminIntegration athleteId={athlete.id} />
           <StravaIntegration athleteId={athlete.id} />
           <Card className="border-dashed">
-            <CardContent className="pt-4 flex items-center justify-between gap-3">
+            <CardContent className="pt-4 flex flex-col items-start gap-3 sm:flex-row sm:items-center sm:justify-between">
               <div>
-                <p className="text-sm font-medium">More recovery wearables</p>
-                <p className="text-xs text-muted-foreground">Oura, Whoop, Withings, Polar, Fitbit, Suunto, connect them in Settings.</p>
+                <p className="text-sm font-medium">Other recovery devices</p>
+                <p className="text-xs text-muted-foreground">Oura, WHOOP, Withings, Polar, Fitbit and Suunto connections require provider setup. Listing a device does not mean direct sync is available. You can import supported recovery exports or log values manually.</p>
               </div>
               <Button asChild variant="outline" size="sm">
                 <Link to="/settings"><Settings className="w-4 h-4" /> Open Settings</Link>

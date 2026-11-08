@@ -3,8 +3,11 @@
 // enum so the selection round-trips through the database intact.
 //
 // status:
-//   auto_sync  , a real OAuth connection exists in the app, data pulls in
-//   manual_only, no web-readable feed; the athlete uploads an export instead
+// Catalog capability is not a live connection or successful-sync assertion.
+//   auto_sync: connection flow exists; check the account's current status
+//   setup_required: availability depends on provider setup
+//   coming_soon: direct sync unavailable; use a supported export
+//   manual_only: use a supported export
 export const WEARABLES = [
   {
     key: "coros",
@@ -13,52 +16,52 @@ export const WEARABLES = [
     status: "auto_sync",
     blurb: "Workouts and recovery",
     instructions:
-      "Connect COROS once under Connect a device, new runs and recovery metrics then pull in on demand or on the nightly sync.",
+      "Check your COROS connection and last-sync status in Settings. Scheduled sync depends on the app's configuration; you can also import a supported workout file.",
   },
   {
     key: "garmin",
     label: "Garmin",
     icon: "Watch",
-    status: "auto_sync",
-    blurb: "Activities, sleep, HRV",
+    status: "setup_required",
+    blurb: "Check connection availability",
     instructions:
-      "Connect Garmin under Connect a device. If Garmin doesn't cover your account, export a .fit or .csv from Garmin Connect and upload it instead.",
+      "Check Garmin connection availability in Settings. If direct sync is unavailable, export a FIT, TCX or CSV file from Garmin Connect and upload it instead.",
   },
   {
     key: "strava",
     label: "Strava",
     icon: "Share2",
-    status: "auto_sync",
-    blurb: "Every recorded activity",
+    status: "coming_soon",
+    blurb: "Export, then upload",
     instructions:
-      "Connect Strava under Connect a device, each new activity is fetched automatically after it uploads.",
+      "Direct Strava sync is not available yet. Export the original activity file from Strava and upload a supported FIT, TCX or CSV file.",
   },
   {
     key: "polar",
     label: "Polar",
     icon: "Heart",
-    status: "auto_sync",
-    blurb: "Recovery and sleep",
+    status: "setup_required",
+    blurb: "Provider setup required",
     instructions:
-      "Connect Polar under Recovery in Settings to sync HRV, sleep and resting heart rate.",
+      "Polar recovery sync requires provider setup. Check availability in Settings, or import a supported recovery export or log your recovery manually.",
   },
   {
     key: "whoop",
     label: "WHOOP",
     icon: "Activity",
-    status: "auto_sync",
-    blurb: "Recovery and sleep",
+    status: "setup_required",
+    blurb: "Provider setup required",
     instructions:
-      "Connect WHOOP under Recovery in Settings to sync recovery, strain and sleep nightly.",
+      "WHOOP recovery sync requires provider setup. Check availability in Settings, or import a supported recovery export or log your recovery manually.",
   },
   {
     key: "oura",
     label: "Oura",
     icon: "CircleDot",
-    status: "auto_sync",
-    blurb: "Readiness, sleep, HRV",
+    status: "setup_required",
+    blurb: "Provider setup required",
     instructions:
-      "Connect Oura under Recovery in Settings to sync readiness, sleep and HRV.",
+      "Oura recovery sync requires provider setup. Check availability in Settings, or import a supported recovery export or log your recovery manually.",
   },
   {
     key: "apple_watch",
@@ -84,6 +87,15 @@ export const WEARABLE_MAP = WEARABLES.reduce((acc, w) => {
   acc[w.key] = w;
   return acc;
 }, {});
+
+export function wearableStatusLabel(status) {
+  return {
+    auto_sync: "Check connection",
+    setup_required: "Setup required",
+    coming_soon: "Direct sync unavailable",
+    manual_only: "File upload",
+  }[status] || "Check availability";
+}
 
 // Returns the ordered guide entries for the athlete's selected providers.
 // Always an array, callers map over it and check `.length`.

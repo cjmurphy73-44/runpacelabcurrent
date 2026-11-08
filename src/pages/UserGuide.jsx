@@ -59,7 +59,7 @@ export default function UserGuide() {
             </div>
           </div>
           <div className="flex gap-2 shrink-0">
-            <Button asChild size="sm"><Link to="/">Go to dashboard</Link></Button>
+            <Button asChild size="sm"><Link to="/app">Go to dashboard</Link></Button>
             <Button asChild size="sm" variant="outline"><Link to="/import">Import a workout</Link></Button>
           </div>
         </CardContent>
@@ -101,8 +101,8 @@ export default function UserGuide() {
 
           <GuideSection id="connect-data" icon={Watch} title="Connect your watch or app" description="Step-by-step for every source TrainPaceLab can use, live now or on the roadmap.">
             <div className="flex flex-wrap gap-2 mb-2">
-              <Badge variant="outline" className="bg-emerald-100 text-emerald-700 border-emerald-200">Live now</Badge>
-              <Badge variant="outline" className="bg-blue-100 text-blue-700 border-blue-200">Coming soon</Badge>
+              <Badge variant="outline">Check connection availability</Badge>
+              <Badge variant="outline">File upload</Badge>
             </div>
             <div className="grid sm:grid-cols-2 gap-4">
               {PROVIDERS.map((p) => <ProviderExportCard key={p.id} provider={p} />)}

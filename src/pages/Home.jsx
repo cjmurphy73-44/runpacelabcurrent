@@ -36,7 +36,6 @@ import { Button } from "@/components/ui/button";
 import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from "@/components/ui/accordion";
 import WidgetBoundary from "@/components/common/WidgetBoundary";
 import WorkoutLogWizard from "@/components/workout/WorkoutLogWizard";
-import BetaFeedbackModal from "@/components/feedback/BetaFeedbackModal";
 import CalibrationMeter from "@/components/dashboard/CalibrationMeter";
 import FirstDataPanel from "@/components/onboarding/FirstDataPanel";
 import PlannedActualReconciliation from "@/components/dashboard/PlannedActualReconciliation";
@@ -47,7 +46,7 @@ import WearableSyncBar from "@/components/dashboard/WearableSyncBar";
 import AnomalyAlertBanner from "@/components/dashboard/AnomalyAlertBanner";
 import AISynthesisCard from "@/components/dashboard/AISynthesisCard";
 import ConnectionHealthBanner from "@/components/dashboard/ConnectionHealthBanner";
-import { Sun, TrendingUp, Activity, MessageCircle, HeartPulse, ArrowRight, Plus, LogIn, MessageSquare } from "lucide-react";
+import { Sun, TrendingUp, Activity, MessageCircle, HeartPulse, ArrowRight, Plus, LogIn } from "lucide-react";
 
 export default function Home() {
   const [loading, setLoading] = useState(true);
@@ -59,7 +58,6 @@ export default function Home() {
   const [loadTimelineWorkouts, setLoadTimelineWorkouts] = useState([]);
   const [plannedWorkouts, setPlannedWorkouts] = useState([]);
   const [manualOpen, setManualOpen] = useState(false);
-  const [feedbackOpen, setFeedbackOpen] = useState(false);
 
   const trackWorkoutIngested = () => {
     try { base44.analytics.track({ eventName: "workout_ingested" }); } catch {}
@@ -372,17 +370,6 @@ export default function Home() {
         athleteId={athlete.id}
         onSaved={() => { trackWorkoutIngested(); loadAthleteData(athlete.id); }}
       />
-      {/* Prominent beta feedback entry, a floating button so testers reach
-          the feedback channel without digging into the account menu. */}
-      <button
-        type="button"
-        onClick={() => setFeedbackOpen(true)}
-        className="fixed bottom-6 right-6 z-40 inline-flex items-center gap-2 rounded-full bg-primary text-primary-foreground px-4 py-2.5 text-sm font-medium shadow-lg hover:bg-primary/90 pb-safe mr-safe"
-        aria-label="Send beta feedback"
-      >
-        <MessageSquare className="w-4 h-4" /> Beta feedback
-      </button>
-      <BetaFeedbackModal open={feedbackOpen} onClose={() => setFeedbackOpen(false)} />
     </FitnessProvider>
   );
 }

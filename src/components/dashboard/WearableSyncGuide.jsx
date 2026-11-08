@@ -1,6 +1,6 @@
 import React from "react";
 import { Watch, Activity, CircleDot, Share2, Heart, Smartphone } from "lucide-react";
-import { WEARABLES, syncGuideFor } from "@/lib/wearableCatalog";
+import { WEARABLES, syncGuideFor, wearableStatusLabel } from "@/lib/wearableCatalog";
 import { Card, CardContent } from "@/components/ui/card";
 
 const ICONS = { Watch, Activity, CircleDot, Share2, Heart, Smartphone };
@@ -51,7 +51,7 @@ export default function WearableSyncGuide({ selectedWearables = [], compact = fa
                   <div className="flex items-center gap-2 flex-wrap">
                     <span className="text-sm font-medium">{g.label}</span>
                     <span className={`text-[10px] uppercase tracking-wider font-semibold px-1.5 py-0.5 rounded ${g.status === "manual_only" || g.status === "coming_soon" ? "bg-warning/15 text-warning" : "bg-success/15 text-success"}`}>
-                      {g.status === "manual_only" ? "Manual upload" : g.status === "coming_soon" ? "Coming soon" : "Auto-sync"}
+                      {wearableStatusLabel(g.status)}
                     </span>
                   </div>
                   <p className="text-xs text-muted-foreground leading-snug">{g.instructions}</p>

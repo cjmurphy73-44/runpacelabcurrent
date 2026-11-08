@@ -190,7 +190,7 @@ export default function LabResultsImport({ athleteId }) {
           <Upload className="w-4 h-4" /> CSV upload
         </p>
         <p className="text-xs text-muted-foreground">
-          Columns: <code className="font-mono">date,test_type,metric_name,value,unit,reference_low,reference_high,notes</code>.
+          Columns: <code className="font-mono break-all">date,test_type,metric_name,value,unit,reference_low,reference_high,notes</code>.
           One row per metric per date.
         </p>
         <input

@@ -169,7 +169,7 @@ export default function OnboardingFlow({ onCreated }) {
                 {!saving && <ArrowRight className="w-4 h-4" />}
               </Button>
             ) : (
-              <Button type="button" className="flex-1" onClick={goNext}>
+              <Button type="button" className="flex-1" onClick={(event) => { event.preventDefault(); goNext(); }}>
                 Continue <ArrowRight className="w-4 h-4" />
               </Button>
             )}

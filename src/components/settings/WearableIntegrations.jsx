@@ -139,7 +139,7 @@ export default function WearableIntegrations({ athleteId }) {
   return (
     <div className="space-y-3">
       <p className="text-xs text-muted-foreground">
-        Free OAuth recovery sources, connect your ring or strap to sync sleep, HRV, and readiness automatically.
+        Direct recovery connections depend on provider setup and availability. Check the status below; a listed device is not a confirmed working connection. You can also import supported recovery exports or log values manually.
       </p>
       {PROVIDERS.map((p) => (
         <ProviderCard key={p.key} provider={p} athleteId={athleteId} />
