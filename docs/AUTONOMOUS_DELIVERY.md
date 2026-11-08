@@ -12,8 +12,8 @@ writers' files; acquire an exclusive local writer lock before edits.
 
 ## One bounded work item per run
 
-1. Read AGENTS.md, the latest approved docs/DEVELOPMENT_ROADMAP.md and the task
-   record. Until merged, read the roadmap from chore/codex-team-setup. Recheck
+1. Read AGENTS.md, docs/DELIVERY_STATUS.md, the latest approved
+   docs/DEVELOPMENT_ROADMAP.md and the task record. Until merged, read the roadmap from chore/codex-team-setup. Recheck
    actual GitHub heads and gate state; do not assume old report statuses are live.
 2. Select one approved, eligible item. Finish the existing staging/CI gate before
    later authorization, billing, telemetry or science implementation. The current
