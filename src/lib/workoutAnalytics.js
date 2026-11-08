@@ -1,10 +1,12 @@
 // Pure helpers for the Advanced Workout Analytics detail view.
 
+import { hasVerifiedStreams } from "@/lib/streamValidity";
+
 const ZONE_BOUNDARIES = [0, 0.6, 0.7, 0.8, 0.9, 2];
 
-// Buckets time spent in each of the 5 HR zones (% of max HR).
-// Uses second-by-second streams when available, otherwise estimates
-// the entire session duration falls in the zone matching avg_hr.
+// Buckets time spent in each of the 5 HR zones (% of max HR) from a real
+// second-by-second stream. Without one, every bucket stays at zero: an average
+// heart rate is never expanded into a synthetic distribution.
 export function computeHrZoneDistribution(workout, maxHr) {
   const seconds = [0, 0, 0, 0, 0];
   if (!maxHr) return seconds.map(() => ({ pct: 0 }));
@@ -22,18 +24,10 @@ export function computeHrZoneDistribution(workout, maxHr) {
         }
       }
     }
-  } else if (workout.avg_hr) {
-    const pct = workout.avg_hr / maxHr;
-    const totalSeconds = workout.duration_seconds || (workout.duration_minutes || 0) * 60 || 1;
-    for (let z = 0; z < 5; z++) {
-      if (pct >= ZONE_BOUNDARIES[z] && pct < ZONE_BOUNDARIES[z + 1]) {
-        seconds[z] = totalSeconds;
-        break;
-      }
-    }
   }
 
-  const total = seconds.reduce((a, b) => a + b, 0) || 1;
+  const total = seconds.reduce((a, b) => a + b, 0);
+  if (!total) return seconds.map(() => ({ pct: 0 }));
   return seconds.map((s) => ({ pct: (s / total) * 100 }));
 }
 
@@ -57,9 +51,9 @@ export function estimateCalories(workout, athlete) {
 // Session zone + energy resolution
 // ---------------------------------------------------------------------------
 // Zones are Karvonen (Heart-Rate-Reserve) based, anchored to THIS athlete's resting
-// and max HR, never a fixed %-of-max table. Resolution order matches the backend:
-// stored zone_seconds → second-by-second stream → laps → average-HR estimate. The
-// method travels with the data so the UI can label an estimate as an estimate.
+// and max HR, never a fixed %-of-max table. Zones come from a verified second-by-second
+// stream only, matching the backend. A session that arrived as a summary (average HR
+// for the whole activity) has no distribution at all: nothing is estimated in its place.
 
 export const ZONE_LABELS = ["Z1 Recovery", "Z2 Endurance", "Z3 Tempo", "Z4 Threshold", "Z5 Anaerobic"];
 
@@ -85,46 +79,31 @@ function buildZones(seconds) {
 export function sessionZoneDistribution(workout, athlete) {
   const restHr = Number(athlete?.resting_hr) || 60;
   const maxHr = Number(athlete?.max_heart_rate) || Number(workout?.max_hr) || 190;
-  const durationSeconds = Number(workout?.duration_seconds) || Math.round((Number(workout?.duration_minutes) || 0) * 60);
   const bounds = Array.isArray(workout?.zone_bounds_bpm) && workout.zone_bounds_bpm.length
     ? workout.zone_bounds_bpm
     : zoneFloorBpm(restHr, maxHr);
 
+  // No genuine per-second stream means no distribution. Full stop.
+  if (!hasVerifiedStreams(workout)) {
+    return { zones: buildZones([0, 0, 0, 0, 0]), method: "none", bounds, totalSeconds: 0 };
+  }
+
   const stored = Array.isArray(workout?.zone_seconds) ? workout.zone_seconds.map((s) => Number(s) || 0) : null;
-  if (stored && stored.some((s) => s > 0)) {
-    return { zones: buildZones(stored), method: workout.zone_method || "stream", bounds, totalSeconds: stored.reduce((a, b) => a + b, 0) };
+  if (workout?.zone_method === "stream" && stored && stored.some((s) => s > 0)) {
+    return { zones: buildZones(stored), method: "stream", bounds, totalSeconds: stored.reduce((a, b) => a + b, 0) };
   }
 
-  const stream = workout?.streams;
-  if (Array.isArray(stream) && stream.length > 1) {
-    const seconds = [0, 0, 0, 0, 0];
-    let last = null;
-    for (let i = 1; i < stream.length; i++) {
-      const dt = Math.min(Math.max((stream[i].time || 0) - (stream[i - 1].time || 0), 0), 60);
-      const hr = stream[i].heart_rate || last;
-      if (dt && hr) seconds[zoneIndexForHr(hr, restHr, maxHr)] += dt;
-      if (stream[i].heart_rate) last = stream[i].heart_rate;
-    }
-    if (seconds.some((s) => s > 0)) {
-      return { zones: buildZones(seconds), method: "stream", bounds, totalSeconds: seconds.reduce((a, b) => a + b, 0) };
-    }
+  const seconds = [0, 0, 0, 0, 0];
+  const stream = workout.streams;
+  let last = null;
+  for (let i = 1; i < stream.length; i++) {
+    const dt = Math.min(Math.max((stream[i].time || 0) - (stream[i - 1].time || 0), 0), 60);
+    const hr = stream[i].heart_rate || last;
+    if (dt && hr) seconds[zoneIndexForHr(hr, restHr, maxHr)] += dt;
+    if (stream[i].heart_rate) last = stream[i].heart_rate;
   }
-
-  if (Array.isArray(workout?.laps) && workout.laps.length) {
-    const seconds = [0, 0, 0, 0, 0];
-    for (const lap of workout.laps) {
-      if (!lap?.duration_s || !lap?.avg_hr) continue;
-      seconds[zoneIndexForHr(lap.avg_hr, restHr, maxHr)] += lap.duration_s;
-    }
-    if (seconds.some((s) => s > 0)) {
-      return { zones: buildZones(seconds), method: "laps", bounds, totalSeconds: seconds.reduce((a, b) => a + b, 0) };
-    }
-  }
-
-  if (workout?.avg_hr && durationSeconds) {
-    const seconds = [0, 0, 0, 0, 0];
-    seconds[zoneIndexForHr(Number(workout.avg_hr), restHr, maxHr)] = durationSeconds;
-    return { zones: buildZones(seconds), method: "average", bounds, totalSeconds: durationSeconds };
+  if (seconds.some((s) => s > 0)) {
+    return { zones: buildZones(seconds), method: "stream", bounds, totalSeconds: seconds.reduce((a, b) => a + b, 0) };
   }
 
   return { zones: buildZones([0, 0, 0, 0, 0]), method: "none", bounds, totalSeconds: 0 };
@@ -147,10 +126,8 @@ export function sessionCalories(workout, athlete) {
 
 export function formatZoneMethod(method) {
   switch (method) {
-    case "stream": return "Measured, device data";
-    case "laps": return "Measured, lap splits";
-    case "average": return "Estimated, summary only";
-    default: return "No heart-rate data";
+    case "stream": return "Measured, per-second";
+    default: return "No per-second telemetry";
   }
 }
 

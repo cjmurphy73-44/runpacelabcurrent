@@ -56,9 +56,6 @@ export default function WorkoutDetailModal({ workout, athlete, children, onChang
     if (calories.source === "device") {
       out.push("Energy comes from the watch's own model, which accounts for motion and your profile. It is never replaced by a formula here.");
     }
-    if (workout.zone_method === "average") {
-      out.push("Zone time is estimated from average heart rate for this session, attach a .fit or .tcx export for exact second-by-second zones.");
-    }
     return out;
   }, [workout, calories.source, load]);
 

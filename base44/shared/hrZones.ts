@@ -1,12 +1,12 @@
 // base44/shared/hrZones.ts
 // Karvonen (Heart-Rate-Reserve) zone model + true time-in-zone accumulation.
 //
-// Replaces the old "% of max HR" buckets. Boundaries are anchored to each athlete's
-// own resting and maximum HR, so identical heart rates land in different zones for
-// two athletes with different physiology. Time is accumulated from second-by-second
-// streams (preferred) or lap segments; only when neither exists does the session fall
-// back to a single-zone estimate from average HR — and the caller stores which method
-// was used so the UI can say so instead of implying false precision.
+// Boundaries are anchored to each athlete's own resting and maximum HR, so identical
+// heart rates land in different zones for two athletes with different physiology.
+// Time is accumulated ONLY from second-by-second streams. A lap table or an average
+// heart rate is never turned into a zone distribution: a synthetic split based on one
+// number silently contaminates every zone chart, zone-derived load and athlete-context
+// summary that reads it, so a session without a real stream gets no zones at all.
 
 export const ZONE_LABELS = ['Z1 Recovery', 'Z2 Endurance', 'Z3 Tempo', 'Z4 Threshold', 'Z5 Anaerobic'];
 
@@ -74,43 +74,12 @@ export function timeInZoneFromStream(stream, restHr, maxHr) {
   };
 }
 
-// Accumulate seconds per zone from lap segments (FIT message 19 / TCX <Lap>).
-export function timeInZoneFromLaps(laps, restHr, maxHr) {
-  const seconds = [0, 0, 0, 0, 0];
-  if (!Array.isArray(laps) || laps.length === 0 || !maxHr) {
-    return { zone_seconds: seconds, covered_seconds: 0, total_seconds: 0 };
-  }
-  let covered = 0;
-  for (const lap of laps) {
-    const dur = Number(lap?.duration_s);
-    const hr = Number(lap?.avg_hr);
-    if (!Number.isFinite(dur) || dur <= 0 || !Number.isFinite(hr) || hr <= 0) continue;
-    seconds[zoneIndexForHeartRate(hr, restHr, maxHr)] += dur;
-    covered += dur;
-  }
-  return {
-    zone_seconds: seconds.map((s) => Math.round(s)),
-    covered_seconds: Math.round(covered),
-    total_seconds: Math.round(covered),
-  };
-}
+const EMPTY_ZONES = [0, 0, 0, 0, 0];
 
-// Single-zone estimate from a session average — the honest last resort.
-export function timeInZoneFromAverage(avgHr, durationSeconds, restHr, maxHr) {
-  const seconds = [0, 0, 0, 0, 0];
-  const dur = Math.max(0, Math.round(Number(durationSeconds) || 0));
-  const hr = Number(avgHr);
-  if (!dur || !Number.isFinite(hr) || hr <= 0 || !maxHr) {
-    return { zone_seconds: seconds, covered_seconds: 0, total_seconds: 0 };
-  }
-  seconds[zoneIndexForHeartRate(hr, restHr, maxHr)] = dur;
-  return { zone_seconds: seconds, covered_seconds: dur, total_seconds: dur };
-}
-
-// Resolve the best available zone distribution for a session and report which method
-// produced it. A stream is only trusted when it actually covers a meaningful share of
-// the session; otherwise laps win, then the average-HR estimate.
-export function resolveTimeInZone({ stream, laps, avgHr, durationSeconds, restHr, maxHr }) {
+// Resolve the zone distribution for a session from a real stream, or report that there
+// is none. `laps` and `avgHr` are accepted for call-site compatibility but are never
+// used to manufacture a split.
+export function resolveTimeInZone({ stream, durationSeconds, restHr, maxHr }) {
   const bounds = zoneFloorBpm(restHr, maxHr);
   const duration = Math.max(0, Number(durationSeconds) || 0);
 
@@ -124,25 +93,5 @@ export function resolveTimeInZone({ stream, laps, avgHr, durationSeconds, restHr
     };
   }
 
-  const fromLaps = timeInZoneFromLaps(laps, restHr, maxHr);
-  if (fromLaps.covered_seconds >= 60) {
-    return {
-      zone_seconds: fromLaps.zone_seconds,
-      zone_method: 'laps',
-      zone_bounds_bpm: bounds,
-      coverage_pct: duration ? Math.round((fromLaps.covered_seconds / duration) * 100) : 100,
-    };
-  }
-
-  const fromAvg = timeInZoneFromAverage(avgHr, duration, restHr, maxHr);
-  if (fromAvg.covered_seconds > 0) {
-    return {
-      zone_seconds: fromAvg.zone_seconds,
-      zone_method: 'average',
-      zone_bounds_bpm: bounds,
-      coverage_pct: 100,
-    };
-  }
-
-  return { zone_seconds: [0, 0, 0, 0, 0], zone_method: 'none', zone_bounds_bpm: bounds, coverage_pct: 0 };
+  return { zone_seconds: EMPTY_ZONES, zone_method: 'none', zone_bounds_bpm: bounds, coverage_pct: 0 };
 }

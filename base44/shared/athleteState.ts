@@ -99,7 +99,9 @@ export function sessionLoadDescriptor(workout) {
   if (finite(workout?.session_trimp) && workout.session_trimp > 0) {
     return { method: 'banister_trimp', load: round(workout.session_trimp, 1), intensity_factor: null };
   }
-  const zones = Array.isArray(workout?.zone_seconds) ? workout.zone_seconds : [];
+  // Edwards TRIMP needs real time in zone. Without a verified stream the session has no
+  // distribution, so this descriptor must not invent a load from estimated zones.
+  const zones = workout?.zone_method === 'stream' && Array.isArray(workout?.zone_seconds) ? workout.zone_seconds : [];
   const weights = [1, 2, 3, 4, 5];
   const edwards = zones.reduce((sum, sec, i) => (finite(sec) && sec > 0 ? sum + (sec / 60) * weights[i] : sum), 0);
   if (edwards > 0) return { method: 'edwards_trimp', load: round(edwards, 1), intensity_factor: null };
@@ -207,8 +209,12 @@ export async function buildAthleteStateSummary(base44, workout) {
 
   const adaptation = assessAdaptation(history);
   const load = sessionLoadDescriptor(workout);
-  const zoneSeconds = [0, 1, 2, 3, 4].map((i) => (finite(workout.zone_seconds?.[i]) ? workout.zone_seconds[i] : 0));
-  const zoneMethod = workout.zone_method || 'none';
+  // Only a stream-derived distribution reaches the AI context. A stale or estimated
+  // one is zeroed here so no summary-only session can influence synthesis.
+  const zoneMethod = workout.zone_method === 'stream' ? 'stream' : 'none';
+  const zoneSeconds = [0, 1, 2, 3, 4].map((i) =>
+    zoneMethod === 'stream' && finite(workout.zone_seconds?.[i]) ? workout.zone_seconds[i] : 0,
+  );
   const durationSeconds = workout.duration_seconds || Math.round((workout.duration_minutes || 0) * 60);
   const hasStream = Array.isArray(workout.streams) && workout.streams.length > 0;
   const decoupling = finite(workout.aerobic_decoupling) ? workout.aerobic_decoupling : null;
@@ -260,7 +266,7 @@ export async function buildAthleteStateSummary(base44, workout) {
     provenance: {
       session_load: 'calculated_estimate',
       calories: workout.calories_source === 'device' ? 'measured_device' : 'calculated_estimate',
-      zones: zoneMethod === 'stream' || zoneMethod === 'laps' ? 'measured_device' : 'calculated_estimate',
+      zones: zoneMethod === 'stream' ? 'measured_device' : 'calculated_estimate',
       streams: hasStream ? 'measured_device' : 'calculated_estimate',
     },
   };
