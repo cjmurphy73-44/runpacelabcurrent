@@ -39,6 +39,9 @@ draft until the evidence below is recorded. A Git branch alone is not staging.
    access with synthetic records and capture expected denials. The known PR 3
    access-control gap remains a release blocker even if infrastructure is isolated.
 
+Run `npm ci` then `npx vitest run scripts/staging/verify.test.mjs` for the local
+guardrail regression tests. They also run in the restored PR 2 test suite.
+
 The preflight is intentionally fail-closed for placeholders, shared app IDs,
 production hosts and live billing credentials. It cannot attest to remote
 isolation based solely on a local manifest; its output says so explicitly.
