@@ -5,7 +5,7 @@
 This file is the durable public summary. Private environment/session evidence
 and detailed security reproductions remain outside Git.
 
-## Prepared fixes
+## Implemented fixes
 
 - Authenticated root entry goes directly to the app; SDK sessions survive reload.
 - A visible day/night control persists its setting on this browser.
@@ -33,7 +33,12 @@ These are frontend checks, not evidence of real provider or billing operations.
 
 The Product Owner manually confirmed that the existing staging app accepted
 sign-in/onboarding and reached the dashboard. That tested the previously deployed
-staging version; it does not establish deployment of this branch's new changes.
+staging version. Subsequently, frontend source 2244ffba51abbcd1c8b701d914cbf14089e2c79f
+was built explicitly for staging and published on 8 November at 08:49 UTC.
+All 36 changed frontend editor files were saved and read back matching Git.
+Backend source, private visibility and inactive workflows were preserved.
+The anonymous login page loaded without browser errors; an authenticated hosted
+athlete dashboard/FIT journey on this candidate remains unverified.
 
 ## Open findings
 

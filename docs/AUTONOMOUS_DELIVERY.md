@@ -33,6 +33,11 @@ writers' files; acquire an exclusive local writer lock before edits.
    deployment, production record write, environment publication or credential
    change. Check automatic Git-sync/release behavior before a main update so
    unreviewed backend/workflow changes are not released accidentally.
+   The Product Owner subsequently authorized audit fixes to be synchronized to
+   the existing Base44 staging app and the repository. Reviewed frontend-only
+   staging builds and editor-source saves are permitted after target verification
+   and backup; preserve backend guards, privacy and inactive workflows. This
+   does not authorize production deployment or unreviewed backend replacement.
 7. End with commit/PR/check evidence, completed behavior, blockers and the single
    next action. Stop after 45 minutes, one coherent item, an external blocker or
    another writer's lock. Do not retry unchanged auth failures indefinitely.

@@ -9,7 +9,7 @@ Do not open additional feature branches to work around missing integration.
 
 | Track | Source | Evidence | State |
 |---|---|---|---|
-| Cloud UI/session fixes | Existing PR #9 branch fix/provider-connection-feedback; source and hygiene head 0bade984023900380df15fd53c834fd151f363ef | Cloud observed: 246 tests, typecheck, lint, build, offline backend validation; six GitHub CI checks passed at this SHA; synthetic browser fixtures | Pushed; not merged; not deployed to the Base44 staging app by the cloud agent |
+| Cloud UI/session fixes | Existing PR #9 branch fix/provider-connection-feedback; source and hygiene head 0bade984023900380df15fd53c834fd151f363ef | Cloud observed: 246 tests, typecheck, lint, build, offline backend validation; six GitHub CI checks passed at this SHA; synthetic browser fixtures | Pushed; not merged. Frontend built from 2244ffba51abbcd1c8b701d914cbf14089e2c79f and published to existing staging on 8 November at 08:49 UTC; 36 editor-source files subsequently saved and read back matching Git |
 | TPL-INFRA-001 guards | Local branch fix/tpl-infra-001; deployed backend SHA 936f1eb7bf95f8a18697b1949aeff81fd63f38f6; local head 76b37bca2f8afca27f0d0e073bbc31f41f83436d | Product Owner supplied VS Code CLI report: build/preflight, 186 tests, typecheck/lint/backend validation, eight staging endpoints fail closed; private app, inactive workflows | Reported implemented/deployed; commits absent from cloud object database and advertised origin branches when checked; not yet code-reviewed here |
 | Staging sign-in/onboarding | Existing staging app; exact frontend revision not established here | Product Owner manually confirmed accepted sign-in, onboarding completion and dashboard arrival | Manual dashboard evidence; not an automated athlete/FIT/ownership acceptance pass |
 | Production main | 3f386d4d52042940cb1767e6950ec78e33b3c81e when last fetched | Cloud read-only Git observation | Existing stack remains unmerged |
@@ -17,6 +17,19 @@ Do not open additional feature branches to work around missing integration.
 Different test/resource counts refer to different code snapshots, not conflicting
 results from one combined version. No combined release candidate has been tested.
 Never convert supplied reports into independent cloud observations.
+
+## Observed staging frontend checkpoint
+
+The explicit staging build was accepted by the supported deploy-dist endpoint.
+Frontend editor source was backed up before the batch save; all 36 changed files
+read back byte-for-byte matching Git. Backend source remained identical, private
+visibility was preserved and exact workflow records remained inactive. No
+production deployment or production data write was performed.
+
+The anonymous browser reached the private login page without page errors. An
+operator API identity was verified, but this does not provide an authenticated
+athlete browser session. Hosted dashboard/FIT acceptance remains incomplete.
+Private deployment manifests, backups and readback evidence are outside Git.
 
 ## Scope of the reported infrastructure work
 
