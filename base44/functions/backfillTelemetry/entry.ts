@@ -147,6 +147,39 @@ async function garminFileFor(base44, athlete, session) {
   return null;
 }
 
+// Re-pull one historical activity's original file from COROS. The MCP sport record is only
+// a summary, but COROS keeps the watch's own recording for each record, which is where the
+// second-by-second telemetry lives. Sessions whose recording no longer exists stay
+// summary-only.
+async function corosFileFor(base44, athlete, session) {
+  const conns = await base44.asServiceRole.entities.CorosConnection.filter({ athlete_id: athlete.id });
+  const conn = conns.find((c) => c.access_token && c.status !== 'disconnected');
+  if (!conn) return null;
+
+  let accessToken;
+  try { accessToken = await corosAccessToken(conn, base44); } catch { return null; }
+
+  const day = session.date;
+  if (!day) return null;
+  const fmt = (d) => d.toISOString().slice(0, 10).replace(/-/g, '');
+  const from = new Date(`${day}T00:00:00Z`); from.setDate(from.getDate() - 1);
+  const to = new Date(`${day}T00:00:00Z`); to.setDate(to.getDate() + 1);
+
+  let records;
+  try { records = await queryCorosRecords(accessToken, fmt(from), fmt(to)); } catch { return null; }
+
+  const targetMinutes = Number(session.duration_minutes) || 0;
+  const candidates = records.filter((r) => r.label_id && r.date === day && (!r.sport || r.sport === session.sport));
+  if (!candidates.length) return null;
+  // A day can hold several sessions and the report duration is rounded, so the closest
+  // duration wins rather than requiring an exact match.
+  const best = candidates.reduce((a, b) =>
+    Math.abs((a.duration_seconds || 0) / 60 - targetMinutes) <= Math.abs((b.duration_seconds || 0) / 60 - targetMinutes) ? a : b);
+  if (Math.abs((best.duration_seconds || 0) / 60 - targetMinutes) > 5) return null;
+
+  try { return await downloadCorosFit(accessToken, best.label_id, best.sport_type); } catch { return null; }
+}
+
 function sortKey(s) {
   return `${s.date || ''}|${s.id || ''}`;
 }
@@ -188,10 +221,13 @@ async function processSession(base44, athlete, session, restHr, maxHr) {
 
   let fromProvider = false;
   if (payloads.length === 0) {
-    const provider = await garminFileFor(base44, athlete, session);
-    if (provider && isUsableTelemetry(provider.stream, durationSeconds)) {
-      payloads.push(provider);
-      fromProvider = true;
+    for (const refetch of [garminFileFor, corosFileFor]) {
+      const provider = await refetch(base44, athlete, session).catch(() => null);
+      if (provider && isUsableTelemetry(provider.stream, durationSeconds)) {
+        payloads.push(provider);
+        fromProvider = true;
+        break;
+      }
     }
   }
 
