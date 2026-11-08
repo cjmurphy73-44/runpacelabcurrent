@@ -1,5 +1,8 @@
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useState } from "react";
 import { base44 } from "@/api/base44Client";
+import { useAuth } from "@/lib/AuthContext";
+import { useProviderConnectionStatus } from "@/hooks/useProviderConnectionStatus";
+import { providerSyncFeedback } from "@/lib/providerSyncFeedback";
 import { Button } from "@/components/ui/button";
 import {
   Watch, Loader2, Link2, CheckCircle2, RefreshCw, Unlink, AlertTriangle,
@@ -8,7 +11,7 @@ import {
 // Plain-language Garmin connection state. Mirrors the COROS card: the athlete can
 // tell at a glance whether data is flowing, what is being synced, when it last
 // worked, and what to do about it, without reading an error code.
-const SYNCED = "Workouts, sleep, HRV and resting heart rate";
+const SYNCED = "Sync requests available workouts and recovery data; fields depend on provider access";
 
 function whenLabel(iso) {
   if (!iso) return null;
@@ -17,29 +20,18 @@ function whenLabel(iso) {
   return d.toLocaleString(undefined, { day: "numeric", month: "short", hour: "numeric", minute: "2-digit" });
 }
 
-export default function GarminConnectionCard({ athleteId }) {
-  const [status, setStatus] = useState(null);
-  const [loading, setLoading] = useState(true);
+export default function GarminConnectionCard(props) {
+  const { user } = useAuth();
+  return <ConnectionCard key={`${user?.id}:${props.athleteId}`} {...props} />;
+}
+
+function ConnectionCard({ athleteId }) {
+  const { status, loading, statusError, loadStatus } = useProviderConnectionStatus("garminSync", athleteId);
   const [connecting, setConnecting] = useState(false);
   const [syncing, setSyncing] = useState(false);
   const [disconnecting, setDisconnecting] = useState(false);
   const [error, setError] = useState(null);
   const [info, setInfo] = useState(null);
-
-  const loadStatus = useCallback(async () => {
-    try {
-      const res = await base44.functions.invoke("garminSync", { action: "status" });
-      setStatus(res?.data || res || null);
-    } catch (e) {
-      // A failed check must not read as "not connected", that would send someone
-      // through a reconnect they don't need. The state is explicitly unknown.
-      setStatus({ unknown: true });
-      setError(e?.response?.data?.error || "Couldn't check your Garmin connection just now.");
-    }
-    setLoading(false);
-  }, []);
-
-  useEffect(() => { loadStatus(); }, [loadStatus]);
 
   const connect = async () => {
     setConnecting(true); setError(null); setInfo(null);
@@ -72,23 +64,12 @@ export default function GarminConnectionCard({ athleteId }) {
     try {
       const res = await base44.functions.invoke("garminSync", { action: "sync_historical" });
       const data = res?.data || res;
-      if (data?.error) {
-        setError(data.error);
-      } else {
-        const imported = Number(data?.imported || 0);
-        const recovery = Number(data?.recovery_imported || 0);
-        if (!imported && !recovery) {
-          setInfo("Already up to date, no new workouts or recovery days since the last sync.");
-        } else {
-          const parts = [];
-          if (imported) parts.push(`${imported} workout${imported === 1 ? "" : "s"}`);
-          if (recovery) parts.push(`${recovery} recovery day${recovery === 1 ? "" : "s"}`);
-          setInfo(`Imported ${parts.join(" and ")}.`);
-        }
-      }
+      const feedback = providerSyncFeedback(data);
+      if (data.errors > 0 || data.toolErrors?.length) setError(feedback);
+      else setInfo(feedback);
       await loadStatus();
     } catch (e) {
-      setError(e?.response?.data?.error || "Couldn't sync from Garmin. Your existing data is untouched.");
+      setError(e?.response?.data?.error || e?.message || "The sync could not be confirmed. Check the connection and imported sessions before retrying.");
     }
     setSyncing(false);
   };
@@ -97,15 +78,17 @@ export default function GarminConnectionCard({ athleteId }) {
     if (!window.confirm("Disconnect Garmin? Automatic syncing stops until you reconnect. Your imported workouts stay.")) return;
     setDisconnecting(true); setError(null); setInfo(null);
     try {
-      await base44.functions.invoke("garminSync", { action: "disconnect" });
-      setStatus({ connected: false, needs_reconnect: false });
+      const { data } = await base44.functions.invoke("garminSync", { action: "disconnect" });
+      if (data?.success !== true || data.error) throw new Error(data?.error || "Disconnect could not be confirmed. Retry the status check.");
+      await loadStatus();
     } catch (e) {
-      setError(e?.response?.data?.error || "Couldn't disconnect Garmin.");
+      setError(e?.response?.data?.error || e?.message || "Couldn't disconnect Garmin.");
     }
     setDisconnecting(false);
   };
 
-  const connected = Boolean(status?.connected);
+  const connected = Boolean(status?.connected) && !status?.needs_reconnect && !status?.unknown;
+  const busy = loading || connecting || syncing || disconnecting;
   const needsReconnect = Boolean(status?.needs_reconnect);
   const unknown = Boolean(status?.unknown);
   const lastSync = whenLabel(status?.last_sync_at);
@@ -130,7 +113,7 @@ export default function GarminConnectionCard({ athleteId }) {
           <div className="min-w-0">
             <p className="text-sm font-medium flex items-center flex-wrap gap-2">
               Garmin Connect
-              {connected && (
+              {connected && !loading && (
                 <span className="inline-flex items-center gap-1 text-xs font-medium text-primary">
                   <CheckCircle2 className="w-3.5 h-3.5" /> Connected
                 </span>
@@ -153,31 +136,31 @@ export default function GarminConnectionCard({ athleteId }) {
         </div>
 
         <div className="flex flex-col gap-2 w-full sm:w-auto sm:items-end shrink-0">
-          {connected ? (
+          {unknown ? <Button variant="outline" size="sm" onClick={() => loadStatus()} disabled={loading}>Retry Garmin status</Button> : connected ? (
             <>
-              <Button variant="outline" size="sm" onClick={syncNow} disabled={syncing} className="w-full justify-center min-h-[44px]">
+              <Button variant="outline" size="sm" onClick={syncNow} disabled={busy} className="w-full justify-center min-h-[44px]">
                 {syncing ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <RefreshCw className="w-4 h-4 mr-2" />}
-                Sync now
+                {syncing ? "Syncing..." : "Sync now"}
               </Button>
-              <Button variant="ghost" size="sm" onClick={disconnect} disabled={disconnecting} className="w-full justify-center min-h-[44px]">
+              <Button variant="ghost" size="sm" onClick={disconnect} disabled={busy} className="w-full justify-center min-h-[44px]">
                 {disconnecting ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Unlink className="w-4 h-4 mr-2" />}
                 Disconnect
               </Button>
             </>
           ) : (
-            <Button size="sm" onClick={connect} disabled={connecting || loading} className="w-full justify-center min-h-[44px]">
+            <Button size="sm" onClick={connect} disabled={busy} className="w-full justify-center min-h-[44px]">
               {connecting ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : needsReconnect ? <Link2 className="w-4 h-4 mr-2" /> : <Link2 className="w-4 h-4 mr-2" />}
               {needsReconnect ? "Reconnect Garmin" : "Connect Garmin"}
             </Button>
           )}
         </div>
       </div>
-      {error && <p className="text-sm text-destructive">{error}</p>}
-      {info && <p className="text-sm text-primary break-words">{info}</p>}
+      {statusError && <p role="alert" className="text-sm text-destructive">{statusError}</p>}
+      {error && <p role="alert" className="text-sm text-destructive">{error}</p>}
+      {info && <p role="status" className="text-sm text-primary break-words">{info}</p>}
       <p className="text-xs text-muted-foreground">
         Prefer not to connect an account? Export a <span className="font-medium">.fit</span> or{" "}
-        <span className="font-medium">.csv</span> from Garmin Connect and upload it under Import workout files, it
-        carries the same measured data.
+        <span className="font-medium">.csv</span> from Garmin Connect and upload it under Import workout files, available channels depend on the recording and exported file type.
       </p>
     </div>
   );
