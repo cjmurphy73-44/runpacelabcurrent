@@ -86,3 +86,25 @@ to the cloud runner, and no credentials/session tokens belong in this record.
 
 See docs/APP_AUDIT.md for the public audit summary and
  docs/AUTONOMOUS_DELIVERY.md for the recurring work and merge boundaries.
+
+## Authorized live-release preparation
+
+The Product Owner explicitly requested this batch on https://trainpacelab.com/
+and instructed the cloud runner to proceed. The production custom-domain record
+was read successfully and matches that domain; its app ID differs from staging.
+Fresh checks at source 5e2a58d58ce8dba6f66fd5490b3e4d1b884e943d passed:
+typecheck, lint, 246 tests in 40 files, backend validation (49 entry graphs,
+28 resources), and an explicit production-targeted frontend build. Existing
+catalog RLS and bundle-size warnings remain. No deployment was performed.
+
+Release blockers observed: PR #9 is draft and targets the workout-export branch;
+PR #5 remains open against main. No approved review event was visible on either
+public PR page. This is not a branch-protection API attestation. Hosted athlete
+acceptance remains incomplete. Outbound requests to trainpacelab.com and
+api.github.com were denied with proxy 403, preventing live browser verification
+and GitHub API operations. Git read/push and Base44 management reads still work.
+
+Required next actions: allow those two hosts in environment network settings,
+complete hosted athlete acceptance and obtain independent release review through
+the existing PRs. Production authorization is recorded; do not ask the owner to
+repeat it, bypass the review, or publish the stacked backend changes wholesale.

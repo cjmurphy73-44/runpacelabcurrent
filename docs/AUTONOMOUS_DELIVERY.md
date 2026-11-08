@@ -37,7 +37,10 @@ writers' files; acquire an exclusive local writer lock before edits.
    the existing Base44 staging app and the repository. Reviewed frontend-only
    staging builds and editor-source saves are permitted after target verification
    and backup; preserve backend guards, privacy and inactive workflows. This
-   does not authorize production deployment or unreviewed backend replacement.
+   does not authorize unreviewed backend replacement. The Product Owner later
+   explicitly authorized releasing this UI batch to https://trainpacelab.com/.
+   That authorization supersedes the earlier staging-only deployment boundary
+   for this batch; required independent review and acceptance still apply.
 7. End with commit/PR/check evidence, completed behavior, blockers and the single
    next action. Stop after 45 minutes, one coherent item, an external blocker or
    another writer's lock. Do not retry unchanged auth failures indefinitely.
