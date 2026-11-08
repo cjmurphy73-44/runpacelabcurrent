@@ -17,6 +17,7 @@ import { calcTrimp } from '../../shared/physiology.ts';
 import { recomputeCTLATLTSB } from '../../shared/ctlRecalc.ts';
 import { assertSafeFileUrl } from '../../shared/urlGuard.ts';
 import { garminConfig, refreshGarminToken } from '../../shared/garminAuth.ts';
+import { corosAccessToken, queryCorosRecords, downloadCorosFit } from '../../shared/corosMcp.ts';
 
 const BATCH_SIZE = 25;
 const MAX_STREAM_SAMPLES = 3600;

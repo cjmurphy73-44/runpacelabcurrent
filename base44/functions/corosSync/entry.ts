@@ -8,6 +8,12 @@ import { runPostWorkoutEvaluation } from '../../shared/postWorkoutAI.ts';
 import { assertSafeFileUrl } from '../../shared/urlGuard.ts';
 import { constantTimeEqual } from '../../shared/crypto.ts';
 import { getSyncLookbackDays } from '../../shared/syncLookback.ts';
+import { parseFitWithLaps, summarizeStream } from '../../shared/workoutParsers.ts';
+import { isUsableTelemetry, storageStream, MAX_STREAM_SAMPLES } from '../../shared/streamValidity.ts';
+import {
+  corosAccessToken, fetchWithTimeout, mcpPost, mcpToolCall,
+  downloadCorosFit, queryCorosRecords,
+} from '../../shared/corosMcp.ts';
 
 // COROS MCP (Model Context Protocol) — OAuth 2.1 self-service integration.
 // No COROS developer-portal application or approval required. Endpoints were
@@ -22,7 +28,6 @@ import { getSyncLookbackDays } from '../../shared/syncLookback.ts';
 // users; per-user credentials live in CorosConnection. MCP is polling-only
 // (no webhook push) — sync_historical pulls on demand.
 
-const MCP_RESOURCE = 'https://mcpus.coros.com/mcp';
 const AUTHORIZE_ENDPOINT = 'https://mcpus.coros.com/oauth2/authorize';
 const TOKEN_ENDPOINT = 'https://mcpus.coros.com/oauth2/token';
 const SCOPE = 'openid mcp.tools offline_access';
@@ -214,6 +219,7 @@ async function handleWebhook(req, base44) {
   const activity = body.activity || body.workout || body;
   let summary = null;
   let sourceFormat = 'webhook';
+  let fitParsed = null;
   if (body.fit_file_url || activity.fit_file_url) {
     try {
       const fitUrl = body.fit_file_url || activity.fit_file_url;
@@ -221,9 +227,24 @@ async function handleWebhook(req, base44) {
       if (!urlCheck.ok) return Response.json({ error: 'fit_file_url not allowed' }, { status: 400 });
       const r = await fetch(fitUrl);
       if (r.ok) {
-        const buf = new Uint8Array(await r.arrayBuffer());
-        summary = parseFitSummary(buf);
-        sourceFormat = 'fit';
+        const parsed = parseFitWithLaps(new Uint8Array(await r.arrayBuffer()));
+        if (parsed?.stream?.length) {
+          const s = summarizeStream(parsed.stream);
+          // Only a real recording replaces the summary; a header-only file falls through
+          // so the session is still logged, just without telemetry.
+          if (isUsableTelemetry(parsed.stream, s.duration_seconds)) {
+            fitParsed = parsed;
+            summary = {
+              derived_date: activity.date || activity.start_time?.slice(0, 10) || null,
+              sport: normalizeSport(activity.sport || activity.activity_type),
+              duration_seconds: s.duration_seconds,
+              distance_km: s.distance_km,
+              avg_hr: s.avg_hr,
+              max_hr: s.max_hr,
+            };
+            sourceFormat = 'fit';
+          }
+        }
       }
     } catch (e) { /* fall through to JSON summary */ }
   }
@@ -268,8 +289,7 @@ async function handleWebhook(req, base44) {
   const nativeKcal = positiveOrNull(activity.calories ?? activity.active_calories ?? activity.active_kilocalories ?? body.calories);
   const temperatureC = positiveOrNull(activity.temperature_c ?? activity.average_temperature ?? body.temperature_c);
   const zoneResult = resolveTimeInZone({
-    laps: [],
-    avgHr: summary.avg_hr,
+    stream: fitParsed?.stream,
     durationSeconds: Math.round(durationMinutes * 60),
     restHr,
     maxHr,
@@ -300,6 +320,8 @@ async function handleWebhook(req, base44) {
     zone_method: zoneResult.zone_method,
     zone_bounds_bpm: zoneResult.zone_bounds_bpm,
     temperature_c: temperatureC ?? undefined,
+    streams: fitParsed ? storageStream(fitParsed.stream.slice(0, MAX_STREAM_SAMPLES)) : undefined,
+    laps: fitParsed?.laps?.length ? fitParsed.laps : undefined,
     ...energy,
   });
 
@@ -375,169 +397,44 @@ async function notifyReconnect(athlete: any, base44): Promise<void> {
 
 // force = refresh even if the access token is still valid (scheduled sync does this so any
 // rotated/extended refresh token is persisted and the connection never silently ages out).
+// Token refresh lives in shared/corosMcp.ts so the historical backfill re-authorizes the
+// same way this sync does rather than carrying a second copy of the logic.
 async function refreshIfNeeded(conn, base44, force = false): Promise<string> {
-  const now = Date.now();
-  const expiresAt = conn.token_expires_at ? Date.parse(conn.token_expires_at) : 0;
-  if (!force && expiresAt > now + 60_000 && conn.access_token) return conn.access_token;
-  if (!conn.refresh_token) return conn.access_token || '';
-  const clientId = getClientId();
-  const r = await fetchWithTimeout(TOKEN_ENDPOINT, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-    body: new URLSearchParams({
-      grant_type: 'refresh_token',
-      refresh_token: conn.refresh_token,
-      ...(clientId ? { client_id: clientId } : {}),
-    }),
-  });
-  if (!r.ok) {
-    const errText = await r.text().catch(() => '');
-    // invalid_grant = the refresh token was revoked/expired. It can never recover on its own,
-    // so flag the connection for reconnect instead of leaving it "connected" and failing every sync.
-    if (r.status === 400 || r.status === 401 || /invalid_grant/i.test(errText)) {
-      await base44.asServiceRole.entities.CorosConnection.update(conn.id, {
-        status: 'expired',
-        last_error: 'COROS authorization expired. Please reconnect your COROS account.',
-      });
-      throw new Error('COROS authorization expired. Please reconnect your COROS account.');
-    }
-    throw new Error(`Token refresh failed: ${r.status}`);
-  }
-  const tok = await r.json();
-  const accessToken = tok.access_token || conn.access_token;
-  await base44.asServiceRole.entities.CorosConnection.update(conn.id, {
-    access_token: accessToken,
-    refresh_token: tok.refresh_token || conn.refresh_token,
-    token_expires_at: new Date(now + (tok.expires_in || 3600) * 1000).toISOString(),
-  });
-  return accessToken;
+  return corosAccessToken(conn, base44, force);
 }
 
-// ---- MCP JSON-RPC over Streamable HTTP ----
-async function mcpPost(token: string, sessionId: string | null, body: any, acceptSse = true): Promise<{ json: any; sessionId: string | null; status: number; raw: string }> {
-  const headers: Record<string, string> = {
-    'Authorization': `Bearer ${token}`,
-    'Content-Type': 'application/json',
-    'Accept': acceptSse ? 'application/json, text/event-stream' : 'application/json',
-  };
-  if (sessionId) headers['Mcp-Session-Id'] = sessionId;
-  const r = await fetchWithTimeout(MCP_RESOURCE, { method: 'POST', headers, body: JSON.stringify(body) });
-  const sid = r.headers.get('mcp-session-id') || sessionId;
-  const text = await r.text();
-  let json: any = null;
-  const ct = r.headers.get('content-type') || '';
-  if (ct.includes('event-stream')) {
-    for (const line of text.split('\n')) {
-      const m = line.match(/^data:\s*(.*)$/);
-      if (m) { try { json = JSON.parse(m[1]); break; } catch { /* try next line */ } }
-    }
-  } else if (text) {
-    try { json = JSON.parse(text); } catch { /* not JSON */ }
-  }
-  return { json, sessionId: sid, status: r.status, raw: text.slice(0, 1000) };
-}
+// MCP transport, the activity report parser and the FIT download now live in
+// shared/corosMcp.ts — imported below so the backfill requests files identically.
 
-async function mcpToolCall(token: string, toolName: string, args: any): Promise<any> {
-  const init = await mcpPost(token, null, {
-    jsonrpc: '2.0', id: 1, method: 'initialize',
-    params: { protocolVersion: MCP_PROTOCOL_VERSION, capabilities: {}, clientInfo: { name: 'TrainPaceLab', version: '1.0' } },
-  });
-  const sid = init.sessionId;
-  if (!init.json || init.json.error) throw new Error(`MCP initialize failed: ${init.json?.error?.message || init.raw || `HTTP ${init.status}`}`);
-  // notifications/initialized — no response expected; do not request SSE.
-  await mcpPost(token, sid, { jsonrpc: '2.0', method: 'notifications/initialized', params: {} }, false);
-  const call = await mcpPost(token, sid, {
-    jsonrpc: '2.0', id: 2, method: 'tools/call',
-    params: { name: toolName, arguments: args },
-  });
-  if (!call.json) throw new Error(`MCP tools/call returned no JSON: ${call.raw || `HTTP ${call.status}`}`);
-  if (call.json.error) throw new Error(`MCP ${toolName} error: ${call.json.error.message || JSON.stringify(call.json.error)}`);
-  return call.json.result;
-}
+// Merge a downloaded activity file into an already-mapped summary payload. Everything the
+// file measures wins, because the report only holds averages. Returns false (and changes
+// nothing) when the file is not a usable recording.
+function applyFitTelemetry(payload: any, fit: any, athlete: any): boolean {
+  if (!fit?.stream?.length) return false;
+  const measured = summarizeStream(fit.stream);
+  if (!isUsableTelemetry(fit.stream, measured.duration_seconds)) return false;
+  const restHr = athlete.resting_hr || 60;
+  const maxHr = athlete.max_heart_rate || payload.max_hr || measured.max_hr || 190;
+  const durationSeconds = measured.duration_seconds || payload.duration_seconds;
+  const zoneResult = resolveTimeInZone({ stream: fit.stream, durationSeconds, restHr, maxHr });
 
-// MCP tool results arrive as { content: [ { type: 'text', text: '<json>' } ] }.
-function extractRecords(result: any): any[] {
-  if (!result) return [];
-  const content = result.content;
-  if (Array.isArray(content)) {
-    for (const item of content) {
-      if (item.type === 'text' && item.text) {
-        try {
-          const parsed = JSON.parse(item.text);
-          if (Array.isArray(parsed)) return parsed;
-          return parsed.records || parsed.activities || parsed.data || parsed.list || (parsed.items ? parsed.items : [parsed]);
-        } catch { /* not JSON text */ }
-      }
-      if (item.type === 'resource' && item.resource?.text) {
-        try { const parsed = JSON.parse(item.resource.text); return Array.isArray(parsed) ? parsed : [parsed]; } catch { /* */ }
-      }
-    }
-    return [];
+  payload.source_format = fit.fileType;
+  payload.duration_seconds = durationSeconds;
+  payload.duration_minutes = Math.round((durationSeconds / 60) * 100) / 100;
+  if (measured.distance_km) payload.distance_km = measured.distance_km;
+  if (measured.avg_hr) {
+    payload.avg_hr = measured.avg_hr;
+    payload.session_trimp = calcTrimp(durationSeconds / 60, measured.avg_hr, restHr, maxHr, athlete.sex);
   }
-  return Array.isArray(result) ? result : [result];
-}
-
-// COROS MCP returns sport records as a formatted text report (not JSON). Parse it.
-function corosSportCodeToSport(code: number | null, name: string): string {
-  if (code != null) {
-    if (code >= 100 && code <= 106) return 'running';
-    if (code >= 200 && code <= 299) return 'cycling';
-    if (code === 300 || code === 301) return 'swimming';
-    if (code >= 400 && code <= 402) return 'strength';
-  }
-  const n = (name || '').toLowerCase();
-  if (n.includes('run')) return 'running';
-  if (n.includes('bike') || n.includes('cycl')) return 'cycling';
-  if (n.includes('swim')) return 'swimming';
-  if (n.includes('strength')) return 'strength';
-  return 'other';
-}
-
-function parseCorosRecordsText(text: string): any[] {
-  if (!text || typeof text !== 'string') return [];
-  const records: any[] = [];
-  // Each record block starts with "N. SportName — YYYY-MM-DD". Use a global regex to
-  // locate every record header, then slice the text between consecutive headers into
-  // a block and parse its fields. (Splitting on a lookahead with \s* produces empty
-  // blocks when \s* consumes the preceding newlines, so we avoid that approach.)
-  const headRe = /(\d+)\.\s+([^\n]+?)\s+[—–-]\s+(\d{4}-\d{2}-\d{2})/g;
-  const heads: { index: number; sportName: string; date: string }[] = [];
-  let m: RegExpExecArray | null;
-  while ((m = headRe.exec(text)) !== null) {
-    heads.push({ index: m.index, sportName: m[2].trim(), date: m[3] });
-  }
-  for (let i = 0; i < heads.length; i++) {
-    const start = heads[i].index;
-    const end = i + 1 < heads.length ? heads[i + 1].index : text.length;
-    const block = text.slice(start, end);
-    const durM = block.match(/Duration:\s*(\d{1,2}:\d{2}(?::\d{2})?)/);
-    const distM = block.match(/Distance:\s*([\d.]+)\s*km/i);
-    const hrM = block.match(/Avg HR:\s*(\d+)\s*bpm/i);
-    const sportTypeM = block.match(/SportType:\s*(\d+)/);
-    // COROS reports the watch's own active energy in the same report block — the
-    // 1,204 kcal reading comes from here, and it must survive ingestion intact.
-    const calM = block.match(/Calories:\s*([\d.]+)\s*kcal/i);
-    const tempM = block.match(/(?:Temperature|Avg Temp):\s*(-?[\d.]+)\s*°?C/i);
-    const startM = block.match(/startTimestamp=(\d+)/);
-    const endM = block.match(/endTimestamp=(\d+)/);
-    let durationSeconds = 0;
-    if (durM && durM[1]) {
-      const p = durM[1].split(':').map(Number);
-      durationSeconds = p.length === 3 ? p[0] * 3600 + p[1] * 60 + p[2] : p[0] * 60 + p[1];
-    } else if (startM && endM) {
-      durationSeconds = Number(endM[1]) - Number(startM[1]);
-    }
-    records.push({
-      date: heads[i].date,
-      sport: corosSportCodeToSport(sportTypeM ? Number(sportTypeM[1]) : null, heads[i].sportName),
-      duration_seconds: durationSeconds,
-      distance_km: distM ? Number(distM[1]) : 0,
-      avg_heart_rate: hrM ? Number(hrM[1]) : null,
-      calories: calM ? Number(calM[1]) : null,
-      temperature_c: tempM ? Number(tempM[1]) : null,
-    });
-  }
-  return records;
+  if (measured.max_hr) payload.max_hr = measured.max_hr;
+  if (measured.avg_power) payload.avg_power = measured.avg_power;
+  if (measured.avg_cadence) payload.avg_cadence = measured.avg_cadence;
+  payload.zone_seconds = zoneResult.zone_seconds;
+  payload.zone_method = zoneResult.zone_method;
+  payload.zone_bounds_bpm = zoneResult.zone_bounds_bpm;
+  payload.streams = storageStream(fit.stream.slice(0, MAX_STREAM_SAMPLES));
+  if (fit.laps?.length) payload.laps = fit.laps.slice(0, 200);
+  return true;
 }
 
 function mapRecord(a: any, athlete: any) {
@@ -613,19 +510,16 @@ async function syncHistoricalFor(athlete: any, accessToken: string, base44, look
   // COROS MCP requires yyyyMMdd (no dashes), and sportTypeCodes is mandatory — 65535 = all sports.
   const fmt = (d: Date) => d.toISOString().slice(0, 10).replace(/-/g, '');
 
-  const result = await mcpToolCall(accessToken, 'querySportRecords', { startDate: fmt(start), endDate: fmt(end), sportTypeCodes: [65535], limit: 100 });
-
-  // COROS MCP returns sport records as a formatted text report — parse it; fall back to JSON extraction.
-  let contentText = result?.content?.[0]?.text;
-  if (typeof contentText === 'string') { try { contentText = JSON.parse(contentText); } catch { /* not JSON-encoded */ } }
-  const records = (typeof contentText === 'string' && /Sport Records\b/.test(contentText))
-    ? parseCorosRecordsText(contentText)
-    : extractRecords(result);
+  const records = await queryCorosRecords(accessToken, fmt(start), fmt(end));
   let errors = 0;
   const mappedRecords = [];
+  // label_id + sport_type are the keys the FIT download tools require; they are kept
+  // beside the payload rather than written onto the session record.
+  const fileKeys = new Map();
   for (const a of records) {
     const mapped = mapRecord(a, athlete);
     if (!mapped) { errors++; continue; }
+    if (a.label_id) fileKeys.set(mapped, { labelId: a.label_id, sportType: a.sport_type ?? null });
     mappedRecords.push(mapped);
   }
 
@@ -655,7 +549,18 @@ async function syncHistoricalFor(athlete: any, accessToken: string, base44, look
     if (sameDay.some(isDuplicate) || toCreate.some((s) => s.date === mapped.date && isDuplicate(s))) { duplicates++; continue; }
     toCreate.push(mapped);
   }
+  // The sport record is a summary. COROS also keeps the original activity file, and only
+  // that carries second-by-second telemetry, so it is fetched for every new session. When
+  // no file exists the session is still created, summary-only, and stays out of zone
+  // analytics because it has no stream.
   if (toCreate.length) {
+    for (const payload of toCreate) {
+      const key = fileKeys.get(payload);
+      if (!key) continue;
+      try {
+        applyFitTelemetry(payload, await downloadCorosFit(accessToken, key.labelId, key.sportType), athlete);
+      } catch (e) { console.warn('COROS FIT ingest failed:', (e as Error).message); }
+    }
     for (let i = 0; i < toCreate.length; i += 500) {
       await base44.asServiceRole.entities.WorkoutSession.bulkCreate(toCreate.slice(i, i + 500));
     }
