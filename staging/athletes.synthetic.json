@@ -1,0 +1,14 @@
+[
+  {
+    "description": "TrainPaceLab synthetic fixture athlete-a; no real health data",
+    "first_name": "Synthetic", "last_name": "Athlete A",
+    "training_tier_preference": "moderate", "age": 30, "sex": "male",
+    "resting_hr": 55, "max_heart_rate": 190
+  },
+  {
+    "description": "TrainPaceLab synthetic fixture athlete-b; no real health data",
+    "first_name": "Synthetic", "last_name": "Athlete B",
+    "training_tier_preference": "conservative", "age": 35, "sex": "female",
+    "resting_hr": 60, "max_heart_rate": 185
+  }
+]
