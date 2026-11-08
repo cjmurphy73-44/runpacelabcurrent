@@ -64,7 +64,7 @@ Owner: engineering lead; original-Mac preservation requires the local operator.
 | TPL-PLAN-001 | Establish this index, source reconciliation and preservation inventory | User instruction | This run's documentation deliverable; exact evidence in `.codex/reports/TPL-PLAN-001.md`. Product gates remain open. |
 | TPL-ODY-001 | Inventory tracked link and launch/runtime consumers | None | Source inventory recorded in ODYSSEUS_PRESERVATION.md; Mac dependencies remain unverified. Included in PLAN-001. |
 | TPL-ODY-002 | Verify one private preservation/restore of the independent Mac project | ODY-001, original-Mac access | Blocked here. History/refs + dirty/untracked content restored and checked; original path untouched; sanitized attestation only. |
-| TPL-REC-001 | Review eight guarded handler entry paths and test the fail-closed contract | Published infra head | Ready, next code task. Offline synthetic tests distinguish status-only requests, blocked side effects, missing environment and denied env access. Inspect existing tests first; no branch integration or remote call. Use existing infrastructure implementation, not a replacement guard. |
+| TPL-REC-001 | Review eight guarded handler entry paths and test the fail-closed contract | Published infra head | Offline slice completed at [8bafa517](https://github.com/cjmurphy73-44/runpacelabcurrent/commit/8bafa5178d40f0748800a18c6583253aebc241a4): 57 handler cases plus four helper cases added; full 247-test suite and local required commands pass. No runtime code changed. [Report](https://github.com/cjmurphy73-44/runpacelabcurrent/blob/8bafa5178d40f0748800a18c6583253aebc241a4/.codex/reports/TPL-REC-001.md). No matching infrastructure PR/exact-head CI yet; no hosted or independent acceptance claimed. |
 | TPL-REC-002 | Reconcile infra-only changes and #4 alias fix in owning staging PR | REC-001, ODY-002 | Blocked. Explicit file/commit plan preserves both fixes, existing tests and user work; no inherited removal merge before preservation. |
 | TPL-REC-003 | Reconcile #7 backend/entity dependencies against staging candidate | REC-002 | Blocked. Record required entity/function/frontend batch and behavior conflicts; no blind stacked merge or broader permission work. |
 | TPL-REC-004 | Reconcile #8/#9 frontend diff and current audit without changing semantics | REC-003 | Blocked. A single reviewed source manifest names frontend/backend heads; no combined-pass claim from old test reports. |
@@ -220,7 +220,24 @@ recommendations do not enter this index as approved work automatically.
 
 ## Next run
 
-Select **TPL-REC-001**, a source-only guard-contract review/test slice on published
-`fix/tpl-infra-001`. Keep changes with the existing infrastructure/staging owner;
-do not create a duplicate guard or merge Odysseus removal. The independent Mac
-preservation item TPL-ODY-002 remains required before integration/removal merges.
+Select **TPL-ASSET-001**: inventory the existing logo/icon/imagery family,
+provenance and actual placements. Do not delete or redesign assets in the inventory.
+TPL-REC-001 is completed offline; TPL-REC-002 remains blocked by original-Mac
+preservation/restore evidence in TPL-ODY-002. Do not integrate branches or merge
+Odysseus removal to work around that prerequisite.
+
+
+## Run update: TPL-REC-001, 9 November 2026
+
+Infrastructure branch now has test-only commit `8bafa5178d40f0748800a18c6583253aebc241a4`
+after the original reconciled snapshot. Its published tree matches the locally
+tested tree. The real eight handler entry/import graphs ran in isolated VM
+fixtures: 503 before side effects for staging/missing/denied environments;
+OAuth/action/webhook routing blocked; synthetic status remained read-only.
+Full local suite: 247 tests/31 files; typecheck, lint, build and backend validation
+pass. Existing RLS/localhost/npm/bundle warnings remain. No real SDK/provider,
+remote staging, ownership or production-enabled behavior is certified. No
+matching infrastructure PR was found, and no PR-triggered exact-head run was
+returned; do not claim CI success. PR #4 separately advanced to `832e038` with
+preservation documentation only. No integration, deployment, runtime-code or
+Odysseus tracking change was made by this task. G0 remains open.
