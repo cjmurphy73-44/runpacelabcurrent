@@ -77,7 +77,7 @@ stated ready. These are acceptance items, not authorization to deploy production
 | ID | Atomic deliverable | Depends on | Acceptance / state |
 | --- | --- | --- | --- |
 | TPL-G0-001 | Recheck #5 exact-head six-job CI and invitation/schema diff | None | Ready, existing implementation. Record jobs and warnings; no reimplementation of fixed typecheck. |
-| TPL-G0-002 | Read-only verify existing staging target and inactive workflows | Secure target record/access | Partial live pass: authenticated management UI shows distinct staging app, Private visibility, both COROS Auto Sync/Airtable App Mirror Inactive, Activity No runs yet, GitHub API/Airtable connectors Disconnected. [Sanitized report](../.codex/reports/TPL-G0-002.md). Custom provider tokens, production-credential/data absence and exact deployed source remain unverified; do not mark full isolation accepted. |
+| TPL-G0-002 | Read-only verify existing staging target and inactive workflows | Secure target record/access | Partial live evidence in [sanitized report](../.codex/reports/TPL-G0-002.md): distinct Private staging, external workflows Inactive and listed platform connectors Disconnected. Follow-up lists only TPL_ENVIRONMENT/WEBHOOK_SYNC_SECRET; custom webhook-secret provenance is unverified. Data UI stays blank after one reload, blocking provider counts. Custom tokens, credential/data isolation and exact deployed source remain unverified; full acceptance blocked. |
 | TPL-G0-003 | Verify anonymous/authenticated invitation fail-closed behavior | G0-002, reviewed #5 source | Synthetic 401/503 outcomes and no entity writes; Data UI/schema move checked. One endpoint per child run if needed. |
 | TPL-G0-004 | Establish synthetic athlete A session and persisted profile | G0-002 | Supported identity creation; profile belongs to real authenticated synthetic user, reload succeeds; no fake created_by_id. |
 | TPL-G0-005 | Establish distinct synthetic athlete B and coach sessions | G0-004 | Separate identities/profiles with sanitized role/ownership evidence, no invitations to invented recipients. |
@@ -220,13 +220,15 @@ recommendations do not enter this index as approved work automatically.
 
 ## Next run
 
-Continue **TPL-G0-002** with a bounded supported read/attestation for custom
-provider connection state and credential isolation. Management-browser access is
-now established, but CLI authentication is not. Do not expose tokens, read raw
-health data, connect real providers or treat disconnected platform connectors as
-proof that custom OAuth records are absent. Privacy and inactive-workflow UI
-evidence is recorded; do not repeat those checks without a change. G0 and original-
-Mac preservation in TPL-ODY-002 remain open; no integration/removal merge is unlocked.
+**TPL-G0-002 is externally blocked** on a supported metadata-only provider-count
+and credential-isolation read path. Data management rendered blank and one reload
+did not recover it; no page-scoped read tooling was exposed. Management-browser
+access works, but CLI authentication is not established. Resume only when the
+Data UI or scoped management tooling is available, returning sanitized counts/
+status rather than token fields or health records. Do not repeatedly retry the
+unchanged blank page, replace the configured webhook secret or infer credential
+isolation from secret names. G0 and original-Mac preservation in TPL-ODY-002 remain
+open; no integration/removal merge is unlocked.
 
 
 ## Run update: TPL-REC-001, 9 November 2026
@@ -268,3 +270,14 @@ credential/data isolation, exact deployed code or hosted synthetic athlete/FIT
 acceptance. See the sanitized task report for precise limits. No app configuration,
 workflow, connector, data or deployment was changed, and no private identifiers
 or authentication artifacts were added to Git. Task remains partial; G0 stays open.
+
+### TPL-G0-002 follow-up
+
+Application Secrets lists only TPL_ENVIRONMENT and WEBHOOK_SYNC_SECRET. No
+Garmin/COROS/Stripe credential names or external-sync enable flag are listed,
+but runtime values and custom entity tokens are not certified. The configured
+webhook secret's origin/test isolation remain unverified. The Data management
+surface stayed blank after one reload, so no connection-table counts could be
+read. No values were copied into public evidence and no provider/health records
+were opened. Task is externally blocked on a supported metadata-only read path;
+stop unchanged retries and preserve all existing app configuration.
