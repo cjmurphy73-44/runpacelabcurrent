@@ -3,11 +3,11 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/lib/AuthContext";
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 import { base44 } from "@/api/base44Client";
-import { downloadWorkoutFile } from "@/services/workoutExport";
+import WorkoutExportButton from "@/components/workout/WorkoutExportButton";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import moment from "moment";
-import { Download, Sparkles } from "lucide-react";
+import { Sparkles } from "lucide-react";
 import CoachSignalNotice from "@/components/dashboard/CoachSignalNotice";
 import { useSubscription } from "@/hooks/useSubscription";
 import FeatureGate from "@/components/billing/FeatureGate";
@@ -88,9 +88,7 @@ function TrainingCalendarContent({ athleteId, currentTsb }) {
                       {session.rationale_text && <p className="text-xs text-muted-foreground">{session.rationale_text}</p>}
                       <p className="text-xs uppercase tracking-wide text-muted-foreground">{session.status}</p>
                       <FeatureGate feature="structured_export" plan={plan} compact>
-                        <Button size="sm" variant="outline" onClick={() => downloadWorkoutFile(session)} className="gap-1.5 mt-2 w-full">
-                          <Download className="w-3.5 h-3.5" /> Export Workout
-                        </Button>
+                        <WorkoutExportButton session={session} className="mt-2 w-full" />
                       </FeatureGate>
                     </div>
                   ) : (

@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { useParams, Link } from "react-router-dom";
 import { base44 } from "@/api/base44Client";
-import { downloadWorkoutFile } from "@/services/workoutExport";
+import WorkoutExportButton from "@/components/workout/WorkoutExportButton";
 import { useSubscription } from "@/hooks/useSubscription";
 import FeatureGate from "@/components/billing/FeatureGate";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import PageShell from "@/components/layout/PageShell";
 import SectionHeading from "@/components/layout/SectionHeading";
-import { ArrowLeft, Sparkles, Activity as ActivityIcon, Clock, MapPin, HeartPulse, Gauge, RotateCw, AlertCircle, Files, Layers, CalendarDays, Pencil, Check, X, Loader2, Download, TrendingDown } from "lucide-react";
+import { ArrowLeft, Sparkles, Activity as ActivityIcon, Clock, MapPin, HeartPulse, Gauge, RotateCw, AlertCircle, Files, Layers, CalendarDays, Pencil, Check, X, Loader2, TrendingDown } from "lucide-react";
 import { AuditBadge } from "@/components/ui/AuditBadge";
 
 // Intensity → dynamic color tokens used across the insight card.
@@ -167,9 +167,7 @@ export default function ActivityDetail() {
           icon={ActivityIcon}
           action={planSession ? (
             <FeatureGate feature="structured_export" plan={plan} compact>
-              <Button size="sm" variant="outline" onClick={() => downloadWorkoutFile(planSession)} className="gap-1.5">
-                <Download className="w-3.5 h-3.5" /> Export Workout
-              </Button>
+              <WorkoutExportButton session={planSession} />
             </FeatureGate>
           ) : undefined}
         />
