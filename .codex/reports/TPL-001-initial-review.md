@@ -62,5 +62,22 @@ read-only, then deploy only the reviewed code to that verified staging target
 and execute the synthetic acceptance checklist. Keep #4 draft until complete.
 The Product Owner also needs an eligible independent reviewer for #5.
 
-Competitive research is a separate queued, on-demand assignment. Its agent
-configuration exists; no competitor findings have been researched or claimed.
+The separately authorized first research brief is submitted in
+docs/research/INITIAL_FIDELITY_BRIEF.md for Product Owner review only. No finding
+is approved for engineering implementation or enters PR 1/2 scope.
+
+
+## Direct CI log verification
+
+Downloaded and inspected the GitHub job logs for exact PR #5 head 5db1f34:
+- Typecheck job 128603351713: tsc -p ./jsconfig.json; job success.
+- Backend job 128603351904: "Validated 48 backend entry graphs and 27 resource configurations." Job success; existing three catalog RLS warnings remain.
+- Tests job 128603351926: 27 test files, 179 tests passed; job success.
+- Source run: https://github.com/cjmurphy73-44/runpacelabcurrent/actions/runs/42438784757
+- PR #4 run 42442551300: success on head 77e7116.
+- Setup PR #6 first run 42446626100: success on head 5a8c27f.
+
+These are actual CI logs/check results, not staging environment evidence. Mac
+agent discovery, local scheduled runner, writer coordination, scoped Base44
+access and all runtime staging criteria remain NOT VERIFIED in this session.
+Do not label a requested local action completed merely because it was assigned.

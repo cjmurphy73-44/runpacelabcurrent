@@ -19,7 +19,9 @@ Human review required by GitHub cannot be replaced by an AI QA report.
 
 Preserve unrelated edits, including odysseus. Never approve or merge PRs, bypass
 protections, publish production, modify production data, expose private metadata,
-or start later gates because the current one is blocked. Test runtime behavior
+or start later gates because the current one is blocked. All local runner checks operate in isolated feature worktrees; any runtime
+checks or backend function/workflow writes target dedicated staging only, never
+a main-linked or live Base44 app. Test runtime behavior
 only against verified isolated staging with synthetic data and sandbox billing.
 Do not ask for repeated approval for already-authorized safe work.
 

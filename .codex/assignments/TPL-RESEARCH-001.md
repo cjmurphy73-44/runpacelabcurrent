@@ -1,11 +1,11 @@
 # TPL-RESEARCH-001: competitive landscape for the Garmin/COROS MVP
 
-- Status: queued, research not yet performed.
+- Status: initial public-documentation brief submitted for Product Owner review.
 - Owner: competitive-intelligence; lead reviews; Product Owner chooses priorities.
 - Outcome: identify a defensible reason an endurance athlete would choose and
   keep using TrainPaceLab, grounded in public evidence and testable hypotheses.
-- Scope: up to three currently relevant direct competitors/adjacent substitutes;
-  public product/docs/pricing/demos and dated independent user feedback.
+- Scope: COROS, Garmin, Strava, TrainingPeaks and intervals.icu only;
+  public official technical/help documentation and physiological coaching UX evidence only. Exclude pricing, marketing, acquisition, sentiment/vanity metrics.
 - Dependencies: current source access and a dated research question. No staging,
   real athlete data or production access needed. Research does not unlock coding.
 - Decision question: where can reliable Garmin/COROS ingestion, data provenance
@@ -14,8 +14,8 @@
 ## Deliverables and acceptance
 
 1. Explain why each selected product is relevant to the same athlete job.
-2. Compare first-use journey, provider data depth, training/recovery guidance,
-   error transparency, pricing/limits, portability and marketing proof where known.
+2. Compare wearable raw-file/stream availability, channel retention, resolution/limits,
+   missing-data transparency and physiological coaching UX where documented.
 3. Every material changing claim has a current source and checked date. Public
    marketing, direct observation, user reports, inference and unknowns are labelled.
 4. Identify strengths worth respecting, unmet needs, objections and switching
@@ -32,7 +32,7 @@
 - Selection rationale:
 - Evidence matrix (product, capability, source/date, evidence class, confidence):
 - Athlete friction and switching costs:
-- Positioning and acquisition observations:
+- Ingestion fidelity and physiological coaching UX observations:
 - Opportunities and experiments:
 - Unknowns and limitations:
 - Product Owner decision:
@@ -40,3 +40,6 @@
 Do not change the two-hour engineering cadence or schedule recurring research
 merely by saving this assignment. Lead may dispatch a bounded research brief on
 demand; a separate recurring market brief needs an explicit schedule.
+
+No finding enters a task, backlog or PR scope without explicit Product Owner approval.
+Research cannot delay or unlock pipeline PRs 3-7 before PRs 1/2 are merged and verified.
