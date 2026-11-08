@@ -1,12 +1,34 @@
 # PR 1: staging and branch isolation
 
-Status: **not provisioned or verified**. Base44 CLI authentication is unavailable
-in the execution environment. GitHub main is currently unprotected and has no
-rulesets; the connected GitHub API cannot perform administration writes. This PR
-provides executable preflight checks and the exact proposed ruleset. It must stay
-draft until the evidence below is recorded. A Git branch alone is not staging.
+Status: **partially provisioned; acceptance incomplete** (2026-11-08).
+A separate private staging app has been created.
+Main protection is active. This PR remains draft until the remaining acceptance
+checks below pass. A private clone alone does not establish tested isolation.
 
-## Separate staging app
+## Provisioning progress
+
+A separate staging app has been created and its visibility restricted. Scheduled
+external sync and mirroring are inactive. The clone flow was completed without
+supplying secrets or connecting external integrations. Environment identifiers
+and administrative URLs are intentionally omitted from this public repository.
+
+Acceptance remains incomplete: direct athlete-table inspection is blocked by a
+blank Data page, distinct synthetic athlete/coach sessions are not yet created,
+and Stripe test credentials and signed-event routing are not configured or
+verified. The clone has not been updated to the reviewed PR code. Browser login
+does not establish CLI authentication. Keep this PR draft, and hold PR 3 submission
+until staging acceptance is complete.
+
+Main protection is now active with no bypass actors: linear history, PR review,
+resolved conversations, blocked deletion/force pushes and strict required
+Typecheck, Lint, Build, Backend, Tests and CI required checks. PR #5 and the stacked
+staging branch both passed CI before this documentation update.
+
+Before deployment, authenticate the CLI and explicitly link an isolated checkout
+to the existing staging app. Do not repeat the create step below. Production
+deployment state and rollback checkpoint still require verification.
+
+## Reprovisioning runbook
 
 1. Authenticate with `npx base44 login` in the environment doing provisioning.
    Use an isolated checkout of this branch. Do not copy a production `.app.jsonc`,
