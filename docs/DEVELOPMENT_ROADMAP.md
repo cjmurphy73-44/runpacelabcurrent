@@ -1,0 +1,266 @@
+# TrainPaceLab development roadmap and recurring work contract
+
+Updated: 2026-11-08. Brand: TrainPaceLab only.
+
+## Purpose and authority
+
+Improve the product through small, tested, reviewable changes. Completion means
+observable acceptance evidence, not a rewritten plan or a green mock alone.
+This roadmap does not override newer explicit user instructions or repository rules.
+
+Repository: cjmurphy73-44/runpacelabcurrent.
+
+Pipeline numbers describe work packages. They are NOT GitHub PR numbers:
+pipeline PR 1 is GitHub #4; pipeline PR 2 is GitHub #5.
+Pipeline PR 5 means Ingestion & Telemetry, not GitHub #5.
+
+## Current checkpoint
+
+- GitHub #5, CI restoration, head 5db1f34: ready for review; all required checks
+  passed when last inspected. Required independent approval is outstanding.
+- GitHub #4, staging/isolation, head 77e7116: draft, stacked on fix/ci-restoration.
+- Main is protected. Neither PR was merged when this document was prepared.
+- A private staging clone was previously created with secrets omitted, external
+  integrations disconnected and sync/mirroring workflows inactive.
+- Local operator reports Base44 and GitHub authentication now work and the
+  existing staging app is linked in a separate temporary worktree.
+- Current remote staging configuration, reviewed-code deployment, distinct
+  synthetic user sessions and Stripe sandbox routing still require evidence.
+- Authorization experiments in another checkout were stopped. They are not an
+  approved dependency or starting point. Preserve them without merging/deploying.
+- Re-check live state at each run. Do not present this checkpoint as live proof.
+
+## Mandatory execution boundaries
+
+1. Complete pipeline PRs 1 and 2 FIRST. Do not attempt authorization, billing,
+   telemetry or coaching implementation until BOTH are merged AND verified.
+2. No direct main edits, force pushes, protection bypass, self-approval, automated
+   merging, production publishing or production data changes.
+3. All integration/PR runtime tests use the isolated staging backend, synthetic
+   athlete data and dedicated sandbox Stripe credentials. Offline CI tests are
+   separate evidence and cannot establish staging isolation.
+4. Verify the target app ID against the private environment record before every
+   remote write. Reject a production target. Never create another staging app
+   simply because discovery or authentication failed.
+5. Keep scheduled device sync and external mirroring inactive in staging unless
+   explicitly enabled for a bounded sandbox test.
+6. Preserve unrelated edits, especially the modified odysseus item. Use a
+   dedicated worktree. Never reset/stash/delete user work to make checks pass.
+7. Secrets, athlete data, private app IDs/admin URLs, raw health recordings and
+   authentication output must not enter this public repository or CI logs.
+8. No repeated authentication loops. A whoami result does not prove app access:
+   verify one read-only scoped API call as well. Report the failing operation.
+9. No messages, invitations, emails, review requests or public issue comments to
+   other people without explicit authorization. PR code/body updates are allowed
+   within the approved work package. Human review remains independent.
+10. Do not expand permissions, weaken checks, or silently change numerical
+    semantics to get a green run.
+
+## Ordered delivery backlog
+
+### Gate 0: finish staging and CI (pipeline PRs 1 and 2)
+
+Next actions, in order:
+- Confirm GitHub #5 checks on its exact current SHA and required review status.
+- Identify existing staging and production apps through authenticated read-only
+  calls. Keep IDs private. Verify distinct IDs/origins, staging privacy, disabled
+  workflows, disconnected providers, and absence of production credentials.
+- Prepare reviewed code in a staging-only checkout with no active external
+  workflows/connectors. Confirm its app link before deployment.
+- Deploy only reviewed PR 1/2 code to staging. Record exact source SHA and
+  deployment identity. Test access and functionality there.
+- Establish two distinct synthetic athlete sessions and a synthetic coach.
+  Do not fake created_by_id or assume admin-created records prove ownership.
+  Use a supported test-account mechanism; do not send messages to invented emails.
+- Configure dedicated sandbox Stripe keys/prices and endpoint through secure
+  local tools. Verify test mode and signed-event delivery to staging only.
+- Record production rollback/deployment checkpoint read-only. Do not execute it.
+- Keep #4 draft until evidence is complete. Review #5 independently; after its
+  merge, retarget/update #4 to main without rewriting someone else's work.
+- Confirm both merges, CI and staging smoke evidence before unlocking Gate 1.
+
+Done when:
+- Typecheck, Tests, Backend/schema validation, Lint, Build and CI required pass on
+  exact reviewed SHAs. Warnings and offline-validator limits are disclosed.
+- Staging acceptance evidence is recorded without credentials/private metadata.
+- Independent review and protected merges have occurred for both PRs.
+- Post-merge state is verified. A successful check alone does not satisfy this gate.
+
+### Gate 1: ownership and access control (pipeline PR 3)
+
+Dependencies: Gate 0 complete. Submit for authorization/security review.
+- Remove client writes to every authorization-driving field, including profile
+  links and coached-athlete caches. Preserve platform authority over user roles.
+- Server-authenticated ownership resolution; a formerly writable link is not
+  evidence of ownership. Handle ambiguous legacy ownership through reviewed repair.
+- Athlete consent precedes coach access; server-authorized grants and revocation.
+  Never migrate untrusted client assignments into trusted grants automatically.
+- Audit service-role functions and every athlete-scoped read/write path.
+- Test athlete A/B, coach, revoked coach, admin and anonymous access against stage.
+  Include spoofed links, cross-athlete writes and direct SDK mutation attempts.
+Done: expected denials verified remotely, owner journeys work, reviewer approves.
+
+### Gate 2: billing integrity (pipeline PR 4)
+
+Dependencies: Gate 1 accepted and merged.
+- Enforce separate test/live credentials, webhook secrets, modes and prices.
+- Provision only from verified paid events with correct mode, identity and amount.
+- Durable event idempotency and atomic single-use access-code redemption.
+- Verify the platform's real conditional mutation/transaction guarantees.
+  Do not invent SELECT FOR UPDATE support or claim atomicity from sequential calls.
+- Test replay, concurrent redemption, duplicate delivery, wrong mode and failures.
+Done: no double provisioning; one-use code has one winner under concurrency.
+
+### Gate 3: ingestion data fidelity (pipeline PR 5)
+
+Dependencies: billing gate accepted and merged.
+Audit COROS, Garmin and manual FIT/TCX/CSV uploads end to end:
+- Every supported sync attempts raw files or high-resolution streams by default,
+  on initial ingestion, including both background workers and webhooks.
+- Summary-only is an explicit last-resort state when the provider confirms no
+  recording is available/manual activity/restriction. Store reason and provenance.
+- Network errors, authentication expiry, rate limits, missing links and parser
+  failures remain visible and retryable; never label them no-telemetry success.
+- Preserve timestamps, sampling intervals, heart rate, power (cycling/running),
+  cadence, elevation, speed, distance and available secondary channels.
+- Retain full raw recordings and channel precision. Test long sessions, sparse/
+  duplicate timestamps, laps, pause/resume, valid zeros, missing values and units.
+- Verify pagination, idempotency, channel reconciliation and historical refetch.
+- Record provider/source/version evidence; distinguish mocks, sandbox/provider
+  restrictions and verified real API behavior without exposing athlete data.
+Done: supported initial sync stores complete telemetry without manual backfill;
+provider matrix and round-trip fixtures show no truncation or silent channel loss.
+
+### Gate 4: science parity and non-blocking coaching (pipeline PR 6)
+
+Dependencies: ingestion gate accepted and merged.
+- Shared deterministic raw-input golden fixtures exercise both runtime engines.
+- CTL/ATL/TSB and Banister TRIMP match across frontend/backend under identical
+  inputs, initialization, time constants, units, day boundaries and rounding.
+  State whether equality is numeric or serialized; do not hide drift in tolerance.
+- 42/7 days are defaults, not a license to ignore configured athlete constants.
+- Average-based Banister TRIMP remains available for summary-only sessions with
+  explicit provenance. Edwards load and time-in-zone require verified HR streams.
+- No stream means zone-derived contribution is zero/excluded, NOT a measured
+  zero-intensity workout. Missing channels stay missing.
+- Explicitly distinguish the general session-load model from the coach's verified
+  stream-history model so summary exclusion cannot silently alter displayed load.
+- AI receives deterministic, provenance-labelled context; it never invents or
+  computes physiological metrics. Banister impulse-response fitness/fatigue and
+  EWMA CTL/ATL are distinct models, even if both inform coaching.
+- No AI hold blocks workout access, ingest, analytics or dashboard rendering.
+- Mixed/pending/summary-only timelines use the last verified stream state, with
+  its timestamp. No verified history yields an honest limited-data notice.
+- Exact fallback notice:
+  "AI Insights running on verified stream history (Summary-only sessions excluded)."
+- Tests cover complete streams, mixed timelines, pending processing, missing
+  history, failed coach service, stale context and invalid numeric inputs.
+- Validate complete plan inputs before changing active schedules. Use supported
+  atomic commit semantics or a tested fail-safe commit workflow.
+- Historical recalculation is a separate dry-run migration with before/after
+  diffs, review and rollback design; never run on production autonomously.
+Done: numerical parity and uninterrupted core journeys verified in staging.
+
+### Gate 5: resumable account deletion (pipeline PR 7)
+
+Dependencies: science/coaching gate accepted and merged.
+- Durable cleanup jobs with checkpoints, bounded retries and idempotent steps.
+- Cancel Stripe subscription, revoke providers, remove private assets and all
+  athlete-scoped health/telemetry records including service-created data.
+- Enumerate scope and retention obligations; never claim compliance from a test.
+- Test failure/retry at each stage without claiming completion early.
+Done: sandbox end-to-end deletion and restart recovery; production deletion needs
+specific authorization.
+
+### Product improvements after foundational gates
+
+Choose the next explicitly approved item by athlete payoff, not speculative refactoring:
+1. Onboarding ends with verified data or a clear upload action.
+2. Missing-stream panels offer recording upload; provider status is honest.
+3. One clear daily decision and primary metric; compare-model detail stays accessible.
+4. Autosaved manual-entry drafts, mobile/split-screen navigation, focused error actions.
+5. Accessible modals, contrast, reduced motion, then command/navigation surface.
+6. Weekly coaching review with visible rationale and accept/reject.
+7. Branding: TrainPaceLab only; stress-response imagery, small-size vector mark,
+   complete favicon/PWA assets and real product screenshots.
+8. Coach workspace depth, clear pricing, transparent export/deletion copy.
+
+These items do not authorize unattended feature work before the foundation gates.
+
+## Recurring work loop
+
+Suggested cadence: every four hours. One local coding runner plus one read-only
+GitHub oversight task. Never allow two writers on the same branch.
+
+At each coding run:
+1. Read this roadmap, repository AGENTS.md, current task status, fresh GitHub state
+   and any newer user directions. Do not assume previous scratch files exist.
+2. Verify branch, clean isolated worktree, target environment and required access.
+3. Acquire a host-local exclusive lock before editing. If another writer is active,
+   stop without modifying anything. Release the lock on completion/failure.
+4. Select ONE highest-priority unblocked acceptance item from the current gate.
+   If prerequisites fail, report the precise blocker and stop; do not jump gates.
+5. Reproduce the issue, implement the smallest complete fix and appropriate
+   regression test. Keep changes scoped; no cosmetic churn or dependency upgrades.
+6. Run relevant checks, then required CI/runtime checks. Review the diff for data
+   leaks, auth bypasses, fake metrics, behavior regressions and unrelated edits.
+7. Save useful work on a dedicated branch before the run ends. Update an existing
+   matching PR rather than creating duplicates. No automatic merge/publish.
+8. Record evidence and the next action. If incomplete, preserve the checkpoint
+   and explicitly label it incomplete; never claim failed checks pass.
+9. Notify on a completed deliverable, new failure, required decision or newly
+   cleared blocker. Avoid repeating unchanged blockers. No open-ended self-work.
+
+Run budget: one bounded task, normally at most 45 minutes; stop earlier for
+approval/auth/network blockers or unavailable integration tests. Do not start
+another item just to fill the budget. Never circumvent usage limits.
+
+A coding task is DONE only with a reproducible result, meaningful checks, exact
+commit/PR evidence and disclosed limitations. "Improved" requires a named behavior
+or acceptance improvement, not an unsupported quality claim.
+
+## Durable task record
+
+Use one record per accepted work item:
+- ID, gate, acceptance criterion, owner and status.
+- Status: queued / active / blocked / review / verified / done.
+- Branch, exact commit SHA, PR URL and dependency links.
+- Checks and staging evidence, source of evidence, limitations.
+- Last meaningful change, blocker and single next action.
+
+Keep private environment evidence outside Git. Avoid a shared status-file write
+race: the local coding runner owns task records; the web reviewer only reports.
+Use append-only per-run records or the project's existing task system if present.
+Do not rewrite old evidence to match a new outcome.
+
+## Local coding automation prompt
+
+Configure in a desktop scheduled task attached to the TrainPaceLab repository,
+using an isolated worktree and the authenticated local environment:
+
+"Work on TrainPaceLab in cjmurphy73-44/runpacelabcurrent. Read
+docs/DEVELOPMENT_ROADMAP.md from the reviewed roadmap branch if it is not yet
+merged, plus AGENTS.md and newer user instructions. Execute the Recurring work
+loop. Complete one eligible acceptance item, test it, preserve a reviewable
+branch/PR checkpoint and report only meaningful changes. Gate 0 comes first:
+do not attempt authorization/billing/telemetry/coaching changes until pipeline
+PRs 1 and 2 are BOTH merged and verified. Never modify or publish production,
+merge PRs, bypass protection, touch unrelated odysseus changes, expose secrets,
+or claim local/simulated tests establish remote staging/provider behavior.
+If another writer owns the branch or a required prerequisite is unavailable,
+stop and report the precise blocker once. Do not repeatedly retry it."
+
+The local runner is NOT configured merely by saving this prompt. A web scheduled
+task does not control the Mac's CLI session. Attach the local task explicitly,
+test one manual run, inspect its target directory/worktree and first results,
+and keep the machine and desktop application running as required by the product.
+
+## Web oversight automation contract
+
+Read GitHub state, current roadmap and existing PR evidence. Check the current
+gate, exact-head CI, review/merge changes and newly supplied staging evidence.
+Perform read-only review of meaningful new diffs and identify regressions.
+Do not impersonate an independent reviewer, approve your own PRs, edit the local
+Mac, mutate a coding branch, send comments to others or assert deployment access.
+Report completed work with links, next eligible item and only changed blockers.
+Absence of new evidence is not evidence of completion. Re-check gates after merges.
