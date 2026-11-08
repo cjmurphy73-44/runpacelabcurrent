@@ -6,6 +6,7 @@
 
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
 import { constantTimeEqual } from '../../shared/crypto.ts';
+import { externalSyncBlockedResponse } from '../../shared/externalSyncGuard.ts';
 
 /** Helper to block SSRF attempts against internal/private network ranges. */
 function assertSafeUrl(targetUrl: string): void {
@@ -24,6 +25,8 @@ function assertSafeUrl(targetUrl: string): void {
 }
 
 export default async function (req: Request) {
+  const blocked = externalSyncBlockedResponse();
+  if (blocked) return blocked;
   if (req.method !== 'POST') {
     return new Response(JSON.stringify({ error: 'Method not allowed' }), {
       status: 405,

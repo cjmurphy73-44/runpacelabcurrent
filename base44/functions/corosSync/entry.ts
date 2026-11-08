@@ -8,6 +8,7 @@ import { runPostWorkoutEvaluation } from '../../shared/postWorkoutAI.ts';
 import { assertSafeFileUrl } from '../../shared/urlGuard.ts';
 import { constantTimeEqual } from '../../shared/crypto.ts';
 import { getSyncLookbackDays } from '../../shared/syncLookback.ts';
+import { externalSyncBlockedResponse } from '../../shared/externalSyncGuard.ts';
 import { parseFitWithLaps, summarizeStream } from '../../shared/workoutParsers.ts';
 import { isUsableTelemetry, storageStream, MAX_STREAM_SAMPLES } from '../../shared/streamValidity.ts';
 import {
@@ -859,6 +860,8 @@ Deno.serve(async (req) => {
     // Browser OAuth redirect lands with ?code=...&state=... (GET).
     const u = new URL(req.url);
     if (u.searchParams.get('code') && u.searchParams.get('state')) {
+      const blocked = externalSyncBlockedResponse();
+      if (blocked) return blocked;
       return await handleOAuthCallback(req, base44);
     }
 
@@ -867,11 +870,15 @@ Deno.serve(async (req) => {
     const action = body.action || u.searchParams.get('action');
 
     if (action === 'webhook' || req.headers.get('x-coros-signature')) {
+      const blocked = externalSyncBlockedResponse();
+      if (blocked) return blocked;
       const innerReq = new Request(req.url, { method: 'POST', headers: req.headers, body: JSON.stringify(body) });
       return await handleWebhook(innerReq, base44);
     }
-    if (action === 'authorize') return await handleAuthorize(req, base44);
     if (action === 'status') return await handleStatus(base44);
+    const blocked = externalSyncBlockedResponse();
+    if (blocked) return blocked;
+    if (action === 'authorize') return await handleAuthorize(req, base44);
     if (action === 'sync_historical') return await handleSyncHistorical(base44);
     if (action === 'list_tools') return await handleListTools(base44);
     if (action === 'sync_recovery') return await handleSyncRecovery(base44);

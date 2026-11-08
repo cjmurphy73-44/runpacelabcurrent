@@ -16,6 +16,7 @@ import { runPostWorkoutEvaluation } from '../../shared/postWorkoutAI.ts';
 import { reportError } from '../../shared/errorReport.ts';
 import { claimRateLimit } from '../../shared/rateLimit.ts';
 import { constantTimeEqual } from '../../shared/crypto.ts';
+import { externalSyncBlockedResponse } from '../../shared/externalSyncGuard.ts';
 
 function randomKey() {
   const bytes = new Uint8Array(24);
@@ -327,6 +328,8 @@ async function handleSubscribeStrava(req, base44) {
 }
 
 Deno.serve(async (req) => {
+  const blocked = externalSyncBlockedResponse();
+  if (blocked) return blocked;
   let base44;
   try {
     base44 = createClientFromRequest(req);

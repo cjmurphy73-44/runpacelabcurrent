@@ -2,6 +2,7 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
 import { VALID_SPORTS, calcTrimp, normalizeSport, getOwnedAthlete, selfUrl } from '../../shared/workoutIngest.ts';
 import { env, hmacBase64Url } from '../../shared/oauth.ts';
 import { getSyncLookbackDays } from '../../shared/syncLookback.ts';
+import { externalSyncBlockedResponse } from '../../shared/externalSyncGuard.ts';
 
 const STRAVA_API = 'https://www.strava.com';
 const SCOPE = 'read,activity:read_all';
@@ -145,11 +146,17 @@ Deno.serve(async (req) => {
   try {
     const base44 = createClientFromRequest(req);
     const u = new URL(req.url);
-    if (u.searchParams.get('code') && u.searchParams.get('state')) return await handleOAuthCallback(req, base44);
+    if (u.searchParams.get('code') && u.searchParams.get('state')) {
+      const blocked = externalSyncBlockedResponse();
+      if (blocked) return blocked;
+      return await handleOAuthCallback(req, base44);
+    }
     const body = await req.json().catch(() => ({}));
     const action = body.action || u.searchParams.get('action');
-    if (action === 'authorize') return await handleAuthorize(req, base44);
     if (action === 'status') return await handleStatus(base44);
+    const blocked = externalSyncBlockedResponse();
+    if (blocked) return blocked;
+    if (action === 'authorize') return await handleAuthorize(req, base44);
     if (action === 'sync_historical') return await handleSyncHistorical(base44);
     if (action === 'disconnect') return await handleDisconnect(base44);
     return Response.json({ error: `Unknown action: ${action || '(none)'}` }, { status: 400 });

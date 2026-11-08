@@ -9,6 +9,7 @@ import { assertSafeFileUrl } from '../../shared/urlGuard.ts';
 import { constantTimeEqual } from '../../shared/crypto.ts';
 import { recomputeCTLATLTSB } from '../../shared/ctlRecalc.ts';
 import { runPostWorkoutEvaluation } from '../../shared/postWorkoutAI.ts';
+import { externalSyncBlockedResponse } from '../../shared/externalSyncGuard.ts';
 
 function env(name) { try { return Deno.env.get(name) || ''; } catch { return ''; } }
 
@@ -17,6 +18,8 @@ function env(name) { try { return Deno.env.get(name) || ''; } catch { return '';
 // push is authenticated by an X-Garmin-Signature == GARMIN_WEBHOOK_SECRET.
 // Each event runs through the WebhookEvent idempotency log (C-19) before ingest.
 Deno.serve(async (req) => {
+  const blocked = externalSyncBlockedResponse();
+  if (blocked) return blocked;
   try {
     const base44 = createClientFromRequest(req);
     const webhookSecret = env('GARMIN_WEBHOOK_SECRET');

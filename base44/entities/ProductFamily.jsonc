@@ -1,4 +1,5 @@
 {
+  "name": "ProductFamily",
   "$id": "ProductFamily",
   "type": "object",
   "properties": {

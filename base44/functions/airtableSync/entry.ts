@@ -5,6 +5,7 @@ import {
   toDateOnly, toISO, safeSelect, num,
 } from '../../shared/airtableClient.ts';
 import { reportError } from '../../shared/errorReport.ts';
+import { externalSyncBlockedResponse } from '../../shared/externalSyncGuard.ts';
 
 // airtableSync — pushes TrainPaceLab data into the "Telemetry & AI Coaching
 // Business Tracker" Airtable base via the authorized SHARED airtable connector.
@@ -368,6 +369,8 @@ async function handleAppMirror(base44: any) {
 }
 
 Deno.serve(async (req) => {
+  const blocked = externalSyncBlockedResponse();
+  if (blocked) return blocked;
   let base44: any;
   try {
     base44 = createClientFromRequest(req);

@@ -9,6 +9,7 @@
 // shared/oauth.ts; recovery ingest reuses shared/recoveryIngest.ts.
 
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
+import { externalSyncBlockedResponse } from '../../shared/externalSyncGuard.ts';
 import { getOwnedAthlete } from '../../shared/workoutIngest.ts';
 import { env, hmacBase64Url } from '../../shared/oauth.ts';
 import {
@@ -361,6 +362,8 @@ Deno.serve(async (req) => {
 
     // OAuth redirect landing: ?code=...&state=...&provider=...
     if (u.searchParams.get('code') && u.searchParams.get('state') && u.searchParams.get('provider')) {
+      const blocked = externalSyncBlockedResponse();
+      if (blocked) return blocked;
       return await handleOAuthCallback(req, base44);
     }
 
@@ -369,8 +372,10 @@ Deno.serve(async (req) => {
     const provider = (body.provider || u.searchParams.get('provider') || '') as ProviderKey;
     if (!PROVIDERS[provider]) return Response.json({ error: `Unknown provider: ${provider}` }, { status: 400 });
 
-    if (action === 'authorize') return await handleAuthorize(req, base44);
     if (action === 'status') return await handleStatus(base44, provider);
+    const blocked = externalSyncBlockedResponse();
+    if (blocked) return blocked;
+    if (action === 'authorize') return await handleAuthorize(req, base44);
     if (action === 'sync') return await handleSync(base44, provider);
     if (action === 'disconnect') return await handleDisconnect(base44, provider);
     return Response.json({ error: `Unknown action: ${action || '(none)'}` }, { status: 400 });
