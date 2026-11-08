@@ -35,13 +35,6 @@ export function selfUrl(req) {
   return u.origin + u.pathname;
 }
 
-// Resolve the AthleteProfile for a user. The profile explicitly linked on the user
-// (user.data.athlete_profile_id, set by onboarding / backfill / self-heal) is authoritative
-// and is fetched directly by ID — a filter by created_by_id misses profiles created under
-// a different identity (e.g. a service-role backend function or an earlier auth account),
-// which is exactly why a re-login "lost" an existing profile full of data. The link is
-// trusted as-is (it is only set by trusted flows) and RLS would have gated the read at
-// write time. Fall back to the most recently updated owned profile only when no link is set.
 export async function getOwnedAthlete(base44, userId) {
   if (!userId) return null;
   const me = await base44.asServiceRole.entities.User.get(userId).catch(() => null);
@@ -54,8 +47,7 @@ export async function getOwnedAthlete(base44, userId) {
   return athletes[0] || null;
 }
 
-// Compact FIT summary parser (trimmed from bulkIngestWorkouts). Returns a session-level summary
-// (avg/max HR, distance, duration, local-date) good enough for ingest dedup + TRIMP.
+// Enhanced FIT parser that returns both session summary and per-second time-series streams
 export function parseFitSummary(buffer) {
   const parser = new fitParser({ force: true, speedUnit: 'm/s', lengthUnit: 'm', mode: 'list' });
   let parsed = null;
@@ -82,11 +74,24 @@ export function parseFitSummary(buffer) {
   for (const r of records) {
     if (r?.local_timestamp instanceof Date && r?.timestamp instanceof Date) { tz = r.local_timestamp.getTime() - r.timestamp.getTime(); break; }
   }
+
+  // Preserve per-second telemetry streams to prevent summary-only fallbacks
+  const streams = records.map((r, i) => ({
+    time: r.timestamp instanceof Date ? Math.round((r.timestamp.getTime() - start.getTime()) / 1000) : i,
+    heart_rate: r.heart_rate || null,
+    distance: r.distance || null,
+    speed: r.speed || null,
+    power: r.power || null,
+    cadence: r.cadence || null,
+    altitude: r.altitude || null
+  })).filter(pt => pt.heart_rate !== null || pt.speed !== null || pt.power !== null);
+
   return {
     avg_hr: avgHr || null,
     max_hr: maxHr || null,
     distance_km: Math.round(distanceKm * 100) / 100,
     duration_seconds: Math.round(durationSeconds),
     derived_date: new Date(start.getTime() + tz).toISOString().slice(0, 10),
+    streams: streams.length > 0 ? streams : undefined
   };
 }
