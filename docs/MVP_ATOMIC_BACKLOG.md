@@ -77,7 +77,7 @@ stated ready. These are acceptance items, not authorization to deploy production
 | ID | Atomic deliverable | Depends on | Acceptance / state |
 | --- | --- | --- | --- |
 | TPL-G0-001 | Recheck #5 exact-head six-job CI and invitation/schema diff | None | Ready, existing implementation. Record jobs and warnings; no reimplementation of fixed typecheck. |
-| TPL-G0-002 | Read-only verify existing staging target and inactive workflows | Secure target record/access | Distinct private target/origin, no production credentials/data, providers disconnected and sync/mirroring inactive; scoped read evidence kept private. |
+| TPL-G0-002 | Read-only verify existing staging target and inactive workflows | Secure target record/access | Partial live pass: authenticated management UI shows distinct staging app, Private visibility, both COROS Auto Sync/Airtable App Mirror Inactive, Activity No runs yet, GitHub API/Airtable connectors Disconnected. [Sanitized report](../.codex/reports/TPL-G0-002.md). Custom provider tokens, production-credential/data absence and exact deployed source remain unverified; do not mark full isolation accepted. |
 | TPL-G0-003 | Verify anonymous/authenticated invitation fail-closed behavior | G0-002, reviewed #5 source | Synthetic 401/503 outcomes and no entity writes; Data UI/schema move checked. One endpoint per child run if needed. |
 | TPL-G0-004 | Establish synthetic athlete A session and persisted profile | G0-002 | Supported identity creation; profile belongs to real authenticated synthetic user, reload succeeds; no fake created_by_id. |
 | TPL-G0-005 | Establish distinct synthetic athlete B and coach sessions | G0-004 | Separate identities/profiles with sanitized role/ownership evidence, no invitations to invented recipients. |
@@ -220,12 +220,13 @@ recommendations do not enter this index as approved work automatically.
 
 ## Next run
 
-Select **TPL-G0-002** if scoped secure target access is available: read-only
-verify the existing staging identity, privacy and inactive workflows. Do not create
-another staging app or publish anything. TPL-ASSET-001 and the offline slice of
-TPL-REC-001 are complete; asset implementation still waits G0. TPL-REC-002 remains
-blocked on original-Mac preservation/restore evidence in TPL-ODY-002. Do not merge
-Odysseus removal or fabricate remote acceptance to work around these prerequisites.
+Continue **TPL-G0-002** with a bounded supported read/attestation for custom
+provider connection state and credential isolation. Management-browser access is
+now established, but CLI authentication is not. Do not expose tokens, read raw
+health data, connect real providers or treat disconnected platform connectors as
+proof that custom OAuth records are absent. Privacy and inactive-workflow UI
+evidence is recorded; do not repeat those checks without a change. G0 and original-
+Mac preservation in TPL-ODY-002 remain open; no integration/removal merge is unlocked.
 
 
 ## Run update: TPL-REC-001, 9 November 2026
@@ -255,3 +256,15 @@ fetched or judged, no logo was selected from external design boards, and no asse
 was deleted, redesigned or deployed. The inventory maps existing ASSET-002..008
 work; it does not create new scope or unlock G0. CI branch 5750f63 adds source-only
 acceptance documentation and does not establish fresh hosted invitation evidence.
+
+## Run update: TPL-G0-002, 9 November 2026
+
+The user completed secure browser sign-in/device approval. Fresh authenticated
+Base44 management UI distinguishes staging from production, shows staging Private,
+both scheduled external workflows Inactive, workflow Activity No runs yet and
+GitHub API/Airtable app connectors Disconnected. This is actual UI evidence, not
+repository-note inference. It does not certify custom Garmin/COROS token state,
+credential/data isolation, exact deployed code or hosted synthetic athlete/FIT
+acceptance. See the sanitized task report for precise limits. No app configuration,
+workflow, connector, data or deployment was changed, and no private identifiers
+or authentication artifacts were added to Git. Task remains partial; G0 stays open.
