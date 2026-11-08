@@ -2,9 +2,9 @@ import moment from "moment";
 
 // Coach-conversation injury / recovery signal.
 // Scans recent CoachMessage content_text for injury wording and turns it into a
-// discrete level (none / caution / hold) plus evidence. Surfaces the same signal
-// across Today's Session, Intelligence Hub, Training Plan and Calendar so a coach
-// conversation about an injury actually changes what the app prescribes.
+// advisory only; conversation text cannot create a running restriction. Surfaces the same signal
+// across Today's Session, Intelligence Hub, Training Plan and Calendar.
+// It does not change prescriptions or establish medical/coach clearance.
 
 const HOLD_KEYWORDS = [
   "injur", "can't run", "cant run", "cannot run", "no running", "stop running",
@@ -34,12 +34,6 @@ function snippet(text, keyword, radius = 140) {
   return (start > 0 ? "…" : "") + text.slice(start, end).trim() + (end < text.length ? "…" : "");
 }
 
-function precedence(l) {
-  return l === "hold" ? 2 : l === "caution" ? 1 : 0;
-}
-function maxLevel(a, b) {
-  return precedence(a) >= precedence(b) ? a : b;
-}
 function fmt(dateStr) {
   if (!dateStr) return "recently";
   try {
@@ -50,13 +44,13 @@ function fmt(dateStr) {
 }
 
 /**
- * @param {Array<{content_text:string, created_date:string, message_type:string}>} messages
+ * @param {Array<{content_text:string, created_date:string, message_type:string, updated_date?:string, review_key?:string}>} messages
  * @param {{ now?: Date }} opts
  */
 export function computeInjurySignal(messages, { now = new Date() } = {}) {
   const list = (Array.isArray(messages) ? messages : [])
     .filter((m) => m && typeof m.content_text === "string" && m.content_text.trim())
-    .sort((a, b) => new Date(b.created_date || 0) - new Date(a.created_date || 0));
+    .sort((a, b) => Math.max(Date.parse(b.created_date) || 0, Date.parse(b.updated_date) || 0) - Math.max(Date.parse(a.created_date) || 0, Date.parse(a.updated_date) || 0));
 
   if (!list.length) {
     return { level: "none", evidence: [], lastInjuryDate: null, summary: null, holdReason: null };
@@ -68,26 +62,31 @@ export function computeInjurySignal(messages, { now = new Date() } = {}) {
   const evidence = [];
 
   for (const m of list) {
-    const t = new Date(m.created_date).getTime();
-    if (!isFinite(t)) continue;
+    const created = new Date(m.created_date).getTime();
+    const updated = m.updated_date ? new Date(m.updated_date).getTime() : created;
+    if (!Number.isFinite(created) || !Number.isFinite(updated)) continue;
+    const t = Math.max(created, updated);
+    if (!Number.isFinite(t) || t > nowMs) continue;
     const ageDays = (nowMs - t) / 86400000;
     const text = m.content_text.toLowerCase();
+    // Negated/clearance statements and questions are not active restrictions.
+    if (/\?|\b(not injured|no injury|injury[- ]free|cleared to|cleared for|resume running)\b/.test(text)) continue;
     const holdHit = HOLD_KEYWORDS.find((k) => text.includes(k));
     const cautionHit = holdHit ? null : CAUTION_KEYWORDS.find((k) => text.includes(k));
     if (!holdHit && !cautionHit) continue;
 
     if (!lastInjuryDate || t > new Date(lastInjuryDate).getTime()) {
-      lastInjuryDate = new Date(m.created_date).toISOString();
+      lastInjuryDate = new Date(t).toISOString();
     }
 
     let cand = "none";
-    if (holdHit && ageDays <= 7) cand = "hold";
-    else if ((holdHit || cautionHit) && ageDays <= 14) cand = "caution";
+    if ((holdHit || cautionHit) && ageDays <= 14) cand = "caution";
 
     if (cand !== "none") {
-      level = maxLevel(level, cand);
-      evidence.unshift({
-        date: m.created_date,
+      level = cand;
+      evidence.push({
+        date: new Date(t).toISOString(),
+        review_key: m.review_key,
         type: m.message_type,
         snippet: snippet(m.content_text, holdHit || cautionHit),
       });
@@ -98,11 +97,8 @@ export function computeInjurySignal(messages, { now = new Date() } = {}) {
   let summary = null;
   let holdReason = null;
   const head = evidence[0];
-  if (level === "hold") {
-    summary = `Coach-directed running hold from your conversation on ${fmt(head?.date)}, running is on hold. Today's run has been auto-swapped to rest/recovery (cross-train at easy effort) until the coach clears you.`;
-    holdReason = summary;
-  } else if (level === "caution") {
-    summary = `Recent coach conversation on ${fmt(head?.date)} flagged a niggle or soreness, back off if symptoms persist and check with the coach before any hard effort.`;
+  if (level === "caution") {
+    summary = `Your conversation on ${fmt(head?.date)} mentions recovery or discomfort. Review whether this is still relevant. Your saved training plan has not been changed.`;
   }
 
   return { level, evidence, lastInjuryDate, summary, holdReason };

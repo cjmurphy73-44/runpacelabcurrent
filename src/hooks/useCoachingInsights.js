@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { useServices } from "@/services/providers/ServiceContext";
 import { adjustPaceForEnvironment, calculateDewPoint } from "@/math/environmental";
-import { computeInjurySignal } from "@/lib/coachInjurySignal";
+import { useCoachInjurySignal } from "@/hooks/useCoachInjurySignal";
 
 /**
  * useCoachingInsights, ENG-01
@@ -24,6 +24,8 @@ export function useCoachingInsights() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const athleteRef = useState({ current: null })[0];
+  const [signalAthleteId, setSignalAthleteId] = useState(null);
+  const injurySignal = useCoachInjurySignal(signalAthleteId);
 
   const loadWeather = useCallback(async (athlete) => {
     if (!("geolocation" in navigator)) {
@@ -117,6 +119,8 @@ export function useCoachingInsights() {
     async function load() {
       try {
         setLoading(true);
+        setData(null);
+        setSignalAthleteId(null);
         const user = await authService.me();
         const profiles = await athleteProfileRepo.filter({ created_by_id: user.id });
         if (!profiles.length) {
@@ -128,6 +132,7 @@ export function useCoachingInsights() {
         }
         const athlete = profiles[0];
         athleteRef.current = athlete;
+        setSignalAthleteId(athlete.id);
         const todayKey = new Date().toISOString().split("T")[0];
 
         const [dailyMetrics, recentMessages] = await Promise.all([
@@ -194,7 +199,7 @@ export function useCoachingInsights() {
         const coachingFeedback = recentMessages.length ? recentMessages[0].content_text : null;
 
         // --- Coach injury / recovery signal (fed across every surface) ---
-        const injurySignal = computeInjurySignal(recentMessages);
+
 
         if (!cancelled) {
           setData({
@@ -202,7 +207,6 @@ export function useCoachingInsights() {
             readinessSource,
             readinessExplanation,
             coachingFeedback,
-            injurySignal,
             ...weather,
           });
           setError(null);
@@ -234,5 +238,5 @@ export function useCoachingInsights() {
     }
   }, [loadWeather]);
 
-  return { data, loading, error, refetchWeather, weatherRefreshing };
+  return { data: data ? { ...data, injurySignal } : null, loading, error, refetchWeather, weatherRefreshing };
 }

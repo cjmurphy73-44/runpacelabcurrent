@@ -1,63 +1,49 @@
-import { useEffect, useState } from "react";
-import { useServices } from "@/services/providers/ServiceContext";
-import { computeInjurySignal } from "@/lib/coachInjurySignal";
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useEffect } from 'react';
+import { base44 } from '@/api/base44Client';
+import { useAuth } from '@/lib/AuthContext';
+import { computeInjurySignal } from '@/lib/coachInjurySignal';
 
-/**
- * useCoachInjurySignal, surfaces the latest injury/recovery signal parsed from the
- * athlete's coach conversation so every surface (Today's Session, Intelligence Hub,
- * Training Plan, Calendar) can react consistently to a coach-directed hold.
- *
- * Returns:
- *   loading: boolean
- *   level:   'none' | 'caution' | 'hold'
- *   evidence: [{ date, type, snippet }]
- *   lastInjuryDate: string | null
- *   summary: string | null
- *   holdReason: string | null  (set only when level === 'hold')
- */
 export function useCoachInjurySignal(athleteId) {
-  const { coachMessageRepo } = useServices();
-  const [state, setState] = useState({
-    loading: true,
-    level: "none",
-    evidence: [],
-    lastInjuryDate: null,
-    summary: null,
-    holdReason: null,
-  });
-
+  const { user } = useAuth();
+  const client = useQueryClient();
+  const key = ['coach-signal', user?.id, athleteId];
   useEffect(() => {
-    if (!athleteId) {
-      setState((s) => ({ ...s, loading: false }));
-      return;
-    }
-    let cancelled = false;
-    (async () => {
-      try {
-        const msgs = await coachMessageRepo.filter(
-          { athlete_id: athleteId },
-          "-created_date",
-          30
-        );
-        const signal = computeInjurySignal(msgs || []);
-        if (!cancelled) setState({ loading: false, ...signal });
-      } catch {
-        if (!cancelled) {
-          setState({
-            loading: false,
-            level: "none",
-            evidence: [],
-            lastInjuryDate: null,
-            summary: null,
-            holdReason: null,
-          });
+    if (!user?.id || !athleteId || typeof base44.entities?.CoachMessage?.subscribe !== 'function') return;
+    try {
+      return base44.entities.CoachMessage.subscribe(event => {
+        if (!event.data?.athlete_id || event.data.athlete_id === athleteId) {
+          client.invalidateQueries({ queryKey: ['coach-signal', user.id, athleteId] });
         }
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [athleteId, coachMessageRepo]);
-
-  return state;
+      });
+    } catch { /* Window-focus and bounded polling remain available. */ }
+  }, [athleteId, user?.id, client]);
+  const query = useQuery({
+    queryKey: key,
+    enabled: Boolean(user?.id && athleteId),
+    queryFn: async () => {
+      const { data } = await base44.functions.invoke('reviewCoachSignal', { action: 'read', athlete_id: athleteId });
+      if (!Array.isArray(data?.messages) || typeof data?.revision !== 'string') throw new Error('Incomplete review response');
+      return data;
+    },
+    staleTime: 0, refetchOnWindowFocus: true, refetchInterval: 60000, retry: 1,
+  });
+  const mutation = useMutation({
+    mutationFn: async () => {
+      if (!query.data?.revision) throw new Error('Refresh the conversation before reviewing');
+      const { data } = await base44.functions.invoke('reviewCoachSignal', {
+        action: 'resolve', athlete_id: athleteId, revision: query.data.revision,
+        source_keys: computeInjurySignal(query.data.messages).evidence.map(e => e.review_key),
+      });
+      if (data?.success !== true) throw new Error('Review was not saved');
+    },
+    onSuccess: async () => { await client.invalidateQueries({ queryKey: key }); },
+    onError: async () => { await client.invalidateQueries({ queryKey: key }); },
+  });
+  return {
+    ...computeInjurySignal(query.data?.messages || []),
+    loading: query.isLoading, error: query.error,
+    saving: mutation.isPending, saveError: mutation.error,
+    resolve: mutation.mutateAsync, refresh: query.refetch,
+  };
 }
