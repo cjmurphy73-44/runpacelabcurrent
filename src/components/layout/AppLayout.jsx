@@ -8,7 +8,6 @@ import BetaFeedbackModal from "@/components/feedback/BetaFeedbackModal";
 import { Activity, Sparkles, Users } from "lucide-react";
 import { useCoachAccess } from "@/hooks/useCoachAccess";
 import MobileNav from "@/components/layout/MobileNav";
-import ThemeToggle from "@/components/layout/ThemeToggle";
 import MobileTabBar from "@/components/layout/MobileTabBar";
 import PageErrorBoundary from "@/components/common/PageErrorBoundary";
 import PageTransition from "@/components/layout/PageTransition";

@@ -3,7 +3,6 @@ import { Link } from "react-router-dom";
 import { base44 } from "@/api/base44Client";
 import { useAthlete } from "@/hooks/useAthlete";
 import PageShell from "@/components/layout/PageShell";
-import SectionHeading from "@/components/layout/SectionHeading";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
