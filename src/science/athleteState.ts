@@ -278,7 +278,7 @@ export function buildAthleteStateSummary(input: AthleteStateInput): AthleteState
       session_load: PROVENANCE.CALCULATED_ESTIMATE,
       calories: caloriesProvenance(input.caloriesSource),
       zones:
-        zoneMethod === 'stream' || zoneMethod === 'laps'
+        zoneMethod === 'stream'
           ? PROVENANCE.MEASURED_DEVICE
           : PROVENANCE.CALCULATED_ESTIMATE,
       streams: hasStream ? PROVENANCE.MEASURED_DEVICE : PROVENANCE.CALCULATED_ESTIMATE,

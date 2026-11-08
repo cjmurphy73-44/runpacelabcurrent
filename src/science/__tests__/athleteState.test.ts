@@ -140,6 +140,15 @@ describe('athleteState: provenance', () => {
     expect(summary.provenance.session_load).toBe(PROVENANCE.CALCULATED_ESTIMATE);
   });
 
+  it('does not label lap-only zone totals as measured stream data', () => {
+    const summary = buildAthleteStateSummary({
+      athleteId: 'a', date: '2026-01-30', sport: 'running', durationSeconds: 3600,
+      zoneSeconds: [0, 1200, 1800, 600, 0], zoneMethod: 'laps',
+    });
+    expect(summary.zones.zone_method).toBe('none');
+    expect(summary.provenance.zones).toBe(PROVENANCE.CALCULATED_ESTIMATE);
+  });
+
   it('maps provenance back onto the stored calories_source enum', () => {
     expect(toStoredCaloriesSource(PROVENANCE.MEASURED_DEVICE)).toBe('device');
     expect(toStoredCaloriesSource(PROVENANCE.CALCULATED_ESTIMATE)).toBe('estimated');

@@ -5,26 +5,53 @@ on:
     branches: [ main, master, dev ]
   pull_request:
     branches: [ main, master, dev ]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 
 jobs:
-  validate:
+  checks:
+    name: ${{ matrix.check }}
     runs-on: ubuntu-latest
-
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - check: Typecheck
+            command: npm run typecheck
+          - check: Lint
+            command: npm run lint
+          - check: Build
+            command: npm run build
+          - check: Backend
+            command: npm run validate:backend
+          - check: Tests
+            command: npm run test:ci
     steps:
-      - name: Checkout Repository
-        uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
+      - uses: actions/checkout@v4
         with:
-          node-version: '20'
-          cache: 'npm'
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      - run: ${{ matrix.command }}
 
-      - name: Install Dependencies
-        run: npm ci
-
-      - name: Run Type Check
-        run: npm run typecheck
-
-      - name: Run Test Suite
-        run: npm test
+  required:
+    name: CI required
+    if: always()
+    needs: checks
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - name: Require all independent checks to pass
+        env:
+          CHECK_RESULT: ${{ needs.checks.result }}
+        run: test "$CHECK_RESULT" = success
