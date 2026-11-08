@@ -1,14 +1,7 @@
 // src/services/workoutExport.ts
-// Builds a structured-text workout file from a prescribed TrainingPlanSession
-// so it can be imported into Garmin Connect's Workout Builder (or TrainingPeaks
-// / similar) and pushed to a watch / bike computer.
-//
-// Garmin's native .fit workout is a compact binary protocol that requires the
-// official Garmin FIT SDK to emit validly (size-prefixed messages + CRC). That
-// encoder is intentionally out of scope here; instead we emit a structured-text
-// (JSON) representation of the same step model — a documented "structured text
-// alternative supported by platforms" per the C-15 spec. The shapes mirror
-// Garmin Connect's workout-step vocabulary so import is a 1:1 copy.
+// Builds a TrainPaceLab JSON representation of a prescribed session.
+// This is not a FIT file. Direct Garmin/TrainingPeaks import compatibility has
+// not been established and must not be claimed by this exporter.
 
 export type StepType = 'warmup' | 'interval' | 'recovery' | 'cooldown' | 'rest' | 'main';
 
@@ -89,7 +82,7 @@ export function buildWorkoutFile(session: StructuredSession): BuiltWorkoutFile {
 
   const payload = {
     fileType: 'TrainPaceLab Structured Workout v1',
-    format: 'structured-text, Garmin Connect Workout Builder compatible',
+    format: 'TrainPaceLab structured JSON',
     workoutName: `${(session.sport ?? 'workout').replace(/^./, (c) => c.toUpperCase())} — ${session.date ?? 'session'}`,
     sport: session.sport ?? 'running',
     scheduledDate: session.date ?? null,
@@ -108,8 +101,12 @@ export function downloadWorkoutFile(session: StructuredSession): void {
   const a = document.createElement('a');
   a.href = url;
   a.download = filename;
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  URL.revokeObjectURL(url);
+  try {
+    document.body.appendChild(a);
+    a.click();
+  } finally {
+    a.remove();
+    // Let the browser consume the object URL before releasing it.
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  }
 }
