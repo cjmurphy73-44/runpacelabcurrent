@@ -4,12 +4,15 @@ import { pathToFileURL } from 'node:url';
 
 function concrete(value, label) {
   if (typeof value !== 'string' || !value.trim() || /REPLACE|EXAMPLE|PLACEHOLDER/i.test(value)) throw new Error(`${label} must be a verified value, not a placeholder`);
-  return value;
+  return value.trim();
 }
 
 function origin(value, label) {
   const u = new URL(concrete(value, label));
   if (u.protocol !== 'https:' || u.username || u.password || u.pathname !== '/' || u.search || u.hash) throw new Error(`${label} must be an HTTPS origin`);
+  // DNS treats a final dot as the same host. Reject this noncanonical form so
+  // string comparisons cannot mistake a production host for isolated staging.
+  if (u.hostname.endsWith('.')) throw new Error(`${label} must not use a trailing-dot hostname`);
   return u.origin;
 }
 

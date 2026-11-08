@@ -65,7 +65,9 @@ Run `npm ci` then `npx vitest run scripts/staging/verify.test.mjs` for the local
 guardrail regression tests. They also run in the restored PR 2 test suite.
 
 The preflight is intentionally fail-closed for placeholders, shared app IDs,
-production hosts and live billing credentials. It cannot attest to remote
+production hosts and live billing credentials. App IDs are trimmed before
+comparison, and trailing-dot hostname aliases are rejected so alternate
+spellings cannot bypass the production-target check. It cannot attest to remote
 isolation based solely on a local manifest; its output says so explicitly.
 
 ## Apply and verify main rules
