@@ -19,6 +19,26 @@ report is .codex/reports/TPL-001-initial-review.md. Saving these files does not
 install the local coding schedule or establish agent discovery on the Mac.
 The separate web GitHub oversight checker runs every two hours.
 
+## Product Owner priorities: data quality and visual assets
+
+Direction confirmed on 8 November 2026:
+- Complete, trustworthy COROS/Garmin data and useful athlete analysis are core
+  MVP requirements, not a later integration polish task. Prioritize this work
+  when its privacy/security prerequisites are satisfied. Both provider journeys
+  need independent evidence; shared code or one provider's pass is insufficient.
+- Imagery, logo and supporting assets need a deliberate quality pass. Create or
+  improve assets when they help; rework or omit imagery that fails the quality,
+  relevance, accessibility or performance bar. Decoration is not a substitute
+  for a working data journey. Branding remains TrainPaceLab only.
+- Keep one delivery checkpoint: read docs/DELIVERY_STATUS.md from the existing
+  provider-feedback branch until that document is merged. The reported local
+  TPL-INFRA-001 commits must be published before cloud review/integration.
+
+The detailed data acceptance contract is in Gate 3 below. Visual work packages
+are defined after the foundational gates. These additions do not authorize
+production writes, real-health-data collection or activating staging external
+sync without the separate bounded-test prerequisites.
+
 ## Purpose and authority
 
 Improve the product through small, tested, reviewable changes. Completion means
@@ -51,8 +71,10 @@ Pipeline PR 5 means Ingestion & Telemetry, not GitHub #5.
 
 1. Complete pipeline PRs 1 and 2 FIRST. Do not attempt authorization, billing,
    telemetry or coaching implementation until BOTH are merged AND verified.
-2. No direct main edits, force pushes, protection bypass, self-approval, automated
-   merging, production publishing or production data changes.
+2. No direct main edits, force pushes, protection bypass or self-approval. The
+   owner permits protected main merges of verified fixes after required checks,
+   reviews and affected-behavior acceptance. Production publishing and production
+   data changes remain separately controlled; inspect automatic Git-sync effects.
 3. All integration/PR runtime tests use the isolated staging backend, synthetic
    athlete data and dedicated sandbox Stripe credentials. Offline CI tests are
    separate evidence and cannot establish staging isolation.
@@ -148,6 +170,37 @@ Audit COROS, Garmin and manual FIT/TCX/CSV uploads end to end:
 Done: supported initial sync stores complete telemetry without manual backfill;
 provider matrix and round-trip fixtures show no truncation or silent channel loss.
 
+#### TPL-DATA: full provider recording to useful athlete output
+
+Use bounded vertical slices rather than adding more providers or summary-only
+success paths. Work one eligible slice at a time; release requires BOTH COROS
+and Garmin evidence.
+
+| Item | Acceptance evidence |
+| --- | --- |
+| TPL-DATA-001: provider capability and access matrix | For COROS and Garmin separately, record tested device/activity/API scope, available raw-file/stream/recovery endpoints, approval restrictions, and fields genuinely unavailable. Do not promise a field that the provider does not expose. Credentials and account identifiers remain private. |
+| TPL-DATA-002: complete initial and repeat ingest | Initial, historical, webhook/background and manual recovery paths retain the original recording when supported and all available native-resolution channels. Preserve sample counts, precision, timestamps/timezones, units, laps, pause/resume, valid zeros and provenance. No one-hour/sample cap silently omits longer streams. |
+| TPL-DATA-003: correctness and recovery | Athlete ownership is verified. Pagination, refresh, expired authorization, rate limits, partial failures and resume work without silent loss. Stable provider IDs and tested reconciliation prevent duplicates across retries/providers/manual imports without merging unrelated activities. Preserve the original data for reprocessing. |
+| TPL-DATA-004: trustworthy analysis | Explicit, tested inputs drive workload, CTL/ATL/TSB, HR-zone time, intensity and recovery interpretations. Match frontend/backend semantics and athlete constants; label estimated versus measured metrics. Never manufacture a stream from averages or treat missing data as a measured zero. |
+| TPL-DATA-005: understandable athlete journey | The athlete can see what arrived, source/freshness/completeness, supported analyses, limitations and a clear next training/recovery action. Connection success is distinct from retrieved-data and completed-analysis success. Verify reload and repeated sync. |
+
+For each slice, retain a private end-to-end evidence chain: authorized provider
+activity/reference -> raw asset checksum/size -> decoded native channels and
+sample/time coverage -> persisted athlete-owned records -> deterministic
+analysis inputs/outputs -> sanitized dashboard evidence. Tests must include
+long activities, intervals/laps, pauses, sparse/missing channels, duplicates and
+provider failures. Re-sampling or exclusions require an explicit reason; no
+silent precision reduction, fabricated telemetry or summary-only fallback on a
+retryable fetch/parser error.
+
+Implementation uses synthetic recordings and provider fixtures first. A genuine
+provider acceptance pilot requires a separately authorized consenting test
+account and an appropriate private environment; do not import real health/GPS
+data into synthetic staging or public logs. Keep external sync disabled except
+for a specifically authorized bounded provider test. UI claims follow the
+actual tested capability matrix, not implementation presence alone.
+
+
 ### Gate 4: science parity and non-blocking coaching (pipeline PR 6)
 
 Dependencies: ingestion gate accepted and merged.
@@ -206,6 +259,24 @@ by athlete payoff, not speculative refactoring:
 
 These items do not authorize unattended feature work before the foundation gates.
 
+## Visual quality and brand asset workstream
+
+This supports the core athlete journey and does not delay eligible data-fidelity
+repairs. Avoid broad visual redesigns while foundational defects remain open.
+
+| Item | Acceptance evidence |
+| --- | --- |
+| TPL-BRAND-001: inventory and identity | Audit current logos, wordmarks, favicons/PWA icons, screenshots, illustrations, remote photos and duplicate/unused assets. Use TrainPaceLab consistently. Record source/licence, purpose, placement and keep/rework/remove decision; do not remove unique assets blindly. |
+| TPL-BRAND-002: logo and essential assets | Produce a coherent original vector mark/wordmark, mono/light/dark variants and the required favicon/app/PWA sizes. Verify small-size legibility, backgrounds, touch/header placement and no clipping on iPad/split-screen. Confirm actual manifests/icon references and loading. |
+| TPL-BRAND-003: image quality gate | Use relevant high-quality imagery or clearly illustrative training stress/response graphics only where they improve comprehension. Assess each asset in the actual page; reject generic, misleading, cluttered, illegible or poor-quality results. Prefer no image over a weak one. Synthetic/illustrative charts must never impersonate measured athlete evidence. |
+| TPL-BRAND-004: optimized delivery and verification | Supply appropriately sized responsive assets, modern formats where suitable, explicit dimensions, sensible loading priority and caching. Verify payload/layout-shift impact, image failures, alt text or decorative treatment, contrast, reduced motion, and light/dark behavior on desktop/iPad/narrow layouts. Use a measured before/after budget rather than claiming performance improvement from compression alone. |
+
+Deliver one small asset set or surface per change, with actual screenshots and
+keep/rework/remove decisions. Retain licensing/provenance and editable originals
+outside public health-data evidence. Real product screenshots use synthetic or
+properly consented data; never include account/session details. No image or logo
+is approved solely because a generator produced it.
+
 ## Recurring work loop
 
 Suggested cadence: every two hours. One local coding runner plus one read-only
@@ -224,7 +295,8 @@ At each coding run:
 6. Run relevant checks, then required CI/runtime checks. Review the diff for data
    leaks, auth bypasses, fake metrics, behavior regressions and unrelated edits.
 7. Save useful work on a dedicated branch before the run ends. Update an existing
-   matching PR rather than creating duplicates. No automatic merge/publish.
+   matching PR rather than creating duplicates. Verified fixes may merge through
+   the protected process once checks/reviews/acceptance pass; no production publish.
 8. Record evidence and the next action. If incomplete, preserve the checkpoint
    and explicitly label it incomplete; never claim failed checks pass.
 9. Notify on a completed deliverable, new failure, required decision or newly
@@ -264,8 +336,9 @@ loop. Complete one eligible acceptance item, test it, preserve a reviewable
 branch/PR checkpoint and report only meaningful changes. Gate 0 comes first:
 do not attempt authorization/billing/telemetry/coaching changes until pipeline
 PRs 1 and 2 are BOTH merged and verified. Never modify or publish production,
-merge PRs, bypass protection, touch unrelated odysseus changes, expose secrets,
+bypass protection, touch unrelated odysseus changes, expose secrets,
 or claim local/simulated tests establish remote staging/provider behavior.
+Merge only verified fixes through the protected PR process with required reviews.
 If another writer owns the branch or a required prerequisite is unavailable,
 stop and report the precise blocker once. Do not repeatedly retry it."
 

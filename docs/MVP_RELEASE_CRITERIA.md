@@ -21,6 +21,30 @@ decision. Advanced breadth is not a launch substitute for a dependable journey.
 | Payment and access | Sandbox lifecycle checks cover paid access, cancellation, renewal, failure and replay; server state is authoritative. Any live purchase pilot needs explicit authorization. Clear limits, receipts and management/support paths. |
 | Account control | Users can correct basic data, export and delete through tested flows. Retention and provider restrictions are explained accurately; do not claim legal compliance from unit tests. |
 
+## Complete data and analysis acceptance
+
+For both COROS and Garmin, follow an authorized activity end to end: original
+file/native streams where supported, complete retained channels and timing,
+correct athlete ownership, deterministic processing and understandable dashboard
+output. Compare sample/time coverage and channel precision at every transition.
+Do not call an OAuth connection or summary response a full-data pass. A provider
+restriction is an explicit limitation, not permission to fabricate missing data.
+
+Use Gate 3 TPL-DATA-001 through TPL-DATA-005 and Gate 4 for the evidence and
+scientific parity requirements. Long recordings must not silently lose streams
+because of a one-hour/sample cap. Both real provider journeys remain launch
+requirements after synthetic/fixture validation; user data handling and external
+sync activation require the approved private test arrangement.
+
+## Brand and asset acceptance
+
+TrainPaceLab has a consistent, legible logo/wordmark, working favicon/app assets,
+and readable light/dark/iPad layouts. Every included image has a purpose, suitable
+quality and lawful provenance, and passes responsive/performance/accessibility
+checks. Create or optimize useful assets; omit weak or misleading imagery. Product
+screenshots and illustrative charts never pretend to be actual athlete evidence.
+Use TPL-BRAND-001 through TPL-BRAND-004 for the bounded work and review decisions.
+
 ## Scientific and product interpretation
 
 Average-based Banister TRIMP can remain valid for a summary-only session with
