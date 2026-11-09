@@ -1,12 +1,15 @@
-import React, { useEffect, useState } from "react";
+import React from "react";
+import { useQuery } from "@tanstack/react-query";
+import { useAuth } from "@/lib/AuthContext";
+import { Button } from "@/components/ui/button";
 import { base44 } from "@/api/base44Client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import ZoneBadge from "@/components/ui/ZoneBadge";
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 import { useFitness } from "@/context/FitnessContext";
-import { CheckCircle2, Moon, AlertTriangle, ShieldAlert, BedDouble } from "lucide-react";
+import { CheckCircle2, Moon, AlertTriangle } from "lucide-react";
 import moment from "moment";
-import { useCoachInjurySignal } from "@/hooks/useCoachInjurySignal";
+import CoachSignalNotice from "@/components/dashboard/CoachSignalNotice";
 
 function detectAnomaly(biometricTelemetry) {
   const sorted = [...(biometricTelemetry || [])].sort((a, b) => b.date.localeCompare(a.date));
@@ -18,22 +21,21 @@ function detectAnomaly(biometricTelemetry) {
 
 export default function TodaySessionCard({ athleteId }) {
   const { biometricTelemetry } = useFitness() || {};
-  const injury = useCoachInjurySignal(athleteId);
-  const [session, setSession] = useState(undefined);
-  const [plan, setPlan] = useState(null);
-
-  useEffect(() => {
-    if (!athleteId) return;
-    (async () => {
-      const todayStr = moment().format("YYYY-MM-DD");
+  const { user } = useAuth();
+  const todayStr = moment().format("YYYY-MM-DD");
+  const query = useQuery({
+    queryKey: ['athlete-plan', user?.id, athleteId, 'today', todayStr],
+    enabled: Boolean(user?.id && athleteId), retry: false,
+    queryFn: async () => {
       const [sessions, plans] = await Promise.all([
         base44.entities.TrainingPlanSession.filter({ athlete_id: athleteId, date: todayStr }),
         base44.entities.TrainingPlan.filter({ athlete_id: athleteId, status: "active" }, "-created_date", 1),
       ]);
-      setSession(sessions?.[0] || null);
-      setPlan(plans?.[0] || null);
-    })();
-  }, [athleteId]);
+      return { session: sessions?.[0] || null, plan: plans?.[0] || null };
+    },
+  });
+  const session = query.data?.session;
+  const plan = query.data?.plan;
 
   const anomaly = detectAnomaly(biometricTelemetry);
   const isRunning = session?.sport?.toLowerCase() === "running";
@@ -47,33 +49,14 @@ export default function TodaySessionCard({ athleteId }) {
         <CardTitle className="text-sm text-muted-foreground font-heading uppercase tracking-wide">Today's Session</CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
+        <CoachSignalNotice athleteId={athleteId} />
+        {query.isError && <Alert><AlertTitle>Could not refresh today's session</AlertTitle><AlertDescription>
+          {query.data ? 'Showing the last loaded prescription.' : 'Your schedule is unavailable; this does not mean today is a rest day.'}
+          <Button variant="outline" size="sm" disabled={query.isFetching} onClick={() => query.refetch()}>Retry session</Button>
+        </AlertDescription></Alert>}
         {session === undefined ? (
-          <p className="text-sm text-muted-foreground">Loading...</p>
+          <p role="status" className="text-sm text-muted-foreground">{!athleteId ? "Choose an athlete to view today's session." : query.isError ? "Session not loaded." : "Loading session..."}</p>
         ) : session ? (
-          injury.level === "hold" && session.sport?.toLowerCase().startsWith("run") ? (
-            <div className="space-y-3">
-              <Alert variant="destructive">
-                <ShieldAlert className="w-4 h-4" />
-                <AlertTitle>Coach hold, running paused</AlertTitle>
-                <AlertDescription className="space-y-1">
-                  <p>{injury.summary}</p>
-                  {injury.evidence[0]?.snippet && (
-                    <p className="italic text-xs">“{injury.evidence[0].snippet}”</p>
-                  )}
-                </AlertDescription>
-              </Alert>
-              <div className="flex items-center gap-3 py-1">
-                <BedDouble className="w-8 h-8 text-primary" />
-                <div>
-                  <p className="font-heading font-bold text-lg">Recovery Day (Coach Hold)</p>
-                  <p className="text-sm text-muted-foreground">Rest or swap to cross-train (bike / pool) at very easy effort. Resume running once the coach clears you.</p>
-                </div>
-              </div>
-              <div className="text-xs text-muted-foreground line-through opacity-60">
-                Was: {session.sport} · {session.prescribed_duration_minutes} min · {session.prescribed_intensity_zone || "—"}
-              </div>
-            </div>
-          ) : (
           <div className="space-y-3">
             <div className="flex items-center gap-2 flex-wrap">
               <h3 className="text-2xl font-heading font-bold capitalize">{session.sport}</h3>
@@ -105,7 +88,6 @@ export default function TodaySessionCard({ athleteId }) {
             </div>
             {session.rationale_text && <p className="text-sm text-muted-foreground">{session.rationale_text}</p>}
           </div>
-          )
         ) : (
           <div className="flex items-center gap-3 py-2">
             <Moon className="w-8 h-8 text-primary" />
@@ -126,9 +108,9 @@ export default function TodaySessionCard({ athleteId }) {
           </Alert>
         )}
 
-        {!anomaly && session && !(injury.level === "hold" && session.sport?.toLowerCase().startsWith("run")) && (
+        {!anomaly && session && (
           <div className="flex items-center gap-1 text-xs text-muted-foreground">
-            <CheckCircle2 className="w-3.5 h-3.5 text-primary" /> Readiness normal, proceed as prescribed.
+            <CheckCircle2 className="w-3.5 h-3.5 text-primary" /> Saved training prescription.
           </div>
         )}
       </CardContent>

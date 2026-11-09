@@ -1,0 +1,18 @@
+{
+  "name": "CoachSignalReview",
+  "type": "object",
+  "properties": {
+    "athlete_id": { "type": "string" },
+    "owner_user_id": { "type": "string" },
+    "source_key": { "type": "string", "description": "Hash of exact reviewed source content; no raw health text." },
+    "resolution": { "type": "string", "enum": ["not_current"] },
+    "reviewed_at": { "type": "string", "format": "date-time" }
+  },
+  "required": ["athlete_id", "owner_user_id", "source_key", "resolution", "reviewed_at"],
+  "rls": {
+    "read": { "data.owner_user_id": "{{user.id}}" },
+    "create": { "user_condition": { "role": "admin" } },
+    "update": { "user_condition": { "role": "admin" } },
+    "delete": { "user_condition": { "role": "admin" } }
+  }
+}
