@@ -51,7 +51,8 @@ async function main() {
   const args = process.argv.slice(2);
   const manifest = verifyManifest(JSON.parse(await readFile(resolve(args[0] || 'staging/manifest.local.json'), 'utf8')));
   const stripe = args.includes('--check-stripe') ? await verifyStripe() : { stripeTestAuthenticationVerified: false, webhookRoutingVerified: false };
-  console.log(JSON.stringify({ stagingAppId: manifest.stagingAppId, stagingOrigin: manifest.stagingOrigin, manifestValid: true, deployedIsolationVerified: false, ...stripe }, null, 2));
+  // Keep private app identifiers and origins out of terminal/CI output.
+  console.log(JSON.stringify({ manifestValid: true, deployedIsolationVerified: false, ...stripe }, null, 2));
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1])).href) main().catch(e => { console.error(e.message); process.exitCode = 1; });
