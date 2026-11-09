@@ -218,9 +218,9 @@ comparison UI, large analytics expansion and Base44 replacement. Retain useful
 existing code without expanding or advertising unverified capability. Research
 recommendations do not enter this index as approved work automatically.
 
-## Next run
+## Earlier next-run checkpoint (superseded by the metadata follow-up below)
 
-**TPL-G0-002 is externally blocked** on a supported metadata-only provider-count
+**TPL-G0-002 was externally blocked** on a supported metadata-only provider-count
 and credential-isolation read path. Data management rendered blank and one reload
 did not recover it; no page-scoped read tooling was exposed. Management-browser
 access works, but CLI authentication is not established. Resume only when the
@@ -281,3 +281,34 @@ surface stayed blank after one reload, so no connection-table counts could be
 read. No values were copied into public evidence and no provider/health records
 were opened. Task is externally blocked on a supported metadata-only read path;
 stop unchanged retries and preserve all existing app configuration.
+
+
+## Run update: TPL-G0-002 metadata-only follow-up, 9 November 2026
+
+Supported management API access now supplies names-only secrets, function source,
+workflow list/detail identity and count-only connection reads. Four connection
+counts are zero for the caller, but their owner-scoped RLS prevents an app-wide
+empty-table claim. Eight staging entry/helper graphs match infrastructure 8bafa517;
+three editor files match staging candidate a2dd360 rather than current #9 a6f5a15.
+Production site and backend entry revisions differ; a single Git SHA is not a
+complete release manifest. No records/token fields, secret values, provider
+requests, configuration writes, publishing or Odysseus changes were performed.
+
+The former missing-count-tool blocker is narrowed, not full G0 acceptance.
+Continue G0-002 with an app-wide isolation attestation that addresses owner RLS
+and existing test-webhook provenance. Network access, authenticated hosted athlete
+acceptance, independent review and original-Mac preservation remain open. The
+Garmin 3599/3600/3601 characterization and separate COROS fidelity case stay
+prioritized behind their documented prerequisites; no gate was bypassed.
+
+Evidence: [.codex task follow-up](../.codex/reports/TPL-G0-002-metadata-followup.md).
+Process/access steps: [delivery runbook](DEVELOPMENT_TO_PRODUCTION.md). Historical
+entries above remain observations at their recorded sources, not current state.
+
+## Next run
+
+Continue **TPL-G0-002**: obtain a supported app-wide isolation attestation
+accounting for owner-scoped counts and the existing test webhook secret. The
+count-only API now works; do not retry the blank Data UI or interpret caller-zero
+as global-zero. If the remaining attestation is unavailable, record the precise
+external blocker and stop; G0, the review gates and TPL-ODY-002 stay open.
