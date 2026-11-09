@@ -1,0 +1,316 @@
+# Current delivery checkpoint
+
+Updated 8 November 2026. Use this record before starting a scheduled roadmap run.
+The next work package is **reconcile the infrastructure and UI fixes, then verify
+one first-time synthetic-athlete journey on their exact reviewed source**.
+Do not open additional feature branches to work around missing integration.
+
+## Source checkpoints
+
+| Track | Source | Evidence | State |
+|---|---|---|---|
+| Cloud UI/session fixes | Existing PR #9 branch fix/provider-connection-feedback; source and hygiene head 0bade984023900380df15fd53c834fd151f363ef | Cloud observed: 246 tests, typecheck, lint, build, offline backend validation; six GitHub CI checks passed at this SHA; synthetic browser fixtures | Pushed; not merged. Frontend built from 2244ffba51abbcd1c8b701d914cbf14089e2c79f and published to existing staging on 8 November at 08:49 UTC; 36 editor-source files subsequently saved and read back matching Git |
+| TPL-INFRA-001 guards | Local branch fix/tpl-infra-001; deployed backend SHA 936f1eb7bf95f8a18697b1949aeff81fd63f38f6; local head 76b37bca2f8afca27f0d0e073bbc31f41f83436d | Product Owner supplied VS Code CLI report: build/preflight, 186 tests, typecheck/lint/backend validation, eight staging endpoints fail closed; private app, inactive workflows | Reported implemented/deployed; commits absent from cloud object database and advertised origin branches when checked; not yet code-reviewed here |
+| Staging sign-in/onboarding | Existing staging app; exact frontend revision not established here | Product Owner manually confirmed accepted sign-in, onboarding completion and dashboard arrival | Manual dashboard evidence; not an automated athlete/FIT/ownership acceptance pass |
+| Production main | 3f386d4d52042940cb1767e6950ec78e33b3c81e when last fetched | Cloud read-only Git observation | Existing stack remains unmerged |
+
+Different test/resource counts refer to different code snapshots, not conflicting
+results from one combined version. No combined release candidate has been tested.
+Never convert supplied reports into independent cloud observations.
+
+## Observed staging frontend checkpoint
+
+The explicit staging build was accepted by the supported deploy-dist endpoint.
+Frontend editor source was backed up before the batch save; all 36 changed files
+read back byte-for-byte matching Git. Backend source remained identical, private
+visibility was preserved and exact workflow records remained inactive. No
+production deployment or production data write was performed.
+
+The anonymous browser reached the private login page without page errors. An
+operator API identity was verified, but this does not provide an authenticated
+athlete browser session. Hosted dashboard/FIT acceptance remains incomplete.
+Private deployment manifests, backups and readback evidence are outside Git.
+
+## Scope of the reported infrastructure work
+
+The CLI report describes missing entity name fields repaired and a fail-closed
+external-sync guard requiring an explicitly production runtime plus the explicit
+enable flag. Eight provider/webhook/reporting handlers were deployed to staging
+only. The staging guard returned 503, workflows were inactive with zero runs and
+the app was private and distinct from production. The head after deployment adds
+a synthetic FIT parser test. Inspect those commits after publication before
+claiming their exact behavior or changing their deployment.
+
+The rejected reserved-email signup attempt did not create a test account. It does
+not establish that accepted staging accounts cannot work; the Product Owner's
+later manual journey reached the dashboard. That Safari session is not available
+to the cloud runner, and no credentials/session tokens belong in this record.
+
+## Ordered acceptance checklist
+
+1. **Publish the existing infrastructure branch to origin.** Preserve its local
+   untracked skills and unrelated Odysseus work. Do not reset, merge or deploy.
+   The cloud runner cannot read a private Mac worktree through its pathname.
+2. **Inspect and reconcile the exact source.** Compare infrastructure changes with
+   existing staging PR #4, CI PR #5 and the UI stack. Use the owning existing PRs;
+   do not blindly merge a stack or duplicate the infrastructure implementation.
+3. **Repair race-result onboarding under the correct science contract.** The cloud
+   audit reproduced incompatible race-distance fields and an inappropriate
+   default derivation. Do not substitute a fabricated baseline or weaken checks.
+   The novice/mileage path has a local fixture pass, not full science acceptance.
+4. **Validate one reviewed combined candidate.** Record exact source SHA; run
+   typecheck, lint, tests, build and backend/schema validation. Do not combine old
+   independent green reports and call them a combined pass.
+5. **Complete authorized staging acceptance.** Fresh-read target identity and
+   privacy; preserve inactive external workflows and fail-closed guards. Verify
+   reviewed-code deployment only when authorized. Use an accepted synthetic
+   athlete session, one synthetic FIT activity, persisted data, dashboard metrics,
+   reload and the iPad UI. Capture sanitized evidence and ownership outcomes.
+   Stripe is not a prerequisite for this dashboard/FIT smoke test.
+6. **Follow the protected main/release path.** Owner authorizes main updates for
+   verified fixes, subject to required checks/reviews. Check automatic Git-sync
+   implications and the production guard configuration before any main update;
+   an unconfigured guard must not unexpectedly disable live integrations. No
+   standalone production deployment, production writes or bypass is authorized.
+
+## Current external prerequisites
+
+- Infrastructure branch must be pushed from its Mac worktree; no local-only
+  commit restoration or remote access to that path has been established.
+- GitHub API access to api.github.com is blocked in the cloud environment. Git
+  read/push access works; PR merge/settings API access has not been established.
+- Scheduled task is reported configured by the Product Owner. Its first actual
+  execution, repository/environment attachment and result still need evidence.
+- Do not require account passwords in chat. Keep private target records, session
+  state and accepted account access in supported secure channels.
+
+See docs/APP_AUDIT.md for the public audit summary and
+ docs/AUTONOMOUS_DELIVERY.md for the recurring work and merge boundaries.
+
+## Authorized live-release preparation
+
+The Product Owner explicitly requested this batch on https://trainpacelab.com/
+and instructed the cloud runner to proceed. The production custom-domain record
+was read successfully and matches that domain; its app ID differs from staging.
+Fresh checks at source 5e2a58d58ce8dba6f66fd5490b3e4d1b884e943d passed:
+typecheck, lint, 246 tests in 40 files, backend validation (49 entry graphs,
+28 resources), and an explicit production-targeted frontend build. Existing
+catalog RLS and bundle-size warnings remain. No deployment was performed.
+
+Release blockers observed: PR #9 is draft and targets the workout-export branch;
+PR #5 remains open against main. No approved review event was visible on either
+public PR page. This is not a branch-protection API attestation. Hosted athlete
+acceptance remains incomplete. Outbound requests to trainpacelab.com and
+api.github.com were denied with proxy 403, preventing live browser verification
+and GitHub API operations. Git read/push and Base44 management reads still work.
+
+Required next actions: allow those two hosts in environment network settings,
+complete hosted athlete acceptance and obtain independent release review through
+the existing PRs. Production authorization is recorded; do not ask the owner to
+repeat it, bypass the review, or publish the stacked backend changes wholesale.
+
+## 9 November: work completed while network changes are deferred
+
+The Product Owner asked to continue independent work and leave cloud network
+permissions until later. Do not repeatedly request the same settings changes.
+
+Offline queue integrity was repaired on existing PR #9 at source
+a2dd36020d573faa737695c5656ddc7034fa896f. Six regressions cover concurrent
+enqueues, persistence during requests, failure, clear, unknown handlers, status
+notification and backoff. Typecheck, lint, 252 tests in 41 files, backend
+validation and the explicit staging build pass. Local iPad-sized Chromium
+verified the real queue/status modules with synthetic data; pending data and
+its honest Pending sync state survive reload. This is local browser evidence.
+
+The supported staging deployment succeeded. Both edited frontend files were
+backed up, compared against their known previous Git source, saved in Base44
+and read back matching the candidate. Fresh target reads confirmed existing
+private staging, distinct from production. Backend source and exact workflow
+records remained unchanged; the workflows were inactive before deployment.
+Private backup, deployment response, manifest, logs and browser evidence are
+under cloud-setup/offline-queue outside Git. No production write was performed.
+
+Remaining release blockers are unchanged: independent review, hosted athlete
+acceptance and access to the live domain/GitHub API. The Mac-only infrastructure
+commits are still needed before reviewing a combined backend candidate.
+Do not treat the queue repair as ingestion, account-isolation or science
+acceptance. See the audit follow-up for its remaining durability limits.
+
+## 9 November: bounded offline failure recovery on PR #9
+
+Completed one UX-007 follow-up on the existing provider-feedback branch: keep
+unsaved changes after six failed attempts, show the failure in the status badge
+and support an explicit retry. Three new regressions fail against c95b2b5 and
+pass with the repair; the complete suite passes 255 tests in 41 files. Ordinary
+reconnect does not replay exhausted work, and normal pending retries keep their
+backoff. Typecheck, lint, build and backend validation pass locally; exact-head
+CI and affected hosted behavior remain separate acceptance evidence.
+
+This is local fixture/component evidence, not hosted athlete acceptance. No
+Base44 publication, production change or Odysseus operation was performed.
+The foundational staging/CI gate remains open; this ordinary usability repair
+does not unlock authorization, billing, telemetry or coaching implementation.
+Correction to the preceding historical entry: infrastructure work is published
+on fix/tpl-infra-001 at 8bafa5178d40f0748800a18c6583253aebc241a4;
+it is no longer Mac-only. Combined-candidate review and protected preservation
+requirements remain outstanding.
+Next atomic action: verify retained exhausted work and explicit retry across a
+local browser reload with synthetic data; record hosted acceptance separately
+when supported staging access is available. Deferred network settings stay deferred.
+
+## 9 November: active implementation, Garmin boundary characterization
+
+New owner direction permits safe offline code/tests while G0 is blocked, retaining
+all release/security/billing/review and Odysseus controls. One provider/scenario
+was selected: TPL-INT-006-GAR-001, the 3599/3600/3601-sample Garmin webhook boundary,
+on existing PR #9. This is executable test coverage, not an ingest runtime fix.
+
+The real handler and native decoder run with synthetic FIT bytes, serialized
+in-memory SDK storage, stubbed fetch and isolated post-ingest effects. 3599/3600
+samples retain every currently mapped sample; 3601 decode successfully but the
+serialized workout omits streams despite HTTP success and stream-derived zones.
+The desired-retention assertion is an explicit expected failure; temporarily
+removing that marker confirms the ordinary assertion fails because streams is
+undefined. This defect is not accepted as correct behavior or claimed fixed.
+
+Full test/check evidence and remaining live-release blockers are in
+.codex/reports/TPL-INT-006-GAR-001.md. No app source, backend, staging configuration,
+workflow, credential, production record or Odysseus tracking was changed.
+G0 still needs an app-wide isolation attestation accounting for owner-scoped RLS
+and confirmation that the existing webhook secret is dedicated to staging;
+the user was asked for provenance only, never its value. No new credentials or
+admin-bypass capability are inferred from the previous caller-visible zeros.
+
+## 9 November: executable COROS recording-fidelity cases
+
+TPL-INT-006-COR-001 adds actual historical-sync/MCP/FIT-to-serialized-SDK tests
+on existing PR #9. Detailed samples, native units/timestamps, gaps, sensor
+absence/zeros, laps, a two-hour recording, no-file/download/parse failures and
+sequential/same-response duplicates are covered without provider contact.
+Four COROS defects are explicitly reproduced: 3600-sample prefix truncation,
+per-sample power loss, 200-lap truncation and error-free summary downgrade after
+FIT retrieval failure. Missing physiological channels do not produce fabricated
+zones, but the current fallback also loses other native file channels.
+
+The targeted suite has 14 passed and four expected failures. The full suite has
+277 passed and five expected failures across 44 files, including the prior Garmin
+failure. Every new desired assertion also fails when run without its expected-
+failure marker. Typecheck, lint, build, backend validation and syntax checks pass;
+existing RLS/bundle/npm warnings remain. These are fixture/code-level outcomes,
+not hosted storage-size, provider health, authorization or concurrent dedup proof.
+
+Next implementation is TPL-INT-006-GAR-002: fix the known Garmin retention defect
+with complete supported recording storage, explicit limits/provenance and no
+silent successful omission. COROS retention/power/lap/error-recovery fixes are
+queued afterward in the existing backlog. Do not substitute another research-only
+task or let unchanged staging access block safe code work. No runtime/deployment,
+production data, credentials, workflows or Odysseus tracking changed in this run.
+See .codex/reports/TPL-INT-006-COR-001.md for scenario results and delivery limits.
+
+## 9 November: owner-requested visible coach-guidance management
+
+Added individual source selection, clear/keep actions and saved confirmation in
+CoachSignalNotice on existing PR #9's branch. The existing review API supports
+selected fingerprints; no duplicate backend or client-side hide workaround was
+added. Plan/conversation remain saved. Twenty-one targeted cases and actual
+synthetic dashboard Chromium checks pass; full suite: 281 passed plus five
+existing ingestion expected failures. Typecheck/lint/build/backend validation pass.
+Before/manage/cleared screenshots are in docs/evidence/coach-guidance.
+
+Fresh read-only metadata confirms reviewCoachSignal and CoachSignalReview are
+missing from BOTH hosted apps. Their reviewed deployment with this frontend is
+an explicit release dependency, not an assumption that a push makes the app live.
+No hosted deployment, production record, backend/schema, workflow or Odysseus
+tracking changed. Git access now works with the existing secure credential via
+Bearer-header transport; prior Basic/default failure is not a current proof of
+no access. Exact new-source push/CI must be verified separately.
+
+The immediately next code task remains Garmin retention repair (GAR-002), after
+this owner-prioritized UI task. Automation activation and Option B evaluation
+remain in platform planning, without a migration or production release grant.
+
+## 9 November: actual coach-management staging delivery
+
+7342d89 on existing PR #9 adds a permanent Settings → Coach guidance entry with
+an explicit no-active-notices state. The exact committed frontend snapshot was
+built for the existing private staging target and published with the missing
+owner-checked review function/entity. Served JavaScript was fetched with supported
+app-user authentication and matched the staged artifact's hash. The actual
+SDK-shaped staging route reached the new handler and returned its expected input
+validation response. The agent did not clear any real athlete notice.
+
+Snapshot checks: 282 passed plus five existing ingestion expected failures;
+typecheck/lint/build/backend validation pass. All 47 pre-existing backend file
+maps/entries/automations/connectors and existing entity policies remained identical.
+Backend deployment identifiers advanced globally; do not misreport them unchanged.
+Both staging workflows remain inactive, privacy is preserved and the production
+site checkpoint is unchanged. This bounded coach rollout does not certify full
+G0 isolation, hosted A/B ownership or a real-user clear/reload journey.
+
+See .codex/reports/TPL-UX-001-COACH-STAGING.md. GitHub required CI/reviews and
+production gates remain open. The partial Garmin retention repair was excluded
+from the deployed snapshot and preserved in the working tree/private backup for
+GAR-002's next bounded continuation. No production deployment occurred.
+
+## Garmin retention runtime fix — TPL-INT-006-GAR-002
+
+Existing PR #9 now preserves complete decoded Garmin samples/laps within explicit
+8 MiB download / 1 MiB serialized-workout application budgets, including power.
+3,599/3,600/3,601/7,201-sample round trips pass. Failures have explicit outcomes
+and no fixture writes; supplied FIT failure no longer silently becomes a summary.
+Provenance is explicit; original binaries are not archived. WorkoutSession RLS
+unchanged. Full local suite: 297 passed, four known COROS expected failures in
+45 files; typecheck/lint/build/backend validation pass. Exact-head remote CI
+remains separate. This is code-only: no staging/production deployment.
+
+Release requires guard-branch reconciliation, isolation and hosted byte-budget
+readback, independent reviews, exact-head CI, Odysseus preservation, component
+manifests/rollback and separate production approval. Owner has now prioritized
+checking whether coach-notice management actually resolves the AI blocking path;
+assets remain planned, with no new logo/imagery delivery claimed.
+
+## Coach guidance recovery/accessibility follow-up
+
+Added explicit refresh/reselection, honest cached-read failure handling, and
+Escape/Keep focus restoration on existing PR #9. Full local checks pass: 300
+tests plus four known COROS expected failures, typecheck/lint/build/backend
+validation. Browser fixtures pass at iPad/mobile sizes with no page errors.
+No conversation text imposes a training hold in this branch. Production remains
+unchanged; hosted account acceptance and release gates remain separate.
+
+## Verified staging publication
+
+Frontend source e19cec9bd054ba56f7937c7993043dd6eb44c75d was published to the
+existing private staging app. Both changed editor files read back exactly;
+authenticated served JavaScript matched the compiled artifact byte-for-byte.
+Backend function records, entity schemas and exact inactive workflow records
+remained unchanged. Artifact SHA-256:
+`e5c8dcfc661bfa2b8a64b44f38585c316f8be31ef158051752a009122f01f954`.
+This publishes only the frontend; the Garmin backend/schema patch was not applied.
+Hosted athlete clear/reload acceptance is not yet verified. Exact-commit required
+CI results were unavailable in the public checks view; do not claim CI passed.
+No production mutation or deployment occurred.
+
+## Coach chat recovery implementation
+
+Failed conversation load now offers retry/dashboard navigation; failed sends
+retain the draft and restore focus instead of discarding text. Accessible named
+input/send and overlapping-submit guard added. Four regressions and real local
+Chromium iPad/phone fixtures pass; full suite 304 passed/four known COROS expected
+failures, plus typecheck/lint/build/backend validation. Screenshots under
+`docs/evidence/coach-chat`; task `.codex/reports/TPL-UX-COACH-CHAT-RECOVERY.md`.
+No hosted publication: staging Google callback domain error remains unverified
+and parked per owner. Production and existing backend unchanged.
+
+## TPL-INT-006-COR-002: historical COROS recording retention
+
+Historical MCP sync now preserves complete supported decoded streams, native
+power and laps within the shared explicit byte budgets; no 3,600-sample prefix
+or 200-lap truncation in this path. Provenance states counts/hash/source and no
+original archival. Oversize is reported/skipped with no partial workout; valid
+siblings import and bulk writes split by bytes. COR-003/004 historical power/lap
+assertions now pass normally; other entry/processor mappings remain unverified.
+Full local suite: 312 passed/one known COR-005 expected failure, 46 files;
+typecheck/lint/build/backend validation pass. No deployment. See task report
+`.codex/reports/TPL-INT-006-COR-002.md`; next code item is explicit failed-file
+outcomes. Staging Google sign-in remains blocked/parked, not certified.

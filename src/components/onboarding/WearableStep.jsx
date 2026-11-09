@@ -31,7 +31,7 @@ export default function WearableStep({ selected = [], onToggle }) {
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 pt-1">
         {WEARABLES.map((w) => {
           const active = selected.includes(w.key);
-          const soon = w.status === "coming_soon";
+          const needsSetup = w.status === "coming_soon" || w.status === "setup_required";
           return (
             <button
               key={w.key}
@@ -48,12 +48,12 @@ export default function WearableStep({ selected = [], onToggle }) {
                   <Check className="w-2.5 h-2.5" />
                 </span>
               )}
-              {soon && !active && (
-                <span className="absolute top-1.5 right-1.5 text-[9px] font-semibold uppercase tracking-wide text-amber-700 bg-amber-500/15 px-1 py-0.5 rounded">Soon</span>
+              {needsSetup && !active && (
+                <span className="absolute top-1.5 right-1.5 text-[9px] font-semibold uppercase tracking-wide text-amber-700 bg-amber-500/15 px-1 py-0.5 rounded">{w.status === "coming_soon" ? "File upload" : "Setup"}</span>
               )}
               <WearableIcon name={w.icon} className={`w-5 h-5 ${active ? "text-primary" : "text-muted-foreground"}`} />
               <span className="text-xs font-medium leading-tight">{w.label}</span>
-              {soon && <span className="text-[10px] text-muted-foreground leading-tight">manual upload</span>}
+              <span className="text-[10px] text-muted-foreground leading-tight">{w.blurb}</span>
             </button>
           );
         })}

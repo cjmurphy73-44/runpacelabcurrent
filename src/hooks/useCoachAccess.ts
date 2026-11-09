@@ -9,6 +9,7 @@ export interface CoachAccess {
   plan: string;
   isPro: boolean;
   teamActive: boolean;
+  showCoachNavigation: boolean;
   canUseCoachWorkspace: boolean; // Coach Pro plan (admins bypass the paywall)
 }
 
@@ -26,7 +27,7 @@ export function useCoachAccess(): CoachAccess {
   const isAdmin = user?.role === "admin";
   const coachMode = isAdmin || user?.role === "coach" || athlete?.profile_role === "coach";
   // Roster access requires a Coach Pro plan (or the legacy "team" tier).
-  const teamActive = plan === "coach_pro" || plan === "team";
+  const teamActive = hasFeature(plan, "coach_workspace");
 
   return {
     loading: athleteLoading || subLoading,
@@ -34,6 +35,9 @@ export function useCoachAccess(): CoachAccess {
     plan,
     isPro,
     teamActive,
+    // Admin tools remain available without inserting paid coach navigation
+    // into the ordinary athlete experience.
+    showCoachNavigation: !subLoading && teamActive,
     canUseCoachWorkspace: isAdmin || teamActive,
   };
 }

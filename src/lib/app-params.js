@@ -1,4 +1,5 @@
 // src/lib/app-params.js
+import { getAccessToken } from '@base44/sdk';
 
 function getAppParamValue(name, { defaultValue = null, removeFromUrl = false, persistToLocalStorage = false } = {}) {
   const windowObj = typeof window !== 'undefined' ? window : null;
@@ -84,7 +85,9 @@ export function getAppParams() {
 
   return {
     appId: resolvedAppId,
-    token: getAppParamValue("access_token", { removeFromUrl: true }),
+    // Use the same URL/storage contract as SDK login and logout. The previous
+    // access_token-only lookup discarded SDK sessions on a full-page reload.
+    token: getAccessToken({ removeFromUrl: true }) || getAccessToken({ storageKey: "token", saveToStorage: false, removeFromUrl: false }),
     fromUrl: getAppParamValue("from_url", { defaultValue: windowObj.location?.href || '/' }),
     functionsVersion: getAppParamValue("functions_version", { defaultValue: "", persistToLocalStorage: true }),
     appBaseUrl: getAppParamValue("app_base_url", { defaultValue: typeof import.meta !== 'undefined' ? import.meta.env?.VITE_APP_BASE_URL : "", persistToLocalStorage: true }),

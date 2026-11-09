@@ -30,40 +30,41 @@ function estimateProjectedLoad(planned) {
   return Math.round(duration * factor);
 }
 
-// Classifies a TSB (Training Stress Balance) value into a coaching zone.
+// Descriptive modeled-load balance bands, not a clinical recovery or injury-risk assessment.
+// A TSB number alone cannot determine readiness or prescribe training.
 export function getTsbZoneInfo(tsbValue) {
-  if (tsbValue === null || tsbValue === undefined || isNaN(tsbValue)) {
+  if (tsbValue === null || tsbValue === undefined || !Number.isFinite(tsbValue)) {
     return {
-      label: "Neutral",
+      label: "Unavailable",
       badgeClass: "bg-muted text-muted-foreground border-border",
-      advice: "Not enough data yet.",
+      advice: "Not enough reliable load data to interpret this estimate.",
     };
   }
   if (tsbValue > 15) {
     return {
-      label: "Fresh",
+      label: "Positive balance",
       badgeClass: "bg-success/10 text-success border-success/30",
-      advice: "Well-rested, a good window for a hard effort or race.",
+      advice: "Modeled chronic load exceeds recent acute load. This does not confirm recovery or race readiness.",
     };
   }
   if (tsbValue >= -10) {
     return {
-      label: "Neutral",
+      label: "Near balance",
       badgeClass: "bg-primary/10 text-primary border-primary/30",
-      advice: "Balanced form, maintain your current training load.",
+      advice: "Modeled acute and chronic loads are relatively close. Consider symptoms, recent performance and data quality.",
     };
   }
   if (tsbValue >= -25) {
     return {
-      label: "Optimal",
+      label: "Negative balance",
       badgeClass: "bg-warning/10 text-warning border-warning/30",
-      advice: "Productive fatigue, good for building fitness. Monitor recovery.",
+      advice: "Modeled recent load exceeds chronic load. Review the athlete's feedback before adjusting training.",
     };
   }
   return {
-    label: "High Risk",
+    label: "Strongly negative balance",
     badgeClass: "bg-danger/10 text-danger border-danger/30",
-    advice: "Deep fatigue, high injury/illness risk. Prioritize recovery.",
+    advice: "Modeled acute load is substantially above chronic load. TSB alone does not establish injury risk.",
   };
 }
 

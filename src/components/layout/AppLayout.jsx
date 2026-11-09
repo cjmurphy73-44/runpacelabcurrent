@@ -8,6 +8,7 @@ import BetaFeedbackModal from "@/components/feedback/BetaFeedbackModal";
 import { Activity, Sparkles, Users } from "lucide-react";
 import { useCoachAccess } from "@/hooks/useCoachAccess";
 import MobileNav from "@/components/layout/MobileNav";
+import ThemeToggle from "@/components/layout/ThemeToggle";
 import MobileTabBar from "@/components/layout/MobileTabBar";
 import PageErrorBoundary from "@/components/common/PageErrorBoundary";
 import PageTransition from "@/components/layout/PageTransition";
@@ -19,8 +20,7 @@ export default function AppLayout() {
   const { user, logout } = useAuth();
   const location = useLocation();
   const [feedbackOpen, setFeedbackOpen] = useState(false);
-  const { isPro, coachMode, plan, canUseCoachWorkspace } = useCoachAccess();
-  const isCoach = canUseCoachWorkspace;
+  const { isPro, plan, showCoachNavigation } = useCoachAccess();
 
   const navLink = (to, label, Icon) => (
     <Link
@@ -41,8 +41,8 @@ export default function AppLayout() {
         <div className="min-h-screen bg-background">
           <header className="border-b border-border sticky top-0 bg-background/85 backdrop-blur z-30 pt-safe">
             <div className="max-w-7xl mx-auto flex items-center justify-between gap-4 px-4 py-3">
-              <div className="flex items-center gap-6 min-w-0">
-                <Link to="/app" className="flex items-center gap-2 font-heading font-bold text-lg shrink-0">
+              <div className="flex items-center gap-3 sm:gap-6 min-w-0">
+                <Link to="/app" className="flex items-center gap-2 font-heading font-bold text-base sm:text-lg shrink-0">
                   <Activity className="w-5 h-5 text-primary" />
                   <span className="flex flex-col leading-none">
                     <span>Trainpacelab</span>
@@ -55,7 +55,7 @@ export default function AppLayout() {
                 <nav className="hidden lg:flex items-center gap-1 min-w-0 overflow-x-auto">
                   {PRIMARY_NAV.map((n) => navLink(n.to, n.label, n.icon))}
                   {navLink(COACH_NAV.to, COACH_NAV.label, COACH_NAV.icon)}
-                  {isCoach && navLink("/roster", "Roster", Users)}
+                  {showCoachNavigation && navLink("/roster", "Roster", Users)}
                   <ToolsDropdown />
                 </nav>
                 <div className="lg:hidden">
@@ -64,7 +64,7 @@ export default function AppLayout() {
               </div>
               <div className="flex items-center gap-2 shrink-0">
                 <div className="sm:hidden">
-                  <NetworkStatusBadge />
+                  <NetworkStatusBadge compact />
                 </div>
             {!isPro && (
               <Button asChild variant="default" size="sm" title="Upgrade plan" className="hidden lg:inline-flex gap-1.5">
@@ -74,6 +74,7 @@ export default function AppLayout() {
             {isPro && (
               <PlanBadge plan={plan} className="hidden sm:inline-flex" />
             )}
+            <ThemeToggle />
             <AccountMenu onFeedback={() => setFeedbackOpen(true)} onLogout={logout} />
           </div>
         </div>

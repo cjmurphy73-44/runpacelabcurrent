@@ -16,7 +16,7 @@ import FeatureGate from "@/components/billing/FeatureGate";
 export default function CoachWorkspace() {
   const { user } = useAuth();
   const { toast } = useToast();
-  const { canUseCoachWorkspace, plan } = useCoachAccess();
+  const { canUseCoachWorkspace, plan, loading: accessLoading } = useCoachAccess();
   const [assignments, setAssignments] = useState([]);
   const [profiles, setProfiles] = useState({}); // athlete_profile_id -> AthleteProfile
   const [workouts, setWorkouts] = useState({}); // athlete_profile_id -> WorkoutSession[]
@@ -27,7 +27,7 @@ export default function CoachWorkspace() {
   const [compareIds, setCompareIds] = useState(new Set());
 
   const loadRoster = useCallback(async () => {
-    if (!user?.id) return;
+    if (!user?.id || accessLoading || !canUseCoachWorkspace) return;
     setLoading(true);
     try {
       const filter = user.role === "admin" ? { status: "active" } : { coach_user_id: user.id, status: "active" };
@@ -55,7 +55,7 @@ export default function CoachWorkspace() {
     } finally {
       setLoading(false);
     }
-  }, [user]);
+  }, [user, accessLoading, canUseCoachWorkspace]);
 
   useEffect(() => { loadRoster(); }, [loadRoster]);
 
@@ -115,6 +115,10 @@ export default function CoachWorkspace() {
     if (n.has(id)) n.delete(id); else n.add(id);
     return n;
   });
+
+  if (accessLoading) {
+    return <div role="status" className="py-8 text-muted-foreground">Checking coach access…</div>;
+  }
 
   if (!canUseCoachWorkspace) {
     return (

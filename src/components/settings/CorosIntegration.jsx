@@ -1,29 +1,24 @@
-import React, { useEffect, useState, useCallback } from "react";
+import React, { useState } from "react";
 import { base44 } from "@/api/base44Client";
+import { useAuth } from "@/lib/AuthContext";
+import { useProviderConnectionStatus } from "@/hooks/useProviderConnectionStatus";
+import { providerSyncFeedback } from "@/lib/providerSyncFeedback";
 import { Button } from "@/components/ui/button";
 import { Loader2, Link2, CheckCircle2, RefreshCw, Unlink } from "lucide-react";
 
-export default function CorosIntegration({ athleteId }) {
-  const [status, setStatus] = useState(null);
-  const [loading, setLoading] = useState(true);
+export default function CorosIntegration(props) {
+  const { user } = useAuth();
+  return <ConnectionCard key={`${user?.id}:${props.athleteId}`} {...props} />;
+}
+
+function ConnectionCard({ athleteId }) {
+  const { status, loading, statusError, loadStatus } = useProviderConnectionStatus("corosSync", athleteId);
   const [connecting, setConnecting] = useState(false);
   const [syncing, setSyncing] = useState(false);
   const [syncingRecovery, setSyncingRecovery] = useState(false);
   const [disconnecting, setDisconnecting] = useState(false);
   const [error, setError] = useState(null);
   const [info, setInfo] = useState(null);
-
-  const loadStatus = useCallback(async () => {
-    try {
-      const res = await base44.functions.invoke("corosSync", { action: "status" });
-      setStatus(res.data || res);
-    } catch (e) {
-      setError(e?.response?.data?.error || "Could not check COROS connection.");
-    }
-    setLoading(false);
-  }, []);
-
-  useEffect(() => { loadStatus(); }, [loadStatus]);
 
   const connect = async () => {
     if (!window.confirm("Before we open COROS: make sure you're already logged into coros.com in this browser and ready to approve quickly, COROS's authorization window is only about a minute. Continue?")) return;
@@ -60,13 +55,12 @@ export default function CorosIntegration({ athleteId }) {
     try {
       const res = await base44.functions.invoke("corosSync", { action: "sync_historical" });
       const data = res.data || res;
-      const parts = [`Imported ${data.imported ?? 0} of ${data.records_found ?? 0} found`];
-      if (data.duplicates) parts.push(`${data.duplicates} already up to date`);
-      if (data.errors) parts.push(`${data.errors} skipped`);
-      setInfo(parts.join(" · ") + ".");
-      loadStatus();
+      const feedback = providerSyncFeedback(data);
+      if (data.errors > 0 || data.toolErrors?.length) setError(feedback);
+      else setInfo(feedback);
+      await loadStatus();
     } catch (e) {
-      setError(e?.response?.data?.error || "Historical sync failed.");
+      setError(e?.response?.data?.error || e?.message || "Historical sync could not be confirmed. Check status before retrying.");
     }
     setSyncing(false);
   };
@@ -76,14 +70,12 @@ export default function CorosIntegration({ athleteId }) {
     try {
       const res = await base44.functions.invoke("corosSync", { action: "sync_recovery" });
       const data = res.data || res;
-      if (data.success) {
-        setInfo(`Ingested ${data.imported ?? 0} recovery day(s) from COROS${data.errors ? `, ${data.errors} skipped` : ""}.`);
-      } else {
-        setError(data.error || "Could not pull recovery data from COROS.");
-      }
-      loadStatus();
+      const feedback = providerSyncFeedback(data, { recoveryOnly: true });
+      if (data.errors > 0 || data.toolErrors?.length) setError(feedback);
+      else setInfo(feedback);
+      await loadStatus();
     } catch (e) {
-      setError(e?.response?.data?.error || "Recovery sync failed.");
+      setError(e?.response?.data?.error || e?.message || "Recovery sync could not be confirmed.");
     }
     setSyncingRecovery(false);
   };
@@ -92,16 +84,20 @@ export default function CorosIntegration({ athleteId }) {
     if (!window.confirm("Disconnect your COROS account? Auto-sync from COROS will stop until you reconnect.")) return;
     setDisconnecting(true); setError(null);
     try {
-      await base44.functions.invoke("corosSync", { action: "disconnect" });
-      setStatus(null);
+      const { data } = await base44.functions.invoke("corosSync", { action: "disconnect" });
+      if (data?.success !== true || data.error) throw new Error(data?.error || "Disconnect could not be confirmed. Retry the status check.");
+      await loadStatus();
     } catch (e) {
-      setError(e?.response?.data?.error || "Could not disconnect.");
+      setError(e?.response?.data?.error || e?.message || "Could not disconnect.");
     }
     setDisconnecting(false);
   };
 
-  const connected = status?.connected;
-  const needsReconnect = status?.needs_reconnect;
+  const needsReconnect = Boolean(status?.needs_reconnect);
+  const unknown = Boolean(status?.unknown);
+  const connected = Boolean(status?.connected) && !needsReconnect && !unknown;
+  const lastSync = status?.last_sync_at && !Number.isNaN(new Date(status.last_sync_at).getTime()) ? new Date(status.last_sync_at).toLocaleString() : null;
+  const busy = loading || connecting || syncing || syncingRecovery || disconnecting;
 
   return (
     <div className="space-y-2">
@@ -113,7 +109,7 @@ export default function CorosIntegration({ athleteId }) {
           <div>
             <p className="text-sm font-medium flex items-center gap-2">
               COROS
-              {connected && (
+              {connected && !loading && (
                 <span className="inline-flex items-center gap-1 text-xs font-medium text-primary">
                   <CheckCircle2 className="w-3.5 h-3.5" /> Connected
                 </span>
@@ -122,13 +118,11 @@ export default function CorosIntegration({ athleteId }) {
             <p className="text-xs text-muted-foreground">
               {loading
                 ? "Checking…"
-                : connected
-                  ? status?.last_sync_at
-                    ? `Last sync ${new Date(status.last_sync_at).toLocaleString()}`
-                    : "Connected, use Sync historical to pull activities"
-                  : needsReconnect
-                    ? "Authorization expired, reconnect to resume syncing"
-                    : "Not connected"}
+                : unknown ? "Connection status unavailable" : needsReconnect ? "Authorization expired, reconnect to resume syncing" : connected
+                  ? lastSync
+                    ? `Last sync ${lastSync}`
+                    : "Connected, use Sync workouts to pull activities"
+                  : "Not connected"}
             </p>
             {needsReconnect && (
               <p className="text-xs text-destructive mt-0.5">Your COROS login expired. Your imported workouts are safe.</p>
@@ -141,39 +135,39 @@ export default function CorosIntegration({ athleteId }) {
           </div>
         </div>
         <div className="flex flex-col gap-2 w-full sm:w-auto sm:items-end">
-          {connected ? (
+          {unknown ? <Button variant="outline" size="sm" onClick={() => loadStatus()} disabled={loading}>Retry COROS status</Button> : connected ? (
             <>
               <div className="flex flex-col gap-2 w-full">
-                <Button variant="outline" size="sm" onClick={syncHistorical} disabled={syncing} className="w-full justify-center min-h-[44px]">
+                <Button variant="outline" size="sm" onClick={syncHistorical} disabled={busy} className="w-full justify-center min-h-[44px]">
                   {syncing ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <RefreshCw className="w-4 h-4 mr-2" />}
-                  Sync workouts
+                  {syncing ? "Syncing workouts..." : "Sync workouts"}
                 </Button>
-                <Button variant="outline" size="sm" onClick={syncRecovery} disabled={syncingRecovery} className="w-full justify-center min-h-[44px]">
+                <Button variant="outline" size="sm" onClick={syncRecovery} disabled={busy} className="w-full justify-center min-h-[44px]">
                   {syncingRecovery ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <RefreshCw className="w-4 h-4 mr-2" />}
-                  Sync recovery
+                  {syncingRecovery ? "Syncing recovery..." : "Sync recovery"}
                 </Button>
               </div>
-              <Button variant="ghost" size="sm" onClick={disconnect} disabled={disconnecting} className="w-full sm:w-auto justify-center min-h-[44px]">
+              <Button variant="ghost" size="sm" onClick={disconnect} disabled={busy} className="w-full sm:w-auto justify-center min-h-[44px]">
                 {disconnecting ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Unlink className="w-4 h-4 mr-2" />}
                 Disconnect
               </Button>
             </>
           ) : (
-            <Button size="sm" onClick={connect} disabled={connecting} className="w-full sm:w-auto justify-center min-h-[44px]">
+            <Button size="sm" onClick={connect} disabled={busy} className="w-full sm:w-auto justify-center min-h-[44px]">
               {connecting ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Link2 className="w-4 h-4 mr-2" />}
               {needsReconnect ? "Reconnect COROS" : "Connect COROS Account"}
             </Button>
           )}
         </div>
       </div>
-      {error && <p className="text-sm text-destructive">{error}</p>}
-      {info && <p className="text-sm text-primary">{info}</p>}
+      {statusError && <p role="alert" className="text-sm text-destructive">{statusError}</p>}
+      {error && <p role="alert" className="text-sm text-destructive">{error}</p>}
+      {info && <p role="status" className="text-sm text-primary">{info}</p>}
       <div className="space-y-1">
         <p className="text-xs text-muted-foreground">
           <span className="font-medium text-foreground">Heads up:</span> COROS's authorization window is short
           (about a minute). For a reliable connection, <span className="font-medium">log into coros.com in this
-          browser first</span>, then click Connect and approve quickly. If it still fails, the manual export
-          below always works.
+          browser first</span>, then click Connect and approve quickly. If it still fails, you can try a manual file upload below. Availability depends on the recording.
         </p>
         <p className="text-xs text-muted-foreground">
           Prefer a manual export? Drag exported <span className="font-medium">.fit</span> files from the COROS app

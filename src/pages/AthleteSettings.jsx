@@ -20,6 +20,7 @@ import GarminIntegration from "@/components/settings/GarminIntegration";
 import StravaIntegration from "@/components/settings/StravaIntegration";
 import WearableIntegrations from "@/components/settings/WearableIntegrations";
 import PrivacySecurityDashboard from "@/components/settings/PrivacySecurityDashboard";
+import CoachSignalNotice from "@/components/dashboard/CoachSignalNotice";
 
 // TIER_CONSTANTS mirrors updateAthleteProfile so editing the tier in Settings keeps the
 // CTL/ATL time constants consistent with the chosen philosophy.
@@ -200,6 +201,10 @@ export default function AthleteSettings() {
         <h1 className="text-2xl font-heading font-bold">Athlete Settings</h1>
         <p className="text-sm text-muted-foreground">Manage your profile, physiology, and training philosophy.</p>
       </div>
+
+      <section id="coach-guidance" aria-label="Manage coach guidance">
+        <CoachSignalNotice athleteId={athlete.id} showEmpty />
+      </section>
 
       {message && (
         <p className={`text-sm ${message.type === "error" ? "text-destructive" : "text-primary"}`}>{message.text}</p>

@@ -115,7 +115,7 @@ export default function FirstDataPanel({ athlete, onAddManual, onRefresh }) {
                 <Watch className="w-5 h-5 text-primary" />
                 <p className="mt-2 text-sm font-medium">Connect a device</p>
                 <p className="text-xs text-muted-foreground mt-1">
-                  COROS, Garmin or Strava, workouts and recovery sync by themselves.
+                  Check connection availability and sync status, or import a supported file from your device.
                 </p>
               </Link>
               <Link

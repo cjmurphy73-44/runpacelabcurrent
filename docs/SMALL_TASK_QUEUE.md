@@ -9,8 +9,10 @@ seven pipeline work packages.
 | --- | --- | --- |
 | UX-001: conversation review | No inferred running lock; owner can acknowledge displayed sources; all views refresh; failed save is honest. | Implemented in GitHub #7; local/CI evidence recorded, staging still required. |
 | UX-002: plan error recovery | Actual session renders, failed loads are not rest days, retries work, AI failure releases busy state, both views refresh. | Implemented in #7; eight regression cases, staging still required. |
-| UX-003: export recovery and format honesty | Calendar/Activity Detail share pending/error/retry behavior, overlapping exports during preparation are guarded, JSON is labelled honestly, browser resources are released. | Implemented locally; 209 tests/32 files and required checks pass. PR/staging review required before main. |
-| UX-004: connection outcomes | Distinguish connected, expired, syncing, retryable failure and no provider data with one primary action. | Queued; inspect current UI first. Backend/provider changes remain behind pipeline gates. |
+| UX-003: export recovery and format honesty | Calendar/Activity Detail share pending/error/retry behavior, overlapping exports during preparation are guarded, JSON is labelled honestly, browser resources are released. | Implemented in GitHub #8; 209 tests/32 files and required checks pass. Staging review required before main. |
+| UX-004: connection outcomes | Distinguish connected, expired, syncing, retryable failure and no provider data with one primary action. | Implemented in isolated connection-feedback branch; status retry, expired authorization, operation locking, partial outcomes and account/athlete cache separation covered by regression tests. Live provider verification remains required. |
+| UX-007: offline queue integrity | In-flight saves preserve concurrent queued work and persistence; unknown handlers stay pending; clear does not restore cancelled work; pending status is honest. | Implemented on the existing PR #9 branch; six regressions and local Chromium pass. Hosted athlete writes remain unverified. |
+| UX-007 recovery follow-up: exhausted saves | Six failed attempts retain the unsaved payload, reconnect does not replay exhausted work, and an explicit retry can complete it. | Implemented on existing PR #9; three additional regressions include the actual status/retry components. Local fixtures only; hosted acceptance remains pending. |
 | UX-005: upload outcome clarity | Show processing/pending, complete stream, confirmed summary-only and failed parse separately; preserve file context on retry. | Queued behind staging and ingestion gates; no new parser/telemetry work yet. |
 | UX-006: provenance and freshness | Existing verified metrics explain source/time/completeness without new scores or fabricated measurements. | Queued; consumes approved science output. No formula changes before science gate. |
 
@@ -27,3 +29,7 @@ The local coding schedule is not activated merely by recording these tasks.
 UX-003 limitation: the browser download API does not confirm that a file was saved.
 The lock prevents overlapping preparation; it is not a physical double-tap debounce.
 No direct watch-import compatibility or browser-runtime verification is claimed.
+
+UX-004 limitation: mocked connection tests verify UI response handling, not live OAuth,
+provider completeness or full telemetry ingest. An empty sync is not evidence that
+history is complete. Failed provider requests remain visible even alongside imports.

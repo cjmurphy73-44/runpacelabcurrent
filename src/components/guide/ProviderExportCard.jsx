@@ -6,7 +6,7 @@ import { CheckCircle2, Clock, FileText, Settings2 } from "lucide-react";
 
 // Renders one connectable provider from guideContent data.
 export default function ProviderExportCard({ provider }) {
-  const meta = STATUS_META[provider.status] || STATUS_META.soon;
+  const meta = STATUS_META[provider.status] || STATUS_META.default;
   const isLive = provider.status === "live";
   return (
     <Card id={`provider-${provider.id}`} className="scroll-mt-24">
@@ -18,7 +18,7 @@ export default function ProviderExportCard({ provider }) {
           </div>
           <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
             {isLive ? <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" /> : <Clock className="w-3.5 h-3.5" />}
-            <span>{isLive ? "Automatic sync" : provider.type === "bridge" ? "On-device bridge" : provider.type === "manual" ? "Manual upload" : "OAuth sync"}</span>
+            <span>{provider.type === "manual" ? "File upload" : "Check connection availability"}</span>
           </div>
         </div>
         <p className="text-sm text-muted-foreground">{provider.blurb}</p>
@@ -26,7 +26,7 @@ export default function ProviderExportCard({ provider }) {
           <FileText className="w-3.5 h-3.5" /> Provides: <span className="text-foreground font-medium">{provider.formats}</span>
         </div>
         <ol className="space-y-2">
-          {provider.steps.map((s, i) => (
+          {(provider.steps || []).map((s, i) => (
             <li key={i} className="flex gap-2.5 text-sm">
               <span className="shrink-0 w-5 h-5 rounded-full bg-primary/10 text-primary text-xs font-semibold flex items-center justify-center mt-0.5">{i + 1}</span>
               <span>{s}</span>

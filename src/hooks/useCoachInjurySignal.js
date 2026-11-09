@@ -29,11 +29,16 @@ export function useCoachInjurySignal(athleteId) {
     staleTime: 0, refetchOnWindowFocus: true, refetchInterval: 60000, retry: 1,
   });
   const mutation = useMutation({
-    mutationFn: async () => {
+    mutationFn: async (sourceKeys) => {
       if (!query.data?.revision) throw new Error('Refresh the conversation before reviewing');
+      const displayedKeys = computeInjurySignal(query.data.messages).evidence.map(entry => entry.review_key);
+      const selectedKeys = sourceKeys ?? displayedKeys;
+      if (!Array.isArray(selectedKeys) || !selectedKeys.length || selectedKeys.some(key => typeof key !== 'string' || !displayedKeys.includes(key))) {
+        throw new Error('Select the displayed guidance to clear');
+      }
       const { data } = await base44.functions.invoke('reviewCoachSignal', {
         action: 'resolve', athlete_id: athleteId, revision: query.data.revision,
-        source_keys: computeInjurySignal(query.data.messages).evidence.map(e => e.review_key),
+        source_keys: [...new Set(selectedKeys)],
       });
       if (data?.success !== true) throw new Error('Review was not saved');
     },
@@ -44,6 +49,11 @@ export function useCoachInjurySignal(athleteId) {
     ...computeInjurySignal(query.data?.messages || []),
     loading: query.isLoading, error: query.error,
     saving: mutation.isPending, saveError: mutation.error,
-    resolve: mutation.mutateAsync, refresh: query.refetch,
+    resolve: mutation.mutateAsync,
+    refresh: async () => {
+      const result = await query.refetch();
+      if (!result.error) mutation.reset();
+      return result;
+    },
   };
 }

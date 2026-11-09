@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen, fireEvent, waitFor, cleanup } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor, cleanup, act } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 const { invoke } = vi.hoisted(() => ({ invoke: vi.fn() }));
@@ -20,12 +20,13 @@ it('keeps the saved workout visible and updates two consumers after a persisted 
     return { data: { revision: 'revision', messages: resolved ? [] : [message] } };
   });
   render(wrap(<><p>Running, 25 min</p><CoachSignalNotice athleteId="a" /><CoachSignalNotice athleteId="a" /></>));
-  await screen.findAllByText('Review recovery guidance');
+  await screen.findAllByText('Coach guidance');
   expect(screen.getByText('Running, 25 min')).toBeTruthy();
-  fireEvent.click(screen.getAllByRole('button', { name: 'Review guidance' })[0]);
-  fireEvent.click(screen.getByRole('button', { name: 'Mark no longer relevant' }));
-  await waitFor(() => expect(screen.queryAllByText('Review recovery guidance')).toHaveLength(0));
-  expect(screen.getByRole('status').textContent).toContain('Review saved');
+  fireEvent.click(screen.getAllByRole('button', { name: 'Manage guidance' })[0]);
+  fireEvent.click(screen.getByRole('checkbox', { name: /No running this week/ }));
+  fireEvent.click(screen.getByRole('button', { name: 'Clear selected guidance (1)' }));
+  await waitFor(() => expect(screen.queryAllByText('Coach guidance')).toHaveLength(0));
+  expect(screen.getByRole('status').textContent).toContain('Guidance cleared');
   expect(screen.getByText('Running, 25 min')).toBeTruthy();
 });
 
@@ -35,19 +36,157 @@ it('shows failed save honestly and does not clear guidance', async () => {
     return { data: { revision: 'revision', messages: [message] } };
   });
   render(wrap(<CoachSignalNotice athleteId="a" />));
-  fireEvent.click(await screen.findByRole('button', { name: 'Review guidance' }));
-  fireEvent.click(screen.getByRole('button', { name: 'Mark no longer relevant' }));
-  await screen.findByText(/Review could not be saved/);
-  expect(screen.queryByText(/Review saved/)).toBeNull();
-  expect(screen.getByText('Review recovery guidance')).toBeTruthy();
+  fireEvent.click(await screen.findByRole('button', { name: 'Manage guidance' }));
+  fireEvent.click(screen.getByRole('checkbox', { name: /No running this week/ }));
+  fireEvent.click(screen.getByRole('button', { name: 'Clear selected guidance (1)' }));
+  await screen.findByText(/Guidance could not be cleared/);
+  expect(screen.queryByText(/Guidance cleared/)).toBeNull();
+  expect(screen.getByText('Coach guidance')).toBeTruthy();
 });
 
 it('does not carry expanded review state to a different athlete', async () => {
   invoke.mockResolvedValue({ data: { revision: 'revision', messages: [message] } });
   const view = render(wrap(<CoachSignalNotice athleteId="a" />));
-  fireEvent.click(await screen.findByRole('button', { name: 'Review guidance' }));
-  expect(screen.getByRole('button', { name: 'Mark no longer relevant' })).toBeTruthy();
+  fireEvent.click(await screen.findByRole('button', { name: 'Manage guidance' }));
+  expect(screen.getByRole('button', { name: 'Clear selected guidance (0)' }).disabled).toBe(true);
   view.rerender(wrap(<CoachSignalNotice athleteId="b" />));
-  await screen.findByRole('button', { name: 'Review guidance' });
-  expect(screen.queryByRole('button', { name: 'Mark no longer relevant' })).toBeNull();
+  await screen.findByRole('button', { name: 'Manage guidance' });
+  expect(screen.queryByRole('button', { name: /Clear selected guidance/ })).toBeNull();
+});
+
+it('clears only checked notices and keeps unselected guidance available', async () => {
+  const other = { ...message, id: 'other', content_text: 'My calf is sore and I should avoid running.', review_key: 'other-source' };
+  const reviewed = new Set();
+  invoke.mockImplementation(async (_name, body) => {
+    if (body.action === 'resolve') {
+      expect(body.source_keys).toEqual(['source']);
+      body.source_keys.forEach(key => reviewed.add(key));
+      return { data: { success: true } };
+    }
+    return { data: { revision: 'revision', messages: [message, other].filter(entry => !reviewed.has(entry.review_key)) } };
+  });
+  render(wrap(<CoachSignalNotice athleteId="a" />));
+  fireEvent.click(await screen.findByRole('button', { name: 'Manage guidance' }));
+  expect(screen.getByRole('button', { name: 'Clear selected guidance (0)' }).disabled).toBe(true);
+  fireEvent.click(screen.getByRole('checkbox', { name: /No running this week/ }));
+  fireEvent.click(screen.getByRole('button', { name: 'Clear selected guidance (1)' }));
+  await screen.findByText('1 note cleared. Remaining guidance is shown below.');
+  fireEvent.click(screen.getByRole('button', { name: 'Manage guidance' }));
+  expect(screen.queryByRole('checkbox', { name: /No running this week/ })).toBeNull();
+  expect(screen.getByRole('checkbox', { name: /calf is sore/ }).checked).toBe(false);
+});
+
+it('selects/deselects the displayed notes and keeps guidance without writing', async () => {
+  const other = { ...message, id: 'other', content_text: 'My calf is sore.', review_key: 'other-source' };
+  invoke.mockResolvedValue({ data: { revision: 'revision', messages: [message, other] } });
+  render(wrap(<CoachSignalNotice athleteId="a" />));
+  fireEvent.click(await screen.findByRole('button', { name: 'Manage guidance' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Select all shown' }));
+  expect(screen.getByRole('button', { name: 'Clear selected guidance (2)' }).disabled).toBe(false);
+  fireEvent.click(screen.getByRole('button', { name: 'Deselect all shown' }));
+  expect(screen.getByRole('button', { name: 'Clear selected guidance (0)' }).disabled).toBe(true);
+  fireEvent.click(screen.getByRole('button', { name: 'Keep guidance' }));
+  expect(screen.queryByRole('checkbox')).toBeNull();
+  expect(invoke.mock.calls.every(([, body]) => body.action === 'read')).toBe(true);
+});
+
+it('does not clear a new source using the selection of an edited message', async () => {
+  let current = message;
+  invoke.mockImplementation(async () => ({ data: { revision: current.review_key, messages: [current] } }));
+  render(wrap(<CoachSignalNotice athleteId="a" />));
+  fireEvent.click(await screen.findByRole('button', { name: 'Manage guidance' }));
+  fireEvent.click(screen.getByRole('checkbox', { name: /No running this week/ }));
+  current = { ...message, content_text: 'My calf is sore.', review_key: 'new-source' };
+  await act(async () => { await client.invalidateQueries({ queryKey: ['coach-signal'] }); });
+  expect((await screen.findByRole('checkbox', { name: /calf is sore/ })).checked).toBe(false);
+  expect(screen.getByRole('button', { name: 'Clear selected guidance (0)' }).disabled).toBe(true);
+  expect(invoke.mock.calls.every(([, body]) => body.action === 'read')).toBe(true);
+});
+
+it('requires a confirmed save response before clearing any notice', async () => {
+  invoke.mockImplementation(async (_name, body) => body.action === 'resolve'
+    ? { data: { success: false } }
+    : { data: { revision: 'revision', messages: [message] } });
+  render(wrap(<CoachSignalNotice athleteId="a" />));
+  fireEvent.click(await screen.findByRole('button', { name: 'Manage guidance' }));
+  fireEvent.click(screen.getByRole('checkbox', { name: /No running this week/ }));
+  fireEvent.click(screen.getByRole('button', { name: 'Clear selected guidance (1)' }));
+  await screen.findByRole('alert');
+  expect(screen.getByRole('checkbox', { name: /No running this week/ }).checked).toBe(true);
+  expect(screen.queryByText('Guidance cleared')).toBeNull();
+});
+
+
+it('offers a stable Settings entry even when no guidance is active', async () => {
+  invoke.mockResolvedValue({ data: { revision: 'revision', messages: [] } });
+  render(wrap(<CoachSignalNotice athleteId="a" showEmpty />));
+  await screen.findByText('No active conversation notices. Your workouts remain available.');
+  expect(screen.getByRole('link', { name: 'Open coach conversation' }).getAttribute('href')).toBe('/coach');
+  expect(screen.queryByRole('button', { name: /Clear selected/ })).toBeNull();
+  expect(invoke.mock.calls.every(([, body]) => body.action === 'read')).toBe(true);
+});
+
+
+it('closes review with Escape or Keep, restores focus and never writes', async () => {
+  invoke.mockResolvedValue({ data: { revision: 'revision', messages: [message] } });
+  render(wrap(<CoachSignalNotice athleteId="a" />));
+  const manage = await screen.findByRole('button', { name: 'Manage guidance' });
+  fireEvent.click(manage);
+  const checkbox = screen.getByRole('checkbox');
+  fireEvent.click(checkbox);
+  checkbox.focus();
+  fireEvent.keyDown(checkbox, { key: 'Escape' });
+  expect(document.activeElement).toBe(manage);
+  expect(manage.getAttribute('aria-expanded')).toBe('false');
+  fireEvent.click(manage);
+  expect(screen.getByRole('checkbox').checked).toBe(false);
+  fireEvent.click(screen.getByRole('button', { name: 'Keep guidance' }));
+  expect(document.activeElement).toBe(manage);
+  expect(invoke.mock.calls.every(([, body]) => body.action === 'read')).toBe(true);
+});
+
+it('recovers from stale review by refreshing, requiring reselection before retry', async () => {
+  let revision = 'old';
+  invoke.mockImplementation(async (_name, body) => {
+    if (body.action === 'resolve') {
+      if (body.revision === 'old') { revision = 'new'; throw new Error('stale'); }
+      expect(body.revision).toBe('new');
+      expect(body.source_keys).toEqual(['source']);
+      return { data: { success: true } };
+    }
+    return { data: { revision, messages: [message] } };
+  });
+  render(wrap(<CoachSignalNotice athleteId="a" />));
+  fireEvent.click(await screen.findByRole('button', { name: 'Manage guidance' }));
+  fireEvent.click(screen.getByRole('checkbox'));
+  fireEvent.click(screen.getByRole('button', { name: 'Clear selected guidance (1)' }));
+  await screen.findByText(/Guidance could not be cleared/);
+  fireEvent.click(screen.getByRole('button', { name: 'Refresh guidance' }));
+  await waitFor(() => expect(screen.queryByText(/Guidance could not be cleared/)).toBeNull());
+  expect(screen.getByRole('checkbox').checked).toBe(false);
+  expect(screen.getByRole('button', { name: 'Clear selected guidance (0)' }).disabled).toBe(true);
+  fireEvent.click(screen.getByRole('checkbox'));
+  fireEvent.click(screen.getByRole('button', { name: 'Clear selected guidance (1)' }));
+  await screen.findByText('1 note cleared. Remaining guidance is shown below.');
+});
+
+it('keeps selection on refresh failure and disables clearing stale guidance', async () => {
+  let offline = false;
+  invoke.mockImplementation(async () => {
+    if (offline) throw new Error('offline');
+    return { data: { revision: 'revision', messages: [message] } };
+  });
+  render(wrap(<CoachSignalNotice athleteId="a" />));
+  fireEvent.click(await screen.findByRole('button', { name: 'Manage guidance' }));
+  fireEvent.click(screen.getByRole('checkbox'));
+  offline = true;
+  fireEvent.click(screen.getByRole('button', { name: 'Refresh guidance' }));
+  await screen.findByText(/Guidance could not be refreshed/, {}, { timeout: 3000 });
+  expect(screen.getByRole('checkbox').checked).toBe(true);
+  expect(screen.getByRole('button', { name: 'Clear selected guidance (1)' }).disabled).toBe(true);
+  offline = false;
+  fireEvent.click(screen.getByRole('button', { name: 'Refresh guidance' }));
+  await waitFor(() => expect(screen.queryByText(/Guidance could not be refreshed/)).toBeNull());
+  expect(screen.getByRole('checkbox').checked).toBe(false);
+  expect(invoke.mock.calls.every(([, body]) => body.action === 'read')).toBe(true);
 });
