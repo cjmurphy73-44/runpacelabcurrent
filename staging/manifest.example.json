@@ -1,0 +1,9 @@
+{
+  "environment": "staging",
+  "productionAppId": "REPLACE_WITH_VERIFIED_PRODUCTION_APP_ID",
+  "stagingAppId": "REPLACE_WITH_DISTINCT_STAGING_APP_ID",
+  "productionOrigins": ["https://trainpacelab.com", "https://trainpacelab.base44.app"],
+  "stagingOrigin": "https://REPLACE_WITH_STAGING_HOST.base44.app",
+  "syntheticDataOnly": true,
+  "externalSyncDisabled": true
+}
