@@ -45,7 +45,22 @@ describe('dashboard load forecast characterization', () => {
     }
   });
 
-  it('reports absent TSB data without claiming recovery', () => {
-    expect(getTsbZoneInfo(null).advice).toBe('Not enough data yet.');
+  it('reports absent or non-finite TSB without claiming recovery', () => {
+    for (const value of [null, undefined, Number.NaN, Infinity, -Infinity]) {
+      const zone = getTsbZoneInfo(value);
+      expect(zone.label).toBe('Unavailable');
+      expect(zone.advice).toMatch(/Not enough reliable load data/);
+    }
+  });
+
+  it('describes TSB bands without diagnosing injury or prescribing sessions', () => {
+    expect(getTsbZoneInfo(16).label).toBe('Positive balance');
+    expect(getTsbZoneInfo(-10).label).toBe('Near balance');
+    expect(getTsbZoneInfo(-25).label).toBe('Negative balance');
+    expect(getTsbZoneInfo(-26).label).toBe('Strongly negative balance');
+    for (const value of [16, 0, -15, -30]) {
+      const zone = getTsbZoneInfo(value);
+      expect(zone.advice).not.toMatch(/high injury\/illness risk|good window for a hard effort|productive fatigue/i);
+    }
   });
 });
