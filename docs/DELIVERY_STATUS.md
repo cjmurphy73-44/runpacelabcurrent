@@ -180,3 +180,29 @@ G0 still needs an app-wide isolation attestation accounting for owner-scoped RLS
 and confirmation that the existing webhook secret is dedicated to staging;
 the user was asked for provenance only, never its value. No new credentials or
 admin-bypass capability are inferred from the previous caller-visible zeros.
+
+## 9 November: executable COROS recording-fidelity cases
+
+TPL-INT-006-COR-001 adds actual historical-sync/MCP/FIT-to-serialized-SDK tests
+on existing PR #9. Detailed samples, native units/timestamps, gaps, sensor
+absence/zeros, laps, a two-hour recording, no-file/download/parse failures and
+sequential/same-response duplicates are covered without provider contact.
+Four COROS defects are explicitly reproduced: 3600-sample prefix truncation,
+per-sample power loss, 200-lap truncation and error-free summary downgrade after
+FIT retrieval failure. Missing physiological channels do not produce fabricated
+zones, but the current fallback also loses other native file channels.
+
+The targeted suite has 14 passed and four expected failures. The full suite has
+277 passed and five expected failures across 44 files, including the prior Garmin
+failure. Every new desired assertion also fails when run without its expected-
+failure marker. Typecheck, lint, build, backend validation and syntax checks pass;
+existing RLS/bundle/npm warnings remain. These are fixture/code-level outcomes,
+not hosted storage-size, provider health, authorization or concurrent dedup proof.
+
+Next implementation is TPL-INT-006-GAR-002: fix the known Garmin retention defect
+with complete supported recording storage, explicit limits/provenance and no
+silent successful omission. COROS retention/power/lap/error-recovery fixes are
+queued afterward in the existing backlog. Do not substitute another research-only
+task or let unchanged staging access block safe code work. No runtime/deployment,
+production data, credentials, workflows or Odysseus tracking changed in this run.
+See .codex/reports/TPL-INT-006-COR-001.md for scenario results and delivery limits.
