@@ -10,6 +10,7 @@ import { constantTimeEqual } from '../../shared/crypto.ts';
 import { getSyncLookbackDays } from '../../shared/syncLookback.ts';
 import { parseFitWithLaps, summarizeStream } from '../../shared/workoutParsers.ts';
 import { isUsableTelemetry, storageStream, MAX_STREAM_SAMPLES } from '../../shared/streamValidity.ts';
+import { assertInlineWorkoutFits, MAX_INLINE_WORKOUT_BYTES, RecordingStorageError } from '../../shared/recordingStorage.ts';
 import {
   corosAccessToken, fetchWithTimeout, mcpPost, mcpToolCall,
   downloadCorosFit, queryCorosRecords,
@@ -432,8 +433,9 @@ function applyFitTelemetry(payload: any, fit: any, athlete: any): boolean {
   payload.zone_seconds = zoneResult.zone_seconds;
   payload.zone_method = zoneResult.zone_method;
   payload.zone_bounds_bpm = zoneResult.zone_bounds_bpm;
-  payload.streams = storageStream(fit.stream.slice(0, MAX_STREAM_SAMPLES));
-  if (fit.laps?.length) payload.laps = fit.laps.slice(0, 200);
+  payload.streams = fit.stream;
+  if (fit.laps?.length) payload.laps = fit.laps;
+  payload.recording_provenance = fit.provenance;
   return true;
 }
 
@@ -499,7 +501,7 @@ function mapRecord(a: any, athlete: any) {
 
 // Service-role core: pulls 90 days of sport records for one athlete. Shared by the
 // user-scoped on-demand sync and the scheduled sync_all loop.
-async function syncHistoricalFor(athlete: any, accessToken: string, base44, lookbackDays = 90): Promise<{ imported: number; errors: number; records_found: number; duplicates: number }> {
+async function syncHistoricalFor(athlete: any, accessToken: string, base44, lookbackDays = 90) {
   // End date is bumped +1 day so today's workout is always inside the window
   // regardless of the athlete's timezone — the server runs in UTC, and a morning
   // session in UTC+10 would otherwise fall on "yesterday" and be skipped.
@@ -553,23 +555,42 @@ async function syncHistoricalFor(athlete: any, accessToken: string, base44, look
   // that carries second-by-second telemetry, so it is fetched for every new session. When
   // no file exists the session is still created, summary-only, and stays out of zone
   // analytics because it has no stream.
+  const accepted = [];
+  const recordingErrors = [];
   if (toCreate.length) {
     for (const payload of toCreate) {
       const key = fileKeys.get(payload);
-      if (!key) continue;
       try {
-        applyFitTelemetry(payload, await downloadCorosFit(accessToken, key.labelId, key.sportType), athlete);
-      } catch (e) { console.warn('COROS FIT ingest failed:', (e as Error).message); }
+        if (key) applyFitTelemetry(payload, await downloadCorosFit(accessToken, key.labelId, key.sportType), athlete);
+        // Include bulk-array framing in the application budget, before any writes.
+        assertInlineWorkoutFits([payload]);
+      } catch (e) {
+        if (e instanceof RecordingStorageError) {
+          errors++;
+          recordingErrors.push({ code: e.code, retryable: e.retryable });
+          continue; // No partial recording or success-shaped summary replacement.
+        }
+        console.warn('COROS FIT ingest failed');
+      }
+      accepted.push(payload);
     }
-    for (let i = 0; i < toCreate.length; i += 500) {
-      await base44.asServiceRole.entities.WorkoutSession.bulkCreate(toCreate.slice(i, i + 500));
+    let batch = [], batchBytes = 2;
+    for (const payload of accepted) {
+      const bytes = assertInlineWorkoutFits(payload);
+      if (batch.length && (batchBytes + 1 + bytes > MAX_INLINE_WORKOUT_BYTES || batch.length === 500)) {
+        await base44.asServiceRole.entities.WorkoutSession.bulkCreate(batch);
+        batch = []; batchBytes = 2;
+      }
+      batchBytes += bytes + (batch.length ? 1 : 0);
+      batch.push(payload);
     }
+    if (batch.length) await base44.asServiceRole.entities.WorkoutSession.bulkCreate(batch);
   }
-  const dates = [...new Set(toCreate.map((s) => s.date))];
+  const dates = [...new Set(accepted.map((s) => s.date))];
   for (const d of dates) {
     try { await base44.asServiceRole.functions.invoke('calculateDailyTRIMP', { athlete_id: athlete.id, date: d }); } catch { /* keep going */ }
   }
-  return { imported: toCreate.length, errors, records_found: records.length, duplicates };
+  return { imported: accepted.length, errors, records_found: records.length, duplicates, recording_errors: recordingErrors };
 }
 
 async function handleSyncHistorical(base44) {
@@ -591,7 +612,10 @@ async function handleSyncHistorical(base44) {
   try {
     const lookbackDays = await getSyncLookbackDays(base44, user.id);
     const out = await syncHistoricalFor(athlete, accessToken, base44, lookbackDays);
-    await base44.asServiceRole.entities.CorosConnection.update(conn.id, { last_sync_at: new Date().toISOString(), last_error: '' });
+    await base44.asServiceRole.entities.CorosConnection.update(conn.id, {
+      last_sync_at: new Date().toISOString(),
+      last_error: out.errors ? `${out.errors} activities could not be imported. Review recording limits before retrying.` : '',
+    });
     return Response.json({ success: true, ...out });
   } catch (e) {
     await base44.asServiceRole.entities.CorosConnection.update(conn.id, { last_error: e.message });
@@ -797,7 +821,8 @@ async function handleSyncAll(base44) {
     }
     try { r.historical = await syncHistoricalFor(athlete, accessToken, base44); } catch (e) { r.historical_error = e.message; }
     try { r.recovery = await syncRecoveryFor(athlete, accessToken, base44); } catch (e) { r.recovery_error = e.message; }
-    const errMsg = [r.historical_error, r.recovery_error].filter(Boolean).join('; ');
+    const partialImportError = r.historical?.errors ? `${r.historical.errors} activities could not be imported. Review recording limits before retrying.` : '';
+    const errMsg = [r.historical_error, r.recovery_error, partialImportError].filter(Boolean).join('; ');
     await base44.asServiceRole.entities.CorosConnection.update(conn.id, {
       last_sync_at: new Date().toISOString(),
       last_error: errMsg || '',

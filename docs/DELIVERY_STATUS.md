@@ -301,3 +301,16 @@ failures, plus typecheck/lint/build/backend validation. Screenshots under
 `docs/evidence/coach-chat`; task `.codex/reports/TPL-UX-COACH-CHAT-RECOVERY.md`.
 No hosted publication: staging Google callback domain error remains unverified
 and parked per owner. Production and existing backend unchanged.
+
+## TPL-INT-006-COR-002: historical COROS recording retention
+
+Historical MCP sync now preserves complete supported decoded streams, native
+power and laps within the shared explicit byte budgets; no 3,600-sample prefix
+or 200-lap truncation in this path. Provenance states counts/hash/source and no
+original archival. Oversize is reported/skipped with no partial workout; valid
+siblings import and bulk writes split by bytes. COR-003/004 historical power/lap
+assertions now pass normally; other entry/processor mappings remain unverified.
+Full local suite: 312 passed/one known COR-005 expected failure, 46 files;
+typecheck/lint/build/backend validation pass. No deployment. See task report
+`.codex/reports/TPL-INT-006-COR-002.md`; next code item is explicit failed-file
+outcomes. Staging Google sign-in remains blocked/parked, not certified.

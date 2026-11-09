@@ -46,10 +46,10 @@ export function assertInlineWorkoutFits(payload: unknown): number {
   return size;
 }
 
-export async function recordingProvenance(bytes: Uint8Array, stream: any[], laps: any[]) {
+export async function recordingProvenance(bytes: Uint8Array, stream: any[], laps: any[], source: 'garmin_fit' | 'coros_fit' = 'garmin_fit') {
   const hash = await crypto.subtle.digest('SHA-256', Uint8Array.from(bytes));
   return {
-    source: 'garmin_fit', retention: 'complete_decoded_inline_v1',
+    source, retention: 'complete_decoded_inline_v1',
     source_sha256: Array.from(new Uint8Array(hash), value => value.toString(16).padStart(2, '0')).join(''),
     source_bytes: bytes.byteLength, original_file_retained: false,
     decoded_samples: stream.length, stored_samples: stream.length,
