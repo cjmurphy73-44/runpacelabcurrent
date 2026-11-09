@@ -157,3 +157,26 @@ requirements remain outstanding.
 Next atomic action: verify retained exhausted work and explicit retry across a
 local browser reload with synthetic data; record hosted acceptance separately
 when supported staging access is available. Deferred network settings stay deferred.
+
+## 9 November: active implementation, Garmin boundary characterization
+
+New owner direction permits safe offline code/tests while G0 is blocked, retaining
+all release/security/billing/review and Odysseus controls. One provider/scenario
+was selected: TPL-INT-006-GAR-001, the 3599/3600/3601-sample Garmin webhook boundary,
+on existing PR #9. This is executable test coverage, not an ingest runtime fix.
+
+The real handler and native decoder run with synthetic FIT bytes, serialized
+in-memory SDK storage, stubbed fetch and isolated post-ingest effects. 3599/3600
+samples retain every currently mapped sample; 3601 decode successfully but the
+serialized workout omits streams despite HTTP success and stream-derived zones.
+The desired-retention assertion is an explicit expected failure; temporarily
+removing that marker confirms the ordinary assertion fails because streams is
+undefined. This defect is not accepted as correct behavior or claimed fixed.
+
+Full test/check evidence and remaining live-release blockers are in
+.codex/reports/TPL-INT-006-GAR-001.md. No app source, backend, staging configuration,
+workflow, credential, production record or Odysseus tracking was changed.
+G0 still needs an app-wide isolation attestation accounting for owner-scoped RLS
+and confirmation that the existing webhook secret is dedicated to staging;
+the user was asked for provenance only, never its value. No new credentials or
+admin-bypass capability are inferred from the previous caller-visible zeros.

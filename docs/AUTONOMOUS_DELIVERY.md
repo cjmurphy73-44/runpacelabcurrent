@@ -63,3 +63,20 @@ Validate one manual run and its target before enabling a schedule. A trigger is
 active only after the actual scheduler configuration and a successful run can
 be inspected. GitHub scheduled workflows additionally must be on the default
 branch and enabled; a workflow file on a feature branch is not an active schedule.
+
+## Active implementation direction — 9 November 2026
+
+The Product Owner explicitly authorized safe code and automated-test work while
+G0 isolation is being resolved. G0 must not indefinitely block unrelated safe
+development. This newer direction supersedes the earlier blanket pre-G0 ban
+for isolated, reviewable work, not the controls on protected writes, credentials,
+security/billing changes, production, reviews or real provider pilots. Keep one
+eligible atomic task per run and preserve the full approved roadmap and Odysseus.
+Prefer a runnable implementation/test to another research-only report.
+
+Preview/staging publication requires verified isolation and authorization for
+the actual candidate; do not automatically reuse historical staging-write
+permission as an isolation pass. No production deployment occurs until release
+gates pass and the owner separately approves that deployment. Every implementation
+records changed files, commit/owning PR, passed/failed checks, demonstrable evidence,
+where the result is available, and the exact remaining path to live delivery.
