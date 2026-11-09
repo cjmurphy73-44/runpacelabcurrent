@@ -277,3 +277,16 @@ tests plus four known COROS expected failures, typecheck/lint/build/backend
 validation. Browser fixtures pass at iPad/mobile sizes with no page errors.
 No conversation text imposes a training hold in this branch. Production remains
 unchanged; hosted account acceptance and release gates remain separate.
+
+## Verified staging publication
+
+Frontend source e19cec9bd054ba56f7937c7993043dd6eb44c75d was published to the
+existing private staging app. Both changed editor files read back exactly;
+authenticated served JavaScript matched the compiled artifact byte-for-byte.
+Backend function records, entity schemas and exact inactive workflow records
+remained unchanged. Artifact SHA-256:
+`e5c8dcfc661bfa2b8a64b44f38585c316f8be31ef158051752a009122f01f954`.
+This publishes only the frontend; the Garmin backend/schema patch was not applied.
+Hosted athlete clear/reload acceptance is not yet verified. Exact-commit required
+CI results were unavailable in the public checks view; do not claim CI passed.
+No production mutation or deployment occurred.
