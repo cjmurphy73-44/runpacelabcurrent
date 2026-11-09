@@ -1,0 +1,234 @@
+// Real historical-sync handler + MCP transport/record extraction + FIT download,
+// decoder, normalization and mapping. All fetches and SDK persistence are fixtures.
+import { beforeAll, describe, expect, it, vi } from 'vitest';
+import { build } from 'esbuild';
+import { resolve } from 'node:path';
+import { runInNewContext } from 'node:vm';
+import { parseFitWithLaps } from '../../base44/shared/workoutParsers.ts';
+import { isUsableTelemetry } from '../../base44/shared/streamValidity.ts';
+import { syntheticFit1Hz } from './fixtures/syntheticFit.mjs';
+
+const mcpUrl = 'https://mcpus.coros.com/mcp';
+const fitUrl = 'https://synthetic-recordings.invalid/coros.fit';
+const clone = value => JSON.parse(JSON.stringify(value));
+const mapped = stream => stream.map(({ time, heart_rate, altitude, distance, cadence, speed }) => ({ time, heart_rate, altitude, distance, cadence, speed }));
+let bundle;
+
+beforeAll(async () => {
+  const result = await build({
+    entryPoints: [resolve('base44/functions/corosSync/entry.ts')],
+    bundle: true, write: false, format: 'cjs', platform: 'node', target: 'es2022',
+    plugins: [{
+      name: 'offline-coros-boundaries',
+      setup(builder) {
+        builder.onResolve({ filter: /postWorkoutAI\.ts$/ }, args => ({ path: args.path, namespace: 'offline-effect' }));
+        builder.onLoad({ filter: /.*/, namespace: 'offline-effect' }, () => ({ contents: 'export const runPostWorkoutEvaluation = () => { throw new Error("Unexpected coach invocation"); };' }));
+        builder.onResolve({ filter: /^(npm:|base44:)/ }, args => ({ path: args.path, namespace: 'offline-package' }));
+        builder.onLoad({ filter: /.*/, namespace: 'offline-package' }, args => {
+          if (args.path.startsWith('npm:@base44/sdk@')) return { contents: 'export const createClientFromRequest = () => globalThis.fixtureClient;' };
+          if (args.path === 'npm:fit-file-parser') return { contents: 'export default class FitParser { constructor() { throw new Error("Unexpected legacy decoder"); } }' };
+          throw new Error(`Missing explicit fixture for ${args.path}`);
+        });
+      },
+    }],
+  });
+  bundle = result.outputFiles[0].text;
+});
+
+function runtime(bytes, { records, fileMode = 'fit' } = {}) {
+  const decoded = parseFitWithLaps(bytes);
+  const record = { date: '2026-01-01', sport: 'running', label_id: 'synthetic-recording', sport_type: 100,
+    duration_seconds: decoded.summary.duration_seconds, distance_km: decoded.summary.distance_km,
+    avg_heart_rate: 145, max_heart_rate: 154 };
+  const rows = [];
+  const bulkCreate = vi.fn(async payloads => {
+    const saved = clone(payloads).map((payload, index) => ({ id: `synthetic-workout-${rows.length + index}`, ...payload }));
+    rows.push(...saved);
+    return saved;
+  });
+  const invoke = vi.fn(async () => ({}));
+  const athlete = { id: 'synthetic-athlete', created_by_id: 'synthetic-user', resting_hr: 60, max_heart_rate: 190 };
+  const entities = {
+    User: { get: vi.fn(async () => ({ id: 'synthetic-user', data: { athlete_profile_id: athlete.id } })) },
+    AthleteProfile: { get: vi.fn(async () => athlete) },
+    CorosConnection: {
+      filter: vi.fn(async () => [{ id: 'synthetic-connection', access_token: 'synthetic-token', token_expires_at: '2099-01-01T00:00:00Z' }]),
+      update: vi.fn(async () => ({})),
+    },
+    Subscription: { filter: vi.fn(async () => []) },
+    WorkoutSession: {
+      filter: vi.fn(async query => {
+        expect(query.athlete_id).toBe(athlete.id);
+        return rows.filter(row => query.date.$in.includes(row.date));
+      }), bulkCreate,
+    },
+  };
+  const client = { auth: { me: vi.fn(async () => ({ id: 'synthetic-user' })) }, asServiceRole: { entities, functions: { invoke } } };
+  const unexpectedNetwork = [];
+  const rpcCalls = [];
+  const network = vi.fn(async (url, options) => {
+    if (url === fitUrl) {
+      if (fileMode === 'http-failure') return new Response('Synthetic unavailable', { status: 503 });
+      return new Response(fileMode === 'malformed' ? new Uint8Array([1, 2, 3]) : bytes);
+    }
+    if (url !== mcpUrl) { unexpectedNetwork.push(String(url)); throw new Error('Unexpected destination'); }
+    expect(options.headers.Authorization).toBe('Bearer synthetic-token');
+    const rpc = JSON.parse(options.body);
+    if (rpc.method !== 'initialize') expect(options.headers['Mcp-Session-Id']).toBe('synthetic-session');
+    rpcCalls.push(rpc);
+    const json = value => Response.json({ jsonrpc: '2.0', id: rpc.id, result: value }, { headers: { 'mcp-session-id': 'synthetic-session' } });
+    if (rpc.method === 'initialize') return json({ capabilities: {} });
+    if (rpc.method === 'notifications/initialized') return new Response(null, { status: 202 });
+    if (rpc.method === 'tools/call' && rpc.params.name === 'querySportRecords') {
+      return json({ content: [{ type: 'text', text: JSON.stringify(records || [record]) }] });
+    }
+    if (rpc.method === 'tools/call' && rpc.params.name === 'queryActivityFitFileDownloadUrls') {
+      expect(rpc.params.arguments).toEqual({ labelId: record.label_id, sportType: 100 });
+      return json({ content: [{ type: 'text', text: fileMode === 'unavailable' ? 'No file available' : fitUrl }] });
+    }
+    unexpectedNetwork.push(rpc.method + ':' + rpc.params?.name);
+    throw new Error('Unexpected RPC');
+  });
+  const module = { exports: {} };
+  let handler;
+  const log = { warn: vi.fn(), error: vi.fn(), log: vi.fn() };
+  runInNewContext(bundle, {
+    module, exports: module.exports, fixtureClient: client, fetch: network,
+    Deno: { env: { get: key => ({ TPL_ENVIRONMENT: 'production', TPL_EXTERNAL_SYNC_ENABLED: 'true', COROS_MCP_CLIENT_ID: 'synthetic-client' })[key] }, serve: callback => { handler = callback; } },
+    Request, Response, Headers, URL, URLSearchParams, TextEncoder, TextDecoder,
+    AbortController, setTimeout, clearTimeout, crypto: globalThis.crypto, console: log,
+  });
+  return {
+    decoded, record, rows, bulkCreate, invoke, rpcCalls, network,
+    async sync() {
+      const response = await handler(new Request('https://synthetic-runtime.invalid/functions/corosSync', {
+        method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ action: 'sync_historical' }),
+      }));
+      expect(response.status).toBe(200);
+      const result = await response.json();
+      expect(result.success).toBe(true);
+      expect(unexpectedNetwork).toEqual([]);
+      return result;
+    },
+  };
+}
+
+async function recording(count, options = {}, runtimeOptions = {}) {
+  const fixture = runtime(syntheticFit1Hz(count, options), runtimeOptions);
+  const result = await fixture.sync();
+  expect(result).toMatchObject({ imported: 1, records_found: 1, duplicates: 0, errors: 0 });
+  expect(fixture.bulkCreate).toHaveBeenCalledTimes(1);
+  expect(fixture.invoke).toHaveBeenCalledExactlyOnceWith('calculateDailyTRIMP', { athlete_id: 'synthetic-athlete', date: '2026-01-01' });
+  return { ...fixture, result, persisted: clone(fixture.rows[0]) };
+}
+
+describe('COROS historical recording fidelity (synthetic, serialized SDK boundary)', () => {
+  const cases = new Map();
+  beforeAll(async () => {
+    for (const count of [3599, 3600, 3601, 7201]) cases.set(count, await recording(count, { lapSeconds: 60 }));
+    cases.set('power-only', await recording(180, { heartRate: false, zeroFirstPower: true, lapSeconds: 60 }));
+    cases.set('no-physiology', await recording(180, { heartRate: false, power: false }));
+    cases.set('hr-only', await recording(180, { power: false }));
+    cases.set('gap', await recording(180, { pauseAt: 60, pauseSeconds: 15 }));
+    cases.set('lap-cap', await recording(202, { lapSeconds: 1 }));
+    for (const fileMode of ['unavailable', 'http-failure', 'malformed']) cases.set(fileMode, await recording(180, {}, { fileMode }));
+  });
+
+  it.each([3599, 3600])('retains %i mapped samples, native units, timestamps and laps', count => {
+    const { decoded, persisted } = cases.get(count);
+    expect(decoded.stream).toHaveLength(count);
+    expect(persisted.streams).toEqual(mapped(decoded.stream));
+    expect(persisted.streams[0]).toMatchObject({ time: 0, distance: 0, altitude: 0, heart_rate: 135, speed: 3, cadence: 80 });
+    expect(persisted.streams.at(-1)).toMatchObject({ time: count - 1, distance: (count - 1) * 3 });
+    expect(persisted.laps).toEqual(decoded.laps);
+    expect(persisted.laps.at(-1).start_time_offset_s + persisted.laps.at(-1).duration_s).toBe(count - 1);
+    expect(persisted).toMatchObject({ source_format: 'fit', athlete_id: 'synthetic-athlete', created_by_id: 'synthetic-user', duration_seconds: count - 1, zone_method: 'stream' });
+  });
+
+  it.each([3601, 7201])('characterizes silent prefix truncation for %i native samples', count => {
+    const { decoded, persisted } = cases.get(count);
+    expect(decoded.stream).toHaveLength(count);
+    expect(persisted.streams).toEqual(mapped(decoded.stream.slice(0, 3600)));
+    expect(persisted.streams.at(-1).time).toBe(3599);
+    expect(persisted.duration_seconds).toBe(count - 1);
+    expect(persisted.zone_seconds.reduce((a, b) => a + b, 0)).toBe(count - 1);
+    expect(persisted.laps).toEqual(decoded.laps);
+  });
+
+  it('keeps timestamp gaps without inserting synthetic samples', () => {
+    const { decoded, persisted } = cases.get('gap');
+    expect(persisted.streams).toEqual(mapped(decoded.stream));
+    expect(persisted.streams).toHaveLength(180);
+    expect(persisted.streams[59].time).toBe(59);
+    expect(persisted.streams[60].time).toBe(75);
+    expect(persisted.duration_seconds).toBe(194);
+  });
+
+  it('keeps absent power missing when HR telemetry is available', () => {
+    const { decoded, persisted } = cases.get('hr-only');
+    expect(decoded.stream.every(point => point.power === null)).toBe(true);
+    expect(persisted.streams).toHaveLength(180);
+    expect(persisted).not.toHaveProperty('avg_power');
+    expect(persisted.streams.every(point => point.heart_rate > 0)).toBe(true);
+  });
+
+  it('does not fabricate physiological streams/zones when both channels are missing', () => {
+    const { decoded, persisted } = cases.get('no-physiology');
+    expect(decoded.stream.every(point => point.heart_rate === null && point.power === null)).toBe(true);
+    expect(persisted).not.toHaveProperty('streams');
+    expect(persisted).toMatchObject({ source_format: 'webhook', zone_method: 'none', zone_seconds: [0, 0, 0, 0, 0] });
+  });
+
+  it('exposes power-channel loss and loss of usable telemetry after serialization', () => {
+    const { decoded, persisted } = cases.get('power-only');
+    expect(decoded.stream[0]).toMatchObject({ heart_rate: null, power: 0 });
+    expect(isUsableTelemetry(decoded.stream, 179)).toBe(true);
+    expect(persisted.avg_power).toBe(decoded.summary.avg_power);
+    expect(persisted.streams.every(point => point.heart_rate === null && !('power' in point))).toBe(true);
+    expect(isUsableTelemetry(persisted.streams, 179)).toBe(false);
+  });
+
+  it('exposes the separate 200-lap cap', () => {
+    const { decoded, persisted } = cases.get('lap-cap');
+    expect(decoded.laps).toHaveLength(201);
+    expect(persisted.laps).toEqual(decoded.laps.slice(0, 200));
+    expect(persisted.streams).toHaveLength(202);
+  });
+
+  it.each(['unavailable', 'http-failure', 'malformed'])('characterizes %s file outcome as a successful summary-only import', fileMode => {
+    const { persisted, result } = cases.get(fileMode);
+    expect(persisted).not.toHaveProperty('streams');
+    expect(persisted).toMatchObject({ source_format: 'webhook', zone_method: 'none', zone_seconds: [0, 0, 0, 0, 0] });
+    expect(result.errors).toBe(0);
+  });
+
+  it('avoids an extra write/file download for a sequential repeated identical activity', async () => {
+    const fixture = runtime(syntheticFit1Hz(180));
+    expect(await fixture.sync()).toMatchObject({ imported: 1, duplicates: 0 });
+    expect(await fixture.sync()).toMatchObject({ imported: 0, duplicates: 1 });
+    expect(fixture.rows).toHaveLength(1);
+    expect(fixture.bulkCreate).toHaveBeenCalledTimes(1);
+    expect(fixture.network.mock.calls.filter(([url]) => url === fitUrl)).toHaveLength(1);
+  });
+
+  it('deduplicates identical entries within one provider response', async () => {
+    const base = runtime(syntheticFit1Hz(180));
+    const fixture = runtime(syntheticFit1Hz(180), { records: [base.record, base.record] });
+    expect(await fixture.sync()).toMatchObject({ records_found: 2, imported: 1, duplicates: 1 });
+    expect(fixture.rows).toHaveLength(1);
+  });
+
+  // Explicit desired contracts: these remain defects, not accepted truncation behavior.
+  it.fails('KNOWN DEFECT: preserves all samples in a two-hour recording', () => {
+    expect(cases.get(7201).persisted.streams).toHaveLength(7201);
+  });
+  it.fails('KNOWN DEFECT: persists native per-sample power including a valid zero', () => {
+    expect(cases.get('power-only').persisted.streams[0]).toHaveProperty('power', 0);
+  });
+  it.fails('KNOWN DEFECT: preserves all 201 measured laps', () => {
+    expect(cases.get('lap-cap').persisted.laps).toHaveLength(201);
+  });
+  it.fails('KNOWN DEFECT: reports a failed FIT download rather than an error-free sync', () => {
+    expect(cases.get('http-failure').result.errors).toBeGreaterThan(0);
+  });
+});
