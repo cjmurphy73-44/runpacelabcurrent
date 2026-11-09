@@ -52,38 +52,40 @@ production runtime configuration and release implications **read-only**
 before any protected main merge. A green offline test is not proof of
 hosted staging isolation or production integration continuity.
 
-## Reprovisioning runbook
+## Verify the existing staging app (do not recreate it)
 
-1. Authenticate with `npx base44 login` in the environment doing provisioning.
-   Use an isolated checkout of this branch. Do not copy a production `.app.jsonc`,
-   `.env` file, athlete data or OAuth credentials.
-2. From that checkout run `npx base44 link --create --name TrainPaceLab-Staging`.
-   Record the new app ID and verify it differs from the production app ID. Keep
-   the production app linked to the existing main branch. Do not reconnect it to
-   the staging app or run a deploy from a production-linked checkout.
-3. Set staging visibility to private. Before deploying, omit scheduled workflows,
-   connectors and agents from this isolated staging checkout unless separately
-   enabled for a specific test. No COROS/Garmin real-account sync or Airtable mirror
-   should run in staging. Keep production external integrations untouched.
-4. Deploy the reviewed code to this new app after PR 2 backend validation passes.
-   Configure only dedicated test Stripe keys, test prices and a separate test
-   webhook endpoint. The current handlers still need PR 4 isolation, so never
-   provide real live-mode credentials in this environment.
-5. Copy `staging/manifest.example.json` to `staging/manifest.local.json`, fill in
-   verified IDs/origins and run `node scripts/staging/verify.mjs`. Place Stripe test
-   secrets in the provisioner's secure environment, not command arguments or Git.
-   `node scripts/staging/verify.mjs staging/manifest.local.json --check-stripe`
-   makes a read-only Stripe request to verify test-mode authentication. It does
-   not prove secret values are installed remotely or verify webhook routing.
-6. Create two synthetic users and a coach in staging using reserved `.invalid`
-   email addresses. Sign in separately as each athlete to create profiles from
-   `staging/athletes.synthetic.json` and link each to its actual authenticated
-   user. Do not stamp fictitious `created_by_id` values or seed through a shared
-   admin identity and assume RLS works. PR 3 replaces client-written links.
-7. Deliver a signed Stripe test event to the staging endpoint and confirm it only
-   touches staging. Verify no production record changes. Test A/B/coach/admin
-   access with synthetic records and capture expected denials. The known PR 3
-   access-control gap remains a release blocker even if infrastructure is isolated.
+The private staging app has already been provisioned. Do **not** run
+`base44 link --create`, create another app, or assume a blank Data page
+means the existing app is missing. This section supersedes the older
+reprovisioning instructions.
+
+1. In an authorized staging-only checkout, authenticate the Base44 CLI and
+   make a read-only scoped call to the **existing** staging app. Compare its
+   app ID and origin with the private staging record and production record;
+   never commit or print private identifiers or authentication output.
+   If access or target identity is ambiguous, stop without relinking.
+2. Read back staging visibility and external integration/workflow states.
+   Confirm private access, distinct production/staging identities, inactive
+   scheduled sync and mirroring, disconnected Garmin/COROS providers, and
+   absence of live billing credentials. Record sanitized pass/fail results
+   outside Git. Do not infer remote isolation from a local manifest.
+3. Before any approved staging write, verify the exact reviewed source SHA,
+   existing staging link and editor-source backup. Never replace backend
+   handlers or activate workflows as part of a frontend smoke test.
+4. After the source and target gates pass, deploy only the specifically
+   approved candidate to the existing staging app and privately record its
+   deployment identity. This does not authorize production deployment.
+5. Copy `staging/manifest.example.json` to
+   `staging/manifest.local.json`, supply verified private values and run
+   `node scripts/staging/verify.mjs`. Its fail-closed offline checks are
+   supplementary, not hosted-environment acceptance.
+6. Use distinct, supported authenticated synthetic athlete and coach
+   sessions for ownership checks, FIT upload, persistence and dashboard
+   reload. Do not fabricate ownership IDs or send invitations to invented
+   email addresses. Stripe is **not** a prerequisite for this smoke test.
+7. Dedicated Stripe test keys, prices and signed webhook routing are
+   separate billing-gated acceptance steps. Never provide live credentials
+   to staging or enable production billing here.
 
 Run `npm ci` then `npx vitest run scripts/staging/verify.test.mjs` for the local
 guardrail regression tests. They also run in the restored PR 2 test suite.
