@@ -47,11 +47,37 @@ athlete dashboard/FIT journey on this candidate remains unverified.
   calculation with a fabricated default estimate to make the flow pass.
 - Authorization, URL-fetch safety, billing concurrency/mode isolation, data
   fidelity and resumable deletion require their roadmap acceptance work.
-- Offline queue persistence and auxiliary Python/scientific scaffolding need
-  repair before being represented as production capabilities.
+- Offline queue overwriting of concurrent enqueues and simulated successes for
+  unregistered actions are repaired in the follow-up below. Auxiliary
+  Python/scientific scaffolding remains unresolved.
 - Supported-file promises differ across uploaders and need real file fixtures.
 - Provider OAuth, AI generation, billing, deletion, cross-athlete permissions and
   populated longitudinal dashboards have not received remote acceptance here.
 
 A green fixture test is not a completed MVP gate. Review and staging acceptance
 must track the exact source being released, with private identifiers omitted.
+
+## 9 November: offline queue follow-up
+
+A save in flight no longer empties the live queue or replaces concurrent
+enqueues when its batch completes. Persisted state retains pending requests
+until their handlers finish, and successful items are removed incrementally.
+Unregistered actions remain queued instead of using simulated network success.
+Clearing the queue cancels waiting work without reintroducing an in-flight
+failure. Newly queued work is drained after the active batch; existing retry
+backoff is preserved. Offline enqueue status updates immediately, and online
+waiting work is labelled Pending sync rather than incorrectly shown as syncing.
+
+Six regression cases cover concurrent pending saves, persistence, failure,
+clearing, missing handlers, status notification and retry backoff. The complete
+suite passes 252 tests in 41 files, alongside typecheck, lint and backend
+validation. Local iPad-sized Chromium exercised the actual service and status
+components with synthetic queue data: offline queued count and online pending
+state rendered correctly, local storage retained the item, and no page exception
+occurred. Vite development HMR websocket errors occurred in the harness and
+are not a hosted-runtime pass. This does not verify remote athlete data writes.
+
+The queue remains at-least-once: a browser interruption after server success but
+before local removal can repeat an operation. Handler idempotency, account-scoped
+storage, retry scheduling and exhausted-retry recovery require separate review;
+this change does not establish those guarantees.

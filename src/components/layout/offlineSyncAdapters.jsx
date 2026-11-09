@@ -38,7 +38,7 @@ export function NetworkStatusBadge({ compact = false }) {
   const statusText = !isOnline
     ? `Offline (${queueCount} queued)`
     : syncInProgress ? "Syncing changes..."
-    : queueCount > 0 ? `Syncing (${queueCount})` : "Online";
+    : queueCount > 0 ? `Pending sync (${queueCount})` : "Online";
 
   return (
     <div className="flex items-center space-x-2 min-w-0">

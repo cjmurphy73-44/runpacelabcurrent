@@ -68,6 +68,7 @@ class OfflineSyncQueueService extends EventEmitter {
     this.queue.push(item);
     this.saveToStorage();
     this.emit('update', { queue: this.queue });
+    this.emit('status', this.getStatus());
 
     if (this.isOnline) {
       this.processQueue();
@@ -94,32 +95,22 @@ class OfflineSyncQueueService extends EventEmitter {
     this.emit('status', this.getStatus());
 
     const now = Date.now();
-    const remainingQueue: SyncItem[] = [];
     const workQueue = [...this.queue];
-    this.queue = [];
 
     for (const item of workQueue) {
+      // clear() may have cancelled waiting work while an earlier save was pending.
+      if (!this.queue.includes(item)) continue;
+      const handler = this.handlers.get(item.action);
+      // Unregistered actions are pending work, never simulated successes.
+      if (!handler) continue;
       const attempts = item.attempts || 0;
       if (item.nextRetryAt && now < item.nextRetryAt) {
-        remainingQueue.push(item);
         continue;
       }
 
       try {
-        const handler = this.handlers.get(item.action);
-        if (handler) {
-          await handler(item.payload, item);
-        } else {
-          await new Promise((resolve, reject) => {
-            setTimeout(() => {
-              if (Math.random() < 0.03) {
-                reject(new Error('Simulated network jitter/failure'));
-              } else {
-                resolve(true);
-              }
-            }, 350);
-          });
-        }
+        await handler(item.payload, item);
+        this.queue = this.queue.filter((pending) => pending !== item);
       } catch (err: any) {
         const newAttempts = attempts + 1;
         item.attempts = newAttempts;
@@ -129,18 +120,24 @@ class OfflineSyncQueueService extends EventEmitter {
         if (newAttempts < this.MAX_ATTEMPTS) {
           const backoff = Math.min(this.MAX_DELAY, this.BASE_DELAY * Math.pow(2, newAttempts - 1));
           item.nextRetryAt = Date.now() + backoff;
-          remainingQueue.push(item);
         } else {
+          this.queue = this.queue.filter((pending) => pending !== item);
           console.error(`[offlineSyncQueue] Item ${item.id} dropped after max retries (${this.MAX_ATTEMPTS}):`, item);
         }
       }
+      this.saveToStorage();
     }
 
-    this.queue = remainingQueue;
     this.syncInProgress = false;
     this.saveToStorage();
     this.emit('update', { queue: this.queue });
     this.emit('status', this.getStatus());
+
+    // enqueue() cannot start another processor while a save is in flight.
+    // Drain new work now, without immediately retrying failures from this batch.
+    if (this.queue.some((item) => !workQueue.includes(item))) {
+      await this.processQueue();
+    }
   }
 
   public clear() {
