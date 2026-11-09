@@ -414,3 +414,19 @@ OAuth token storage, scheduled jobs, agents, emails or webhook processing.
 
 Deliver visible athlete improvements through the current roadmap while this
 remains a later option, not a prerequisite for shipping the stabilized app.
+
+## Option B architecture candidate — owner-requested assessment
+
+Evaluate the existing Vite/React frontend with Supabase/PostgreSQL/Auth, private
+Cloudflare R2 recording storage and Vercel hosting/API through the existing
+Base44-independence milestone above. See
+[OPTION_B_MIGRATION_ASSESSMENT.md](planning/OPTION_B_MIGRATION_ASSESSMENT.md).
+This is a conditional migration candidate, not an approved rewrite/cutover.
+Zero vendor lock-in, guaranteed $0 for 500 athletes and a six-hour migration are
+not established. Verify commercial eligibility/current quotas and measured
+storage/compute budgets; current pricing domains are blocked in this environment.
+Start with one synthetic vertical slice and explicit auth/storage/job adapters;
+retain complete native recordings and deterministic, provenance-labelled metrics.
+Do not auto-publish main, move DNS, copy production data or cancel Base44 without
+the applicable tests/reviews, verified recovery and separate owner authorization.
+This proposal must not delay the current Garmin retention fix or visible app work.

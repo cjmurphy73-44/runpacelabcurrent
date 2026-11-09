@@ -178,6 +178,7 @@ changes additionally wait for their own gate. These rows reuse UX-001..006.
 | ID | Atomic deliverable | Depends on | Acceptance / state |
 | --- | --- | --- | --- |
 | TPL-UX-001 | Verify shared guidance/session recovery in #7 (UX-001/002) | G0, reconciled #7 batch | Implemented, not accepted. Synthetic source-specific review, stale conflict, failed save and cross-view invalidation; no prescription change falsely claimed. |
+| TPL-UX-001-COACH-MANAGE | Clear selected automatic conversation notices with visible touch controls | Explicit owner-prioritized UI change; existing reviewed API contract | Implemented on existing #9 branch at [6a329fa](https://github.com/cjmurphy73-44/runpacelabcurrent/commit/6a329fa8562c65f10c4de83180f3628b2172afee). Actual synthetic dashboard before/after captures; individual clear/keep, reload and keyboard/iPad/mobile checks pass. Full suite 281 passed plus five existing expected ingestion failures. Hosted reviewCoachSignal/CoachSignalReview remain absent; deploy the reviewed entity/function/frontend together only after isolation/authorization. No confirmed restriction or prescription is removed. |
 | TPL-UX-002 | Verify JSON export pending/error/retry in #8 (UX-003) | G0, UX-001 | Implemented, not accepted. Browser click/retry/resource cleanup works; says download requested, never proves disk save or watch compatibility. |
 | TPL-UX-003 | Verify provider connection/retry feedback in #9 (UX-004) | G0, UX-002 | Implemented, not accepted. Account switch, expired authorization, partial imports and empty sync each have explicit state/action; UI does not prove OAuth health. |
 | TPL-UX-004 | Repair race-result onboarding contract | G0, science review where semantics affected | Existing defect. Correct distance/type contract; no fabricated default. One synthetic race case and reload; wider science change waits G3/G4. |
@@ -383,3 +384,29 @@ children. This is not product acceptance or permission to deploy. G0 attestation
 required reviews, original-Mac preservation, component manifests/rollback, hosted
 acceptance and separate production approval still apply to release. No Base44
 app/backend/schema/secret/workflow, production data or Odysseus change occurred.
+
+
+## Owner-prioritized visible coach-guidance management
+
+Existing PR #9 now has actual per-notice clear/keep controls and dated selection,
+not only a report or mockup. Real React dashboard captures with synthetic data
+are committed under docs/evidence/coach-guidance. The planned running workout
+remains accessible; failed/unconfirmed saves do not clear notices. Shared state,
+stale source selection, keyboard focus and narrow layout are checked. The backend
+review contract already supports selected keys; it and its entity are absent from
+both hosted apps and must be included in the reviewed staging batch. No hosted
+deployment or production data change occurred. Garmin retention (GAR-002) remains
+the immediately next implementation; the roadmap is not replaced by this UI item.
+
+The owner also approved the GitHub Actions runner alternative and requested an
+independent Option B migration assessment. The existing hourly ChatGPT Scheduled
+task was not duplicated or modified: no scheduler-control tool is exposed. The
+official Codex Action needs secure API-key setup and a reviewed manual workflow
+first; no second schedule or production automation is activated. Git access now
+works with the configured credential via environment-only Bearer authentication,
+so the earlier default/Basic failure is not a continuing write-access attestation.
+
+Option B is recorded as a gated Base44-independence candidate, not a current
+migration task or promise of free hosting/zero lock-in/six-hour delivery. See the
+assessment linked from the roadmap. Keep all MVP, security/billing, review, native
+fidelity, hosted acceptance, rollback and original-Mac Odysseus requirements.
