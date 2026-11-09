@@ -17,3 +17,5 @@ then cleared the remaining source. Keyboard Space/Enter and focus after success
 worked. Both 820px and 390px views had no page overflow or page exception.
 These checks do not establish real Base44 persistence, deployed endpoint presence,
 RLS, hosted sign-in or production access.
+
+`recovery-ipad.png`: local real dashboard with synthetic HTTP fixtures showing Refresh guidance; Escape focus restoration, refresh reselection, clear/reload and 390px overflow checks passed. Not hosted athlete evidence.

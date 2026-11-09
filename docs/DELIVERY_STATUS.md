@@ -268,3 +268,12 @@ readback, independent reviews, exact-head CI, Odysseus preservation, component
 manifests/rollback and separate production approval. Owner has now prioritized
 checking whether coach-notice management actually resolves the AI blocking path;
 assets remain planned, with no new logo/imagery delivery claimed.
+
+## Coach guidance recovery/accessibility follow-up
+
+Added explicit refresh/reselection, honest cached-read failure handling, and
+Escape/Keep focus restoration on existing PR #9. Full local checks pass: 300
+tests plus four known COROS expected failures, typecheck/lint/build/backend
+validation. Browser fixtures pass at iPad/mobile sizes with no page errors.
+No conversation text imposes a training hold in this branch. Production remains
+unchanged; hosted account acceptance and release gates remain separate.

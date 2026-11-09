@@ -125,3 +125,68 @@ it('offers a stable Settings entry even when no guidance is active', async () =>
   expect(screen.queryByRole('button', { name: /Clear selected/ })).toBeNull();
   expect(invoke.mock.calls.every(([, body]) => body.action === 'read')).toBe(true);
 });
+
+
+it('closes review with Escape or Keep, restores focus and never writes', async () => {
+  invoke.mockResolvedValue({ data: { revision: 'revision', messages: [message] } });
+  render(wrap(<CoachSignalNotice athleteId="a" />));
+  const manage = await screen.findByRole('button', { name: 'Manage guidance' });
+  fireEvent.click(manage);
+  const checkbox = screen.getByRole('checkbox');
+  fireEvent.click(checkbox);
+  checkbox.focus();
+  fireEvent.keyDown(checkbox, { key: 'Escape' });
+  expect(document.activeElement).toBe(manage);
+  expect(manage.getAttribute('aria-expanded')).toBe('false');
+  fireEvent.click(manage);
+  expect(screen.getByRole('checkbox').checked).toBe(false);
+  fireEvent.click(screen.getByRole('button', { name: 'Keep guidance' }));
+  expect(document.activeElement).toBe(manage);
+  expect(invoke.mock.calls.every(([, body]) => body.action === 'read')).toBe(true);
+});
+
+it('recovers from stale review by refreshing, requiring reselection before retry', async () => {
+  let revision = 'old';
+  invoke.mockImplementation(async (_name, body) => {
+    if (body.action === 'resolve') {
+      if (body.revision === 'old') { revision = 'new'; throw new Error('stale'); }
+      expect(body.revision).toBe('new');
+      expect(body.source_keys).toEqual(['source']);
+      return { data: { success: true } };
+    }
+    return { data: { revision, messages: [message] } };
+  });
+  render(wrap(<CoachSignalNotice athleteId="a" />));
+  fireEvent.click(await screen.findByRole('button', { name: 'Manage guidance' }));
+  fireEvent.click(screen.getByRole('checkbox'));
+  fireEvent.click(screen.getByRole('button', { name: 'Clear selected guidance (1)' }));
+  await screen.findByText(/Guidance could not be cleared/);
+  fireEvent.click(screen.getByRole('button', { name: 'Refresh guidance' }));
+  await waitFor(() => expect(screen.queryByText(/Guidance could not be cleared/)).toBeNull());
+  expect(screen.getByRole('checkbox').checked).toBe(false);
+  expect(screen.getByRole('button', { name: 'Clear selected guidance (0)' }).disabled).toBe(true);
+  fireEvent.click(screen.getByRole('checkbox'));
+  fireEvent.click(screen.getByRole('button', { name: 'Clear selected guidance (1)' }));
+  await screen.findByText('1 note cleared. Remaining guidance is shown below.');
+});
+
+it('keeps selection on refresh failure and disables clearing stale guidance', async () => {
+  let offline = false;
+  invoke.mockImplementation(async () => {
+    if (offline) throw new Error('offline');
+    return { data: { revision: 'revision', messages: [message] } };
+  });
+  render(wrap(<CoachSignalNotice athleteId="a" />));
+  fireEvent.click(await screen.findByRole('button', { name: 'Manage guidance' }));
+  fireEvent.click(screen.getByRole('checkbox'));
+  offline = true;
+  fireEvent.click(screen.getByRole('button', { name: 'Refresh guidance' }));
+  await screen.findByText(/Guidance could not be refreshed/, {}, { timeout: 3000 });
+  expect(screen.getByRole('checkbox').checked).toBe(true);
+  expect(screen.getByRole('button', { name: 'Clear selected guidance (1)' }).disabled).toBe(true);
+  offline = false;
+  fireEvent.click(screen.getByRole('button', { name: 'Refresh guidance' }));
+  await waitFor(() => expect(screen.queryByText(/Guidance could not be refreshed/)).toBeNull());
+  expect(screen.getByRole('checkbox').checked).toBe(false);
+  expect(invoke.mock.calls.every(([, body]) => body.action === 'read')).toBe(true);
+});

@@ -117,3 +117,12 @@ unavailable supplied files return explicit errors rather than summary success.
 Native power and provenance are stored. Raw binary archival remains absent.
 Full local suite: 297 passed, four known COROS expected failures. No hosted
 deployment or provider acceptance. See .codex/reports/TPL-INT-006-GAR-002.md.
+
+## Coach guidance recovery and keyboard access
+
+Management now offers Refresh guidance after a failed/stale save; successful
+refresh clears stale selection and save errors. Failed refresh keeps selection
+visible, labels cached guidance and disables clearing until a successful read.
+Escape and Keep restore focus to Manage guidance without writing. Full suite:
+300 passed, four existing COROS expected failures. Real local browser fixtures
+verify keyboard, reload, preserved workout and iPad/mobile layout.

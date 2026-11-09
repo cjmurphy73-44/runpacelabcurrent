@@ -15,19 +15,39 @@ function CoachSignalNoticeContent({ athleteId, showEmpty }) {
   const [reviewing, setReviewing] = useState(false);
   const [selected, setSelected] = useState([]);
   const [saved, setSaved] = useState(null);
+  const [refreshing, setRefreshing] = useState(false);
+  const [refreshFailed, setRefreshFailed] = useState(false);
   const panelId = useId();
   const manageRef = useRef(null);
   const successRef = useRef(null);
   const keys = signal.evidence.map(entry => entry.review_key).filter(key => typeof key === 'string');
   const selectedKeys = selected.filter(key => keys.includes(key));
   const allSelected = keys.length > 0 && selectedKeys.length === keys.length;
+  const busy = signal.saving || refreshing;
+  const closeReview = () => {
+    if (busy) return;
+    setSelected([]);
+    setReviewing(false);
+    manageRef.current?.focus();
+  };
+  const refreshGuidance = async () => {
+    setRefreshing(true);
+    setRefreshFailed(false);
+    try {
+      const result = await signal.refresh();
+      if (result.error) throw result.error;
+      setSelected([]);
+      setSaved(null);
+    } catch { setRefreshFailed(true); }
+    finally { setRefreshing(false); }
+  };
 
   useEffect(() => {
     if (saved) (successRef.current || manageRef.current)?.focus();
   }, [saved]);
 
   if (signal.loading) return <p role="status" className="text-sm text-muted-foreground">Checking conversation guidance...</p>;
-  if (signal.error) return <Alert><AlertTitle>Conversation guidance unavailable</AlertTitle><AlertDescription>Your saved plan is unchanged. <Button type="button" variant="outline" size="sm" onClick={() => signal.refresh()}>Retry</Button></AlertDescription></Alert>;
+  if (signal.error && signal.evidence.length === 0) return <Alert><AlertTitle>Conversation guidance unavailable</AlertTitle><AlertDescription>Your saved plan is unchanged. <Button type="button" variant="outline" size="sm" onClick={() => signal.refresh()}>Retry</Button></AlertDescription></Alert>;
   if (signal.level === 'none') return saved ? (
     <div ref={successRef} tabIndex={-1} role="status" className="rounded-lg border border-primary/25 bg-primary/5 p-4 text-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-ring">
       <p className="flex items-center gap-2 font-medium"><CheckCircle2 className="h-4 w-4 text-primary" aria-hidden="true" />Guidance cleared</p>
@@ -48,15 +68,16 @@ function CoachSignalNoticeContent({ athleteId, showEmpty }) {
           <AlertTitle className="flex items-center gap-2 text-base"><MessageSquare className="h-4 w-4 shrink-0 text-primary" aria-hidden="true" />Coach guidance</AlertTitle>
           <p className="text-xs text-muted-foreground">Conversation advisory · {signal.evidence.length} {signal.evidence.length === 1 ? 'note' : 'notes'} to review</p>
         </div>
-        <Button type="button" ref={manageRef} variant="outline" size="sm" className="min-h-[44px] w-full shrink-0 gap-2 sm:w-auto" disabled={signal.saving} onClick={() => setReviewing(!reviewing)} aria-expanded={reviewing} aria-controls={panelId}>
+        <Button type="button" ref={manageRef} variant="outline" size="sm" className="min-h-[44px] w-full shrink-0 gap-2 sm:w-auto" disabled={busy} onClick={() => reviewing ? closeReview() : setReviewing(true)} aria-expanded={reviewing} aria-controls={panelId}>
           Manage guidance <ChevronDown className={`h-4 w-4 transition-transform motion-reduce:transition-none ${reviewing ? 'rotate-180' : ''}`} aria-hidden="true" />
         </Button>
       </div>
       <AlertDescription className="mt-3 space-y-3">
         <p>{signal.summary}</p>
+        {signal.error && <p role="alert" className="text-sm text-destructive">Showing previously loaded guidance. Refresh when connected before clearing notices.</p>}
         {saved && <p role="status" className="text-primary">{saved.count} {saved.count === 1 ? 'note' : 'notes'} cleared. Remaining guidance is shown below.</p>}
-        {reviewing && <div id={panelId} className="space-y-3 border-t border-primary/15 pt-3">
-          <fieldset disabled={signal.saving} className="min-w-0 space-y-2">
+        {reviewing && <div id={panelId} aria-busy={busy} onKeyDown={event => { if (event.key === 'Escape' && !busy) { event.preventDefault(); event.stopPropagation(); closeReview(); } }} className="space-y-3 border-t border-primary/15 pt-3">
+          <fieldset disabled={busy} className="min-w-0 space-y-2">
             <legend className="mb-2 font-medium">Which guidance no longer applies?</legend>
             <p className="pb-1 text-xs text-muted-foreground">Clear old conversation notices individually. This does not change a workout, delete a message or remove a confirmed coach restriction.</p>
             {signal.evidence.map((entry, index) => <label key={entry.review_key || index} className="flex min-h-[44px] cursor-pointer items-start gap-3 rounded-lg border border-border bg-background p-3 text-sm">
@@ -64,9 +85,9 @@ function CoachSignalNoticeContent({ athleteId, showEmpty }) {
               <span className="min-w-0 break-words"><time dateTime={entry.date} className="mb-1 block text-xs text-muted-foreground">{new Date(entry.date).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' })}</time>{entry.snippet}</span>
             </label>)}
           </fieldset>
-          <Button type="button" variant="ghost" size="sm" className="min-h-[44px]" disabled={signal.saving || keys.length === 0} onClick={() => setSelected(allSelected ? [] : keys)}>{allSelected ? 'Deselect all shown' : 'Select all shown'}</Button>
+          <Button type="button" variant="ghost" size="sm" className="min-h-[44px]" disabled={busy || keys.length === 0} onClick={() => setSelected(allSelected ? [] : keys)}>{allSelected ? 'Deselect all shown' : 'Select all shown'}</Button>
           <div className="flex flex-col gap-2 sm:flex-row">
-            <Button type="button" className="min-h-[44px] w-full sm:w-auto" disabled={signal.saving || selectedKeys.length === 0} onClick={async () => {
+            <Button type="button" className="min-h-[44px] w-full sm:w-auto" disabled={busy || Boolean(signal.error) || selectedKeys.length === 0} onClick={async () => {
               const count = selectedKeys.length;
               setSaved(null);
               try {
@@ -74,9 +95,11 @@ function CoachSignalNoticeContent({ athleteId, showEmpty }) {
                 setSaved({ count }); setSelected([]); setReviewing(false);
               } catch { /* Keep selections and show the server-confirmed failure below. */ }
             }}>{signal.saving ? 'Clearing guidance...' : `Clear selected guidance (${selectedKeys.length})`}</Button>
-            <Button type="button" variant="ghost" className="min-h-[44px]" disabled={signal.saving} onClick={() => { setSelected([]); setReviewing(false); }}>Keep guidance</Button>
+            <Button type="button" variant="ghost" className="min-h-[44px]" disabled={busy} onClick={closeReview}>Keep guidance</Button>
+            <Button type="button" variant="outline" className="min-h-[44px]" disabled={busy} onClick={refreshGuidance}>{refreshing ? 'Refreshing guidance...' : 'Refresh guidance'}</Button>
           </div>
           {signal.saveError && <p role="alert" className="text-sm text-destructive">Guidance could not be cleared. Your plan is unchanged. Retry, or refresh if the conversation changed.</p>}
+          {refreshFailed && <p role="alert" className="text-sm text-destructive">Guidance could not be refreshed. Your selection is unchanged. Try again when connected.</p>}
         </div>}
       </AlertDescription>
     </Alert>

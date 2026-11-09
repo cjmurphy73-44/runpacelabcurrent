@@ -49,6 +49,11 @@ export function useCoachInjurySignal(athleteId) {
     ...computeInjurySignal(query.data?.messages || []),
     loading: query.isLoading, error: query.error,
     saving: mutation.isPending, saveError: mutation.error,
-    resolve: mutation.mutateAsync, refresh: query.refetch,
+    resolve: mutation.mutateAsync,
+    refresh: async () => {
+      const result = await query.refetch();
+      if (!result.error) mutation.reset();
+      return result;
+    },
   };
 }
