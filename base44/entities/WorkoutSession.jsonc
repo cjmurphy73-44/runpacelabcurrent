@@ -148,7 +148,7 @@
     },
     "streams": {
       "type": "array",
-      "description": "Unified master telemetry stream reconciled from all bound WorkoutAssets (priority ladder FIT>TCX>CSV). Only stored for shorter sessions to avoid oversized records.",
+      "description": "Decoded native telemetry samples; import paths must retain complete supported recordings or return an explicit limit outcome. Legacy ingest paths may still have count-based limits.",
       "items": {
         "type": "object",
         "properties": {
@@ -171,6 +171,10 @@
           "speed": {
             "type": "number",
             "description": "Speed in meters/second"
+          },
+          "power": {
+            "type": "number",
+            "description": "Native per-sample watts. Zero is valid; missing sensor data remains null or absent."
           }
         }
       }
@@ -224,6 +228,61 @@
       "type": "string",
       "maxLength": 1000,
       "description": "Optional freeform description (up to 1000 characters) that makes this record text-searchable for AI-assisted discovery."
+    },
+    "recording_provenance": {
+      "type": "object",
+      "description": "Ingest trace for the decoded recording, not an authorization grant or independent scientific verification. Original binary archival is tracked separately.",
+      "properties": {
+        "source": {
+          "type": "string"
+        },
+        "retention": {
+          "type": "string"
+        },
+        "source_sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "source_bytes": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "original_file_retained": {
+          "type": "boolean"
+        },
+        "decoded_samples": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "stored_samples": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "decoded_laps": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "stored_laps": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "first_time_s": {
+          "type": "number"
+        },
+        "last_time_s": {
+          "type": "number"
+        },
+        "channels": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "inline_limit_bytes": {
+          "type": "integer",
+          "minimum": 1
+        }
+      }
     }
   },
   "required": [
