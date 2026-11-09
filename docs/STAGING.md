@@ -138,3 +138,47 @@ necessary. Revert this PR for repository helpers. Changes to remote rulesets and
 app configuration require their own reviewed rollback; a Git revert does not undo
 them. Record completion evidence in the PR rather than marking this checklist
 complete from local preflight output.
+
+## 9 November 2026 — evening app-release handoff (not deployment authorization)
+
+**Candidate staging branch:** PR #4 `fix/staging-isolation`, source
+`169f6dffcf833d7e3d550ca6aa4b5060ba96040d` before this handoff note.
+[GitHub Actions run 42549488120](https://github.com/cjmurphy73-44/runpacelabcurrent/actions/runs/42549488120)
+completed successfully: Build, Lint, Typecheck, Tests, Backend and CI required.
+PR #5 `fix/ci-restoration` passed the same six checks at
+`ef1a1328841ddce47e91e04f818888ceaca3a647`
+([run 42547567560](https://github.com/cjmurphy73-44/runpacelabcurrent/actions/runs/42547567560)).
+These are branch-specific checks, **not** a tested combined release candidate.
+
+Today's bounded changes on PR #4: corrected the runbook to use the **existing**
+private staging app; removed app identifiers/origins from preflight stdout;
+added a subprocess regression test and corrected its CI path resolution;
+rejected loopback, private-network and reserved local origins in the manifest
+validator with regression coverage. PR #5 recorded exact-head CI and the
+fail-closed invitation source review. No athlete-facing functionality is claimed
+to have shipped from these changes.
+
+**Evening decision: HOLD app push until gates pass.** Required independent
+review is not recorded; PR #4 remains draft and stacked on PR #5. Hosted
+staging acceptance is incomplete (provider token/config isolation, distinct
+synthetic athlete/coach sessions, FIT persistence/dashboard reload and exact
+reviewed deployment). The private Base44 management browser observations in
+`.codex/reports/TPL-G0-002.md` establish partial isolation only; its Data
+page remained blank. Do not treat offline manifest checks or green CI as hosted
+isolation proof. Odysseus local modifications/history remain protected and its
+removal-bearing gitlink change must not be merged without verified preservation.
+
+Before any evening app update, independently review the precise frontend and
+backend diff, verify staging identity/privacy and inactive external workflows,
+back up editor source, confirm the candidate SHA and staging deployment target,
+run the synthetic athlete-to-dashboard acceptance journey, and record sanitized
+results. Obtain required independent GitHub approvals and exact-head checks.
+Do not merge the full stacked chain or deploy backend/billing/provider changes
+on the strength of these checks. Any separate production publish needs its own
+reviewed release scope, confirmed automatic Git-sync effects and explicit
+release controls; do not modify production data, credentials or workflows.
+
+This handoff records the work for a later operator; it does **not** schedule,
+trigger or perform an app deployment. The next atomic task is to obtain a
+supported metadata-only staging provider/config isolation attestation without
+exposing tokens or health data.
