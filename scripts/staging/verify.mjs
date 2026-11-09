@@ -13,6 +13,8 @@ function origin(value, label) {
   // DNS treats a final dot as the same host. Reject this noncanonical form so
   // string comparisons cannot mistake a production host for isolated staging.
   if (u.hostname.endsWith('.')) throw new Error(`${label} must not use a trailing-dot hostname`);
+  // A loopback or reserved hostname cannot establish an independently hosted staging app.
+  if (/^(localhost|.*\.localhost|.*\.local|.*\.internal|.*\.test|.*\.invalid)$/i.test(u.hostname) || /^(127\.|0\.|10\.|192\.168\.|169\.254\.)/.test(u.hostname) || /^172\.(1[6-9]|2[0-9]|3[01])\./.test(u.hostname) || u.hostname === '[::1]') throw new Error(`${label} must use a hosted, non-local origin`);
   return u.origin;
 }
 
