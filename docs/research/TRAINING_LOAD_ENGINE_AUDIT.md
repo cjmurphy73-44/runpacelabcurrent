@@ -32,3 +32,44 @@ Display method, data coverage and last-updated information beside each load metr
 **Research limitation:** This is a code audit, not an independent systematic literature review. Verify original physiology publications, coefficient applicability, licensing and athlete-specific calibration before production adoption. Fixed 42/7 EWMAs are workload proxies; they do not measure recovery directly.
 
 Next atomic action: inventory actual consumers of the competing functions and identify the currently authoritative dashboard path, without altering science or deploying code.
+
+## Consumer trace — 9 November 2026 (follow-up atomic source audit)
+
+Source inspected: existing `fix/provider-connection-feedback` branch. The
+following are direct import/call relationships, not proof of production execution.
+
+| UI / workflow | Actual source dependency | Consequence |
+| --- | --- | --- |
+| `DashboardMetricBanner.jsx` | `calculateHistoricalAndProjectedLoad(workouts, [], 0)` in `src/lib/loadForecasting.js` | Shows historical CTL/ATL/TSB from a first-day-seeded 42/7 exponential EWMA. No stored backend load values used for these three cards. |
+| `LoadFatigueChart.jsx` | Same `calculateHistoricalAndProjectedLoad(completedSessions, plannedWorkouts, 7)` | Historical/projected load shares the banner's model, but uses separately supplied sessions and forecast assumptions. |
+| `LoadStatusCards.jsx` | `calculateTrainingLoads(workouts, timeRange)` in `src/lib/physiologyEngine.ts` | **Broken shape:** callee expects four arguments (history, maxHR, restHR, gender) and returns an **array** of daily TRIMP objects, not `{ctl,atl,tsb}`. Component's shape check causes it to return null. Do not infer that the cards are visible or valid. |
+| `src/lib/metrics/updateMetrics.ts` | `calculateMetrics(tssValues)` in `src/lib/metrics/loadEngine.ts` | Alternate first-observation-seeded span EWMA; uses workout rows without an explicit chronological sort or zero-load rest-day fill. Contains a documented placeholder Prisma upsert key. This is an auxiliary path, not evidence of active Base44 dashboard use. |
+| `base44/functions/calculateTrainingLoad/entry.ts` | Self-contained backend arithmetic | Has ambiguous dispatch described above; no direct frontend caller was established in this targeted search. |
+
+### Additional observed defects / semantics to resolve
+
+- `loadForecasting.js` chooses `session_trimp || session_tss || 0`. A real
+  zero TRIMP value falls through to TSS; TRIMP and TSS may have incompatible
+  units. Its projected-load rule uses fixed duration multipliers (0.4/0.7/1.0/1.3)
+  without athlete calibration, yet `getTsbZoneInfo` calls TSB below −25
+  “High Risk” and above +15 “Fresh,” with prescriptive advice. Those thresholds
+  must not be treated as validated individual injury/readiness predictions.
+- `DashboardMetricBanner.jsx` computes weekly TSS using the same TRIMP-or-TSS
+  fallback and a seven-day timestamp cutoff, whereas the forecast groups by
+  UTC date. Differences in date window and session inputs can cause mismatches.
+- `physiologyEngine.ts` has fixed VDOT pace-zone **strings** independent of
+  `vdotScore`; these are placeholders, not computed athlete-specific zones.
+  `LoadStatusCards.jsx` calls its load routine with `timeRange` as a heart-rate
+  parameter. Repair needs a separate typed interface and consumer tests.
+
+### Updated engineering priority
+
+The dashboard's actual visible candidate is **`src/lib/loadForecasting.js`**,
+not the standalone `src/math/load.ts` / `src/science/load.ts` functions.
+Before choosing a canonical science implementation, add fixture parity checks
+for the banner/chart's shared function and trace its workout sources. Then
+review projected stress multipliers and TSB risk language. Keep this work as
+source audit only until the existing G0–G3 acceptance gates clear.
+
+Evidence limitation: targeted repository search may omit dynamic imports or
+unindexed files; a full dependency graph and hosted UI observation remain open.
