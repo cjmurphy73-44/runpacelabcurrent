@@ -115,3 +115,13 @@ it('requires a confirmed save response before clearing any notice', async () => 
   expect(screen.getByRole('checkbox', { name: /No running this week/ }).checked).toBe(true);
   expect(screen.queryByText('Guidance cleared')).toBeNull();
 });
+
+
+it('offers a stable Settings entry even when no guidance is active', async () => {
+  invoke.mockResolvedValue({ data: { revision: 'revision', messages: [] } });
+  render(wrap(<CoachSignalNotice athleteId="a" showEmpty />));
+  await screen.findByText('No active conversation notices. Your workouts remain available.');
+  expect(screen.getByRole('link', { name: 'Open coach conversation' }).getAttribute('href')).toBe('/coach');
+  expect(screen.queryByRole('button', { name: /Clear selected/ })).toBeNull();
+  expect(invoke.mock.calls.every(([, body]) => body.action === 'read')).toBe(true);
+});

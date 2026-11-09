@@ -5,12 +5,12 @@ import { useCoachInjurySignal } from '@/hooks/useCoachInjurySignal';
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 
-export default function CoachSignalNotice({ athleteId }) {
+export default function CoachSignalNotice({ athleteId, showEmpty = false }) {
   const { user } = useAuth();
-  return <CoachSignalNoticeContent key={`${user?.id}:${athleteId}`} athleteId={athleteId} />;
+  return <CoachSignalNoticeContent key={`${user?.id}:${athleteId}`} athleteId={athleteId} showEmpty={showEmpty} />;
 }
 
-function CoachSignalNoticeContent({ athleteId }) {
+function CoachSignalNoticeContent({ athleteId, showEmpty }) {
   const signal = useCoachInjurySignal(athleteId);
   const [reviewing, setReviewing] = useState(false);
   const [selected, setSelected] = useState([]);
@@ -32,6 +32,12 @@ function CoachSignalNoticeContent({ athleteId }) {
     <div ref={successRef} tabIndex={-1} role="status" className="rounded-lg border border-primary/25 bg-primary/5 p-4 text-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-ring">
       <p className="flex items-center gap-2 font-medium"><CheckCircle2 className="h-4 w-4 text-primary" aria-hidden="true" />Guidance cleared</p>
       <p className="mt-1 text-muted-foreground">{saved.count} {saved.count === 1 ? 'note' : 'notes'} cleared. Your conversation and training plan are unchanged. New guidance will still appear.</p>
+    </div>
+  ) : showEmpty ? (
+    <div role="region" aria-label="Coach guidance" className="rounded-lg border border-border bg-background p-4 sm:p-5">
+      <p className="flex items-center gap-2 font-medium"><CheckCircle2 className="h-4 w-4 text-primary" aria-hidden="true" />Coach guidance</p>
+      <p className="mt-2 text-sm text-muted-foreground">No active conversation notices. Your workouts remain available.</p>
+      <a href="/coach" className="mt-3 inline-flex min-h-[44px] items-center rounded-md px-3 text-sm font-medium text-primary underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">Open coach conversation</a>
     </div>
   ) : null;
 
