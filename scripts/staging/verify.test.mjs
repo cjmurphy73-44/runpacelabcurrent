@@ -63,3 +63,15 @@ test('CLI preflight does not disclose private app IDs or origins', async () => {
     await rm(dir, { recursive: true, force: true });
   }
 });
+
+test('rejects loopback and private staging origins instead of claiming hosted isolation', () => {
+  for (const stagingOrigin of [
+    'https://localhost', 'https://app.localhost', 'https://staging.local',
+    'https://staging.internal', 'https://127.0.0.1', 'https://10.0.0.4',
+    'https://172.16.0.1', 'https://192.168.1.5', 'https://169.254.1.1',
+    'https://[::1]',
+  ]) {
+    assert.throws(() => verifyManifest({ ...manifest, stagingOrigin }), /hosted, non-local origin/);
+  }
+  assert.equal(verifyManifest(manifest).stagingOrigin, manifest.stagingOrigin);
+});
