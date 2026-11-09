@@ -108,3 +108,12 @@ save, deployment, account isolation or exactly-once delivery is established.
 At-least-once handling, automatic retry scheduling and account-scoped storage
 remain separate acceptance work. This repair cannot restore items already
 dropped by older code.
+
+## Garmin retention implementation (TPL-INT-006-GAR-002)
+
+The webhook no longer silently omits recordings above 3,600 samples. Complete
+decoded streams/laps are retained within byte budgets; oversized, invalid or
+unavailable supplied files return explicit errors rather than summary success.
+Native power and provenance are stored. Raw binary archival remains absent.
+Full local suite: 297 passed, four known COROS expected failures. No hosted
+deployment or provider acceptance. See .codex/reports/TPL-INT-006-GAR-002.md.

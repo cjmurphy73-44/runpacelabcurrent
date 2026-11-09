@@ -9,6 +9,7 @@ import { assertSafeFileUrl } from '../../shared/urlGuard.ts';
 import { constantTimeEqual } from '../../shared/crypto.ts';
 import { recomputeCTLATLTSB } from '../../shared/ctlRecalc.ts';
 import { runPostWorkoutEvaluation } from '../../shared/postWorkoutAI.ts';
+import { readBoundedRecording, assertInlineWorkoutFits, recordingProvenance, recordingErrorResponse, RecordingStorageError } from '../../shared/recordingStorage.ts';
 
 function env(name) { try { return Deno.env.get(name) || ''; } catch { return ''; } }
 
@@ -56,30 +57,32 @@ Deno.serve(async (req) => {
     }
 
     const activity = body.activity || body.workout || body;
-    let summary = null, sourceFormat = 'webhook', fitStream = [], fitLaps = [];
+    let summary = null, sourceFormat = 'webhook', fitStream = [], fitLaps = [], provenance = null;
     if (body.fit_file_url || activity.fit_file_url) {
       try {
         const fitUrl = body.fit_file_url || activity.fit_file_url;
         const urlCheck = assertSafeFileUrl(fitUrl);
         if (!urlCheck.ok) return Response.json({ error: 'fit_file_url not allowed' }, { status: 400 });
-        const r = await fetch(fitUrl);
-        if (r.ok) {
-          // Parse the full FIT (not just its summary) so the push carries a real
-          // second-by-second stream — that is what makes true time-in-zone possible.
-          const parsed = parseFitWithLaps(new Uint8Array(await r.arrayBuffer()));
-          if (parsed) {
-            summary = {
-              ...parsed.summary,
-              derived_date: activity.date
-                || (activity.start_time ? String(activity.start_time).slice(0, 10) : null)
-                || new Date().toISOString().slice(0, 10),
-            };
-            fitStream = parsed.stream || [];
-            fitLaps = parsed.laps || [];
-            sourceFormat = 'fit';
-          }
+        const bytes = await readBoundedRecording(await fetch(fitUrl));
+        let parsed;
+        try {
+          if (bytes.length < 16 || bytes[8] !== 0x2e || bytes[9] !== 0x46 || bytes[10] !== 0x49 || bytes[11] !== 0x54) throw new Error('Invalid FIT header');
+          parsed = parseFitWithLaps(bytes);
+          if (!parsed?.stream?.length) throw new Error('No recording samples');
+        } catch {
+          throw new RecordingStorageError('recording_parse_failed', 'The original recording could not be decoded. No workout was saved.', 422);
         }
-      } catch { /* fall through to JSON summary */ }
+        summary = {
+          ...parsed.summary,
+          derived_date: activity.date
+            || (activity.start_time ? String(activity.start_time).slice(0, 10) : null)
+            || new Date().toISOString().slice(0, 10),
+        };
+        fitStream = parsed.stream;
+        fitLaps = parsed.laps || [];
+        sourceFormat = 'fit';
+        provenance = await recordingProvenance(bytes, fitStream, fitLaps);
+      } catch (error) { return recordingErrorResponse(error); }
     }
     if (!summary) {
       const dur = Number(activity.duration_seconds ?? activity.duration ?? 0);
@@ -143,11 +146,8 @@ Deno.serve(async (req) => {
       temperatureC,
       humidityPct,
     });
-    const storedStream = fitStream.length > 0 && fitStream.length <= 3600
-      ? fitStream.map((p) => ({ time: p.time, heart_rate: p.heart_rate, altitude: p.altitude, distance: p.distance, cadence: p.cadence, speed: p.speed }))
-      : undefined;
-
-    const session = await base44.asServiceRole.entities.WorkoutSession.create({
+    // Preserve every decoded channel/sample. Bound serialized bytes, not activity length.
+    const payload = {
       athlete_id: athleteId,
       created_by_id: athlete.created_by_id,
       date,
@@ -165,9 +165,15 @@ Deno.serve(async (req) => {
       temperature_c: temperatureC ?? undefined,
       humidity_pct: humidityPct ?? undefined,
       ...energy,
-      streams: storedStream,
+      streams: fitStream.length ? fitStream : undefined,
+      recording_provenance: provenance || undefined,
       laps: fitLaps.length > 0 ? fitLaps : undefined,
-    });
+    };
+    if (sourceFormat === 'fit') {
+      try { assertInlineWorkoutFits(payload); }
+      catch (error) { return recordingErrorResponse(error); }
+    }
+    const session = await base44.asServiceRole.entities.WorkoutSession.create(payload);
 
     try { await base44.asServiceRole.entities.WebhookEvent.create({ event_id: eventId, provider: 'generic', athlete_id: athleteId, workout_session_id: session.id, outcome: 'created' }); } catch {}
     try { await recomputeCTLATLTSB(base44, athleteId); } catch {}

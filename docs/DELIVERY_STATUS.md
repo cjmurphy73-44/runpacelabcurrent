@@ -251,3 +251,20 @@ See .codex/reports/TPL-UX-001-COACH-STAGING.md. GitHub required CI/reviews and
 production gates remain open. The partial Garmin retention repair was excluded
 from the deployed snapshot and preserved in the working tree/private backup for
 GAR-002's next bounded continuation. No production deployment occurred.
+
+## Garmin retention runtime fix — TPL-INT-006-GAR-002
+
+Existing PR #9 now preserves complete decoded Garmin samples/laps within explicit
+8 MiB download / 1 MiB serialized-workout application budgets, including power.
+3,599/3,600/3,601/7,201-sample round trips pass. Failures have explicit outcomes
+and no fixture writes; supplied FIT failure no longer silently becomes a summary.
+Provenance is explicit; original binaries are not archived. WorkoutSession RLS
+unchanged. Full local suite: 297 passed, four known COROS expected failures in
+45 files; typecheck/lint/build/backend validation pass. Exact-head remote CI
+remains separate. This is code-only: no staging/production deployment.
+
+Release requires guard-branch reconciliation, isolation and hosted byte-budget
+readback, independent reviews, exact-head CI, Odysseus preservation, component
+manifests/rollback and separate production approval. Owner has now prioritized
+checking whether coach-notice management actually resolves the AI blocking path;
+assets remain planned, with no new logo/imagery delivery claimed.
