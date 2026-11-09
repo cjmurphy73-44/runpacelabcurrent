@@ -47,6 +47,11 @@ npx skills add base44/skills
 - Read `docs/ODYSSEUS_PRESERVATION.md` before any integration that includes its
   removal. Preserve existing Mac paths and launch dependencies; cloud repository
   access does not establish access to that Mac or its modified working copy.
-- No production deployment/data changes, exposed credentials, self-approval,
-  review/check bypass or new authorization/billing/telemetry/coaching work before
-  pipeline PRs 1 and 2 are both merged and verified. GitHub PR numbers differ.
+- No production deployment/data changes, exposed credentials, self-approval or
+  review/check bypass. Newer Product Owner direction on 9 November permits safe,
+  isolated code and automated-test work while G0 isolation is being resolved;
+  do not default to research-only runs when such a task is eligible. This does
+  not waive security/billing/review/release gates, authorize real-provider pilots
+  or establish staging isolation. Publish preview/staging only with verified
+  isolation and authorization; production needs passed gates and separate explicit
+  approval. Read the updated delivery contract on the existing provider branch.

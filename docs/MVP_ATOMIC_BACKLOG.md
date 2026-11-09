@@ -18,9 +18,12 @@ historical checkpoint remain on `fix/provider-connection-feedback` until merged.
   and pipeline PR 2 = GitHub #5 are merged AND verified, with staging evidence,
   required independent reviews/checks and Odysseus preservation. `G1` through `G5`
   retain the roadmap order: security, billing, data, science/coaching, deletion.
-- No new authorization, billing, telemetry or coaching implementation before G0.
-  Existing #7-#9 work is inventory awaiting acceptance; this backlog does not
-  retroactively approve it or unlock gates. Later rows stay blocked by their gate.
+- Newer Product Owner direction on 9 November authorizes safe isolated code and
+  automated-test work while G0 isolation is pending. Select an eligible bounded
+  task rather than another research-only run when safe implementation/testing is
+  possible. Existing #7-#9 work still awaits acceptance; this direction does not
+  waive security/billing/review/release gates, real-provider prerequisites or
+  grant production authority. Gate completion claims retain their dependencies.
 - No production deployments/data changes, credential exposure, direct main writes,
   protection bypass or self-approval. Use synthetic staging; private identity,
   credentials, health/GPS data and local preservation details stay outside Git.
@@ -132,6 +135,7 @@ stays synthetic, with external sync disabled outside a separately authorized tes
 | TPL-INT-004 | Verify repeat/webhook idempotent ingestion (DATA-003) | INT-003 | Same activity delivery has one correct record, retriable partial failures visible; one path per run. |
 | TPL-INT-005 | Verify expiry/rate-limit/parse-failure recovery (DATA-003) | INT-004 | One failure per child task; never convert fetch/parser error into no-telemetry success. |
 | TPL-INT-006 | Round-trip one long/sparse/paused recording fixture (DATA-002) | INT-002 | More-than-hour stream, missing channels, valid zeros, laps/duplicates and timestamps each have child fixtures; no silent sample cap. |
+| TPL-INT-006-GAR-001 | Offline Garmin 3599/3600/3601-sample handler characterization | Explicit owner authorization for isolated automated tests | Implemented in [PR #9](https://github.com/cjmurphy73-44/runpacelabcurrent/pull/9), [f9b36c9](https://github.com/cjmurphy73-44/runpacelabcurrent/commit/f9b36c94b8c3d7594b72cad3f693b2bb4ea64461); 263 passed plus one explicit known-defect expected failure. Real handler/native decoder, synthetic bytes and serialized SDK fixture; 3601 stream omission reproduced, not fixed. No G3/runtime/provider acceptance or deployment. |
 | TPL-INT-007 | Verify one manual FIT/TCX/CSV import case (DATA-002) | INT-006 | Declared format matches parser; retained original and accurate channel/summary state; split by format. |
 | TPL-INT-008 | Trace one activity to understandable athlete output (DATA-004/005) | INT-005/006/007 | Private source->raw->decode->persist->analysis->dashboard chain; source/freshness/completeness and next action visible. Both providers required for G3. |
 
@@ -305,10 +309,44 @@ Evidence: [.codex task follow-up](../.codex/reports/TPL-G0-002-metadata-followup
 Process/access steps: [delivery runbook](DEVELOPMENT_TO_PRODUCTION.md). Historical
 entries above remain observations at their recorded sources, not current state.
 
-## Next run
+## Prior next-run checkpoint (superseded by active implementation direction below)
 
 Continue **TPL-G0-002**: obtain a supported app-wide isolation attestation
 accounting for owner-scoped counts and the existing test webhook secret. The
 count-only API now works; do not retry the blank Data UI or interpret caller-zero
 as global-zero. If the remaining attestation is unavailable, record the precise
 external blocker and stop; G0, the review gates and TPL-ODY-002 stay open.
+
+
+## Run update: TPL-INT-006-GAR-001, active implementation direction
+
+The owner authorized safe isolated code/tests while G0 is unresolved, retaining
+production, billing, security, review and Odysseus controls. A runnable test was
+completed rather than another source-only audit. Existing PR #9 now executes
+the real Garmin webhook/native FIT path with synthetic 3599/3600/3601 records.
+The first two preserve currently mapped samples; 3601 decode but are omitted
+from the serialized create payload despite a success response and measured zones.
+The desired full-retention assertion is explicitly expected to fail, and fails
+when run ordinarily. No ingestion/runtime behavior was changed or deployed.
+
+Local required checks pass; full suite has 263 passed and one expected failure
+across 43 files. Exact-head CI/review remains separate. Details and changed files
+are in PR #9's .codex/reports/TPL-INT-006-GAR-001.md. This child does not certify
+TPL-INT-006, G3, remote persistence, provider health or full native-channel fidelity.
+
+Next safe atomic development scenario: a separate COROS recording/cap round-trip
+characterization using synthetic data. G0 isolation work continues through
+app-wide RLS-aware metadata attestation and test-webhook provenance; the owner
+was asked for provenance only, never the secret value. Those acceptance gaps
+must not indefinitely block unrelated safe offline development. No staging
+publication until isolation/authorization are verified. No production deployment
+until release gates pass and the owner separately approves it.
+
+## Next run
+
+Implement/test **TPL-INT-006-COR-001**, one synthetic COROS recording/cap scenario
+on the existing owning branch, without provider contact or deployment. Keep the
+Garmin runtime repair separately bounded and reviewable. In parallel, continue
+the unresolved G0-002 attestation using supported metadata-only evidence; do not
+let an unchanged external-access blocker prevent safe code/test work. Preserve
+the complete roadmap, required reviews and original-Mac Odysseus gate.
