@@ -85,7 +85,19 @@ class OfflineSyncQueueService extends EventEmitter {
       isOnline: this.isOnline,
       syncInProgress: this.syncInProgress,
       pendingCount: this.queue.length,
+      failedCount: this.queue.filter((item) => (item.attempts || 0) >= this.MAX_ATTEMPTS).length,
     };
+  }
+
+  public async retryFailed() {
+    if (this.syncInProgress || !this.isOnline) return;
+    for (const item of this.queue) {
+      if ((item.attempts || 0) < this.MAX_ATTEMPTS) continue;
+      item.attempts = 0;
+      delete item.nextRetryAt;
+    }
+    this.saveToStorage();
+    await this.processQueue();
   }
 
   public async processQueue() {
@@ -104,6 +116,8 @@ class OfflineSyncQueueService extends EventEmitter {
       // Unregistered actions are pending work, never simulated successes.
       if (!handler) continue;
       const attempts = item.attempts || 0;
+      // Exhausted work stays persisted until the athlete explicitly retries it.
+      if (attempts >= this.MAX_ATTEMPTS) continue;
       if (item.nextRetryAt && now < item.nextRetryAt) {
         continue;
       }
@@ -121,8 +135,7 @@ class OfflineSyncQueueService extends EventEmitter {
           const backoff = Math.min(this.MAX_DELAY, this.BASE_DELAY * Math.pow(2, newAttempts - 1));
           item.nextRetryAt = Date.now() + backoff;
         } else {
-          this.queue = this.queue.filter((pending) => pending !== item);
-          console.error(`[offlineSyncQueue] Item ${item.id} dropped after max retries (${this.MAX_ATTEMPTS}):`, item);
+          delete item.nextRetryAt;
         }
       }
       this.saveToStorage();

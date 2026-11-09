@@ -87,3 +87,24 @@ a2dd36020d573faa737695c5656ddc7034fa896f. Both changed frontend files read
 back matching Git; backend source and workflow records were unchanged. This
 establishes staging publication and source parity, not a hosted authenticated
 queue or athlete acceptance pass.
+
+## 9 November: exhausted offline saves remain recoverable
+
+The sixth failed attempt previously removed the unsaved payload from memory and
+local storage, logged the entire item and left the status badge showing Online.
+The new regression suite reproduces that data loss against c95b2b5: three new
+cases fail there and all nine queue cases pass with this repair.
+
+Exhausted work now stays persisted and counted as unsaved. Ordinary processing,
+including reconnect, skips it until an explicit Retry failed changes action
+starts another bounded attempt cycle. That action does nothing offline or while
+a save is active, and preserves backoff for other pending work. The badge shows
+the failure count and total unsaved changes; exhaustion no longer logs payloads.
+
+Evidence is local: 255 tests in 41 files, including actual React status/retry
+components with synthetic handlers and browser-storage fixtures. Typecheck,
+lint, build and backend validation are required for this candidate. No hosted
+save, deployment, account isolation or exactly-once delivery is established.
+At-least-once handling, automatic retry scheduling and account-scoped storage
+remain separate acceptance work. This repair cannot restore items already
+dropped by older code.

@@ -1,6 +1,8 @@
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
-import { waitFor } from '@testing-library/react';
+import { createElement } from 'react';
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import queue from '@/services/offlineSyncQueue';
+import { NetworkStatusBadge, OfflineSyncProvider } from '@/components/layout/offlineSyncAdapters';
 
 const stored = () => JSON.parse(localStorage.getItem('trainpace_offline_queue') || '[]');
 const deferred = () => {
@@ -12,7 +14,55 @@ const deferred = () => {
 const online = () => window.dispatchEvent(new Event('online'));
 const offline = () => window.dispatchEvent(new Event('offline'));
 beforeEach(() => { offline(); queue.clear(); });
-afterEach(() => { offline(); queue.clear(); vi.restoreAllMocks(); });
+afterEach(() => { cleanup(); offline(); queue.clear(); vi.restoreAllMocks(); });
+
+async function exhaustRetries(action: string, payload = { synthetic: true }) {
+  let clock = 10000;
+  vi.spyOn(Date, 'now').mockImplementation(() => clock);
+  const handler = vi.fn().mockRejectedValue(new Error('Temporary failure'));
+  queue.registerHandler(action, handler);
+  const id = queue.enqueue(action, payload);
+  online();
+  await waitFor(() => expect(queue.getStatus().syncInProgress).toBe(false));
+  for (let attempt = 1; attempt < 6; attempt++) {
+    clock += 30000;
+    await queue.processQueue();
+  }
+  return { handler, id };
+}
+
+it('retains exhausted changes and does not log their payload or retry on reconnect', async () => {
+  const log = vi.spyOn(console, 'error').mockImplementation(() => {});
+  const { handler, id } = await exhaustRetries('exhausted');
+  expect(handler).toHaveBeenCalledTimes(6);
+  expect(stored()).toEqual([expect.objectContaining({ id, attempts: 6, payload: { synthetic: true } })]);
+  expect(queue.getStatus()).toMatchObject({ pendingCount: 1, failedCount: 1 });
+  offline();
+  online();
+  await queue.processQueue();
+  expect(handler).toHaveBeenCalledTimes(6);
+  expect(log).not.toHaveBeenCalled();
+});
+
+it('keeps failed work intact when retry is requested offline', async () => {
+  const { handler } = await exhaustRetries('offline-retry');
+  offline();
+  await queue.retryFailed();
+  expect(handler).toHaveBeenCalledTimes(6);
+  expect(stored()[0].attempts).toBe(6);
+});
+
+it('shows unsaved failures and recovers them through the explicit retry control', async () => {
+  const { handler } = await exhaustRetries('ui-retry');
+  handler.mockResolvedValue(undefined);
+  render(createElement(OfflineSyncProvider, null, createElement(NetworkStatusBadge)));
+  expect(screen.getByRole('status').textContent).toContain('Sync failed (1); 1 unsaved');
+  fireEvent.click(screen.getByRole('button', { name: 'Retry failed changes' }));
+  await waitFor(() => expect(screen.getByRole('status').textContent).toBe('Online'));
+  expect(handler).toHaveBeenCalledTimes(7);
+  expect(stored()).toEqual([]);
+  expect(queue.getStatus()).toMatchObject({ pendingCount: 0, failedCount: 0 });
+});
 
 it('persists in-flight and newly queued work until each save actually completes', async () => {
   const first = deferred();
@@ -87,7 +137,7 @@ it('keeps backoff work pending and allows an explicit retry when it is due', asy
   queue.enqueue('retry-test', {});
   online();
   await waitFor(() => expect(queue.getStatus().syncInProgress).toBe(false));
-  await queue.processQueue();
+  await queue.retryFailed();
   expect(handler).toHaveBeenCalledTimes(1);
   expect(stored()).toHaveLength(1);
   clock += 1000;

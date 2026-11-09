@@ -14,7 +14,7 @@ export function OfflineSyncProvider({ children }) {
   }, []);
 
   const enqueueMutation = (action, payload) => offlineSyncQueue.enqueue(action, payload);
-  const syncNow = () => offlineSyncQueue.processQueue();
+  const syncNow = () => offlineSyncQueue.retryFailed();
   const value = { ...state, queue: offlineSyncQueue.getQueue(), enqueueMutation, syncNow };
 
   return (
@@ -34,10 +34,12 @@ export function NetworkStatusBadge({ compact = false }) {
   const isOnline = ctx?.isOnline ?? navigator.onLine;
   const syncInProgress = ctx?.syncInProgress ?? false;
   const queueCount = ctx?.pendingCount ?? 0;
+  const failedCount = ctx?.failedCount ?? 0;
   const syncNow = ctx?.syncNow;
   const statusText = !isOnline
     ? `Offline (${queueCount} queued)`
     : syncInProgress ? "Syncing changes..."
+    : failedCount > 0 ? `Sync failed (${failedCount}); ${queueCount} unsaved`
     : queueCount > 0 ? `Pending sync (${queueCount})` : "Online";
 
   return (
@@ -68,7 +70,7 @@ export function NetworkStatusBadge({ compact = false }) {
             onClick={() => syncNow().catch((err) => alert(err.message))}
             className="ml-2 underline hover:opacity-80 font-bold uppercase text-[10px]"
           >
-            Sync Now
+            {failedCount > 0 ? "Retry failed changes" : "Sync Now"}
           </button>
         )}
       </div>

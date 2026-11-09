@@ -135,3 +135,25 @@ acceptance and access to the live domain/GitHub API. The Mac-only infrastructure
 commits are still needed before reviewing a combined backend candidate.
 Do not treat the queue repair as ingestion, account-isolation or science
 acceptance. See the audit follow-up for its remaining durability limits.
+
+## 9 November: bounded offline failure recovery on PR #9
+
+Completed one UX-007 follow-up on the existing provider-feedback branch: keep
+unsaved changes after six failed attempts, show the failure in the status badge
+and support an explicit retry. Three new regressions fail against c95b2b5 and
+pass with the repair; the complete suite passes 255 tests in 41 files. Ordinary
+reconnect does not replay exhausted work, and normal pending retries keep their
+backoff. Typecheck, lint, build and backend validation pass locally; exact-head
+CI and affected hosted behavior remain separate acceptance evidence.
+
+This is local fixture/component evidence, not hosted athlete acceptance. No
+Base44 publication, production change or Odysseus operation was performed.
+The foundational staging/CI gate remains open; this ordinary usability repair
+does not unlock authorization, billing, telemetry or coaching implementation.
+Correction to the preceding historical entry: infrastructure work is published
+on fix/tpl-infra-001 at 8bafa5178d40f0748800a18c6583253aebc241a4;
+it is no longer Mac-only. Combined-candidate review and protected preservation
+requirements remain outstanding.
+Next atomic action: verify retained exhausted work and explicit retry across a
+local browser reload with synthetic data; record hosted acceptance separately
+when supported staging access is available. Deferred network settings stay deferred.
