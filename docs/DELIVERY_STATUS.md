@@ -108,3 +108,30 @@ Required next actions: allow those two hosts in environment network settings,
 complete hosted athlete acceptance and obtain independent release review through
 the existing PRs. Production authorization is recorded; do not ask the owner to
 repeat it, bypass the review, or publish the stacked backend changes wholesale.
+
+## 9 November: work completed while network changes are deferred
+
+The Product Owner asked to continue independent work and leave cloud network
+permissions until later. Do not repeatedly request the same settings changes.
+
+Offline queue integrity was repaired on existing PR #9 at source
+a2dd36020d573faa737695c5656ddc7034fa896f. Six regressions cover concurrent
+enqueues, persistence during requests, failure, clear, unknown handlers, status
+notification and backoff. Typecheck, lint, 252 tests in 41 files, backend
+validation and the explicit staging build pass. Local iPad-sized Chromium
+verified the real queue/status modules with synthetic data; pending data and
+its honest Pending sync state survive reload. This is local browser evidence.
+
+The supported staging deployment succeeded. Both edited frontend files were
+backed up, compared against their known previous Git source, saved in Base44
+and read back matching the candidate. Fresh target reads confirmed existing
+private staging, distinct from production. Backend source and exact workflow
+records remained unchanged; the workflows were inactive before deployment.
+Private backup, deployment response, manifest, logs and browser evidence are
+under cloud-setup/offline-queue outside Git. No production write was performed.
+
+Remaining release blockers are unchanged: independent review, hosted athlete
+acceptance and access to the live domain/GitHub API. The Mac-only infrastructure
+commits are still needed before reviewing a combined backend candidate.
+Do not treat the queue repair as ingestion, account-isolation or science
+acceptance. See the audit follow-up for its remaining durability limits.

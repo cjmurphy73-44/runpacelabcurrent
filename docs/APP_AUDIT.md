@@ -73,7 +73,7 @@ clearing, missing handlers, status notification and retry backoff. The complete
 suite passes 252 tests in 41 files, alongside typecheck, lint and backend
 validation. Local iPad-sized Chromium exercised the actual service and status
 components with synthetic queue data: offline queued count and online pending
-state rendered correctly, local storage retained the item, and no page exception
+state rendered correctly, local storage retained the item through reload, and no page exception
 occurred. Vite development HMR websocket errors occurred in the harness and
 are not a hosted-runtime pass. This does not verify remote athlete data writes.
 
@@ -81,3 +81,9 @@ The queue remains at-least-once: a browser interruption after server success but
 before local removal can repeat an operation. Handler idempotency, account-scoped
 storage, retry scheduling and exhausted-retry recovery require separate review;
 this change does not establish those guarantees.
+
+The follow-up was also published to the existing private staging app from
+a2dd36020d573faa737695c5656ddc7034fa896f. Both changed frontend files read
+back matching Git; backend source and workflow records were unchanged. This
+establishes staging publication and source parity, not a hosted authenticated
+queue or athlete acceptance pass.
