@@ -132,3 +132,27 @@ so rollback readiness remains unverified despite the recorded site checkpoint.
 
 See the [metadata-only task report](../.codex/reports/TPL-G0-002-metadata-followup.md)
 for exact source/check checkpoints and what remains unverified.
+
+## Publishing transport and current UI check gap — 9 November 2026
+
+Work Git reads and pushes now succeed with the existing configured credential
+using a Bearer header supplied only through subprocess environment configuration.
+Default/Basic authentication had failed; no new credential was requested, printed,
+stored in Git config or embedded in a command-line argument. This supersedes the
+earlier write-access blocker, not the need to verify CI event behavior.
+
+Coach-management UI commit 6a329fa8562c65f10c4de83180f3628b2172afee is remote on
+existing PR #9. Local checks pass, but two exact-head Checks reads and the public
+Actions listing did not expose the six required jobs for that new head; only a
+Vercel preview-comment check was visible at observation. Do not transfer the prior
+3cefeb2 checks, weaken required jobs or describe this as an independently green
+application-CI run. Resolve the publishing-event/identity or authorized dispatch
+path and verify the exact new commit. Ordinary GITHUB_TOKEN-generated pushes may
+not trigger another workflow; the current token's issuer/trigger behavior was
+not independently attested, so that is a possible cause, not a diagnosis.
+
+The owner approved the official Codex GitHub Actions alternative. A secure API
+key/API billing setup, reviewed manual-only workflow on the default branch and
+one executed hosted-run proof are still required; no hourly workflow was enabled
+or duplicate ChatGPT Scheduled task created. Preserve default-branch/Odysseus
+review gates. Current Work execution is not proof of scheduler attachment.
