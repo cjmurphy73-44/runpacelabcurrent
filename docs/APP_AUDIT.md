@@ -126,3 +126,14 @@ visible, labels cached guidance and disables clearing until a successful read.
 Escape and Keep restore focus to Manage guidance without writing. Full suite:
 300 passed, four existing COROS expected failures. Real local browser fixtures
 verify keyboard, reload, preserved workout and iPad/mobile layout.
+
+## Coach chat recovery implementation
+
+Failed conversation load now offers retry/dashboard navigation; failed sends
+retain the draft and restore focus instead of discarding text. Accessible named
+input/send and overlapping-submit guard added. Four regressions and real local
+Chromium iPad/phone fixtures pass; full suite 304 passed/four known COROS expected
+failures, plus typecheck/lint/build/backend validation. Screenshots under
+`docs/evidence/coach-chat`; task `.codex/reports/TPL-UX-COACH-CHAT-RECOVERY.md`.
+No hosted publication: staging Google callback domain error remains unverified
+and parked per owner. Production and existing backend unchanged.

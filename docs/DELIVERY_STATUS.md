@@ -290,3 +290,14 @@ This publishes only the frontend; the Garmin backend/schema patch was not applie
 Hosted athlete clear/reload acceptance is not yet verified. Exact-commit required
 CI results were unavailable in the public checks view; do not claim CI passed.
 No production mutation or deployment occurred.
+
+## Coach chat recovery implementation
+
+Failed conversation load now offers retry/dashboard navigation; failed sends
+retain the draft and restore focus instead of discarding text. Accessible named
+input/send and overlapping-submit guard added. Four regressions and real local
+Chromium iPad/phone fixtures pass; full suite 304 passed/four known COROS expected
+failures, plus typecheck/lint/build/backend validation. Screenshots under
+`docs/evidence/coach-chat`; task `.codex/reports/TPL-UX-COACH-CHAT-RECOVERY.md`.
+No hosted publication: staging Google callback domain error remains unverified
+and parked per owner. Production and existing backend unchanged.
