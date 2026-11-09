@@ -34,3 +34,9 @@ Reviewed PR #5 at `5db1f34f16d693d624bf754bfa6e28e4c2a7d182` against its patch a
 The reviewed `inviteAthlete` and `acceptInvite` entrypoints both delegate to `invitationUnavailable`. Its source checks the caller via `auth.me()`, returns 401 for unauthenticated callers and 503 for authenticated callers, with no explicit entity-write path. This is **source-only** fail-closed evidence, not a hosted authentication or no-write test. Verify both endpoints with distinct synthetic identities in isolated staging before accepting the change. The archived `AthleteInvite.ts` is a source move, not proof of hosted schema compatibility or preservation of records. Offline validation still cannot certify runtime permissions; the three catalog RLS warnings remain open.
 
 **Gate decision:** `TPL-G0-001` review recorded, but staging/runtime acceptance, independent PR approval and Odysseus preservation are outstanding. PR #5 must remain unmerged. No production or staging deployment was performed for this review.
+
+## TPL-G0-001 follow-up: exact-head Actions check attestation (2026-11-09)
+
+GitHub Actions [run 42527948455](https://github.com/cjmurphy73-44/runpacelabcurrent/actions/runs/42527948455) is completed successfully on PR #5 head `5750f63b2115b2ceb968b8ca7b88f1a49828311e`. Its job-level readback confirms **all six** named jobs completed with `success`: Typecheck, Lint, Build, Backend, Tests and CI required. This resolves the earlier check-run visibility limitation for this exact head; it does not execute a new local test or attest to hosted invitation behavior.
+
+GitHub returned **zero submitted PR #5 reviews** at this check. Independent approval, invitation staging acceptance, the archived schema's runtime compatibility, and verified independent Odysseus preservation remain mandatory before any protected merge. No production or staging write was made during this read-only attestation.
