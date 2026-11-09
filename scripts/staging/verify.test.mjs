@@ -41,7 +41,6 @@ test('checks Stripe test mode without claiming webhook routing is verified', asy
 import { mkdtemp, writeFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { fileURLToPath } from 'node:url';
 import { spawnSync } from 'node:child_process';
 
 test('CLI preflight does not disclose private app IDs or origins', async () => {
@@ -49,7 +48,7 @@ test('CLI preflight does not disclose private app IDs or origins', async () => {
   try {
     const fixture = join(dir, 'manifest.json');
     await writeFile(fixture, JSON.stringify(manifest));
-    const result = spawnSync(process.execPath, [fileURLToPath(new URL('./verify.mjs', import.meta.url)), fixture], { encoding: 'utf8' });
+    const result = spawnSync(process.execPath, [join(process.cwd(), 'scripts/staging/verify.mjs'), fixture], { encoding: 'utf8' });
     assert.equal(result.status, 0, result.stderr);
     const output = JSON.parse(result.stdout);
     assert.equal(output.manifestValid, true);
