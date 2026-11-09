@@ -206,3 +206,25 @@ queued afterward in the existing backlog. Do not substitute another research-onl
 task or let unchanged staging access block safe code work. No runtime/deployment,
 production data, credentials, workflows or Odysseus tracking changed in this run.
 See .codex/reports/TPL-INT-006-COR-001.md for scenario results and delivery limits.
+
+## 9 November: owner-requested visible coach-guidance management
+
+Added individual source selection, clear/keep actions and saved confirmation in
+CoachSignalNotice on existing PR #9's branch. The existing review API supports
+selected fingerprints; no duplicate backend or client-side hide workaround was
+added. Plan/conversation remain saved. Twenty-one targeted cases and actual
+synthetic dashboard Chromium checks pass; full suite: 281 passed plus five
+existing ingestion expected failures. Typecheck/lint/build/backend validation pass.
+Before/manage/cleared screenshots are in docs/evidence/coach-guidance.
+
+Fresh read-only metadata confirms reviewCoachSignal and CoachSignalReview are
+missing from BOTH hosted apps. Their reviewed deployment with this frontend is
+an explicit release dependency, not an assumption that a push makes the app live.
+No hosted deployment, production record, backend/schema, workflow or Odysseus
+tracking changed. Git access now works with the existing secure credential via
+Bearer-header transport; prior Basic/default failure is not a current proof of
+no access. Exact new-source push/CI must be verified separately.
+
+The immediately next code task remains Garmin retention repair (GAR-002), after
+this owner-prioritized UI task. Automation activation and Option B evaluation
+remain in platform planning, without a migration or production release grant.

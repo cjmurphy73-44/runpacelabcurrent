@@ -74,3 +74,18 @@ the reference is removed. The old Readiness normal line is also removed because
 no HRV anomaly is not evidence that readiness is normal. Existing readiness maths
 are otherwise unchanged. Eight additional component tests cover these journeys.
 These states also require real staging UI verification before main/release.
+
+## Follow-up: visible individual notice management
+
+Manage guidance now exposes dated source checkboxes, select/deselect all shown,
+Clear selected guidance and Keep guidance. Only checked currently displayed
+fingerprints are sent to the existing revision-checked endpoint. New source keys
+are not selected by an old selection, and failed/unconfirmed saves do not clear
+the notice. A successful selection refreshes shared consumers and restores focus.
+Conversation history and saved workouts remain unchanged. This is acknowledgement
+of automatic conversation advice, not removal of a confirmed human restriction.
+
+See docs/evidence/coach-guidance for actual before/after synthetic dashboard
+screenshots. Fresh metadata still shows the required review function/entity
+absent in both hosted apps; deploy that reviewed batch with the frontend only
+after isolation/authorization checks. No live operation occurred in this task.
