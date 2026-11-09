@@ -136,6 +136,12 @@ stays synthetic, with external sync disabled outside a separately authorized tes
 | TPL-INT-005 | Verify expiry/rate-limit/parse-failure recovery (DATA-003) | INT-004 | One failure per child task; never convert fetch/parser error into no-telemetry success. |
 | TPL-INT-006 | Round-trip one long/sparse/paused recording fixture (DATA-002) | INT-002 | More-than-hour stream, missing channels, valid zeros, laps/duplicates and timestamps each have child fixtures; no silent sample cap. |
 | TPL-INT-006-GAR-001 | Offline Garmin 3599/3600/3601-sample handler characterization | Explicit owner authorization for isolated automated tests | Implemented in [PR #9](https://github.com/cjmurphy73-44/runpacelabcurrent/pull/9), [f9b36c9](https://github.com/cjmurphy73-44/runpacelabcurrent/commit/f9b36c94b8c3d7594b72cad3f693b2bb4ea64461); 263 passed plus one explicit known-defect expected failure. Real handler/native decoder, synthetic bytes and serialized SDK fixture; 3601 stream omission reproduced, not fixed. No G3/runtime/provider acceptance or deployment. |
+| TPL-INT-006-COR-001 | Synthetic COROS historical recording-fidelity matrix | Explicit owner authorization for isolated tests | Implemented in [3cefeb2](https://github.com/cjmurphy73-44/runpacelabcurrent/commit/3cefeb24633c4b5a2b36bea1a2bf03afd15e6044), existing PR #9. Real MCP/decoder/mapping with in-memory SDK/fetch; 14 passed, 4 explicit defect expected failures; no hosted/provider acceptance. |
+| TPL-INT-006-GAR-002 | Fix Garmin full-recording retention with explicit storage limits/provenance | GAR-001 tests; owner explicitly prioritizes next safe runtime patch | **Next offline implementation.** All 3599/3600/3601 native samples survive supported storage/readback; native fields remain honest; oversize policy is explicit and cannot report success after silent omission. Preserve original/chunks or fail without partial writes under a justified storage contract. Convert the expected failure to a normal regression. Runtime/schema/security review and isolated hosted acceptance before release. |
+| TPL-INT-006-COR-002 | Remove silent COROS long-stream prefix truncation | COR-001; GAR-002 shared storage-contract decision | Queued after Garmin. Full recording/sample coverage and explicit bounded outcomes; summary/zones/laps agree after readback; no unbounded cap increase or false success. |
+| TPL-INT-006-COR-003 | Preserve native channels and valid zero through storage/readback | COR-001; storage/schema review | Queued after Garmin. Power-only recording remains usable after reload; per-sample power/zero and schema agree. Missing physiology must not fabricate zones; retain other measured channels through a reviewed recording/analysis distinction. |
+| TPL-INT-006-COR-004 | Replace silent lap truncation with complete or explicit bounded retention | COR-001; storage-contract review | Queued. All 201 synthetic laps round-trip, or a reviewed explicit limit outcome preserves recoverability; never label a silently partial recording complete. |
+| TPL-INT-006-COR-005 | Surface failed FIT download/parse separately from genuine no-file availability | COR-001 | Queued. HTTP/parse failure reports retry/error and provenance rather than errors=0 summary success; missing file and missing channels stay distinct. No provider or production contact required for an offline patch. |
 | TPL-INT-007 | Verify one manual FIT/TCX/CSV import case (DATA-002) | INT-006 | Declared format matches parser; retained original and accurate channel/summary state; split by format. |
 | TPL-INT-008 | Trace one activity to understandable athlete output (DATA-004/005) | INT-005/006/007 | Private source->raw->decode->persist->analysis->dashboard chain; source/freshness/completeness and next action visible. Both providers required for G3. |
 
@@ -344,9 +350,36 @@ until release gates pass and the owner separately approves it.
 
 ## Next run
 
-Implement/test **TPL-INT-006-COR-001**, one synthetic COROS recording/cap scenario
-on the existing owning branch, without provider contact or deployment. Keep the
-Garmin runtime repair separately bounded and reviewable. In parallel, continue
-the unresolved G0-002 attestation using supported metadata-only evidence; do not
-let an unchanged external-access blocker prevent safe code/test work. Preserve
-the complete roadmap, required reviews and original-Mac Odysseus gate.
+Implement **TPL-INT-006-GAR-002** next on existing PR #9: fix the reproduced
+3601-sample retention defect with a supported complete-recording storage policy,
+explicit limits/provenance and regression coverage. No more research-only task
+in place of this eligible offline runtime patch. COROS fixes follow per rows above.
+Continue G0 isolation/hosted acceptance and frontend/backend release-manifest work
+at their proper steps; missing remote access must not block unrelated safe code.
+No deployment or approval bypass; preserve all roadmap tracks and Odysseus.
+
+
+## Run update: TPL-INT-006-COR-001, 9 November 2026
+
+COROS historical sync now has 18 executable cases in existing PR #9 at 3cefeb2:
+14 pass and four explicitly reproduce desired-contract failures. Source path is
+real MCP handshake/record extraction/download, native FIT parsing, normalization
+and serialized SDK bulkCreate; all network/auth/persistence is synthetic/in-memory.
+Coverage includes 3599/3600/3601 samples, two-hour 7201 points, laps and 201-lap cap,
+timestamps/gaps, native units/zeros, missing HR/power/file, HTTP/parse failures,
+and matching sequential/same-response duplicates. No concurrent/stable-provider-ID
+dedup, hosted byte limits, real-provider health or browser reload is certified.
+
+Confirmed defects: long samples truncated to 3600, per-sample power dropped
+(invalidating a saved power-only stream), laps capped at 200, and file failures
+reported as error-free summary import. Each new desired assertion was independently
+run without .fails and fails on current code. Missing physiology also causes other
+measured file channels to be lost by fallback; the channel-retention child records
+that distinction. Full local suite: 277 passed, five expected failures, 44 files;
+typecheck/lint/build/backend validation and syntax checks pass with known warnings.
+
+GAR-002 is the next actual runtime fix, followed by the four COROS implementation
+children. This is not product acceptance or permission to deploy. G0 attestation,
+required reviews, original-Mac preservation, component manifests/rollback, hosted
+acceptance and separate production approval still apply to release. No Base44
+app/backend/schema/secret/workflow, production data or Odysseus change occurred.
