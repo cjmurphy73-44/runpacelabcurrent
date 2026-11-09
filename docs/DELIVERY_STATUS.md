@@ -228,3 +228,26 @@ no access. Exact new-source push/CI must be verified separately.
 The immediately next code task remains Garmin retention repair (GAR-002), after
 this owner-prioritized UI task. Automation activation and Option B evaluation
 remain in platform planning, without a migration or production release grant.
+
+## 9 November: actual coach-management staging delivery
+
+7342d89 on existing PR #9 adds a permanent Settings → Coach guidance entry with
+an explicit no-active-notices state. The exact committed frontend snapshot was
+built for the existing private staging target and published with the missing
+owner-checked review function/entity. Served JavaScript was fetched with supported
+app-user authentication and matched the staged artifact's hash. The actual
+SDK-shaped staging route reached the new handler and returned its expected input
+validation response. The agent did not clear any real athlete notice.
+
+Snapshot checks: 282 passed plus five existing ingestion expected failures;
+typecheck/lint/build/backend validation pass. All 47 pre-existing backend file
+maps/entries/automations/connectors and existing entity policies remained identical.
+Backend deployment identifiers advanced globally; do not misreport them unchanged.
+Both staging workflows remain inactive, privacy is preserved and the production
+site checkpoint is unchanged. This bounded coach rollout does not certify full
+G0 isolation, hosted A/B ownership or a real-user clear/reload journey.
+
+See .codex/reports/TPL-UX-001-COACH-STAGING.md. GitHub required CI/reviews and
+production gates remain open. The partial Garmin retention repair was excluded
+from the deployed snapshot and preserved in the working tree/private backup for
+GAR-002's next bounded continuation. No production deployment occurred.
