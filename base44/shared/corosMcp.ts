@@ -14,6 +14,7 @@
 import { env } from './oauth.ts';
 import { parseFitWithLaps } from './workoutParsers.ts';
 import { assertSafeFileUrl } from './urlGuard.ts';
+import { readBoundedRecording, recordingProvenance, RecordingStorageError } from './recordingStorage.ts';
 
 export const COROS_MCP_RESOURCE = 'https://mcpus.coros.com/mcp';
 export const COROS_TOKEN_ENDPOINT = 'https://mcpus.coros.com/oauth2/token';
@@ -216,7 +217,7 @@ export function fitUrlsFromText(text: string): string[] {
 
 // Download and parse one activity's original FIT file. Returns null when COROS has no
 // file for the activity or the file does not decode — the caller then keeps the summary.
-export async function downloadCorosFit(accessToken: string, labelId: string | number, sportType: number | string | null): Promise<{ fileType: string; stream: any[]; laps: any[] } | null> {
+export async function downloadCorosFit(accessToken: string, labelId: string | number, sportType: number | string | null): Promise<{ fileType: string; stream: any[]; laps: any[]; provenance: any } | null> {
   if (!labelId) return null;
   let urls: string[] = [];
   try {
@@ -236,13 +237,17 @@ export async function downloadCorosFit(accessToken: string, labelId: string | nu
     try {
       const res = await fetchWithTimeout(url, {}, 30000);
       if (!res.ok) continue;
-      const buf = new Uint8Array(await res.arrayBuffer());
+      const buf = await readBoundedRecording(res);
       // FIT header: bytes 8..12 spell ".FIT"; anything else is not a decodable activity file.
       const isFit = buf.length > 14 && buf[8] === 0x2e && buf[9] === 0x46 && buf[10] === 0x49 && buf[11] === 0x54;
       if (!isFit) continue;
       const parsed = parseFitWithLaps(buf);
-      if (parsed?.stream?.length) return { fileType: 'fit', stream: parsed.stream, laps: parsed.laps || [] };
+      if (parsed?.stream?.length) return {
+        fileType: 'fit', stream: parsed.stream, laps: parsed.laps || [],
+        provenance: await recordingProvenance(buf, parsed.stream, parsed.laps || [], 'coros_fit'),
+      };
     } catch (e) {
+      if (e instanceof RecordingStorageError) throw e;
       console.warn('COROS FIT download failed:', (e as Error).message);
     }
   }

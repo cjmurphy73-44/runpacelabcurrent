@@ -5,13 +5,15 @@ import { build } from 'esbuild';
 import { resolve } from 'node:path';
 import { runInNewContext } from 'node:vm';
 import { parseFitWithLaps } from '../../base44/shared/workoutParsers.ts';
+import { MAX_FIT_INPUT_BYTES, MAX_INLINE_WORKOUT_BYTES } from '../../base44/shared/recordingStorage.ts';
+import { createHash } from 'node:crypto';
 import { isUsableTelemetry } from '../../base44/shared/streamValidity.ts';
 import { syntheticFit1Hz } from './fixtures/syntheticFit.mjs';
 
 const mcpUrl = 'https://mcpus.coros.com/mcp';
 const fitUrl = 'https://synthetic-recordings.invalid/coros.fit';
 const clone = value => JSON.parse(JSON.stringify(value));
-const mapped = stream => stream.map(({ time, heart_rate, altitude, distance, cadence, speed }) => ({ time, heart_rate, altitude, distance, cadence, speed }));
+const mapped = stream => stream;
 let bundle;
 
 beforeAll(async () => {
@@ -35,7 +37,7 @@ beforeAll(async () => {
   bundle = result.outputFiles[0].text;
 });
 
-function runtime(bytes, { records, fileMode = 'fit' } = {}) {
+function runtime(bytes, { records, fileMode = 'fit', downloadBytes, downloadSequence } = {}) {
   const decoded = parseFitWithLaps(bytes);
   const record = { date: '2026-01-01', sport: 'running', label_id: 'synthetic-recording', sport_type: 100,
     duration_seconds: decoded.summary.duration_seconds, distance_km: decoded.summary.distance_km,
@@ -69,7 +71,7 @@ function runtime(bytes, { records, fileMode = 'fit' } = {}) {
   const network = vi.fn(async (url, options) => {
     if (url === fitUrl) {
       if (fileMode === 'http-failure') return new Response('Synthetic unavailable', { status: 503 });
-      return new Response(fileMode === 'malformed' ? new Uint8Array([1, 2, 3]) : bytes);
+      return new Response(fileMode === 'malformed' ? new Uint8Array([1, 2, 3]) : (downloadSequence?.shift() || downloadBytes || bytes));
     }
     if (url !== mcpUrl) { unexpectedNetwork.push(String(url)); throw new Error('Unexpected destination'); }
     expect(options.headers.Authorization).toBe('Bearer synthetic-token');
@@ -99,7 +101,7 @@ function runtime(bytes, { records, fileMode = 'fit' } = {}) {
     AbortController, setTimeout, clearTimeout, crypto: globalThis.crypto, console: log,
   });
   return {
-    decoded, record, rows, bulkCreate, invoke, rpcCalls, network,
+    decoded, record, rows, bulkCreate, invoke, rpcCalls, network, connectionUpdate: entities.CorosConnection.update,
     async sync() {
       const response = await handler(new Request('https://synthetic-runtime.invalid/functions/corosSync', {
         method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ action: 'sync_historical' }),
@@ -145,11 +147,11 @@ describe('COROS historical recording fidelity (synthetic, serialized SDK boundar
     expect(persisted).toMatchObject({ source_format: 'fit', athlete_id: 'synthetic-athlete', created_by_id: 'synthetic-user', duration_seconds: count - 1, zone_method: 'stream' });
   });
 
-  it.each([3601, 7201])('characterizes silent prefix truncation for %i native samples', count => {
+  it.each([3601, 7201])('retains all %i samples instead of silently truncating the prefix', count => {
     const { decoded, persisted } = cases.get(count);
     expect(decoded.stream).toHaveLength(count);
-    expect(persisted.streams).toEqual(mapped(decoded.stream.slice(0, 3600)));
-    expect(persisted.streams.at(-1).time).toBe(3599);
+    expect(persisted.streams).toEqual(mapped(decoded.stream));
+    expect(persisted.streams.at(-1).time).toBe(count - 1);
     expect(persisted.duration_seconds).toBe(count - 1);
     expect(persisted.zone_seconds.reduce((a, b) => a + b, 0)).toBe(count - 1);
     expect(persisted.laps).toEqual(decoded.laps);
@@ -179,19 +181,20 @@ describe('COROS historical recording fidelity (synthetic, serialized SDK boundar
     expect(persisted).toMatchObject({ source_format: 'webhook', zone_method: 'none', zone_seconds: [0, 0, 0, 0, 0] });
   });
 
-  it('exposes power-channel loss and loss of usable telemetry after serialization', () => {
+  it('preserves native power including zero after serialization', () => {
     const { decoded, persisted } = cases.get('power-only');
     expect(decoded.stream[0]).toMatchObject({ heart_rate: null, power: 0 });
     expect(isUsableTelemetry(decoded.stream, 179)).toBe(true);
     expect(persisted.avg_power).toBe(decoded.summary.avg_power);
-    expect(persisted.streams.every(point => point.heart_rate === null && !('power' in point))).toBe(true);
-    expect(isUsableTelemetry(persisted.streams, 179)).toBe(false);
+    expect(persisted.streams).toEqual(decoded.stream);
+    expect(persisted.streams[0].power).toBe(0);
+    expect(isUsableTelemetry(persisted.streams, 179)).toBe(true);
   });
 
-  it('exposes the separate 200-lap cap', () => {
+  it('preserves all measured laps alongside the complete recording', () => {
     const { decoded, persisted } = cases.get('lap-cap');
     expect(decoded.laps).toHaveLength(201);
-    expect(persisted.laps).toEqual(decoded.laps.slice(0, 200));
+    expect(persisted.laps).toEqual(decoded.laps);
     expect(persisted.streams).toHaveLength(202);
   });
 
@@ -218,14 +221,64 @@ describe('COROS historical recording fidelity (synthetic, serialized SDK boundar
     expect(fixture.rows).toHaveLength(1);
   });
 
+  it('records COROS source hash and complete decoded/stored counts without claiming raw archival', () => {
+    const { persisted, decoded } = cases.get(7201);
+    expect(persisted.recording_provenance).toMatchObject({
+      source: 'coros_fit', retention: 'complete_decoded_inline_v1',
+      source_sha256: createHash('sha256').update(syntheticFit1Hz(7201, { lapSeconds: 60 })).digest('hex'),
+      original_file_retained: false, decoded_samples: 7201, stored_samples: 7201,
+      decoded_laps: decoded.laps.length, stored_laps: persisted.laps.length,
+      first_time_s: 0, last_time_s: 7200,
+    });
+    expect(persisted.recording_provenance.channels).toContain('power');
+  });
+
+  it.each(['decoded', 'download'])('rejects an over-budget %s recording without a partial write or recalculation', async kind => {
+    const fixture = runtime(syntheticFit1Hz(kind === 'decoded' ? 12001 : 180),
+      kind === 'download' ? { downloadBytes: new Uint8Array(MAX_FIT_INPUT_BYTES + 1) } : {});
+    expect(await fixture.sync()).toMatchObject({ imported: 0, errors: 1, recording_errors: [{
+      code: kind === 'decoded' ? 'recording_storage_limit' : 'recording_input_too_large', retryable: false,
+    }] });
+    expect(fixture.bulkCreate).not.toHaveBeenCalled();
+    expect(fixture.invoke).not.toHaveBeenCalled();
+    expect(fixture.rows).toHaveLength(0);
+    expect(fixture.connectionUpdate).toHaveBeenCalledWith('synthetic-connection', expect.objectContaining({ last_error: expect.stringContaining('could not be imported') }));
+  });
+
+  it('imports a valid sibling without saving or recalculating the rejected activity', async () => {
+    const bytes = syntheticFit1Hz(180);
+    const base = runtime(bytes);
+    const fixture = runtime(bytes, {
+      records: [base.record, { ...base.record, date: '2026-01-02' }],
+      downloadSequence: [syntheticFit1Hz(12001), bytes],
+    });
+    expect(await fixture.sync()).toMatchObject({ imported: 1, errors: 1, records_found: 2 });
+    expect(fixture.rows).toHaveLength(1);
+    expect(fixture.rows[0].date).toBe('2026-01-02');
+    expect(fixture.rows[0].streams).toHaveLength(180);
+    expect(fixture.invoke).toHaveBeenCalledExactlyOnceWith('calculateDailyTRIMP', { athlete_id: 'synthetic-athlete', date: '2026-01-02' });
+  });
+
+  it('splits bulk writes by serialized bytes without losing valid long activities', async () => {
+    const base = runtime(syntheticFit1Hz(7201));
+    const records = [1, 2, 3].map(day => ({ ...base.record, date: `2026-01-0${day}` }));
+    const fixture = runtime(syntheticFit1Hz(7201), { records });
+    expect(await fixture.sync()).toMatchObject({ imported: 3, errors: 0 });
+    expect(fixture.bulkCreate.mock.calls.length).toBeGreaterThan(1);
+    for (const [batch] of fixture.bulkCreate.mock.calls) {
+      expect(new TextEncoder().encode(JSON.stringify(batch)).byteLength).toBeLessThanOrEqual(MAX_INLINE_WORKOUT_BYTES);
+    }
+    expect(fixture.rows.map(row => row.streams.length)).toEqual([7201, 7201, 7201]);
+  });
+
   // Explicit desired contracts: these remain defects, not accepted truncation behavior.
-  it.fails('KNOWN DEFECT: preserves all samples in a two-hour recording', () => {
+  it('preserves all samples in a two-hour recording', () => {
     expect(cases.get(7201).persisted.streams).toHaveLength(7201);
   });
-  it.fails('KNOWN DEFECT: persists native per-sample power including a valid zero', () => {
+  it('persists native per-sample power including a valid zero', () => {
     expect(cases.get('power-only').persisted.streams[0]).toHaveProperty('power', 0);
   });
-  it.fails('KNOWN DEFECT: preserves all 201 measured laps', () => {
+  it('preserves all 201 measured laps', () => {
     expect(cases.get('lap-cap').persisted.laps).toHaveLength(201);
   });
   it.fails('KNOWN DEFECT: reports a failed FIT download rather than an error-free sync', () => {
