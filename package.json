@@ -11,6 +11,7 @@
     "lint": "eslint . --quiet",
     "lint:fix": "eslint . --fix",
     "typecheck": "tsc -p ./jsconfig.json",
+    "validate:backend": "node scripts/validate-backend.mjs",
     "test:report": "node scripts/report-build.js",
     "test:all": "npm test && npm run test:report",
     "preview": "vite preview"
@@ -98,6 +99,7 @@
     "autoprefixer": "^10.4.20",
     "baseline-browser-mapping": "^2.8.32",
     "coros-mcp": "^0.1.1",
+    "esbuild": "^0.25.12",
     "eslint": "^9.19.0",
     "eslint-plugin-react": "^7.37.4",
     "eslint-plugin-react-hooks": "^5.0.0",

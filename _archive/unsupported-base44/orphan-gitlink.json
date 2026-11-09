@@ -1,0 +1,6 @@
+{
+  "path": "odysseus",
+  "mode": "160000",
+  "commit": "ffea9184e3fdeda8ab1b0269b3e9f9f94a81cfdd",
+  "reason": "The repository recorded this unrelated gitlink without a .gitmodules URL. actions/checkout fails while removing authentication even with submodules disabled. Preserve the original pointer here; no Odysseus source is included or deleted. Restore as a proper submodule only after verifying its source URL."
+}
