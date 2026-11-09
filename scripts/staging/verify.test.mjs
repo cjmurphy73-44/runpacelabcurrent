@@ -37,3 +37,29 @@ test('checks Stripe test mode without claiming webhook routing is verified', asy
   await assert.rejects(() => verifyStripe(env, async () => ({ ok: true, json: async () => ({ livemode: true }) })));
   await assert.rejects(() => verifyStripe({ ...env, STRIPE_SECRET_KEY: 'sk_live_invalid' }));
 });
+
+import { mkdtemp, writeFile, rm } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { spawnSync } from 'node:child_process';
+
+test('CLI preflight does not disclose private app IDs or origins', async () => {
+  const dir = await mkdtemp(join(tmpdir(), 'tpl-staging-preflight-'));
+  try {
+    const fixture = join(dir, 'manifest.json');
+    await writeFile(fixture, JSON.stringify(manifest));
+    const result = spawnSync(process.execPath, [new URL('./verify.mjs', import.meta.url).pathname, fixture], { encoding: 'utf8' });
+    assert.equal(result.status, 0, result.stderr);
+    const output = JSON.parse(result.stdout);
+    assert.equal(output.manifestValid, true);
+    assert.equal(output.deployedIsolationVerified, false);
+    assert.equal(output.stripeTestAuthenticationVerified, false);
+    for (const privateValue of [manifest.stagingAppId, manifest.productionAppId, manifest.stagingOrigin]) {
+      assert.equal(result.stdout.includes(privateValue), false, 'private environment value leaked to stdout');
+    }
+    assert.equal('stagingAppId' in output, false);
+    assert.equal('stagingOrigin' in output, false);
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
