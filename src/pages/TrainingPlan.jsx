@@ -5,6 +5,7 @@ import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 import { Sparkles, ShieldAlert } from "lucide-react";
 import HelpLink from "@/components/guide/HelpLink";
 import { useCoachInjurySignal } from "@/hooks/useCoachInjurySignal";
+import CoachHoldCard from "@/components/dashboard/CoachHoldCard";
 import OnboardingFlow from "@/components/dashboard/OnboardingFlow";
 import TrainingPlanGenerator from "@/components/trainingplan/TrainingPlanGenerator";
 import TrainingPlanTimeline from "@/components/trainingplan/TrainingPlanTimeline";
@@ -152,16 +153,11 @@ export default function TrainingPlan() {
           <Button variant="outline" size="sm" onClick={() => setShowGenerator(true)}>Generate New Plan</Button>
         </div>
       )}
-      {injury.holdReason && (
-        <Alert variant="destructive">
-          <ShieldAlert className="w-4 h-4" />
-          <AlertTitle>Coach-directed hold active</AlertTitle>
-          <AlertDescription>
-            Running sessions in this plan are paused per your recent coach conversation, treat upcoming run days as rest or recovery (rest, cross-train on the bike/pool, or easy strength) until you're cleared.
-            <span className="block italic mt-1">{injury.summary}</span>
-          </AlertDescription>
-        </Alert>
-      )}
+      <CoachHoldCard
+        injury={injury}
+        compact
+        swappedLabel="Running sessions in this plan become rest, easy cross-training or easy strength."
+      />
       <TrainingPlanTimeline plan={plan} />
       <TrainingPlanWeeklyBreakdown weeklyPlans={plan.weekly_plans || []} />
       <TrainingPlanExtras plan={plan} />

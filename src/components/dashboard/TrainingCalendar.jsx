@@ -4,9 +4,9 @@ import { downloadWorkoutFile } from "@/services/workoutExport";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import moment from "moment";
-import { ShieldAlert, Download, Sparkles } from "lucide-react";
-import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
+import { Download, Sparkles } from "lucide-react";
 import { useCoachInjurySignal } from "@/hooks/useCoachInjurySignal";
+import CoachHoldCard from "@/components/dashboard/CoachHoldCard";
 import { useSubscription } from "@/hooks/useSubscription";
 import FeatureGate from "@/components/billing/FeatureGate";
 
@@ -42,15 +42,11 @@ export default function TrainingCalendar({ athleteId, currentTsb }) {
 
   return (
     <div className="space-y-4">
-      {injury.holdReason && (
-        <Alert variant="destructive">
-          <ShieldAlert className="w-4 h-4" />
-          <AlertTitle>Coach hold, running paused</AlertTitle>
-          <AlertDescription>
-            Running days below are replaced by rest / recovery per your coach conversation. <span className="italic">{injury.summary}</span>
-          </AlertDescription>
-        </Alert>
-      )}
+      <CoachHoldCard
+        injury={injury}
+        compact
+        swappedLabel="Running days below are replaced by rest or easy cross-training."
+      />
       <div className="flex items-center justify-between flex-wrap gap-2">
         <h2 className="text-base font-heading font-semibold">Next 7 Days</h2>
         <Button size="sm" variant="outline" onClick={requestMicroadjustment} disabled={requesting} className="gap-1.5">
