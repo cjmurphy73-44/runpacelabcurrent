@@ -1,0 +1,205 @@
+{
+  "schema_version": 1,
+  "task": "TPL-ASSET-001",
+  "inventory_date": "2026-11-09",
+  "source_ref": "b5a5d9233ca6d4409fd35141b17bb2eeb5a0d074",
+  "comparison_main": "3f386d4d52042940cb1767e6950ec78e33b3c81e",
+  "method": "Tracked Git source and local PNG inspection only. No remote images fetched, private runtime data collected or live layouts verified.",
+  "entries": [
+    {
+      "id": "A01",
+      "kind": "raster_logo",
+      "locator": "public/assets/logo-300x300.png",
+      "source_ref": "b5a5d9233ca6d4409fd35141b17bb2eeb5a0d074",
+      "dimensions": [
+        300,
+        300
+      ],
+      "bytes": 730,
+      "sha256": "8e646642ba7f4555fb0282246c70b9ebd36298ef90ec909a4f6e6314f966822c",
+      "usage": "Temporary Garmin registration asset; no source references found",
+      "provenance": "Commit 643783cfeee4c08eb252d1dbc413018609746ce8 states temporary portal-registration purpose; designer/license unknown",
+      "decision": "keep_preserve",
+      "next_task": "TPL-ASSET-002"
+    },
+    {
+      "id": "A02",
+      "kind": "remote_identity_icon",
+      "locator": "7256cbdc0_logo.png on media.base44.com",
+      "references": [
+        "index.html:5",
+        "index.html:6",
+        "public/manifest.json:13",
+        "public/manifest.json:19"
+      ],
+      "declared_sizes": [
+        "192x192",
+        "512x512"
+      ],
+      "measured_dimensions": null,
+      "provenance": "Remote URL in source only; bytes, creator, rights and relationship to A01 unverified",
+      "decision": "rework_after_gate",
+      "next_task": "TPL-ASSET-003"
+    },
+    {
+      "id": "A03",
+      "kind": "social_image",
+      "locator": "8d3ccd7c8_generated_image.png on media.base44.com",
+      "references": [
+        "index.html:17"
+      ],
+      "measured_dimensions": null,
+      "provenance": "Filename suggests generated; generation method, editable original and rights unverified",
+      "decision": "rework_after_gate",
+      "next_task": "TPL-ASSET-004"
+    },
+    {
+      "id": "A04",
+      "kind": "external_photo",
+      "locator": "https://images.unsplash.com/photo-1452626038306-27d8e0dbf6e4?w=1400&auto=format&fit=crop&q=80",
+      "usage": "Landing physiology explainer",
+      "references": [
+        "src/pages/Landing.jsx"
+      ],
+      "measured_dimensions": null,
+      "provenance": "Unsplash-hosted URL; photographer, source page, license/attribution and releases not recorded in repository",
+      "visual_quality": "not_fetched_or_assessed",
+      "decision": "review_rights_and_relevance",
+      "next_task": "TPL-ASSET-004"
+    },
+    {
+      "id": "A05",
+      "kind": "external_photo",
+      "locator": "https://images.unsplash.com/photo-1556909114-44e3e9399a2e?w=1000&auto=format&fit=crop&q=80",
+      "usage": "Landing step: Bring in your data",
+      "references": [
+        "src/pages/Landing.jsx"
+      ],
+      "measured_dimensions": null,
+      "provenance": "Unsplash-hosted URL; photographer, source page, license/attribution and releases not recorded in repository",
+      "visual_quality": "not_fetched_or_assessed",
+      "decision": "review_rights_and_relevance",
+      "next_task": "TPL-ASSET-004"
+    },
+    {
+      "id": "A06",
+      "kind": "external_photo",
+      "locator": "https://images.unsplash.com/photo-1571008887538-b36bb52f967a?w=1000&auto=format&fit=crop&q=80",
+      "usage": "Landing step: We model your physiology",
+      "references": [
+        "src/pages/Landing.jsx"
+      ],
+      "measured_dimensions": null,
+      "provenance": "Unsplash-hosted URL; photographer, source page, license/attribution and releases not recorded in repository",
+      "visual_quality": "not_fetched_or_assessed",
+      "decision": "review_rights_and_relevance",
+      "next_task": "TPL-ASSET-004"
+    },
+    {
+      "id": "A07",
+      "kind": "external_photo",
+      "locator": "https://images.unsplash.com/photo-1486218119243-13883505764c?w=1000&auto=format&fit=crop&q=80",
+      "usage": "Landing step: Get an adaptive plan",
+      "references": [
+        "src/pages/Landing.jsx"
+      ],
+      "measured_dimensions": null,
+      "provenance": "Unsplash-hosted URL; photographer, source page, license/attribution and releases not recorded in repository",
+      "visual_quality": "not_fetched_or_assessed",
+      "decision": "review_rights_and_relevance",
+      "next_task": "TPL-ASSET-004"
+    },
+    {
+      "id": "A08",
+      "kind": "external_photo",
+      "locator": "https://images.unsplash.com/photo-1552674605-db6ffd4facb5?w=1000&auto=format&fit=crop&q=80",
+      "usage": "Landing recovery quote section",
+      "references": [
+        "src/pages/Landing.jsx"
+      ],
+      "measured_dimensions": null,
+      "provenance": "Unsplash-hosted URL; photographer, source page, license/attribution and releases not recorded in repository",
+      "visual_quality": "not_fetched_or_assessed",
+      "decision": "review_rights_and_relevance",
+      "next_task": "TPL-ASSET-004"
+    },
+    {
+      "id": "A09",
+      "kind": "external_photo",
+      "locator": "https://images.unsplash.com/photo-1461896836934-ffe607ba8211?w=1200&auto=format&fit=crop&q=80",
+      "usage": "Landing concept/rationale",
+      "references": [
+        "src/pages/Landing.jsx"
+      ],
+      "measured_dimensions": null,
+      "provenance": "Unsplash-hosted URL; photographer, source page, license/attribution and releases not recorded in repository",
+      "visual_quality": "not_fetched_or_assessed",
+      "decision": "review_rights_and_relevance",
+      "next_task": "TPL-ASSET-004"
+    },
+    {
+      "id": "A10",
+      "kind": "shared_fallback",
+      "locator": "12d367_4f26ccd17f8f4e3a8958306ea08c2332~mv2.png on static.wixstatic.com",
+      "references": [
+        "src/components/ui/image.jsx:5"
+      ],
+      "measured_dimensions": null,
+      "provenance": "Remote placeholder; creator/license and appearance unverified",
+      "decision": "rework_after_gate",
+      "next_task": "TPL-ASSET-004"
+    },
+    {
+      "id": "A11",
+      "kind": "library_icon_identity",
+      "locator": "lucide-react Activity + text",
+      "references": [
+        "src/pages/Landing.jsx",
+        "src/components/layout/AppLayout.jsx",
+        "src/components/layout/PublicFooter.jsx"
+      ],
+      "provenance": "Installed lucide-react package declares ISC; preserve dependency notices. Generic library glyph, not an original brand mark",
+      "decision": "replace_identity_after_gate_keep_functional_icons",
+      "next_task": "TPL-ASSET-002"
+    },
+    {
+      "id": "A12",
+      "kind": "provider_svg",
+      "locator": "src/components/GoogleIcon.jsx; src/components/AppleIcon.jsx",
+      "provenance": "Inline provider marks; approval and branding-use conditions not recorded",
+      "decision": "keep_pending_provider_branding_review",
+      "next_task": "TPL-ASSET-001"
+    },
+    {
+      "id": "A13",
+      "kind": "external_fonts",
+      "locator": "src/index.css:1",
+      "usage": "Google Fonts Inter + JetBrains Mono",
+      "provenance": "Names/import recorded; local font files and license records not present in tracked asset set",
+      "decision": "retain_pending_license_and_delivery_review",
+      "next_task": "TPL-ASSET-006"
+    },
+    {
+      "id": "A14",
+      "kind": "illustrative_product_preview",
+      "locator": "src/components/landing/ProductPreview.jsx",
+      "usage": "Landing hero; hard-coded eight-week fitness/fatigue trend and CTL/TSB/readiness values",
+      "provenance": "Editable repository React/Recharts source; synthetic values, not a screenshot or athlete evidence",
+      "decision": "rework_visible_illustrative_label_after_gate",
+      "next_task": "TPL-ASSET-005"
+    },
+    {
+      "id": "A15",
+      "kind": "runtime_private_images",
+      "locator": "MFA QR and workout/recovery OCR previews",
+      "references": [
+        "src/components/MfaMethodSetup.jsx",
+        "src/components/imports/OcrVerificationModal.jsx",
+        "src/components/recovery/RecoveryOcrDropzone.jsx"
+      ],
+      "provenance": "Runtime/user data; not reusable marketing assets",
+      "decision": "exclude_from_brand_inventory_and_public_capture",
+      "next_task": null
+    }
+  ]
+}
