@@ -128,6 +128,19 @@ describe('athleteState: provenance', () => {
     expect(summary.provenance.zones).toBe(PROVENANCE.CALCULATED_ESTIMATE);
   });
 
+  it('does not mark unsupported lap zones as measured', () => {
+    const summary = buildAthleteStateSummary({
+      athleteId: 'a',
+      date: '2026-01-30',
+      sport: 'running',
+      durationSeconds: 3600,
+      zoneSeconds: [0, 0, 3600, 0, 0],
+      zoneMethod: 'laps',
+    });
+    expect(summary.zones.zone_method).toBe('none');
+    expect(summary.provenance.zones).toBe(PROVENANCE.CALCULATED_ESTIMATE);
+  });
+
   it('never claims measured provenance for the load equation itself', () => {
     const summary = buildAthleteStateSummary({
       athleteId: 'a',
