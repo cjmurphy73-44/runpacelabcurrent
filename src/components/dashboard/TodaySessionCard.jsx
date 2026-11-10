@@ -3,6 +3,7 @@ import { base44 } from "@/api/base44Client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import ZoneBadge from "@/components/ui/ZoneBadge";
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
+import { Button } from "@/components/ui/button";
 import { useFitness } from "@/context/FitnessContext";
 import { CheckCircle2, Moon, AlertTriangle, ShieldAlert, BedDouble } from "lucide-react";
 import moment from "moment";
@@ -21,19 +22,31 @@ export default function TodaySessionCard({ athleteId }) {
   const injury = useCoachInjurySignal(athleteId);
   const [session, setSession] = useState(undefined);
   const [plan, setPlan] = useState(null);
+  const [loadError, setLoadError] = useState(false);
+  const [reloadKey, setReloadKey] = useState(0);
 
   useEffect(() => {
     if (!athleteId) return;
+    let cancelled = false;
     (async () => {
-      const todayStr = moment().format("YYYY-MM-DD");
-      const [sessions, plans] = await Promise.all([
-        base44.entities.TrainingPlanSession.filter({ athlete_id: athleteId, date: todayStr }),
-        base44.entities.TrainingPlan.filter({ athlete_id: athleteId, status: "active" }, "-created_date", 1),
-      ]);
-      setSession(sessions?.[0] || null);
-      setPlan(plans?.[0] || null);
+      setSession(undefined);
+      setPlan(null);
+      setLoadError(false);
+      try {
+        const todayStr = moment().format("YYYY-MM-DD");
+        const [sessions, plans] = await Promise.all([
+          base44.entities.TrainingPlanSession.filter({ athlete_id: athleteId, date: todayStr }),
+          base44.entities.TrainingPlan.filter({ athlete_id: athleteId, status: "active" }, "-created_date", 1),
+        ]);
+        if (cancelled) return;
+        setSession(sessions?.[0] || null);
+        setPlan(plans?.[0] || null);
+      } catch {
+        if (!cancelled) setLoadError(true);
+      }
     })();
-  }, [athleteId]);
+    return () => { cancelled = true; };
+  }, [athleteId, reloadKey]);
 
   const anomaly = detectAnomaly(biometricTelemetry);
   const isRunning = session?.sport?.toLowerCase() === "running";
@@ -47,7 +60,17 @@ export default function TodaySessionCard({ athleteId }) {
         <CardTitle className="text-sm text-muted-foreground font-heading uppercase tracking-wide">Today's Session</CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
-        {session === undefined ? (
+        {loadError ? (
+          <Alert variant="destructive" className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <AlertTitle>Today's session couldn't load</AlertTitle>
+              <AlertDescription>Check your connection and try again.</AlertDescription>
+            </div>
+            <Button variant="outline" size="sm" onClick={() => setReloadKey((key) => key + 1)}>
+              Retry
+            </Button>
+          </Alert>
+        ) : session === undefined ? (
           <p className="text-sm text-muted-foreground">Loading...</p>
         ) : session ? (
           injury.level === "hold" && session.sport?.toLowerCase().startsWith("run") ? (
