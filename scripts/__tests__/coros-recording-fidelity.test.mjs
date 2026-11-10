@@ -37,15 +37,17 @@ beforeAll(async () => {
   bundle = result.outputFiles[0].text;
 });
 
-function runtime(bytes, { records, fileMode = 'fit', fileModes = [], downloadBytes, downloadSequence } = {}) {
+function runtime(bytes, { records, fileMode = 'fit', fileModes = [], downloadBytes, downloadSequence, partialWriteOnce = false } = {}) {
   const decoded = parseFitWithLaps(bytes);
   const record = { date: '2026-01-01', sport: 'running', label_id: 'synthetic-recording', sport_type: 100,
     duration_seconds: decoded.summary.duration_seconds, distance_km: decoded.summary.distance_km,
     avg_heart_rate: 145, max_heart_rate: 154 };
   const rows = [];
   const bulkCreate = vi.fn(async payloads => {
-    const saved = clone(payloads).map((payload, index) => ({ id: `synthetic-workout-${rows.length + index}`, ...payload }));
+    const toSave = partialWriteOnce && bulkCreate.mock.calls.length === 1 ? payloads.slice(0, 1) : payloads;
+    const saved = clone(toSave).map((payload, index) => ({ id: `synthetic-workout-${rows.length + index}`, ...payload }));
     rows.push(...saved);
+    if (partialWriteOnce && bulkCreate.mock.calls.length === 1) throw new Error('Synthetic partial write failure');
     return saved;
   });
   const invoke = vi.fn(async () => ({}));
@@ -233,7 +235,7 @@ describe('COROS historical recording fidelity (synthetic, serialized SDK boundar
     expect(fixture.invoke).not.toHaveBeenCalled();
     expect(fixture.rows).toHaveLength(0);
     expect(fixture.connectionUpdate).toHaveBeenCalledWith('synthetic-connection', expect.objectContaining({
-      last_error: expect.stringContaining(retryable ? '1 FIT issue(s) can be retried' : '1 need attention'),
+      last_error: expect.stringContaining(retryable ? '1 issue(s) can be retried' : '1 need attention'),
     }));
   });
 
@@ -321,6 +323,22 @@ describe('COROS historical recording fidelity (synthetic, serialized SDK boundar
       expect(new TextEncoder().encode(JSON.stringify(batch)).byteLength).toBeLessThanOrEqual(MAX_INLINE_WORKOUT_BYTES);
     }
     expect(fixture.rows.map(row => row.streams.length)).toEqual([7201, 7201, 7201]);
+  });
+
+  it('reports confirmed partial bulk persistence and retries only the missing workout', async () => {
+    const base = runtime(syntheticFit1Hz(180));
+    const records = [1, 2].map(day => ({ ...base.record, date: `2026-01-0${day}` }));
+    const fixture = runtime(syntheticFit1Hz(180), { records, partialWriteOnce: true });
+
+    expect(await fixture.sync()).toMatchObject({
+      imported: 1, errors: 1, records_found: 2, duplicates: 0,
+      recording_errors: [{ date: '2026-01-02', code: 'workout_write_failed', retryable: true }],
+    });
+    expect(fixture.rows.map(row => row.date)).toEqual(['2026-01-01']);
+
+    expect(await fixture.sync()).toMatchObject({ imported: 1, errors: 0, duplicates: 1, records_found: 2 });
+    expect(fixture.rows.map(row => row.date)).toEqual(['2026-01-01', '2026-01-02']);
+    expect(new Set(fixture.rows.map(row => row.date)).size).toBe(2);
   });
 
   // Explicit desired contracts: these remain defects, not accepted truncation behavior.

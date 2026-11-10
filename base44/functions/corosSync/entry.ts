@@ -555,6 +555,7 @@ async function syncHistoricalFor(athlete: any, accessToken: string, base44, look
   // recording is available. Lookup/download/parse failures leave the activity
   // unpersisted so a retry cannot look like a successful summary import.
   const accepted = [];
+  const importedPayloads = [];
   const recordingErrors = [];
   if (toCreate.length) {
     for (const payload of toCreate) {
@@ -579,23 +580,55 @@ async function syncHistoricalFor(athlete: any, accessToken: string, base44, look
       }
       accepted.push(payload);
     }
+    const persistBatch = async (batch) => {
+      if (!batch.length) return;
+      try {
+        await base44.asServiceRole.entities.WorkoutSession.bulkCreate(batch);
+        importedPayloads.push(...batch);
+      } catch {
+        // Bulk APIs may persist a prefix before failing. Read back by date and
+        // confirm which workouts landed so a retry is safe and counts are honest.
+        try {
+          const dates = [...new Set(batch.map((s) => s.date))];
+          const saved = await base44.asServiceRole.entities.WorkoutSession.filter(
+            { athlete_id: athlete.id, date: { $in: dates } }, 'date', 500,
+          );
+          const rows = Array.isArray(saved) ? saved : saved?.items || [];
+          const confirmed = new Set();
+          for (const payload of batch) {
+            const match = (row) => row.sport === payload.sport && Math.abs((row.duration_minutes || 0) - payload.duration_minutes) < 1 && Math.abs((row.distance_km || 0) - payload.distance_km) < 0.1;
+            const row = rows.find((candidate) => candidate.date === payload.date && match(candidate) && !confirmed.has(candidate));
+            if (row) { confirmed.add(row); importedPayloads.push(payload); }
+            else {
+              errors++;
+              recordingErrors.push({ date: payload.date, code: 'workout_write_failed', retryable: true });
+            }
+          }
+        } catch {
+          for (const payload of batch) {
+            errors++;
+            recordingErrors.push({ date: payload.date, code: 'workout_write_outcome_unknown', retryable: true });
+          }
+        }
+      }
+    };
     let batch = [], batchBytes = 2;
     for (const payload of accepted) {
       const bytes = assertInlineWorkoutFits(payload);
       if (batch.length && (batchBytes + 1 + bytes > MAX_INLINE_WORKOUT_BYTES || batch.length === 500)) {
-        await base44.asServiceRole.entities.WorkoutSession.bulkCreate(batch);
+        await persistBatch(batch);
         batch = []; batchBytes = 2;
       }
       batchBytes += bytes + (batch.length ? 1 : 0);
       batch.push(payload);
     }
-    if (batch.length) await base44.asServiceRole.entities.WorkoutSession.bulkCreate(batch);
+    if (batch.length) await persistBatch(batch);
   }
-  const dates = [...new Set(accepted.map((s) => s.date))];
+  const dates = [...new Set(importedPayloads.map((s) => s.date))];
   for (const d of dates) {
     try { await base44.asServiceRole.functions.invoke('calculateDailyTRIMP', { athlete_id: athlete.id, date: d }); } catch { /* keep going */ }
   }
-  return { imported: accepted.length, errors, records_found: records.length, duplicates, recording_errors: recordingErrors };
+  return { imported: importedPayloads.length, errors, records_found: records.length, duplicates, recording_errors: recordingErrors };
 }
 
 async function handleSyncHistorical(base44) {
@@ -617,12 +650,12 @@ async function handleSyncHistorical(base44) {
   try {
     const lookbackDays = await getSyncLookbackDays(base44, user.id);
     const out = await syncHistoricalFor(athlete, accessToken, base44, lookbackDays);
-    const retryableFitFailures = out.recording_errors.filter((failure) => failure.retryable).length;
-    const nonRetryableFitFailures = out.recording_errors.length - retryableFitFailures;
+    const retryableFailures = out.recording_errors.filter((failure) => failure.retryable).length;
+    const nonRetryableFailures = out.recording_errors.length - retryableFailures;
     await base44.asServiceRole.entities.CorosConnection.update(conn.id, {
       last_sync_at: new Date().toISOString(),
       last_error: out.errors
-        ? `${out.errors} activities were skipped; ${retryableFitFailures} FIT issue(s) can be retried and ${nonRetryableFitFailures} need attention.`
+        ? `${out.errors} activities were skipped or could not be confirmed; ${retryableFailures} issue(s) can be retried and ${nonRetryableFailures} need attention.`
         : '',
     });
     return Response.json({ success: true, ...out });

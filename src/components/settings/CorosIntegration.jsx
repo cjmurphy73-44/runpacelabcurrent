@@ -68,7 +68,15 @@ export default function CorosIntegration({ athleteId }) {
       if (recordingErrors.length) {
         const retryable = recordingErrors.filter((failure) => failure.retryable).length;
         const needsAttention = recordingErrors.length - retryable;
-        setError(`FIT recordings were not imported. ${retryable} can be retried; ${needsAttention} need attention. Use Sync workouts to retry temporary failures.`);
+        const unknownWrites = recordingErrors.filter((failure) => failure.code === "workout_write_outcome_unknown").length;
+        const writeFailures = recordingErrors.filter((failure) => failure.code === "workout_write_failed").length;
+        if (unknownWrites) {
+          setError(`${unknownWrites} workout write outcome(s) could not be confirmed; some may already be saved. Sync again to reconcile. ${retryable} issue(s) can be retried; ${needsAttention} need attention.`);
+        } else if (writeFailures) {
+          setError(`${writeFailures} workout(s) could not be saved. Sync again to retry. ${retryable} issue(s) can be retried; ${needsAttention} need attention.`);
+        } else {
+          setError(`FIT recordings were not imported. ${retryable} can be retried; ${needsAttention} need attention. Use Sync workouts to retry temporary failures.`);
+        }
       }
       loadStatus();
     } catch (e) {
