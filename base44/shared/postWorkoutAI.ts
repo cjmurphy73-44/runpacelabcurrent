@@ -30,6 +30,9 @@ function buildPrompt(workout: any, athlete_id: string, stateSummary: any) {
       Avg HR: ${workout.avg_hr} bpm
       Max HR: ${workout.max_hr} bpm
       TRIMP: ${workout.session_trimp}
+      Load provenance: ${workout.load_source === 'stream'
+        ? `measured, integrated from this session's per-second heart-rate stream over ${workout.load_coverage_pct ?? 100}% of its duration`
+        : 'estimated from the session average heart rate, so describe it as an estimate and never as a measured value'}
       ${stateBlock}
       Provide a JSON object with:
       - "intensity": one of "easy" | "moderate" | "hard" | "very_hard" (the dominant physiological intensity of the session)

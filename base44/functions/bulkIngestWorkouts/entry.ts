@@ -4,6 +4,7 @@ import { TelemetryParser } from '../../shared/telemetryParser.ts';
 import { assertSafeFileUrl } from '../../shared/urlGuard.ts';
 import { assertOwnsAthlete } from '../../shared/ownership.ts';
 import { reportError } from '../../shared/errorReport.ts';
+import { resolveSessionLoad } from '../../shared/loadModel.ts';
 
 const GARMIN_EPOCH_OFFSET_SEC = 631065600; // seconds between Unix epoch and FIT/Garmin epoch (1989-12-31)
 const VALID_SPORTS = ['running', 'cycling', 'swimming', 'strength', 'triathlon', 'other'];
@@ -422,6 +423,7 @@ Deno.serve(async (req) => {
             max_hr: row.max_hr || undefined,
             source_format: row.source_format || 'csv',
             session_trimp: sessionTrimp,
+            load_source: row.avg_hr ? 'summary' : 'none',
           };
           const sanitizedSession = TelemetryParser.sanitize(newSession);
           if (!sanitizedSession) { errors.push({ file_name: row?.file_name || 'unknown', error: 'Sanitization rejected invalid session (date/duration out of range)' }); continue; }
@@ -492,6 +494,7 @@ Deno.serve(async (req) => {
               source_format: sourceFormat,
               raw_file_url: file_url,
               session_trimp: sessionTrimp,
+              load_source: row.avg_hr ? 'summary' : 'none',
             };
             const sanitizedSession = TelemetryParser.sanitize(newSession);
             if (!sanitizedSession) { errors.push({ file_name, error: 'Sanitization rejected invalid session (date/duration out of range)' }); continue; }
@@ -549,10 +552,22 @@ Deno.serve(async (req) => {
 
         let sessionTrimp = 0;
         let sessionTss = 0;
-        if (parsed.avg_hr) {
-          sessionTrimp = calcTrimp(durationMinutes, parsed.avg_hr, restHr, maxHr, athlete.sex);
-        } else if (sessionSport === 'running' && athlete.functional_threshold_pace_ms && avg_ngp) {
+        let loadSource = 'none';
+        let loadCoverage = 0;
+        const resolvedLoad = resolveSessionLoad({
+          stream,
+          durationSeconds: parsed.duration_seconds || Math.round(durationMinutes * 60),
+          avgHr: parsed.avg_hr,
+          restHr,
+          maxHr,
+          sex: athlete.sex,
+        });
+        sessionTrimp = resolvedLoad.session_trimp;
+        loadSource = resolvedLoad.load_source;
+        loadCoverage = resolvedLoad.load_coverage_pct;
+        if (!sessionTrimp && sessionSport === 'running' && athlete.functional_threshold_pace_ms && avg_ngp) {
           sessionTss = calcRTSS(parsed.duration_seconds, avg_ngp, athlete.functional_threshold_pace_ms);
+          loadSource = 'stream';
         }
 
         const newSession = {
@@ -570,6 +585,8 @@ Deno.serve(async (req) => {
           raw_file_url: file_url,
           session_trimp: sessionTrimp,
           session_tss: sessionTss,
+          load_source: loadSource,
+          load_coverage_pct: loadCoverage,
           efficiency_factor: efficiency_factor ?? undefined,
           aerobic_decoupling: aerobic_decoupling ?? undefined,
           streams: stream.length <= MAX_STREAM_SAMPLES ? stream.map((p) => ({

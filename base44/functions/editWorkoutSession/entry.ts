@@ -6,6 +6,7 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.52';
 import { assertOwnsAthlete } from '../../shared/ownership.ts';
 import { recomputeCTLATLTSB } from '../../shared/ctlRecalc.ts';
+import { resolveSessionLoad } from '../../shared/loadModel.ts';
 
 const EDITABLE_FIELDS = new Set([
   'date', 'sport', 'duration_minutes', 'duration_seconds', 'distance_km',
@@ -86,12 +87,37 @@ export default async function(req: Request): Promise<Response> {
       return Response.json({ error: 'No valid fields to update' }, { status: 400 });
     }
 
-    const updated = await base44.entities.WorkoutSession.update(workout_id, cleaned);
+    let updated = await base44.entities.WorkoutSession.update(workout_id, cleaned);
+
+    // An edit to duration or average HR invalidates a summary load, which was computed
+    // from exactly those two numbers, so it is recomputed and stays labelled as an
+    // estimate. A load integrated from a stream is never touched here: the stream is the
+    // authority and the edit did not change it.
+    const loadInputsChanged = ['duration_minutes', 'duration_seconds', 'avg_hr'].some((k) => k in cleaned);
+    if (loadInputsChanged && updated.load_source !== 'stream' && updated.avg_hr) {
+      const athlete = await base44.entities.AthleteProfile.get(session.athlete_id).catch(() => null);
+      const resolved = resolveSessionLoad({
+        durationSeconds: updated.duration_seconds || Math.round((updated.duration_minutes || 0) * 60),
+        avgHr: updated.avg_hr,
+        restHr: athlete?.resting_hr || 60,
+        maxHr: athlete?.max_heart_rate || updated.max_hr || 190,
+        sex: athlete?.sex,
+      });
+      if (resolved.session_trimp !== updated.session_trimp) {
+        updated = {
+          ...updated,
+          ...(await base44.entities.WorkoutSession.update(workout_id, {
+            session_trimp: resolved.session_trimp,
+            load_source: resolved.load_source,
+            load_coverage_pct: resolved.load_coverage_pct,
+          })),
+        };
+      }
+    }
 
     // A date move shifts the daily training-load distribution, so recompute the
-    // EWMA model. Duration/HR edits leave session_trimp as-is for now (recomputing
-    // it from stored streams is a separate concern) but still trigger a recalc so
-    // any downstream DailyMetrics reflect the latest session values.
+    // EWMA model. Any edit still triggers a recalc so downstream DailyMetrics
+    // reflect the latest session values.
     await recomputeCTLATLTSB(base44, session.athlete_id).catch((e: any) =>
       console.warn('editWorkout: recalc after update failed', e?.message));
 

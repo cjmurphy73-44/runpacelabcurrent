@@ -14,6 +14,7 @@ import { parseAssetFile, parseFitWithLaps, parseTcx, parseCsv, summarizeStream, 
 import { reconcileStreams, dominantFileType, recomputePhysiology } from '../../shared/streamReconcile.ts';
 import { resolveTimeInZone } from '../../shared/hrZones.ts';
 import { calcTrimp } from '../../shared/physiology.ts';
+import { resolveSessionLoad } from '../../shared/loadModel.ts';
 import { recomputeCTLATLTSB } from '../../shared/ctlRecalc.ts';
 import { assertSafeFileUrl } from '../../shared/urlGuard.ts';
 import { garminConfig, refreshGarminToken } from '../../shared/garminAuth.ts';
@@ -238,6 +239,7 @@ async function processSession(base44, athlete, session, restHr, maxHr) {
     const update: any = {};
     if (!session.session_trimp && !session.session_tss && session.avg_hr) {
       update.session_trimp = calcTrimp(durationMinutes, session.avg_hr, restHr, maxHr, athlete.sex);
+      update.load_source = 'summary';
     }
     if (session.zone_method && session.zone_method !== 'none') {
       update.zone_seconds = [0, 0, 0, 0, 0];
@@ -273,10 +275,25 @@ async function processSession(base44, athlete, session, restHr, maxHr) {
   if (!session.distance_km && summary?.distance_km) update.distance_km = summary.distance_km;
   if (!session.aerobic_decoupling && physio.aerobic_decoupling !== null) update.aerobic_decoupling = physio.aerobic_decoupling;
   if (!session.efficiency_factor && physio.efficiency_factor !== null) update.efficiency_factor = physio.efficiency_factor;
-  // Existing load is never rewritten: a re-parse must not re-count a session. Only a
-  // session that carried no load at all gains one, from its now-known average HR.
-  if (!session.session_trimp && !session.session_tss && avgHr) {
-    update.session_trimp = calcTrimp(durationMinutes, avgHr, restHr, maxHr, athlete.sex);
+  // Load provenance, not load duplication: a session whose load was estimated from its
+  // average HR is upgraded to the per-second integral now that its recording exists, and
+  // relabelled as measured. A session already integrated from a stream keeps its value, so
+  // re-parsing never re-counts a session.
+  if (session.load_source !== 'stream') {
+    const streamLoad = resolveSessionLoad({
+      stream: masterStream,
+      durationSeconds,
+      avgHr,
+      restHr,
+      maxHr,
+      sex: athlete.sex,
+    });
+    if (streamLoad.load_source === 'stream') {
+      update.session_trimp = streamLoad.session_trimp;
+      update.session_tss = 0;
+      update.load_source = 'stream';
+      update.load_coverage_pct = streamLoad.load_coverage_pct;
+    }
   }
 
   return { outcome: 'recovered', updated: true, update, fromProvider };

@@ -1,6 +1,7 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
 import { parseFitWithLaps, parseTcx, parseCsv, tryParseSummaryCsv, summarizeStream, SOURCE_PRIORITY, parseAssetFile } from '../../shared/workoutParsers.ts';
 import { calcTrimp, calcRTSS, computeNgpSeries, computeDecouplingAndEF } from '../../shared/physiology.ts';
+import { resolveSessionLoad } from '../../shared/loadModel.ts';
 import { cyclingNormalization, buildAthleteStateSummary } from '../../shared/athleteState.ts';
 import { reconcileStreams, recomputePhysiology, dominantFileType } from '../../shared/streamReconcile.ts';
 import { resolveTimeInZone } from '../../shared/hrZones.ts';
@@ -277,24 +278,39 @@ Deno.serve(async (req) => {
 
     let sessionTrimp = 0;
     let sessionTss = 0;
-    if (parsed.avg_hr) {
-      sessionTrimp = calcTrimp(durationMinutes, parsed.avg_hr, restHr, maxHr, athlete.sex);
-    } else if (sessionSport === 'running' && athlete.functional_threshold_pace_ms && avg_ngp) {
-      sessionTss = calcRTSS(parsed.duration_seconds, avg_ngp, athlete.functional_threshold_pace_ms);
-    }
+    let loadSource: string = 'none';
+    let loadCoverage = 0;
+    const loadSeconds = parsed.duration_seconds || Math.round(durationMinutes * 60);
 
     // Cycling's own convention: Coggan Normalized Power (30 s rolling average,
     // 4th power, 4th root) → TSS against FTP. When usable power exists it is the
-    // primary load, so the HR impulse is not double-counted into the day.
+    // primary load, so the HR impulse is not double-counted into the day. It is
+    // integrated from the stream, so it is measured.
     if (sessionSport === 'cycling') {
-      const bike = cyclingNormalization(
-        stream,
-        athlete.ftp_watts,
-        parsed.duration_seconds || Math.round(durationMinutes * 60),
-      );
+      const bike = cyclingNormalization(stream, athlete.ftp_watts, loadSeconds);
       if (bike) {
         sessionTss = bike.tss;
-        sessionTrimp = 0;
+        loadSource = 'stream';
+      }
+    }
+
+    // Every other case resolves through the one load engine: the per-second integral when
+    // the file carries a verified stream, otherwise the average-HR estimate, labelled.
+    if (loadSource === 'none') {
+      const resolved = resolveSessionLoad({
+        stream,
+        durationSeconds: loadSeconds,
+        avgHr: parsed.avg_hr,
+        restHr,
+        maxHr,
+        sex: athlete.sex,
+      });
+      sessionTrimp = resolved.session_trimp;
+      loadSource = resolved.load_source;
+      loadCoverage = resolved.load_coverage_pct;
+      if (!sessionTrimp && sessionSport === 'running' && athlete.functional_threshold_pace_ms && avg_ngp) {
+        sessionTss = calcRTSS(parsed.duration_seconds, avg_ngp, athlete.functional_threshold_pace_ms);
+        loadSource = 'stream';
       }
     }
 
@@ -334,6 +350,8 @@ Deno.serve(async (req) => {
       raw_file_url: file_url,
       session_trimp: sessionTrimp,
       session_tss: sessionTss,
+      load_source: loadSource,
+      load_coverage_pct: loadCoverage,
       efficiency_factor: efficiency_factor ?? undefined,
       aerobic_decoupling: aerobic_decoupling ?? undefined,
       zone_seconds: zoneResult.zone_seconds,

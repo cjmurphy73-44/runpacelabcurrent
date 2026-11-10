@@ -30,9 +30,17 @@ export async function recomputeCTLATLTSB(base44: any, athlete_id: string) {
 
   const sessions = await base44.asServiceRole.entities.WorkoutSession.filter({ athlete_id });
   const trimpByDate: Record<string, number> = {};
+  // Load is counted once per day, but kept split by provenance so the verified (measured
+  // from a per-second stream) and summary (average-HR estimate) contributions never mix
+  // silently. A record written before load_source existed counts as a summary estimate.
+  const verifiedByDate: Record<string, number> = {};
+  const summaryByDate: Record<string, number> = {};
   for (const s of sessions) {
     if (!s.date) continue;
-    trimpByDate[s.date] = (trimpByDate[s.date] || 0) + (s.session_trimp || s.session_tss || 0);
+    const load = s.session_trimp || s.session_tss || 0;
+    trimpByDate[s.date] = (trimpByDate[s.date] || 0) + load;
+    if (s.load_source === 'stream') verifiedByDate[s.date] = (verifiedByDate[s.date] || 0) + load;
+    else summaryByDate[s.date] = (summaryByDate[s.date] || 0) + load;
   }
   const workoutDates = Object.keys(trimpByDate).sort();
 
@@ -107,7 +115,11 @@ export async function recomputeCTLATLTSB(base44: any, athlete_id: string) {
         ode_fatigue: ode?.fatigue ?? 0,
         ode_form: ode?.form ?? 0,
       };
-      if (trimpByDate[iso] !== undefined) payload.total_trimp = Math.round(trimpByDate[iso] * 100) / 100;
+      if (trimpByDate[iso] !== undefined) {
+        payload.total_trimp = Math.round(trimpByDate[iso] * 100) / 100;
+        payload.verified_trimp = Math.round((verifiedByDate[iso] || 0) * 100) / 100;
+        payload.summary_trimp = Math.round((summaryByDate[iso] || 0) * 100) / 100;
+      }
       if (existingByDate[iso]) updates.push({ id: existingByDate[iso], ...payload });
       else creates.push({ athlete_id, date: iso, ...payload });
     }

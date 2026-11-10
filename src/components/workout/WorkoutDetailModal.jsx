@@ -39,9 +39,13 @@ export default function WorkoutDetailModal({ workout, athlete, children, onChang
   const takeaways = useMemo(() => {
     const out = [];
     if (load) {
-      out.push(
-        `Session load ${Math.round(load)} ${workout.session_trimp ? "TRIMP, Banister's heart-rate impulse, the stress that feeds your fitness curve" : "rTSS, pace-based stress used when no heart-rate data exists"}.`
-      );
+      const measured = workout.load_source === "stream";
+      const basis = !workout.session_trimp
+        ? "rTSS, pace-based stress used when no heart-rate data exists"
+        : measured
+          ? `TRIMP, integrated sample by sample from this session's per-second heart-rate stream${workout.load_coverage_pct ? ` (${workout.load_coverage_pct}% coverage)` : ""}`
+          : "TRIMP, Banister's heart-rate impulse computed from the session average, so it is an estimate";
+      out.push(`Session load ${Math.round(load)} ${basis}.`);
     }
     if (workout.efficiency_factor) {
       out.push(
