@@ -37,7 +37,7 @@ beforeAll(async () => {
   bundle = result.outputFiles[0].text;
 });
 
-function runtime(bytes, { records, fileMode = 'fit', downloadBytes, downloadSequence } = {}) {
+function runtime(bytes, { records, fileMode = 'fit', fileModes = [], downloadBytes, downloadSequence } = {}) {
   const decoded = parseFitWithLaps(bytes);
   const record = { date: '2026-01-01', sport: 'running', label_id: 'synthetic-recording', sport_type: 100,
     duration_seconds: decoded.summary.duration_seconds, distance_km: decoded.summary.distance_km,
@@ -68,10 +68,14 @@ function runtime(bytes, { records, fileMode = 'fit', downloadBytes, downloadSequ
   const client = { auth: { me: vi.fn(async () => ({ id: 'synthetic-user' })) }, asServiceRole: { entities, functions: { invoke } } };
   const unexpectedNetwork = [];
   const rpcCalls = [];
+  const queuedFileModes = [...fileModes];
+  let currentFileMode = fileMode;
   const network = vi.fn(async (url, options) => {
     if (url === fitUrl) {
-      if (fileMode === 'http-failure') return new Response('Synthetic unavailable', { status: 503 });
-      return new Response(fileMode === 'malformed' ? new Uint8Array([1, 2, 3]) : (downloadSequence?.shift() || downloadBytes || bytes));
+      if (currentFileMode === 'network-failure') throw new TypeError('synthetic network failure');
+      if (currentFileMode === 'http-failure') return new Response('Synthetic unavailable', { status: 503 });
+      if (currentFileMode === 'http-not-found') return new Response('Synthetic missing', { status: 404 });
+      return new Response(currentFileMode === 'malformed' ? new Uint8Array([1, 2, 3]) : (downloadSequence?.shift() || downloadBytes || bytes));
     }
     if (url !== mcpUrl) { unexpectedNetwork.push(String(url)); throw new Error('Unexpected destination'); }
     expect(options.headers.Authorization).toBe('Bearer synthetic-token');
@@ -86,7 +90,15 @@ function runtime(bytes, { records, fileMode = 'fit', downloadBytes, downloadSequ
     }
     if (rpc.method === 'tools/call' && rpc.params.name === 'queryActivityFitFileDownloadUrls') {
       expect(rpc.params.arguments).toEqual({ labelId: record.label_id, sportType: 100 });
-      return json({ content: [{ type: 'text', text: fileMode === 'unavailable' ? 'No file available' : fitUrl }] });
+      currentFileMode = queuedFileModes.shift() || fileMode;
+      if (currentFileMode === 'lookup-network-failure') throw new TypeError('synthetic lookup network failure');
+      if (currentFileMode === 'lookup-http-failure') {
+        return Response.json({ jsonrpc: '2.0', id: rpc.id, result: {} }, { status: 503, headers: { 'mcp-session-id': 'synthetic-session' } });
+      }
+      const text = currentFileMode === 'unavailable'
+        ? 'No file available'
+        : currentFileMode === 'unknown-response' ? 'No download result was returned' : fitUrl;
+      return json({ content: [{ type: 'text', text }] });
     }
     unexpectedNetwork.push(rpc.method + ':' + rpc.params?.name);
     throw new Error('Unexpected RPC');
@@ -133,7 +145,7 @@ describe('COROS historical recording fidelity (synthetic, serialized SDK boundar
     cases.set('hr-only', await recording(180, { power: false }));
     cases.set('gap', await recording(180, { pauseAt: 60, pauseSeconds: 15 }));
     cases.set('lap-cap', await recording(202, { lapSeconds: 1 }));
-    for (const fileMode of ['unavailable', 'http-failure', 'malformed']) cases.set(fileMode, await recording(180, {}, { fileMode }));
+    cases.set('unavailable', await recording(180, {}, { fileMode: 'unavailable' }));
   });
 
   it.each([3599, 3600])('retains %i mapped samples, native units, timestamps and laps', count => {
@@ -198,11 +210,48 @@ describe('COROS historical recording fidelity (synthetic, serialized SDK boundar
     expect(persisted.streams).toHaveLength(202);
   });
 
-  it.each(['unavailable', 'http-failure', 'malformed'])('characterizes %s file outcome as a successful summary-only import', fileMode => {
-    const { persisted, result } = cases.get(fileMode);
+  it('allows summary-only import only for COROS explicit no-file response', () => {
+    const { persisted, result } = cases.get('unavailable');
     expect(persisted).not.toHaveProperty('streams');
     expect(persisted).toMatchObject({ source_format: 'webhook', zone_method: 'none', zone_seconds: [0, 0, 0, 0, 0] });
-    expect(result.errors).toBe(0);
+    expect(result).toMatchObject({ imported: 1, errors: 0, recording_errors: [] });
+  });
+
+  it.each([
+    ['http-failure', 'fit_download_http_error', true],
+    ['http-not-found', 'fit_download_http_error', false],
+    ['network-failure', 'fit_download_network_error', true],
+    ['lookup-http-failure', 'fit_lookup_http_error', true],
+    ['lookup-network-failure', 'fit_lookup_failed', true],
+    ['malformed', 'fit_parse_failed', false],
+    ['unknown-response', 'fit_url_missing', true],
+  ])('does not save a summary after %s FIT failure', async (fileMode, code, retryable) => {
+    const fixture = runtime(syntheticFit1Hz(180), { fileMode });
+    const result = await fixture.sync();
+    expect(result).toMatchObject({ imported: 0, errors: 1, recording_errors: [{ code, retryable }] });
+    expect(fixture.bulkCreate).not.toHaveBeenCalled();
+    expect(fixture.invoke).not.toHaveBeenCalled();
+    expect(fixture.rows).toHaveLength(0);
+    expect(fixture.connectionUpdate).toHaveBeenCalledWith('synthetic-connection', expect.objectContaining({
+      last_error: expect.stringContaining(retryable ? '1 FIT issue(s) can be retried' : '1 need attention'),
+    }));
+  });
+
+  it('fails closed when an activity has no FIT lookup identifier', async () => {
+    const base = runtime(syntheticFit1Hz(180));
+    const fixture = runtime(syntheticFit1Hz(180), { records: [{ ...base.record, label_id: undefined }] });
+    const result = await fixture.sync();
+    expect(result).toMatchObject({ imported: 0, errors: 1, recording_errors: [{ code: 'fit_lookup_id_missing', retryable: false }] });
+    expect(fixture.bulkCreate).not.toHaveBeenCalled();
+  });
+
+  it('retries a failed activity successfully without a duplicate or summary fallback', async () => {
+    const fixture = runtime(syntheticFit1Hz(180), { fileModes: ['network-failure', 'fit'] });
+    expect(await fixture.sync()).toMatchObject({ imported: 0, errors: 1, recording_errors: [{ retryable: true }] });
+    expect(fixture.rows).toHaveLength(0);
+    expect(await fixture.sync()).toMatchObject({ imported: 1, errors: 0, recording_errors: [] });
+    expect(fixture.rows).toHaveLength(1);
+    expect(fixture.rows[0].streams).toHaveLength(180);
   });
 
   it('avoids an extra write/file download for a sequential repeated identical activity', async () => {
@@ -242,7 +291,7 @@ describe('COROS historical recording fidelity (synthetic, serialized SDK boundar
     expect(fixture.bulkCreate).not.toHaveBeenCalled();
     expect(fixture.invoke).not.toHaveBeenCalled();
     expect(fixture.rows).toHaveLength(0);
-    expect(fixture.connectionUpdate).toHaveBeenCalledWith('synthetic-connection', expect.objectContaining({ last_error: expect.stringContaining('could not be imported') }));
+    expect(fixture.connectionUpdate).toHaveBeenCalledWith('synthetic-connection', expect.objectContaining({ last_error: expect.stringContaining('activities were skipped') }));
   });
 
   it('imports a valid sibling without saving or recalculating the rejected activity', async () => {
@@ -250,9 +299,12 @@ describe('COROS historical recording fidelity (synthetic, serialized SDK boundar
     const base = runtime(bytes);
     const fixture = runtime(bytes, {
       records: [base.record, { ...base.record, date: '2026-01-02' }],
-      downloadSequence: [syntheticFit1Hz(12001), bytes],
+      fileModes: ['http-failure', 'fit'],
     });
-    expect(await fixture.sync()).toMatchObject({ imported: 1, errors: 1, records_found: 2 });
+    expect(await fixture.sync()).toMatchObject({
+      imported: 1, errors: 1, records_found: 2,
+      recording_errors: [{ code: 'fit_download_http_error', retryable: true }],
+    });
     expect(fixture.rows).toHaveLength(1);
     expect(fixture.rows[0].date).toBe('2026-01-02');
     expect(fixture.rows[0].streams).toHaveLength(180);
@@ -281,7 +333,11 @@ describe('COROS historical recording fidelity (synthetic, serialized SDK boundar
   it('preserves all 201 measured laps', () => {
     expect(cases.get('lap-cap').persisted.laps).toHaveLength(201);
   });
-  it.fails('KNOWN DEFECT: reports a failed FIT download rather than an error-free sync', () => {
-    expect(cases.get('http-failure').result.errors).toBeGreaterThan(0);
+  it('reports a failed FIT download rather than an error-free sync', async () => {
+    const fixture = runtime(syntheticFit1Hz(180), { fileMode: 'http-failure' });
+    expect(await fixture.sync()).toMatchObject({
+      imported: 0, errors: 1,
+      recording_errors: [{ code: 'fit_download_http_error', retryable: true, http_status: 503 }],
+    });
   });
 });

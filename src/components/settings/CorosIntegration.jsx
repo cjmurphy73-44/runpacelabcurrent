@@ -64,6 +64,12 @@ export default function CorosIntegration({ athleteId }) {
       if (data.duplicates) parts.push(`${data.duplicates} already up to date`);
       if (data.errors) parts.push(`${data.errors} skipped`);
       setInfo(parts.join(" · ") + ".");
+      const recordingErrors = Array.isArray(data.recording_errors) ? data.recording_errors : [];
+      if (recordingErrors.length) {
+        const retryable = recordingErrors.filter((failure) => failure.retryable).length;
+        const needsAttention = recordingErrors.length - retryable;
+        setError(`FIT recordings were not imported. ${retryable} can be retried; ${needsAttention} need attention. Use Sync workouts to retry temporary failures.`);
+      }
       loadStatus();
     } catch (e) {
       setError(e?.response?.data?.error || "Historical sync failed.");

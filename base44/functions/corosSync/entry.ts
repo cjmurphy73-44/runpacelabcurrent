@@ -13,7 +13,7 @@ import { isUsableTelemetry, storageStream, MAX_STREAM_SAMPLES } from '../../shar
 import { assertInlineWorkoutFits, MAX_INLINE_WORKOUT_BYTES, RecordingStorageError } from '../../shared/recordingStorage.ts';
 import {
   corosAccessToken, fetchWithTimeout, mcpPost, mcpToolCall,
-  downloadCorosFit, queryCorosRecords,
+  CorosFitDownloadError, downloadCorosFit, queryCorosRecords,
 } from '../../shared/corosMcp.ts';
 
 // COROS MCP (Model Context Protocol) — OAuth 2.1 self-service integration.
@@ -551,26 +551,31 @@ async function syncHistoricalFor(athlete: any, accessToken: string, base44, look
     if (sameDay.some(isDuplicate) || toCreate.some((s) => s.date === mapped.date && isDuplicate(s))) { duplicates++; continue; }
     toCreate.push(mapped);
   }
-  // The sport record is a summary. COROS also keeps the original activity file, and only
-  // that carries second-by-second telemetry, so it is fetched for every new session. When
-  // no file exists the session is still created, summary-only, and stays out of zone
-  // analytics because it has no stream.
+  // A summary-only import is allowed only when COROS explicitly reports that no
+  // recording is available. Lookup/download/parse failures leave the activity
+  // unpersisted so a retry cannot look like a successful summary import.
   const accepted = [];
   const recordingErrors = [];
   if (toCreate.length) {
     for (const payload of toCreate) {
       const key = fileKeys.get(payload);
       try {
-        if (key) applyFitTelemetry(payload, await downloadCorosFit(accessToken, key.labelId, key.sportType), athlete);
+        if (!key) throw new CorosFitDownloadError('fit_lookup_id_missing', false);
+        const fit = await downloadCorosFit(accessToken, key.labelId, key.sportType);
+        if (fit) applyFitTelemetry(payload, fit, athlete);
         // Include bulk-array framing in the application budget, before any writes.
         assertInlineWorkoutFits([payload]);
       } catch (e) {
-        if (e instanceof RecordingStorageError) {
-          errors++;
-          recordingErrors.push({ code: e.code, retryable: e.retryable });
-          continue; // No partial recording or success-shaped summary replacement.
-        }
-        console.warn('COROS FIT ingest failed');
+        errors++;
+        const code = e instanceof RecordingStorageError || e instanceof CorosFitDownloadError
+          ? e.code
+          : 'fit_processing_failed';
+        const retryable = e instanceof RecordingStorageError || e instanceof CorosFitDownloadError
+          ? e.retryable
+          : true;
+        const httpStatus = e instanceof CorosFitDownloadError ? e.httpStatus : undefined;
+        recordingErrors.push({ date: payload.date, code, retryable, ...(httpStatus ? { http_status: httpStatus } : {}) });
+        continue; // Do not persist a summary-shaped success after a requested FIT failure.
       }
       accepted.push(payload);
     }
@@ -612,9 +617,13 @@ async function handleSyncHistorical(base44) {
   try {
     const lookbackDays = await getSyncLookbackDays(base44, user.id);
     const out = await syncHistoricalFor(athlete, accessToken, base44, lookbackDays);
+    const retryableFitFailures = out.recording_errors.filter((failure) => failure.retryable).length;
+    const nonRetryableFitFailures = out.recording_errors.length - retryableFitFailures;
     await base44.asServiceRole.entities.CorosConnection.update(conn.id, {
       last_sync_at: new Date().toISOString(),
-      last_error: out.errors ? `${out.errors} activities could not be imported. Review recording limits before retrying.` : '',
+      last_error: out.errors
+        ? `${out.errors} activities were skipped; ${retryableFitFailures} FIT issue(s) can be retried and ${nonRetryableFitFailures} need attention.`
+        : '',
     });
     return Response.json({ success: true, ...out });
   } catch (e) {
