@@ -46,7 +46,17 @@ function getClientId(): string {
 // registration used a different value.
 function selfUrl(_req: Request): string {
   const override = env('COROS_REDIRECT_URI');
-  if (override) return override;
+  if (override) {
+    const url = new URL(override);
+    if (url.protocol !== 'https:' || url.username || url.password) {
+      throw new Error('COROS_REDIRECT_URI must be an HTTPS callback URL without credentials');
+    }
+    return url.toString();
+  }
+  // An isolated app must never silently register the production OAuth callback.
+  if (env('TPL_ENVIRONMENT') !== 'production') {
+    throw new Error('COROS_REDIRECT_URI is required outside production');
+  }
   return 'https://trainpacelab.base44.app/functions/corosSync';
 }
 
