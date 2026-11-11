@@ -214,8 +214,9 @@ async function handleWebhook(req, base44) {
     const conns = await base44.asServiceRole.entities.CorosConnection.filter({ coros_user_id: body.coros_user_id });
     if (conns[0]) { connection = conns[0]; athleteId = connection.athlete_id; }
   }
-  if (!athleteId && body.athlete_id) athleteId = body.athlete_id;
-  if (!athleteId) return Response.json({ error: 'Could not resolve athlete from webhook payload' }, { status: 400 });
+  // Athlete IDs supplied in the webhook body are untrusted. Resolve ownership
+  // exclusively from the connected COROS account, never from an arbitrary ID.
+  if (!athleteId) return Response.json({ error: 'Could not resolve connected COROS athlete from webhook payload' }, { status: 400 });
 
   const activity = body.activity || body.workout || body;
   let summary = null;
