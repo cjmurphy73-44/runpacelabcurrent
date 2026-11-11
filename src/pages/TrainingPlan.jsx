@@ -42,9 +42,11 @@ export default function TrainingPlan() {
       }
       if (activeAthlete) {
         setAthlete(activeAthlete);
+        // A failed query is not an empty plan list. Let the outer error
+        // boundary show Retry instead of offering to generate a duplicate plan.
         const [drafts, activePlans] = await Promise.all([
-          base44.entities.TrainingPlan.filter({ athlete_id: activeAthlete.id, status: "draft" }, "-created_date", 1).catch(() => []),
-          base44.entities.TrainingPlan.filter({ athlete_id: activeAthlete.id, status: "active" }, "-created_date", 1).catch(() => []),
+          base44.entities.TrainingPlan.filter({ athlete_id: activeAthlete.id, status: "draft" }, "-created_date", 1),
+          base44.entities.TrainingPlan.filter({ athlete_id: activeAthlete.id, status: "active" }, "-created_date", 1),
         ]);
         setPlan(drafts[0] || activePlans[0] || null);
       }
