@@ -107,7 +107,6 @@ export function getAppParams({
   }
 
 
-  const windowObj = typeof window !== 'undefined' ? window : {};
   const envAppId = typeof import.meta !== 'undefined' ? (import.meta.env?.VITE_APP_ID || PUBLISHED_APP_ID) : PUBLISHED_APP_ID;
 
   // Resolve app_id with stale-storage guard: the URL value (present on normal
