@@ -19,6 +19,7 @@ import { AuthProvider } from '@/lib/AuthContext';
 import { UIPreferencesProvider } from '@/context/UIPreferencesContext';
 import { ServiceProvider } from '@/services/providers/ServiceContext';
 import { Toaster } from '@/components/ui/toaster';
+import { appParams } from '@/lib/app-params';
 
 // In-app pages load on demand so the first visit downloads far less code.
 const CoachChat = lazy(() => import('@/pages/CoachChat'));
@@ -45,6 +46,21 @@ const UserGuide = lazy(() => import('@/pages/UserGuide'));
 
 
 export default function App() {
+  // Do not mount auth, routing, or data providers when a preview might connect
+  // to the published Base44 app. A deploy is not staging-safe by default.
+  if (appParams.configurationError) {
+    return (
+      <main role="alert" className="mx-auto flex min-h-screen max-w-lg flex-col justify-center gap-3 px-6 py-12">
+        <h1 className="text-2xl font-heading font-bold">Preview configuration required</h1>
+        <p className="text-sm text-muted-foreground">{appParams.configurationError}</p>
+        <p className="text-sm text-muted-foreground">
+          Ask the project owner to configure and verify the staging app in Vercel Preview settings.
+          No athlete data has been loaded.
+        </p>
+      </main>
+    );
+  }
+
   return (
     <QueryClientProvider client={queryClientInstance}>
       <ServiceProvider>
