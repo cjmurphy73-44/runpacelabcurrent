@@ -93,7 +93,8 @@ export function getAppParams({
 
     // Always strip a returned OAuth token from the address bar, including when
     // misconfigured; never initialize the app or authenticate in that state.
-    const token = getAppParamValue("access_token", { removeFromUrl: true });
+    const token = new URLSearchParams(windowObj.location?.search || "").get("access_token");
+    getAppParamValue("access_token", { removeFromUrl: true });
     return {
       appId: valid ? previewAppId : null,
       token: valid ? token : null,
