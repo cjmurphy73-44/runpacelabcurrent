@@ -1,6 +1,6 @@
 # Vercel Preview / Base44 staging isolation
 
-**Status:** Production and staging project identities confirmed by owner-provided Base44 API references on 2026-11-11. Vercel Preview variables are configured and the first build verified. SDK root URL semantics were inspected in the built bundle; an unauthenticated request to the old Preview `/api` path returned 404. A Preview-only SDK API origin fix is under CI; staging API reachability, OAuth callback and synthetic read/write isolation remain unverified.
+**Status:** Production and staging identities, Preview variables and SDK API routing are verified in a successful Vercel Preview build. Exact-head CI previously passed 187 tests in 27 files. A later discovery found direct SPA URLs (including `/login`) returned Vercel 404; a `vercel.json` SPA rewrite and a Preview-only, unauthenticated browser diagnostic at `/staging-check` are now under CI and deployment verification. Browser CORS, OAuth callback and synthetic read/write isolation remain unverified.
 
 ## Why this exists
 
@@ -26,6 +26,14 @@ The API references show distinct project IDs. They do **not** by themselves veri
 4. Confirm that the Preview SDK API requests go to `https://train-pace-lab-copy-8591c758.base44.app/api`, not `/api` on Vercel; check CORS and unauthenticated response behavior. Confirm the Base44 staging OAuth redirect/callback is permitted for the actual Preview hostname. Verify staging integrations and backend function credentials are independent of production. Do not sign in before this is verified.
 5. Use a clean browser profile and **synthetic** staging athlete. Verify an authorized staging-only write, a harmless staging function call, and absence of that record in an authorized production read-only view. Do not import production data or use production tokens.
 6. Record 390px and 320px authenticated screenshots and navigation checks before accepting the dashboard PR.
+
+## Browser acceptance gate (read-only)
+
+1. Confirm the latest branch deployment is READY and direct routes such as `/login` and `/staging-check` return HTML (not Vercel 404). `vercel.json` contains the Vite SPA fallback rewrite; verify static JS/CSS assets still load.
+2. On the latest Preview URL, open `/staging-check` in a clean browser profile. This screen is gated by the Preview build flag and does **not** mount authentication or athlete data providers.
+3. Click **Check staging API and CORS**. The test makes a single unauthenticated, read-only `GET` to the configured staging `/api/apps/<staging-id>/entities/User/me` with `X-App-Id`, `credentials: omit`, and no token. A browser-visible 401 or 403 indicates API reachability and CORS for that request. A 200 is a warning (verify endpoint permissions); 404/5xx or fetch rejection blocks progression. A failed fetch may be due to CORS or network access; check DevTools without pasting credentials or tokens.
+4. **Do not sign in until the above succeeds and staging OAuth callback/redirect allowlisting is confirmed.** A passing browser probe is not evidence of authenticated access or backend data isolation.
+5. After separate authorization and integration checks, use a synthetic staging athlete for a controlled write and verify its absence using an authorized, read-only production view. Keep real athlete data and credentials out of staging.
 
 ## Fail-closed behaviour
 
