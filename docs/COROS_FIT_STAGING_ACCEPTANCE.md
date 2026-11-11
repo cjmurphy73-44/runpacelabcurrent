@@ -1,3 +1,11 @@
+## Hosted webhook acceptance attempt — 2026-11-12
+
+A read-only, unauthenticated POST was sent to the staging app's `/api/functions/corosSync` endpoint with a deliberately nonexistent synthetic COROS user ID. **Actual hosted response: HTTP 503** with JSON `{"error":"External sync is disabled for this environment."}`. This is an environment-level gate; the request did not reach the intended webhook signature/ownership checks. No athlete or connection records were created and no FIT download was attempted.
+
+**Blocker:** staged external sync must be enabled **only for isolated synthetic acceptance** after confirming staging's own provider/test-account isolation and external side effects. Do not turn off the environment guard globally, use production provider secrets, or claim hosted webhook success.
+
+**Next executable test:** once a safe function invocation route is available, exercise invalid signature (401), unknown COROS account (400), and a synthetic connected athlete with an HTTPS-hosted test FIT file. Verify saved samples and provenance by entity readback, then delete all test records. The successful direct entity readback is a separate result and does not substitute for this.
+
 ## Staging implementation and persistence results — 2026-11-12
 
 - Created Base44 staging pre-change checkpoint `6af4e47a016517b2d94e0216`.
