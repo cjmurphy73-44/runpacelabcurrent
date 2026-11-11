@@ -95,6 +95,21 @@ export function getAppParams({
     // misconfigured; never initialize the app or authenticate in that state.
     const token = new URLSearchParams(windowObj.location?.search || "").get("access_token");
     getAppParamValue("access_token", { removeFromUrl: true });
+    // The Base44 SDK independently reads base44_access_token from localStorage.
+    // Prevent a token saved by a previous app on this Preview origin from being
+    // reused with the staging app ID, while preserving valid staging sessions.
+    try {
+      const storage = windowObj.localStorage;
+      if (storage && storage.getItem("tpl_base44_token_app_id") !== previewAppId) {
+        storage.removeItem("base44_access_token");
+        storage.removeItem("token");
+      }
+      if (storage && valid && token) {
+        storage.setItem("tpl_base44_token_app_id", previewAppId);
+      }
+    } catch {
+      // Storage can be unavailable in privacy-restricted browser contexts.
+    }
     return {
       appId: valid ? previewAppId : null,
       token: valid ? token : null,
