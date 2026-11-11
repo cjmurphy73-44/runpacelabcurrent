@@ -26,3 +26,10 @@ it('COROS webhook allows a summary only when no FIT URL was provided', () => {
   expect(webhook).toMatch(/if \(!summary\)/);
   expect(webhook.indexOf('return recordingErrorResponse(error)') < webhook.indexOf('if (!summary)')).toBe(true);
 });
+
+it('isolated environments cannot silently use the production COROS OAuth callback', () => {
+  const selfUrl = source.slice(source.indexOf('function selfUrl('), source.indexOf('// Public app origin'));
+  expect(selfUrl).toMatch(/env\('TPL_ENVIRONMENT'\) !== 'production'/);
+  expect(selfUrl).toMatch(/COROS_REDIRECT_URI is required outside production/);
+  expect(selfUrl).toMatch(/url\.protocol !== 'https:'/);
+});
