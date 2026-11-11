@@ -1,3 +1,0 @@
-{
-  "buildCommand": "npx vitest run scripts/__tests__/coros-webhook-fit-contract.test.mjs scripts/__tests__/coros-webhook-fit-integration.test.mjs && npm run build"
-}
