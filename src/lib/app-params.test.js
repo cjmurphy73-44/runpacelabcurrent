@@ -21,13 +21,47 @@ describe("Base44 Vercel preview isolation", () => {
     expect(params.appBaseUrl).toBe("");
     expect(params.apiServerUrl).toBe("");
     expect(params.token).toBeNull();
-    expect(params.configurationError).toMatch(/Preview requires a verified staging/);
+    expect(params.configurationError).toMatch(/Preview requires the exact approved TrainPaceLab staging/);
   });
 
   it("rejects the published app ID even with an HTTPS base URL", () => {
     const params = preview({ VITE_APP_ID: PUBLISHED_APP_ID, VITE_APP_BASE_URL: STAGING_URL });
     expect(params.appId).toBeNull();
     expect(params.configurationError).toBeTruthy();
+  });
+
+  it.each([
+    ["unrelated app ID", "1234567890abcdef12345678", STAGING_URL],
+    ["published app ID", PUBLISHED_APP_ID, STAGING_URL],
+    ["published Base44 host", STAGING_APP_ID, "https://trainpacelab.base44.app"],
+    ["unrelated HTTPS host", STAGING_APP_ID, "https://example.com"],
+    ["different Base44 staging app", STAGING_APP_ID, "https://unrelated.base44.app"],
+    ["staging root with extra path", STAGING_APP_ID, STAGING_URL + "/other"],
+  ])("fails closed for %s", (_description, appId, appBaseUrl) => {
+    const params = preview({ VITE_APP_ID: appId, VITE_APP_BASE_URL: appBaseUrl });
+    expect(params.appId).toBeNull();
+    expect(params.apiServerUrl).toBe("");
+    expect(params.configurationError).toMatch(/exact approved TrainPaceLab staging/);
+  });
+
+  it("clears cached SDK credentials when Preview backend configuration is invalid", () => {
+    const storage = new Map([
+      ["base44_access_token", "old-token"],
+      ["token", "old-token"],
+      ["tpl_base44_token_app_id", STAGING_APP_ID],
+    ]);
+    vi.stubGlobal("window", {
+      location: { search: "", hostname: "tpl-git-test-team.vercel.app", href: "https://tpl-git-test-team.vercel.app/" },
+      localStorage: {
+        getItem: (key) => storage.get(key) || null,
+        setItem: (key, value) => storage.set(key, value),
+        removeItem: (key) => storage.delete(key),
+      },
+    });
+    const params = preview({ VITE_APP_ID: STAGING_APP_ID, VITE_APP_BASE_URL: "https://trainpacelab.base44.app" });
+    expect(params.configurationError).toBeTruthy();
+    expect(storage.has("base44_access_token")).toBe(false);
+    expect(storage.has("token")).toBe(false);
   });
 
   it.each([
