@@ -1,10 +1,12 @@
 import React, { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 import { base44 } from "@/api/base44Client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import ZoneBadge from "@/components/ui/ZoneBadge";
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 import { useFitness } from "@/context/FitnessContext";
-import { CheckCircle2, Moon, AlertTriangle, ShieldAlert, BedDouble } from "lucide-react";
+import { ArrowRight, AlertCircle, Moon, AlertTriangle, ShieldAlert, BedDouble, RefreshCw, Activity } from "lucide-react";
 import moment from "moment";
 import { useCoachInjurySignal } from "@/hooks/useCoachInjurySignal";
 
@@ -16,26 +18,9 @@ function detectAnomaly(biometricTelemetry) {
   return hrvValues[0] < baseline * 0.85;
 }
 
-export default function TodaySessionCard({ athleteId }) {
-  const { biometricTelemetry } = useFitness() || {};
-  const injury = useCoachInjurySignal(athleteId);
-  const [session, setSession] = useState(undefined);
-  const [plan, setPlan] = useState(null);
-
-  useEffect(() => {
-    if (!athleteId) return;
-    (async () => {
-      const todayStr = moment().format("YYYY-MM-DD");
-      const [sessions, plans] = await Promise.all([
-        base44.entities.TrainingPlanSession.filter({ athlete_id: athleteId, date: todayStr }),
-        base44.entities.TrainingPlan.filter({ athlete_id: athleteId, status: "active" }, "-created_date", 1),
-      ]);
-      setSession(sessions?.[0] || null);
-      setPlan(plans?.[0] || null);
-    })();
-  }, [athleteId]);
-
+export function TodaySessionCardView({ session, plan, loadError = false, onRetry = () => {}, biometricTelemetry = [], injury = { level: "none", loading: false, evidence: [] } }) {
   const anomaly = detectAnomaly(biometricTelemetry);
+  const hasHrvHistory = (biometricTelemetry || []).filter((row) => Number.isFinite(row.hrv_ms)).length >= 4;
   const isRunning = session?.sport?.toLowerCase() === "running";
   // Pace zones in the plan are running-derived, so only apply them to running sessions.
   const paceZone = isRunning ? plan?.pace_zones?.find((z) => z.zone === session?.prescribed_intensity_zone) : null;
@@ -44,11 +29,32 @@ export default function TodaySessionCard({ athleteId }) {
   return (
     <Card className="h-full border-border shadow-sm">
       <CardHeader className="pb-2">
-        <CardTitle className="text-sm text-muted-foreground font-heading uppercase tracking-wide">Today's Session</CardTitle>
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <CardTitle className="text-sm text-muted-foreground font-heading uppercase tracking-wide">Today's Session</CardTitle>
+          <Button asChild variant="ghost" size="sm" className="min-h-9 text-primary">
+            <Link to="/plan">Training plan <ArrowRight aria-hidden="true" /></Link>
+          </Button>
+        </div>
       </CardHeader>
       <CardContent className="space-y-4">
-        {session === undefined ? (
-          <p className="text-sm text-muted-foreground">Loading...</p>
+        {loadError ? (
+          <div role="alert" className="space-y-3 rounded-lg border border-border bg-muted/40 p-4">
+            <div className="flex items-start gap-2">
+              <AlertCircle className="mt-0.5 h-5 w-5 shrink-0 text-warning" aria-hidden="true" />
+              <div>
+                <p className="font-heading font-semibold">Session temporarily unavailable</p>
+                <p className="text-sm text-muted-foreground">We couldn't load your training plan. Your schedule hasn't been changed.</p>
+              </div>
+            </div>
+            <Button variant="outline" size="sm" onClick={onRetry}>
+              <RefreshCw aria-hidden="true" /> Retry loading
+            </Button>
+          </div>
+        ) : session === undefined ? (
+          <div role="status" className="space-y-3" aria-label="Loading today's session">
+            <div className="h-6 w-36 animate-pulse rounded bg-muted" />
+            <div className="h-4 w-52 max-w-full animate-pulse rounded bg-muted" />
+          </div>
         ) : session ? (
           injury.level === "hold" && session.sport?.toLowerCase().startsWith("run") ? (
             <div className="space-y-3">
@@ -106,17 +112,25 @@ export default function TodaySessionCard({ athleteId }) {
             {session.rationale_text && <p className="text-sm text-muted-foreground">{session.rationale_text}</p>}
           </div>
           )
+        ) : plan ? (
+          <div className="flex items-center gap-3 py-2">
+            <Moon className="w-8 h-8 shrink-0 text-primary" aria-hidden="true" />
+            <div>
+              <p className="font-heading font-bold text-lg">No workout scheduled</p>
+              <p className="text-sm text-muted-foreground">Your active plan has no session today. Check your training plan or prioritise recovery.</p>
+            </div>
+          </div>
         ) : (
           <div className="flex items-center gap-3 py-2">
-            <Moon className="w-8 h-8 text-primary" />
+            <Activity className="w-8 h-8 shrink-0 text-primary" aria-hidden="true" />
             <div>
-              <p className="font-heading font-bold text-lg">Rest Day</p>
-              <p className="text-sm text-muted-foreground">No session scheduled, focus on recovery.</p>
+              <p className="font-heading font-bold text-lg">No active training plan</p>
+              <p className="text-sm text-muted-foreground">Open your training plan to schedule your next session.</p>
             </div>
           </div>
         )}
 
-        {anomaly && (
+        {!loadError && session !== undefined && anomaly && (
           <Alert variant="destructive">
             <AlertTriangle className="w-4 h-4" />
             <AlertTitle>Recovery Alert</AlertTitle>
@@ -126,12 +140,54 @@ export default function TodaySessionCard({ athleteId }) {
           </Alert>
         )}
 
-        {!anomaly && session && !(injury.level === "hold" && session.sport?.toLowerCase().startsWith("run")) && (
-          <div className="flex items-center gap-1 text-xs text-muted-foreground">
-            <CheckCircle2 className="w-3.5 h-3.5 text-primary" /> Readiness normal, proceed as prescribed.
-          </div>
+        {!loadError && session && !anomaly && !injury.loading && !(injury.level === "hold" && session.sport?.toLowerCase().startsWith("run")) && (
+          <p className="text-xs text-muted-foreground">
+            {hasHrvHistory
+              ? "No low-HRV alert detected. Check how you feel before training."
+              : "HRV readiness not assessed — add recovery data for more context."}
+          </p>
         )}
       </CardContent>
     </Card>
   );
+}
+
+export default function TodaySessionCard({ athleteId }) {
+  const { biometricTelemetry } = useFitness() || {};
+  const injury = useCoachInjurySignal(athleteId);
+  const [session, setSession] = useState(undefined);
+  const [plan, setPlan] = useState(null);
+  const [loadError, setLoadError] = useState(false);
+  const [retryKey, setRetryKey] = useState(0);
+
+  useEffect(() => {
+    let cancelled = false;
+    setSession(undefined);
+    setPlan(null);
+    setLoadError(false);
+    if (!athleteId) {
+      setSession(null);
+      return () => { cancelled = true; };
+    }
+    (async () => {
+      try {
+        const todayStr = moment().format("YYYY-MM-DD");
+        const [sessions, plans] = await Promise.all([
+          base44.entities.TrainingPlanSession.filter({ athlete_id: athleteId, date: todayStr }),
+          base44.entities.TrainingPlan.filter({ athlete_id: athleteId, status: "active" }, "-created_date", 1),
+        ]);
+        if (cancelled) return;
+        setSession(sessions?.[0] || null);
+        setPlan(plans?.[0] || null);
+      } catch (error) {
+        if (cancelled) return;
+        console.error("Today's session could not load:", error);
+        setLoadError(true);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [athleteId, retryKey]);
+
+  return <TodaySessionCardView session={session} plan={plan} loadError={loadError}
+    onRetry={() => setRetryKey((key) => key + 1)} biometricTelemetry={biometricTelemetry} injury={injury} />;
 }
