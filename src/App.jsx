@@ -21,6 +21,7 @@ import { ServiceProvider } from '@/services/providers/ServiceContext';
 import { Toaster } from '@/components/ui/toaster';
 import { appParams } from '@/lib/app-params';
 import PreviewStagingCheck from '@/components/PreviewStagingCheck';
+import PreviewTodaySession from '@/components/PreviewTodaySession';
 
 // In-app pages load on demand so the first visit downloads far less code.
 const CoachChat = lazy(() => import('@/pages/CoachChat'));
@@ -67,6 +68,13 @@ export default function App() {
   if (appParams.isPreview && typeof window !== 'undefined' &&
       window.location.pathname === '/staging-check') {
     return <PreviewStagingCheck />;
+  }
+
+  // This feature-review branch is demo-only on Vercel Preview. Do not mount
+  // AuthProvider, Base44 SDK-backed providers or real athlete routes until
+  // staging auth/domain and isolation acceptance are complete.
+  if (appParams.isPreview) {
+    return <PreviewTodaySession />;
   }
 
   return (
