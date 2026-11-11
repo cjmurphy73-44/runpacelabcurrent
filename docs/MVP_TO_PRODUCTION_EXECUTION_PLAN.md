@@ -40,7 +40,7 @@
 
 **P0 — isolate and unlock staging**
 
-- [ ] **TPL-001** Reconcile open draft PRs #8/#9/#10/#12/#13 with `main`; record overlap, dependency order, CI and whether any diff touches Odysseus. *Done when:* review matrix and safe merge sequence documented; no merge.
+- [x] **TPL-001** Reconcile open PRs #4–#14 with `main`; record overlap, dependency order, CI and whether any diff touches Odysseus. *Done:* see [PR reconciliation evidence](PR_RECONCILIATION_2026-11-11.md). **Critical block:** #5 and inherited #4/#6/#7/#8/#9 remove the Odysseus gitlink relative to main; do not merge. #14's doc-only CI fails due to baseline `athleteState.ts` TS2367. No merges performed.
 - [ ] **TPL-002** Audit staging Base44 function source and runtime dependency names for Stripe, COROS, Garmin, Airtable, outbound fetch and webhook routes. *Done when:* function-to-secret/external-service matrix exists without secret values; deployed status labeled unknown where not verifiable.
 - [ ] **TPL-003** Audit staging entity schemas and RLS for `AthleteProfile`, `WorkoutSession`, `DailyMetrics`, `LabResult`, `Subscription`, `User`. *Done when:* read/create/update/delete rule matrix, service-role bypass inventory and concrete tests are documented; no real athlete records read.
 - [ ] **TPL-004** Validate Vercel Preview exact staging identity, routing, CORS and SDK request origin in an independent browser session. *Done when:* dated request/response evidence is recorded without tokens.
