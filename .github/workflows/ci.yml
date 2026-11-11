@@ -2,7 +2,7 @@ name: TrainPaceLab CI
 
 on:
   push:
-    branches: [ main, master, dev ]
+    branches: [ main, master, dev, 'fix/tpl-coros-webhook-fit-fidelity' ]
   pull_request:
     branches: [ main, master, dev ]
 
