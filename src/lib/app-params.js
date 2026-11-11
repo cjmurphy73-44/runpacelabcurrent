@@ -80,7 +80,7 @@ function isValidHttpsBaseUrl(value) {
 // OAuth URL parameters and browser storage cannot change the target app.
 export function getAppParams({
   environment = import.meta.env,
-  deploymentEnvironment = environment?.VERCEL_ENV || "",
+  deploymentEnvironment = import.meta.env.VERCEL_ENV || "",
   hostname = typeof window !== "undefined" ? window.location?.hostname || "" : "",
 } = {}) {
   const windowObj = typeof window !== 'undefined' ? window : {};
