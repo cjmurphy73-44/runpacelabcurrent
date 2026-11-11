@@ -58,7 +58,54 @@ function getAppParamValue(name, { defaultValue = null, removeFromUrl = false, pe
 // ("Invalid id value -> Object not found"). This id is fixed for this app.
 const PUBLISHED_APP_ID = "6a504ebe6a5a6d1be058226c";
 
-export function getAppParams() {
+// Vercel exposes VERCEL_ENV to its build process. vite.config.js embeds it
+// into import.meta.env.VERCEL_ENV, so previews cannot silently inherit the
+// published app ID when VITE_APP_ID is missing.
+function isPreviewDeployment(deploymentEnvironment, hostname) {
+  return deploymentEnvironment === "preview" ||
+    (hostname.endsWith(".vercel.app") && hostname.includes("-git-"));
+}
+
+function isValidHttpsBaseUrl(value) {
+  try {
+    const url = new URL(value);
+    return url.protocol === "https:" && Boolean(url.hostname) &&
+      !url.username && !url.password && !url.search && !url.hash;
+  } catch {
+    return false;
+  }
+}
+
+// The build-time configuration is authoritative for preview. In particular,
+// OAuth URL parameters and browser storage cannot change the target app.
+export function getAppParams({
+  environment = import.meta.env,
+  deploymentEnvironment = environment?.VERCEL_ENV || "",
+  hostname = typeof window !== "undefined" ? window.location?.hostname || "" : "",
+} = {}) {
+  const windowObj = typeof window !== 'undefined' ? window : {};
+  if (isPreviewDeployment(deploymentEnvironment, hostname)) {
+    const previewAppId = String(environment?.VITE_APP_ID || "").trim();
+    const previewBaseUrl = String(environment?.VITE_APP_BASE_URL || "").trim();
+    const valid = Boolean(previewAppId) &&
+      previewAppId !== PUBLISHED_APP_ID &&
+      isValidHttpsBaseUrl(previewBaseUrl);
+
+    // Always strip a returned OAuth token from the address bar, including when
+    // misconfigured; never initialize the app or authenticate in that state.
+    const token = getAppParamValue("access_token", { removeFromUrl: true });
+    return {
+      appId: valid ? previewAppId : null,
+      token: valid ? token : null,
+      fromUrl: windowObj.location?.href || "/",
+      functionsVersion: "",
+      appBaseUrl: valid ? previewBaseUrl : "",
+      configurationError: valid ? null :
+        "Preview requires a verified staging VITE_APP_ID and HTTPS VITE_APP_BASE_URL. Published app IDs are not allowed.",
+    };
+  }
+
+
   const windowObj = typeof window !== 'undefined' ? window : {};
   const envAppId = typeof import.meta !== 'undefined' ? (import.meta.env?.VITE_APP_ID || PUBLISHED_APP_ID) : PUBLISHED_APP_ID;
 
