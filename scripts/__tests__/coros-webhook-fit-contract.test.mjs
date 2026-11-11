@@ -1,9 +1,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { fileURLToPath } from 'node:url';
+import { resolve } from 'node:path';
 
-const source = readFileSync(fileURLToPath(new URL('../../base44/functions/corosSync/entry.ts', import.meta.url)), 'utf8');
+const source = readFileSync(resolve('base44/functions/corosSync/entry.ts'), 'utf8');
 const webhook = source.slice(source.indexOf('async function handleWebhook('), source.indexOf('// App-user action:'));
 
 test('COROS webhook uses bounded original FIT download and checks the FIT header', () => {
