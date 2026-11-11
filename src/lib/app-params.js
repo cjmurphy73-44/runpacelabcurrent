@@ -58,6 +58,12 @@ function getAppParamValue(name, { defaultValue = null, removeFromUrl = false, pe
 // ("Invalid id value -> Object not found"). This id is fixed for this app.
 const PUBLISHED_APP_ID = "6a504ebe6a5a6d1be058226c";
 
+// Owner-confirmed independent Base44 project. Preview may only connect here.
+// IDs and origins are public identifiers, not secrets. Changing staging
+// backends requires a reviewed code change as well as Vercel env updates.
+const STAGING_APP_ID = "6aefe9d09e2788fc8591c758";
+const STAGING_APP_BASE_URL = "https://train-pace-lab-copy-8591c758.base44.app";
+
 // Vercel exposes VERCEL_ENV to its build process. vite.config.js embeds it
 // into import.meta.env.VERCEL_ENV, so previews cannot silently inherit the
 // published app ID when VITE_APP_ID is missing.
@@ -87,8 +93,8 @@ export function getAppParams({
   if (isPreviewDeployment(deploymentEnvironment, hostname)) {
     const previewAppId = String(environment?.VITE_APP_ID || "").trim();
     const previewBaseUrl = String(environment?.VITE_APP_BASE_URL || "").trim();
-    const valid = Boolean(previewAppId) &&
-      previewAppId !== PUBLISHED_APP_ID &&
+    const valid = previewAppId === STAGING_APP_ID &&
+      previewBaseUrl === STAGING_APP_BASE_URL &&
       isValidHttpsBaseUrl(previewBaseUrl);
 
     // Always strip a returned OAuth token from the address bar, including when
@@ -100,7 +106,7 @@ export function getAppParams({
     // reused with the staging app ID, while preserving valid staging sessions.
     try {
       const storage = windowObj.localStorage;
-      if (storage && storage.getItem("tpl_base44_token_app_id") !== previewAppId) {
+      if (storage && (!valid || storage.getItem("tpl_base44_token_app_id") !== previewAppId)) {
         storage.removeItem("base44_access_token");
         storage.removeItem("token");
       }
@@ -120,7 +126,7 @@ export function getAppParams({
       // API calls must reach staging directly; Vercel Preview has no /api proxy.
       apiServerUrl: valid ? previewBaseUrl : "",
       configurationError: valid ? null :
-        "Preview requires a verified staging VITE_APP_ID and HTTPS VITE_APP_BASE_URL. Published app IDs are not allowed.",
+        "Preview requires the exact approved TrainPaceLab staging app ID and HTTPS base URL. Other backends are not allowed.",
     };
   }
 
