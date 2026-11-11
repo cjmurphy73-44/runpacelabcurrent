@@ -4,7 +4,7 @@
 
 ## Why this exists
 
-The published TrainPaceLab frontend has a hard-coded Base44 app ID fallback for its existing OAuth flow. That fallback is **not safe for a Vercel Preview**: if a Preview build lacks staging variables, it could connect to production. The preview guard prevents mounting the React app when this configuration is missing or points at the published app.
+The published TrainPaceLab frontend has a hard-coded Base44 app ID fallback for its existing OAuth flow. That fallback is **not safe for a Vercel Preview**: if a Preview build lacks staging variables, it could connect to production. The preview guard prevents mounting the React app unless both the app ID and HTTPS root match the exact owner-confirmed Base44 staging project. Rejecting only the published app ID is insufficient: an unrelated ID or a production backend URL must also fail closed.
 
 ## Verified Base44 project identities
 
@@ -18,7 +18,7 @@ The API references show distinct project IDs. They do **not** by themselves veri
 ## Required setup (owner)
 
 1. Use the staging project identity confirmed by the owner-provided Base44 API reference. Confirm that the staging SDK works with the application root URL before enabling authentication.
-2. In **Vercel → runpacelabcurrent → Settings → Environment Variables**, configure **Preview only**:
+2. In **Vercel → runpacelabcurrent → Settings → Environment Variables**, configure **Preview only**. These two public identifiers are pinned in the code and must match exactly; changing the staging backend requires a reviewed code change as well as an environment update:
    - `VITE_APP_ID=6aefe9d09e2788fc8591c758`
    - `VITE_APP_BASE_URL=https://train-pace-lab-copy-8591c758.base44.app`
    - Do not place keys, access tokens or secrets in any `VITE_*` variable.
@@ -37,7 +37,7 @@ The API references show distinct project IDs. They do **not** by themselves veri
 
 ## Fail-closed behaviour
 
-When Preview variables are missing, invalid or use the published Base44 app ID, the frontend displays **Preview configuration required** and does not mount auth/data providers. URL `app_id`/`app_base_url` and browser local storage cannot override Preview build-time identifiers. Stored tokens are not reused in Preview.
+When Preview variables are missing, invalid or differ from the exact approved staging app ID and HTTPS root, the frontend displays **Preview configuration required** and does not mount auth/data providers. Even a valid staging app ID paired with a production or unrelated HTTPS origin is rejected. SDK credentials are cleared on invalid Preview configuration. URL `app_id`/`app_base_url` and browser local storage cannot override Preview build-time identifiers. Stored tokens are not reused in Preview.
 
 The production path is deliberately unchanged. This is a **frontend safety guard, not proof of full backend isolation**: Base44 project settings, OAuth redirects, server functions, integration credentials and all write targets must still be audited.
 
