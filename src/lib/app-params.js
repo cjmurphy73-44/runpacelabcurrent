@@ -111,6 +111,7 @@ export function getAppParams({
       // Storage can be unavailable in privacy-restricted browser contexts.
     }
     return {
+      isPreview: true,
       appId: valid ? previewAppId : null,
       token: valid ? token : null,
       fromUrl: windowObj.location?.href || "/",
@@ -147,6 +148,7 @@ export function getAppParams({
   if (!resolvedAppId) resolvedAppId = envAppId;
 
   return {
+    isPreview: false,
     appId: resolvedAppId,
     token: getAppParamValue("access_token", { removeFromUrl: true }),
     fromUrl: getAppParamValue("from_url", { defaultValue: windowObj.location?.href || '/' }),
