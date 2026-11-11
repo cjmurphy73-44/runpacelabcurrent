@@ -38,6 +38,19 @@ describe("DashboardGreeting training load snapshot", () => {
     expect(within(region).getByText(/zero may be a default/i)).toBeTruthy();
   });
 
+  it("keeps load labels readable on compact phone widths", () => {
+    const { container } = renderGreeting({
+      current_ctl: 36, current_atl: 28, current_tsb: 8,
+    });
+    const region = screen.getByRole("region", { name: "Training load snapshot" });
+    const metrics = within(region).getByText("Fitness").closest("dl");
+    expect(metrics.className).toContain("grid-cols-1 min-[360px]:grid-cols-3");
+    expect(within(region).getByText("Longer-term load").className).not.toContain("hidden");
+    expect(within(region).getByText("Shorter-term load")).toBeTruthy();
+    expect(within(region).getByText("Fitness minus fatigue")).toBeTruthy();
+    expect(container.querySelector('a[href="/physiology"]').className).toContain("focus-visible:outline");
+  });
+
   it("formats positive form explicitly without turning it into a readiness verdict", () => {
     renderGreeting({ current_ctl: 40, current_atl: 30, current_tsb: 10 });
     const region = screen.getByRole("region", { name: "Training load snapshot" });
