@@ -10,9 +10,10 @@ import { constantTimeEqual } from '../../shared/crypto.ts';
 import { getSyncLookbackDays } from '../../shared/syncLookback.ts';
 import { parseFitWithLaps, summarizeStream } from '../../shared/workoutParsers.ts';
 import { isUsableTelemetry, storageStream, MAX_STREAM_SAMPLES } from '../../shared/streamValidity.ts';
+import { assertInlineWorkoutFits, MAX_INLINE_WORKOUT_BYTES, RecordingStorageError, readBoundedRecording, recordingProvenance, recordingErrorResponse } from '../../shared/recordingStorage.ts';
 import {
   corosAccessToken, fetchWithTimeout, mcpPost, mcpToolCall,
-  downloadCorosFit, queryCorosRecords,
+  CorosFitDownloadError, downloadCorosFit, queryCorosRecords,
 } from '../../shared/corosMcp.ts';
 
 // COROS MCP (Model Context Protocol) — OAuth 2.1 self-service integration.
@@ -45,7 +46,17 @@ function getClientId(): string {
 // registration used a different value.
 function selfUrl(_req: Request): string {
   const override = env('COROS_REDIRECT_URI');
-  if (override) return override;
+  if (override) {
+    const url = new URL(override);
+    if (url.protocol !== 'https:' || url.username || url.password) {
+      throw new Error('COROS_REDIRECT_URI must be an HTTPS callback URL without credentials');
+    }
+    return url.toString();
+  }
+  // An isolated app must never silently register the production OAuth callback.
+  if (env('TPL_ENVIRONMENT') !== 'production') {
+    throw new Error('COROS_REDIRECT_URI is required outside production');
+  }
   return 'https://trainpacelab.base44.app/functions/corosSync';
 }
 
@@ -213,40 +224,50 @@ async function handleWebhook(req, base44) {
     const conns = await base44.asServiceRole.entities.CorosConnection.filter({ coros_user_id: body.coros_user_id });
     if (conns[0]) { connection = conns[0]; athleteId = connection.athlete_id; }
   }
-  if (!athleteId && body.athlete_id) athleteId = body.athlete_id;
-  if (!athleteId) return Response.json({ error: 'Could not resolve athlete from webhook payload' }, { status: 400 });
+  // Athlete IDs supplied in the webhook body are untrusted. Resolve ownership
+  // exclusively from the connected COROS account, never from an arbitrary ID.
+  if (!athleteId) return Response.json({ error: 'Could not resolve connected COROS athlete from webhook payload' }, { status: 400 });
 
   const activity = body.activity || body.workout || body;
   let summary = null;
   let sourceFormat = 'webhook';
   let fitParsed = null;
+  let fitProvenance = null;
   if (body.fit_file_url || activity.fit_file_url) {
+    // A supplied original recording must never silently become a summary-only
+    // success when its download, decoding or telemetry validation fails.
+    const fitUrl = body.fit_file_url || activity.fit_file_url;
+    const urlCheck = assertSafeFileUrl(fitUrl);
+    if (!urlCheck.ok) return Response.json({ error: 'fit_file_url not allowed' }, { status: 400 });
     try {
-      const fitUrl = body.fit_file_url || activity.fit_file_url;
-      const urlCheck = assertSafeFileUrl(fitUrl);
-      if (!urlCheck.ok) return Response.json({ error: 'fit_file_url not allowed' }, { status: 400 });
-      const r = await fetch(fitUrl);
-      if (r.ok) {
-        const parsed = parseFitWithLaps(new Uint8Array(await r.arrayBuffer()));
-        if (parsed?.stream?.length) {
-          const s = summarizeStream(parsed.stream);
-          // Only a real recording replaces the summary; a header-only file falls through
-          // so the session is still logged, just without telemetry.
-          if (isUsableTelemetry(parsed.stream, s.duration_seconds)) {
-            fitParsed = parsed;
-            summary = {
-              derived_date: activity.date || activity.start_time?.slice(0, 10) || null,
-              sport: normalizeSport(activity.sport || activity.activity_type),
-              duration_seconds: s.duration_seconds,
-              distance_km: s.distance_km,
-              avg_hr: s.avg_hr,
-              max_hr: s.max_hr,
-            };
-            sourceFormat = 'fit';
-          }
-        }
+      const bytes = await readBoundedRecording(await fetch(fitUrl));
+      if (bytes.length < 16 || bytes[8] !== 0x2e || bytes[9] !== 0x46 || bytes[10] !== 0x49 || bytes[11] !== 0x54) {
+        throw new RecordingStorageError('recording_parse_failed', 'The COROS FIT file header is invalid. No workout was saved.', 422);
       }
-    } catch (e) { /* fall through to JSON summary */ }
+      let parsed;
+      try { parsed = parseFitWithLaps(bytes); }
+      catch { throw new RecordingStorageError('recording_parse_failed', 'The COROS recording could not be decoded. No workout was saved.', 422); }
+      if (!parsed?.stream?.length) {
+        throw new RecordingStorageError('recording_parse_failed', 'The COROS recording contains no decoded samples. No workout was saved.', 422);
+      }
+      const measured = summarizeStream(parsed.stream);
+      if (!isUsableTelemetry(parsed.stream, measured.duration_seconds)) {
+        throw new RecordingStorageError('recording_telemetry_invalid', 'The COROS recording lacks usable timestamped telemetry. No workout was saved.', 422);
+      }
+      fitParsed = parsed;
+      summary = {
+        derived_date: activity.date || activity.start_time?.slice(0, 10) || null,
+        sport: normalizeSport(activity.sport || activity.activity_type),
+        duration_seconds: measured.duration_seconds,
+        distance_km: measured.distance_km,
+        avg_hr: measured.avg_hr,
+        max_hr: measured.max_hr,
+      };
+      sourceFormat = 'fit';
+      fitProvenance = await recordingProvenance(bytes, parsed.stream, parsed.laps || [], 'coros_fit');
+    } catch (error) {
+      return recordingErrorResponse(error);
+    }
   }
   if (!summary) {
     const dur = Number(activity.duration_seconds ?? activity.duration ?? 0);
@@ -304,7 +325,7 @@ async function handleWebhook(req, base44) {
     temperatureC,
   });
 
-  const session = await base44.asServiceRole.entities.WorkoutSession.create({
+  const payload = {
     athlete_id: athleteId,
     created_by_id: athlete.created_by_id,
     date,
@@ -320,10 +341,16 @@ async function handleWebhook(req, base44) {
     zone_method: zoneResult.zone_method,
     zone_bounds_bpm: zoneResult.zone_bounds_bpm,
     temperature_c: temperatureC ?? undefined,
-    streams: fitParsed ? storageStream(fitParsed.stream.slice(0, MAX_STREAM_SAMPLES)) : undefined,
+    streams: fitParsed ? fitParsed.stream : undefined,
     laps: fitParsed?.laps?.length ? fitParsed.laps : undefined,
+    recording_provenance: fitProvenance || undefined,
     ...energy,
-  });
+  };
+  if (fitParsed) {
+    try { assertInlineWorkoutFits(payload); }
+    catch (error) { return recordingErrorResponse(error); }
+  }
+  const session = await base44.asServiceRole.entities.WorkoutSession.create(payload);
 
   try { await base44.asServiceRole.functions.invoke('calculateDailyTRIMP', { athlete_id: athleteId, date }); } catch (e) { console.warn('calculateDailyTRIMP failed:', e); }
   // Call the shared module directly (not the HTTP wrapper) — the webhook has no user
@@ -432,8 +459,9 @@ function applyFitTelemetry(payload: any, fit: any, athlete: any): boolean {
   payload.zone_seconds = zoneResult.zone_seconds;
   payload.zone_method = zoneResult.zone_method;
   payload.zone_bounds_bpm = zoneResult.zone_bounds_bpm;
-  payload.streams = storageStream(fit.stream.slice(0, MAX_STREAM_SAMPLES));
-  if (fit.laps?.length) payload.laps = fit.laps.slice(0, 200);
+  payload.streams = fit.stream;
+  if (fit.laps?.length) payload.laps = fit.laps;
+  payload.recording_provenance = fit.provenance;
   return true;
 }
 
@@ -499,7 +527,7 @@ function mapRecord(a: any, athlete: any) {
 
 // Service-role core: pulls 90 days of sport records for one athlete. Shared by the
 // user-scoped on-demand sync and the scheduled sync_all loop.
-async function syncHistoricalFor(athlete: any, accessToken: string, base44, lookbackDays = 90): Promise<{ imported: number; errors: number; records_found: number; duplicates: number }> {
+async function syncHistoricalFor(athlete: any, accessToken: string, base44, lookbackDays = 90) {
   // End date is bumped +1 day so today's workout is always inside the window
   // regardless of the athlete's timezone — the server runs in UTC, and a morning
   // session in UTC+10 would otherwise fall on "yesterday" and be skipped.
@@ -549,27 +577,84 @@ async function syncHistoricalFor(athlete: any, accessToken: string, base44, look
     if (sameDay.some(isDuplicate) || toCreate.some((s) => s.date === mapped.date && isDuplicate(s))) { duplicates++; continue; }
     toCreate.push(mapped);
   }
-  // The sport record is a summary. COROS also keeps the original activity file, and only
-  // that carries second-by-second telemetry, so it is fetched for every new session. When
-  // no file exists the session is still created, summary-only, and stays out of zone
-  // analytics because it has no stream.
+  // A summary-only import is allowed only when COROS explicitly reports that no
+  // recording is available. Lookup/download/parse failures leave the activity
+  // unpersisted so a retry cannot look like a successful summary import.
+  const accepted = [];
+  const importedPayloads = [];
+  const recordingErrors = [];
   if (toCreate.length) {
     for (const payload of toCreate) {
       const key = fileKeys.get(payload);
-      if (!key) continue;
       try {
-        applyFitTelemetry(payload, await downloadCorosFit(accessToken, key.labelId, key.sportType), athlete);
-      } catch (e) { console.warn('COROS FIT ingest failed:', (e as Error).message); }
+        if (!key) throw new CorosFitDownloadError('fit_lookup_id_missing', false);
+        const fit = await downloadCorosFit(accessToken, key.labelId, key.sportType);
+        if (fit) applyFitTelemetry(payload, fit, athlete);
+        // Include bulk-array framing in the application budget, before any writes.
+        assertInlineWorkoutFits([payload]);
+      } catch (e) {
+        errors++;
+        const code = e instanceof RecordingStorageError || e instanceof CorosFitDownloadError
+          ? e.code
+          : 'fit_processing_failed';
+        const retryable = e instanceof RecordingStorageError || e instanceof CorosFitDownloadError
+          ? e.retryable
+          : true;
+        const httpStatus = e instanceof CorosFitDownloadError ? e.httpStatus : undefined;
+        recordingErrors.push({ date: payload.date, code, retryable, ...(httpStatus ? { http_status: httpStatus } : {}) });
+        continue; // Do not persist a summary-shaped success after a requested FIT failure.
+      }
+      accepted.push(payload);
     }
-    for (let i = 0; i < toCreate.length; i += 500) {
-      await base44.asServiceRole.entities.WorkoutSession.bulkCreate(toCreate.slice(i, i + 500));
+    const persistBatch = async (batch) => {
+      if (!batch.length) return;
+      try {
+        await base44.asServiceRole.entities.WorkoutSession.bulkCreate(batch);
+        importedPayloads.push(...batch);
+      } catch {
+        // Bulk APIs may persist a prefix before failing. Read back by date and
+        // confirm which workouts landed so a retry is safe and counts are honest.
+        try {
+          const dates = [...new Set(batch.map((s) => s.date))];
+          const saved = await base44.asServiceRole.entities.WorkoutSession.filter(
+            { athlete_id: athlete.id, date: { $in: dates } }, 'date', 500,
+          );
+          const rows = Array.isArray(saved) ? saved : saved?.items || [];
+          const confirmed = new Set();
+          for (const payload of batch) {
+            const match = (row) => row.sport === payload.sport && Math.abs((row.duration_minutes || 0) - payload.duration_minutes) < 1 && Math.abs((row.distance_km || 0) - payload.distance_km) < 0.1;
+            const row = rows.find((candidate) => candidate.date === payload.date && match(candidate) && !confirmed.has(candidate));
+            if (row) { confirmed.add(row); importedPayloads.push(payload); }
+            else {
+              errors++;
+              recordingErrors.push({ date: payload.date, code: 'workout_write_failed', retryable: true });
+            }
+          }
+        } catch {
+          for (const payload of batch) {
+            errors++;
+            recordingErrors.push({ date: payload.date, code: 'workout_write_outcome_unknown', retryable: true });
+          }
+        }
+      }
+    };
+    let batch = [], batchBytes = 2;
+    for (const payload of accepted) {
+      const bytes = assertInlineWorkoutFits(payload);
+      if (batch.length && (batchBytes + 1 + bytes > MAX_INLINE_WORKOUT_BYTES || batch.length === 500)) {
+        await persistBatch(batch);
+        batch = []; batchBytes = 2;
+      }
+      batchBytes += bytes + (batch.length ? 1 : 0);
+      batch.push(payload);
     }
+    if (batch.length) await persistBatch(batch);
   }
-  const dates = [...new Set(toCreate.map((s) => s.date))];
+  const dates = [...new Set(importedPayloads.map((s) => s.date))];
   for (const d of dates) {
     try { await base44.asServiceRole.functions.invoke('calculateDailyTRIMP', { athlete_id: athlete.id, date: d }); } catch { /* keep going */ }
   }
-  return { imported: toCreate.length, errors, records_found: records.length, duplicates };
+  return { imported: importedPayloads.length, errors, records_found: records.length, duplicates, recording_errors: recordingErrors };
 }
 
 async function handleSyncHistorical(base44) {
@@ -591,7 +676,14 @@ async function handleSyncHistorical(base44) {
   try {
     const lookbackDays = await getSyncLookbackDays(base44, user.id);
     const out = await syncHistoricalFor(athlete, accessToken, base44, lookbackDays);
-    await base44.asServiceRole.entities.CorosConnection.update(conn.id, { last_sync_at: new Date().toISOString(), last_error: '' });
+    const retryableFailures = out.recording_errors.filter((failure) => failure.retryable).length;
+    const nonRetryableFailures = out.recording_errors.length - retryableFailures;
+    await base44.asServiceRole.entities.CorosConnection.update(conn.id, {
+      last_sync_at: new Date().toISOString(),
+      last_error: out.errors
+        ? `${out.errors} activities were skipped or could not be confirmed; ${retryableFailures} issue(s) can be retried and ${nonRetryableFailures} need attention.`
+        : '',
+    });
     return Response.json({ success: true, ...out });
   } catch (e) {
     await base44.asServiceRole.entities.CorosConnection.update(conn.id, { last_error: e.message });
@@ -797,7 +889,8 @@ async function handleSyncAll(base44) {
     }
     try { r.historical = await syncHistoricalFor(athlete, accessToken, base44); } catch (e) { r.historical_error = e.message; }
     try { r.recovery = await syncRecoveryFor(athlete, accessToken, base44); } catch (e) { r.recovery_error = e.message; }
-    const errMsg = [r.historical_error, r.recovery_error].filter(Boolean).join('; ');
+    const partialImportError = r.historical?.errors ? `${r.historical.errors} activities could not be imported. Review recording limits before retrying.` : '';
+    const errMsg = [r.historical_error, r.recovery_error, partialImportError].filter(Boolean).join('; ');
     await base44.asServiceRole.entities.CorosConnection.update(conn.id, {
       last_sync_at: new Date().toISOString(),
       last_error: errMsg || '',

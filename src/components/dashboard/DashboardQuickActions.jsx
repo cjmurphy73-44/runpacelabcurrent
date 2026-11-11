@@ -1,12 +1,13 @@
 import React from "react";
 import { Link } from "react-router-dom";
-import { History, CalendarRange, HeartPulse, Upload } from "lucide-react";
+import { History, CalendarRange, HeartPulse, Upload, ClipboardList } from "lucide-react";
 
 // Core training surfaces promoted onto the dashboard. Workouts, Calendar and
 // Recovery are everyday athlete destinations, so they get one tap from the hero
 // instead of living behind the Tools menu.
 const ACTIONS = [
   { to: "/workouts", label: "Workouts", hint: "Every session", icon: History },
+  { to: "/plan", label: "Training plan", hint: "Your upcoming sessions", icon: ClipboardList },
   { to: "/calendar", label: "Calendar", hint: "Planned & done", icon: CalendarRange },
   { to: "/recovery", label: "Recovery", hint: "Sleep & HRV", icon: HeartPulse },
   { to: "/import", label: "Import", hint: "Device or file", icon: Upload },
@@ -14,7 +15,7 @@ const ACTIONS = [
 
 export default function DashboardQuickActions() {
   return (
-    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
       {ACTIONS.map(({ to, label, hint, icon: Icon }) => (
         <Link
           key={to}

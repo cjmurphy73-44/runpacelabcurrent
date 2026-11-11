@@ -14,6 +14,7 @@
 import { env } from './oauth.ts';
 import { parseFitWithLaps } from './workoutParsers.ts';
 import { assertSafeFileUrl } from './urlGuard.ts';
+import { readBoundedRecording, recordingProvenance, RecordingStorageError } from './recordingStorage.ts';
 
 export const COROS_MCP_RESOURCE = 'https://mcpus.coros.com/mcp';
 export const COROS_TOKEN_ENDPOINT = 'https://mcpus.coros.com/oauth2/token';
@@ -100,12 +101,22 @@ export async function mcpToolCall(token: string, toolName: string, args: any): P
     params: { protocolVersion: COROS_MCP_PROTOCOL_VERSION, capabilities: {}, clientInfo: { name: 'TrainPaceLab', version: '1.0' } },
   });
   const sid = init.sessionId;
+  if (init.status < 200 || init.status >= 300) {
+    const error: any = new Error('COROS MCP initialization returned an HTTP error');
+    error.httpStatus = init.status;
+    throw error;
+  }
   if (!init.json || init.json.error) throw new Error(`MCP initialize failed: ${init.json?.error?.message || init.raw || `HTTP ${init.status}`}`);
   await mcpPost(token, sid, { jsonrpc: '2.0', method: 'notifications/initialized', params: {} }, false);
   const call = await mcpPost(token, sid, {
     jsonrpc: '2.0', id: 2, method: 'tools/call',
     params: { name: toolName, arguments: args },
   });
+  if (call.status < 200 || call.status >= 300) {
+    const error: any = new Error('COROS MCP tool call returned an HTTP error');
+    error.httpStatus = call.status;
+    throw error;
+  }
   if (!call.json) throw new Error(`MCP tools/call returned no JSON: ${call.raw || `HTTP ${call.status}`}`);
   if (call.json.error) throw new Error(`MCP ${toolName} error: ${call.json.error.message || JSON.stringify(call.json.error)}`);
   return call.json.result;
@@ -214,37 +225,91 @@ export function fitUrlsFromText(text: string): string[] {
   return [...text.matchAll(/https:\/\/[^\s"')]+\.fit/gi)].map((m) => m[0]);
 }
 
-// Download and parse one activity's original FIT file. Returns null when COROS has no
-// file for the activity or the file does not decode — the caller then keeps the summary.
-export async function downloadCorosFit(accessToken: string, labelId: string | number, sportType: number | string | null): Promise<{ fileType: string; stream: any[]; laps: any[] } | null> {
-  if (!labelId) return null;
-  let urls: string[] = [];
+export class CorosFitDownloadError extends Error {
+  constructor(public code: string, public retryable: boolean, public httpStatus?: number) {
+    super(code);
+    this.name = 'CorosFitDownloadError';
+  }
+}
+
+function isRetryableHttpStatus(status: number): boolean {
+  return status === 408 || status === 425 || status === 429 || status >= 500;
+}
+
+function explicitFitUnavailable(text: string): boolean {
+  // This exact response is covered by the provider-boundary fixture. Empty or
+  // unfamiliar responses are errors, not proof that COROS has no recording.
+  return text.trim().toLowerCase() === 'no file available';
+}
+
+// Null is reserved for COROS's explicit no-file response. Retrieval, HTTP,
+// network, size and parse failures throw categorized errors for the caller.
+export async function downloadCorosFit(accessToken: string, labelId: string | number, sportType: number | string | null): Promise<{ fileType: string; stream: any[]; laps: any[]; provenance: any } | null> {
+  if (!labelId) throw new CorosFitDownloadError('fit_lookup_id_missing', false);
+  let result: any;
   try {
-    const result = await mcpToolCall(accessToken, 'queryActivityFitFileDownloadUrls', {
+    result = await mcpToolCall(accessToken, 'queryActivityFitFileDownloadUrls', {
       labelId: String(labelId),
       ...(sportType != null ? { sportType: Number(sportType) } : {}),
     });
-    const text = result?.content?.map((c) => c.text || '').join('\n') || '';
-    urls = fitUrlsFromText(text);
   } catch (e) {
-    console.warn('COROS FIT URL lookup failed:', (e as Error).message);
-    return null;
+    const status = Number((e as any)?.httpStatus) || undefined;
+    if (status) throw new CorosFitDownloadError('fit_lookup_http_error', isRetryableHttpStatus(status), status);
+    throw new CorosFitDownloadError('fit_lookup_failed', true);
   }
 
+  if (result?.isError) throw new CorosFitDownloadError('fit_lookup_failed', true);
+  const text = result?.content?.map((c) => c.text || '').join('\n') || '';
+  if (explicitFitUnavailable(text)) return null;
+  const urls = fitUrlsFromText(text);
+  if (!urls.length) throw new CorosFitDownloadError('fit_url_missing', true);
+
+  let lastFailure: CorosFitDownloadError | RecordingStorageError | null = null;
   for (const url of urls) {
-    if (!assertSafeFileUrl(url).ok) continue;
-    try {
-      const res = await fetchWithTimeout(url, {}, 30000);
-      if (!res.ok) continue;
-      const buf = new Uint8Array(await res.arrayBuffer());
-      // FIT header: bytes 8..12 spell ".FIT"; anything else is not a decodable activity file.
-      const isFit = buf.length > 14 && buf[8] === 0x2e && buf[9] === 0x46 && buf[10] === 0x49 && buf[11] === 0x54;
-      if (!isFit) continue;
-      const parsed = parseFitWithLaps(buf);
-      if (parsed?.stream?.length) return { fileType: 'fit', stream: parsed.stream, laps: parsed.laps || [] };
-    } catch (e) {
-      console.warn('COROS FIT download failed:', (e as Error).message);
+    if (!assertSafeFileUrl(url).ok) {
+      lastFailure = new CorosFitDownloadError('fit_url_rejected', false);
+      continue;
     }
+    let res: Response;
+    try {
+      res = await fetchWithTimeout(url, {}, 30000);
+    } catch (e) {
+      lastFailure = new CorosFitDownloadError('fit_download_network_error', true);
+      continue;
+    }
+    if (!res.ok) {
+      lastFailure = new CorosFitDownloadError('fit_download_http_error', isRetryableHttpStatus(res.status), res.status);
+      continue;
+    }
+
+    let buf: Uint8Array;
+    try { buf = await readBoundedRecording(res); }
+    catch (e) {
+      lastFailure = e instanceof RecordingStorageError
+        ? e
+        : new CorosFitDownloadError('fit_download_failed', true);
+      continue;
+    }
+    // FIT header: bytes 8..12 spell ".FIT"; anything else is a parse failure.
+    const isFit = buf.length > 14 && buf[8] === 0x2e && buf[9] === 0x46 && buf[10] === 0x49 && buf[11] === 0x54;
+    if (!isFit) {
+      lastFailure = new CorosFitDownloadError('fit_parse_failed', false);
+      continue;
+    }
+    let parsed: any;
+    try { parsed = parseFitWithLaps(buf); }
+    catch {
+      lastFailure = new CorosFitDownloadError('fit_parse_failed', false);
+      continue;
+    }
+    if (!parsed?.stream?.length) {
+      lastFailure = new CorosFitDownloadError('fit_parse_failed', false);
+      continue;
+    }
+    return {
+      fileType: 'fit', stream: parsed.stream, laps: parsed.laps || [],
+      provenance: await recordingProvenance(buf, parsed.stream, parsed.laps || [], 'coros_fit'),
+    };
   }
-  return null;
+  throw lastFailure || new CorosFitDownloadError('fit_download_failed', true);
 }
