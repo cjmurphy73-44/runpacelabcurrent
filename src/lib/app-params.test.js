@@ -16,6 +16,7 @@ function preview(environment = {}, deploymentEnvironment = "preview") {
 describe("Base44 Vercel preview isolation", () => {
   it("fails closed if preview variables are missing", () => {
     const params = preview();
+    expect(params.isPreview).toBe(true);
     expect(params.appId).toBeNull();
     expect(params.appBaseUrl).toBe("");
     expect(params.apiServerUrl).toBe("");
@@ -122,6 +123,7 @@ describe("Base44 Vercel preview isolation", () => {
       deploymentEnvironment: "production",
       hostname: "trainpacelab.com",
     });
+    expect(params.isPreview).toBe(false);
     expect(params.appId).toBe(PUBLISHED_APP_ID);
     expect(params.apiServerUrl).toBe("");
     expect(params.configurationError).toBeUndefined();
