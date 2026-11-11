@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
-import { TodaySessionCardView } from "@/components/dashboard/TodaySessionCard";
+import { TodaySessionCardView } from "@/components/dashboard/TodaySessionCardView";
 
 // Preview-only synthetic fixtures. No athlete identifiers, API calls, tokens,
 // auth providers or service providers are mounted on this route.
