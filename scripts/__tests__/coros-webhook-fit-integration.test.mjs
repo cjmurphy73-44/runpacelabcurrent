@@ -33,7 +33,7 @@ beforeAll(async () => {
   bundle = built.outputFiles[0].text;
 });
 
-function harness({ bytes = syntheticFit1Hz(180, { lapSeconds: 60 }), mode = 'ok', includeFit = true, signature = 'synthetic-webhook-secret' } = {}) {
+function harness({ bytes = syntheticFit1Hz(180, { lapSeconds: 60 }), mode = 'ok', includeFit = true, signature = 'synthetic-webhook-secret', connected = true, payloadAthleteId = null } = {}) {
   const rows = [];
   const create = vi.fn(async row => {
     const saved = JSON.parse(JSON.stringify(row));
@@ -43,7 +43,7 @@ function harness({ bytes = syntheticFit1Hz(180, { lapSeconds: 60 }), mode = 'ok'
   const invoke = vi.fn(async () => ({}));
   const entities = {
     CorosConnection: {
-      filter: vi.fn(async () => [{ id: 'connection-1', athlete_id: 'athlete-1', coros_user_id: 'coros-synthetic' }]),
+      filter: vi.fn(async () => connected ? [{ id: 'connection-1', athlete_id: 'athlete-1', coros_user_id: 'coros-synthetic' }] : []),
       update: vi.fn(async () => ({})),
     },
     AthleteProfile: { get: vi.fn(async () => ({
@@ -74,6 +74,7 @@ function harness({ bytes = syntheticFit1Hz(180, { lapSeconds: 60 }), mode = 'ok'
   });
   const payload = {
     action: 'webhook', coros_user_id: 'coros-synthetic',
+    ...(payloadAthleteId ? { athlete_id: payloadAthleteId } : {}),
     activity: {
       date: '2026-01-01', sport: 'running', duration_seconds: 179,
       distance_km: 0.54, avg_heart_rate: 145,
@@ -152,6 +153,19 @@ describe('COROS webhook original FIT integration (offline synthetic)', () => {
     expect(await h.send()).toMatchObject({ status: 401 });
     expect(h.create).not.toHaveBeenCalled();
     expect(h.network).not.toHaveBeenCalled();
+  });
+
+  it('rejects forged athlete IDs when no COROS account is connected', async () => {
+    const h = harness({ connected: false, payloadAthleteId: 'other-athlete' });
+    expect(await h.send()).toMatchObject({ status: 400 });
+    expect(h.create).not.toHaveBeenCalled();
+    expect(h.network).not.toHaveBeenCalled();
+  });
+
+  it('uses connected COROS athlete ownership, not a supplied athlete ID', async () => {
+    const h = harness({ payloadAthleteId: 'other-athlete' });
+    expect(await h.send()).toMatchObject({ status: 200, body: { success: true } });
+    expect(h.rows[0].athlete_id).toBe('athlete-1');
   });
 
   it('deduplicates repeated original webhook deliveries', async () => {
