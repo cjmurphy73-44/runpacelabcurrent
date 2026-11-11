@@ -1,3 +1,17 @@
+## Staging implementation and persistence results — 2026-11-12
+
+- Created Base44 staging pre-change checkpoint `6af4e47a016517b2d94e0216`.
+- Updated the existing `base44/entities/WorkoutSession.jsonc` on staging to support native per-sample `power` and `recording_provenance`, preserving the other fields and RLS. Base44 live schema API confirmed both. Saved checkpoint `6af4e4c1008f7dad6a9e39e6`.
+- Created isolated Base44 branch `coros-fit-staging-validation` and installed the reviewed COROS webhook handler, shared MCP download handler, bounded recording-storage helper and synthetic test fixtures from GitHub PR #20.
+- Base44 branch test results: **16/16 COROS synthetic handler/contract tests passed; 176/176 existing app tests passed; TypeScript check passed; Vite build passed**. Saved branch checkpoint `6af4e59bf999fe1478e53a99`.
+- Merged the Base44 staging branch into the **staging app only**, with no merge conflicts. The Base44 GitHub PRs remain draft and unmerged.
+- Set a **new staging-only** `COROS_WEBHOOK_SECRET`; no production secret copied. This secret is write-only in Base44.
+- Created one temporary synthetic cycling `WorkoutSession` directly through the staging Base44 entity API. A subsequent **hosted Base44 readback** verified all 3 samples, valid native 0 W power, nonzero power, 1 lap, SHA-256 provenance field, and stored sample count (**6/6 checks passed**).
+- Deleted the synthetic session through the entity API and verified its ID is no longer retrievable.
+- No production app or real athlete records were modified.
+
+**Scope limit:** The hosted readback proves entity storage/schema persistence, **not** the end-to-end FIT URL download → authenticated webhook → FIT parse → persisted recording path. The latter remains an explicit staging acceptance requirement. No original FIT binary archival has been implemented. Do not claim full hosted webhook acceptance until that path is exercised with a test-only connected athlete and a safely hosted synthetic FIT.
+
 # COROS FIT staging acceptance gate (2026-11-12)
 
 ## Read-only findings from isolated Base44 app
