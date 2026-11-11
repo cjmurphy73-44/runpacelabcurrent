@@ -116,6 +116,20 @@ describe('athleteState: provenance', () => {
     expect(summary.provenance.streams).toBe(PROVENANCE.MEASURED_DEVICE);
   });
 
+  it('does not present unsupported lap-only zones as device-measured data', () => {
+    const summary = buildAthleteStateSummary({
+      athleteId: 'a',
+      date: '2026-01-30',
+      sport: 'running',
+      durationSeconds: 3600,
+      zoneSeconds: [300, 600, 900, 1200, 600],
+      zoneMethod: 'laps',
+    });
+    expect(summary.zones.zone_method).toBe('none');
+    expect(summary.zones.zone_seconds).toEqual([0, 0, 0, 0, 0]);
+    expect(summary.provenance.zones).toBe(PROVENANCE.CALCULATED_ESTIMATE);
+  });
+
   it('marks an average-HR zone estimate as calculated_estimate', () => {
     const summary = buildAthleteStateSummary({
       athleteId: 'a',
