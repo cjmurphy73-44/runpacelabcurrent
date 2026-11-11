@@ -2,8 +2,8 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { getAppParams } from "./app-params";
 
 const PUBLISHED_APP_ID = "6a504ebe6a5a6d1be058226c";
-const STAGING_APP_ID = "7b615cdf7b6b7e2cf169337d";
-const STAGING_URL = "https://trainpacelab-staging.base44.app";
+const STAGING_APP_ID = "6aefe9d09e2788fc8591c758";
+const STAGING_URL = "https://train-pace-lab-copy-8591c758.base44.app";
 
 afterEach(() => {
   vi.unstubAllGlobals();
@@ -18,6 +18,7 @@ describe("Base44 Vercel preview isolation", () => {
     const params = preview();
     expect(params.appId).toBeNull();
     expect(params.appBaseUrl).toBe("");
+    expect(params.apiServerUrl).toBe("");
     expect(params.token).toBeNull();
     expect(params.configurationError).toMatch(/Preview requires a verified staging/);
   });
@@ -64,6 +65,7 @@ describe("Base44 Vercel preview isolation", () => {
     const params = preview({ VITE_APP_ID: STAGING_APP_ID, VITE_APP_BASE_URL: STAGING_URL });
     expect(params.appId).toBe(STAGING_APP_ID);
     expect(params.appBaseUrl).toBe(STAGING_URL);
+    expect(params.apiServerUrl).toBe(STAGING_URL);
     expect(params.token).toBe("staging-token");
     expect(params.configurationError).toBeNull();
     expect(replaceState).toHaveBeenCalled();
@@ -82,6 +84,7 @@ describe("Base44 Vercel preview isolation", () => {
       hostname: "trainpacelab.com",
     });
     expect(params.appId).toBe(PUBLISHED_APP_ID);
+    expect(params.apiServerUrl).toBe("");
     expect(params.configurationError).toBeUndefined();
   });
 });
