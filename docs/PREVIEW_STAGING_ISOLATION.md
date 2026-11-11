@@ -1,6 +1,6 @@
 # Vercel Preview / Base44 staging isolation
 
-**Status:** Production and staging identities, Preview variables and SDK API routing are verified in a successful Vercel Preview build. Exact-head CI previously passed 187 tests in 27 files. A later discovery found direct SPA URLs (including `/login`) returned Vercel 404; a `vercel.json` SPA rewrite and a Preview-only, unauthenticated browser diagnostic at `/staging-check` are now under CI and deployment verification. Browser CORS, OAuth callback and synthetic read/write isolation remain unverified.
+**Status (2026-11-11):** Vercel Preview deployment and exact staging identity allowlist verified; GitHub CI passed 201 tests in 28 files. Direct `/login` and `/staging-check` URLs return HTTP 200. **Owner-reported browser result: HTTP 403, “Reachable — authentication required,”** from the Preview-only unauthenticated staging API/CORS check. This passes the unauthenticated browser connectivity gate, **not** OAuth, MFA, authenticated access, backend integration isolation or synthetic athlete read/write acceptance.
 
 ## Why this exists
 
@@ -34,6 +34,16 @@ The API references show distinct project IDs. They do **not** by themselves veri
 3. Click **Check staging API and CORS**. The test makes a single unauthenticated, read-only `GET` to the configured staging `/api/apps/<staging-id>/entities/User/me` with `X-App-Id`, `credentials: omit`, and no token. A browser-visible 401 or 403 indicates API reachability and CORS for that request. A 200 is a warning (verify endpoint permissions); 404/5xx or fetch rejection blocks progression. A failed fetch may be due to CORS or network access; check DevTools without pasting credentials or tokens.
 4. **Do not sign in until the above succeeds and staging OAuth callback/redirect allowlisting is confirmed.** A passing browser probe is not evidence of authenticated access or backend data isolation.
 5. After separate authorization and integration checks, use a synthetic staging athlete for a controlled write and verify its absence using an authorized, read-only production view. Keep real athlete data and credentials out of staging.
+
+## Authentication and MFA review (not yet accepted)
+
+The 403 result confirms a single read-only unauthenticated request reached the configured staging API through browser CORS. Do not interpret it as successful login or evidence of separate storage or credentials.
+
+- **Base44 staging configuration — owner verification required:** confirm the staging project's authentication methods, permitted frontend/return URLs and OAuth callback/redirect configuration for the actual Vercel Preview hostname. Check Google/Apple separately if enabled; do not paste client secrets, access tokens, or live athlete credentials.
+- **SDK sign-in:** `src/pages/Login.jsx` and `src/pages/Register.jsx` call the Base44 SDK's email/password and social sign-in methods. Their provider redirect behavior still requires an end-to-end staging-only test.
+- **MFA compatibility issue identified by code inspection:** `src/lib/authMfa.js` and `src/lib/authMfaFlow.js` use relative `/api/apps/...` fetches and Vercel-origin `/auth/mfa` redirects. Vercel is a static SPA host, not a Base44 auth server; these paths are **not yet verified to work in Preview**. Do not enable or test MFA on Preview until routes and handoff behavior are reviewed and corrected in a separate, tested task.
+- **Backend isolation — owner verification required:** independently check staging function secrets, webhook endpoints, OAuth integrations, billing/Stripe modes, and entity data stores before authenticated synthetic athlete testing.
+- **Next safe check:** confirm the Base44 staging project's auth redirect settings in its dashboard, using only public URL/hostname information. Do not attempt login or synthetic writes until these are checked.
 
 ## Fail-closed behaviour
 
