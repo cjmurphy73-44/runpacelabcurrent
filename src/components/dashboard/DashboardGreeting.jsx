@@ -69,7 +69,7 @@ export default function DashboardGreeting({ athlete }) {
           <h2 className="text-sm font-heading font-semibold">Training load snapshot</h2>
           <span className="text-[11px] text-muted-foreground">Stored estimates</span>
         </div>
-        <dl className="grid grid-cols-3 gap-2 sm:gap-3">
+        <dl className="grid grid-cols-1 min-[360px]:grid-cols-3 gap-2 sm:gap-3">
           {metrics.map(({ label, value, description, icon: Icon }) => (
             <div key={label} className="min-w-0 rounded-lg border border-border bg-muted/30 p-3 sm:p-4">
               <dt className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
@@ -79,7 +79,7 @@ export default function DashboardGreeting({ athlete }) {
               <dd className="mt-2 font-heading text-2xl sm:text-3xl font-semibold tabular-nums text-foreground">
                 {value}
               </dd>
-              <p className="mt-1 hidden sm:block text-xs text-muted-foreground">{description}</p>
+              <p className="mt-1 text-[11px] leading-snug text-muted-foreground">{description}</p>
             </div>
           ))}
         </dl>
