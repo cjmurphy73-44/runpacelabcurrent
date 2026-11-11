@@ -72,6 +72,45 @@ describe("Base44 Vercel preview isolation", () => {
     expect(storage.get("app_id")).toBe(PUBLISHED_APP_ID);
   });
 
+  it("clears Base44 SDK tokens left by another app on the same Preview origin", () => {
+    const storage = new Map([
+      ["base44_access_token", "old-production-token"],
+      ["token", "old-production-token"],
+      ["tpl_base44_token_app_id", PUBLISHED_APP_ID],
+    ]);
+    vi.stubGlobal("window", {
+      location: { search: "", hostname: "tpl-git-test-team.vercel.app", href: "https://tpl-git-test-team.vercel.app/" },
+      localStorage: {
+        getItem: (key) => storage.get(key) || null,
+        setItem: (key, value) => storage.set(key, value),
+        removeItem: (key) => storage.delete(key),
+      },
+    });
+
+    const params = preview({ VITE_APP_ID: STAGING_APP_ID, VITE_APP_BASE_URL: STAGING_URL });
+    expect(params.apiServerUrl).toBe(STAGING_URL);
+    expect(storage.has("base44_access_token")).toBe(false);
+    expect(storage.has("token")).toBe(false);
+  });
+
+  it("preserves an SDK token explicitly associated with the staging app", () => {
+    const storage = new Map([
+      ["base44_access_token", "existing-staging-token"],
+      ["tpl_base44_token_app_id", STAGING_APP_ID],
+    ]);
+    vi.stubGlobal("window", {
+      location: { search: "", hostname: "tpl-git-test-team.vercel.app", href: "https://tpl-git-test-team.vercel.app/" },
+      localStorage: {
+        getItem: (key) => storage.get(key) || null,
+        setItem: (key, value) => storage.set(key, value),
+        removeItem: (key) => storage.delete(key),
+      },
+    });
+
+    preview({ VITE_APP_ID: STAGING_APP_ID, VITE_APP_BASE_URL: STAGING_URL });
+    expect(storage.get("base44_access_token")).toBe("existing-staging-token");
+  });
+
   it("recognizes Vercel branch preview hostnames even if the build label is missing", () => {
     const params = preview({}, "");
     expect(params.configurationError).toBeTruthy();
