@@ -14,6 +14,55 @@ The live staging `WorkoutSession` schema (read through the Base44 schema API) cu
 
 Thus **the staging schema is incompatible with the intended PR #20 full-fidelity write contract**. A READY Vercel frontend does not deploy Base44 backend functions or entity schemas.
 
+## Staging isolation checks performed (read-only)
+
+The staging Base44 secrets API currently lists **only** `TPL_ENVIRONMENT` and `WEBHOOK_SYNC_SECRET` (names only; values cannot be inspected). In particular, `COROS_WEBHOOK_SECRET` is **not set**. The new COROS webhook correctly returns 503 without that secret, so an authenticated synthetic webhook test cannot yet run. Do not copy a production secret to staging.
+
+The staging app has **no active Base44 branches**. Its sandbox source is older than the GitHub PR #10/#20 stack. Vercel preview builds are separate from Base44 backend deployment. These checks did not modify the staging app.
+
+**Safe deployment decision:** do not overwrite staging's main backend with the GitHub branch while the codebase differs and isolation is incomplete. Create a separate staging-only branch/checkpoint, review the full GitHub diff and required schema migration, and provision a unique test webhook secret before invoking anything. Confirm that downstream `calculateDailyTRIMP` and `runPostWorkoutEvaluation` cannot trigger real external calls or expose data.
+
+## Exact schema migration required
+
+Extend the existing `WorkoutSession` entity JSON Schema without replacing unrelated fields or RLS:
+
+```json
+{
+  "properties": {
+    "streams": {
+      "items": {
+        "properties": {
+          "power": {
+            "type": ["number", "null"],
+            "description": "Native per-sample cycling/running power in watts; zero is a valid measured value"
+          }
+        }
+      }
+    },
+    "recording_provenance": {
+      "type": "object",
+      "properties": {
+        "source": { "type": "string" },
+        "retention": { "type": "string" },
+        "source_sha256": { "type": "string" },
+        "source_bytes": { "type": "integer" },
+        "original_file_retained": { "type": "boolean" },
+        "decoded_samples": { "type": "integer" },
+        "stored_samples": { "type": "integer" },
+        "decoded_laps": { "type": "integer" },
+        "stored_laps": { "type": "integer" },
+        "first_time_s": { "type": ["number", "null"] },
+        "last_time_s": { "type": ["number", "null"] },
+        "channels": { "type": "array", "items": { "type": "string" } },
+        "inline_limit_bytes": { "type": "integer" }
+      }
+    }
+  }
+}
+```
+
+This is a **patch specification**, not a complete replacement entity schema. Validate nullable-field syntax with Base44 before applying, and use a backup of the full existing schema for rollback.
+
 ## Required before any hosted write
 
 1. Establish that staging secrets, provider callbacks, external integrations, billing and test accounts are isolated. Do not use real athlete data or trigger provider syncs until confirmed.
