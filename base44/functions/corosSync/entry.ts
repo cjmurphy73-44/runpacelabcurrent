@@ -10,7 +10,7 @@ import { constantTimeEqual } from '../../shared/crypto.ts';
 import { getSyncLookbackDays } from '../../shared/syncLookback.ts';
 import { parseFitWithLaps, summarizeStream } from '../../shared/workoutParsers.ts';
 import { isUsableTelemetry, storageStream, MAX_STREAM_SAMPLES } from '../../shared/streamValidity.ts';
-import { assertInlineWorkoutFits, MAX_INLINE_WORKOUT_BYTES, RecordingStorageError } from '../../shared/recordingStorage.ts';
+import { assertInlineWorkoutFits, MAX_INLINE_WORKOUT_BYTES, RecordingStorageError, readBoundedRecording, recordingProvenance, recordingErrorResponse } from '../../shared/recordingStorage.ts';
 import {
   corosAccessToken, fetchWithTimeout, mcpPost, mcpToolCall,
   CorosFitDownloadError, downloadCorosFit, queryCorosRecords,
@@ -46,7 +46,17 @@ function getClientId(): string {
 // registration used a different value.
 function selfUrl(_req: Request): string {
   const override = env('COROS_REDIRECT_URI');
-  if (override) return override;
+  if (override) {
+    const url = new URL(override);
+    if (url.protocol !== 'https:' || url.username || url.password) {
+      throw new Error('COROS_REDIRECT_URI must be an HTTPS callback URL without credentials');
+    }
+    return url.toString();
+  }
+  // An isolated app must never silently register the production OAuth callback.
+  if (env('TPL_ENVIRONMENT') !== 'production') {
+    throw new Error('COROS_REDIRECT_URI is required outside production');
+  }
   return 'https://trainpacelab.base44.app/functions/corosSync';
 }
 
@@ -214,40 +224,50 @@ async function handleWebhook(req, base44) {
     const conns = await base44.asServiceRole.entities.CorosConnection.filter({ coros_user_id: body.coros_user_id });
     if (conns[0]) { connection = conns[0]; athleteId = connection.athlete_id; }
   }
-  if (!athleteId && body.athlete_id) athleteId = body.athlete_id;
-  if (!athleteId) return Response.json({ error: 'Could not resolve athlete from webhook payload' }, { status: 400 });
+  // Athlete IDs supplied in the webhook body are untrusted. Resolve ownership
+  // exclusively from the connected COROS account, never from an arbitrary ID.
+  if (!athleteId) return Response.json({ error: 'Could not resolve connected COROS athlete from webhook payload' }, { status: 400 });
 
   const activity = body.activity || body.workout || body;
   let summary = null;
   let sourceFormat = 'webhook';
   let fitParsed = null;
+  let fitProvenance = null;
   if (body.fit_file_url || activity.fit_file_url) {
+    // A supplied original recording must never silently become a summary-only
+    // success when its download, decoding or telemetry validation fails.
+    const fitUrl = body.fit_file_url || activity.fit_file_url;
+    const urlCheck = assertSafeFileUrl(fitUrl);
+    if (!urlCheck.ok) return Response.json({ error: 'fit_file_url not allowed' }, { status: 400 });
     try {
-      const fitUrl = body.fit_file_url || activity.fit_file_url;
-      const urlCheck = assertSafeFileUrl(fitUrl);
-      if (!urlCheck.ok) return Response.json({ error: 'fit_file_url not allowed' }, { status: 400 });
-      const r = await fetch(fitUrl);
-      if (r.ok) {
-        const parsed = parseFitWithLaps(new Uint8Array(await r.arrayBuffer()));
-        if (parsed?.stream?.length) {
-          const s = summarizeStream(parsed.stream);
-          // Only a real recording replaces the summary; a header-only file falls through
-          // so the session is still logged, just without telemetry.
-          if (isUsableTelemetry(parsed.stream, s.duration_seconds)) {
-            fitParsed = parsed;
-            summary = {
-              derived_date: activity.date || activity.start_time?.slice(0, 10) || null,
-              sport: normalizeSport(activity.sport || activity.activity_type),
-              duration_seconds: s.duration_seconds,
-              distance_km: s.distance_km,
-              avg_hr: s.avg_hr,
-              max_hr: s.max_hr,
-            };
-            sourceFormat = 'fit';
-          }
-        }
+      const bytes = await readBoundedRecording(await fetch(fitUrl));
+      if (bytes.length < 16 || bytes[8] !== 0x2e || bytes[9] !== 0x46 || bytes[10] !== 0x49 || bytes[11] !== 0x54) {
+        throw new RecordingStorageError('recording_parse_failed', 'The COROS FIT file header is invalid. No workout was saved.', 422);
       }
-    } catch (e) { /* fall through to JSON summary */ }
+      let parsed;
+      try { parsed = parseFitWithLaps(bytes); }
+      catch { throw new RecordingStorageError('recording_parse_failed', 'The COROS recording could not be decoded. No workout was saved.', 422); }
+      if (!parsed?.stream?.length) {
+        throw new RecordingStorageError('recording_parse_failed', 'The COROS recording contains no decoded samples. No workout was saved.', 422);
+      }
+      const measured = summarizeStream(parsed.stream);
+      if (!isUsableTelemetry(parsed.stream, measured.duration_seconds)) {
+        throw new RecordingStorageError('recording_telemetry_invalid', 'The COROS recording lacks usable timestamped telemetry. No workout was saved.', 422);
+      }
+      fitParsed = parsed;
+      summary = {
+        derived_date: activity.date || activity.start_time?.slice(0, 10) || null,
+        sport: normalizeSport(activity.sport || activity.activity_type),
+        duration_seconds: measured.duration_seconds,
+        distance_km: measured.distance_km,
+        avg_hr: measured.avg_hr,
+        max_hr: measured.max_hr,
+      };
+      sourceFormat = 'fit';
+      fitProvenance = await recordingProvenance(bytes, parsed.stream, parsed.laps || [], 'coros_fit');
+    } catch (error) {
+      return recordingErrorResponse(error);
+    }
   }
   if (!summary) {
     const dur = Number(activity.duration_seconds ?? activity.duration ?? 0);
@@ -305,7 +325,7 @@ async function handleWebhook(req, base44) {
     temperatureC,
   });
 
-  const session = await base44.asServiceRole.entities.WorkoutSession.create({
+  const payload = {
     athlete_id: athleteId,
     created_by_id: athlete.created_by_id,
     date,
@@ -321,10 +341,16 @@ async function handleWebhook(req, base44) {
     zone_method: zoneResult.zone_method,
     zone_bounds_bpm: zoneResult.zone_bounds_bpm,
     temperature_c: temperatureC ?? undefined,
-    streams: fitParsed ? storageStream(fitParsed.stream.slice(0, MAX_STREAM_SAMPLES)) : undefined,
+    streams: fitParsed ? fitParsed.stream : undefined,
     laps: fitParsed?.laps?.length ? fitParsed.laps : undefined,
+    recording_provenance: fitProvenance || undefined,
     ...energy,
-  });
+  };
+  if (fitParsed) {
+    try { assertInlineWorkoutFits(payload); }
+    catch (error) { return recordingErrorResponse(error); }
+  }
+  const session = await base44.asServiceRole.entities.WorkoutSession.create(payload);
 
   try { await base44.asServiceRole.functions.invoke('calculateDailyTRIMP', { athlete_id: athleteId, date }); } catch (e) { console.warn('calculateDailyTRIMP failed:', e); }
   // Call the shared module directly (not the HTTP wrapper) — the webhook has no user
