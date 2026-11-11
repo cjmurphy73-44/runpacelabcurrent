@@ -24,7 +24,7 @@ export function syntheticFit1Hz(sampleCount, {
     5, 4, 0x86, // distance, centimeters
     4, 1, 0x02, // cadence, rpm
     6, 2, 0x84, // speed, millimeters/second
-    7, 2, 0x84, // power, watts (decoded, but not currently persisted by this handler)
+    7, 2, 0x84, // power, watts; must be preserved when the FIT stream is retained
   ];
   const data = [...definition];
   for (let second = 0; second < sampleCount; second++) {
