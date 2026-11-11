@@ -101,6 +101,8 @@ export function getAppParams({
       fromUrl: windowObj.location?.href || "/",
       functionsVersion: "",
       appBaseUrl: valid ? previewBaseUrl : "",
+      // API calls must reach staging directly; Vercel Preview has no /api proxy.
+      apiServerUrl: valid ? previewBaseUrl : "",
       configurationError: valid ? null :
         "Preview requires a verified staging VITE_APP_ID and HTTPS VITE_APP_BASE_URL. Published app IDs are not allowed.",
     };
@@ -135,6 +137,8 @@ export function getAppParams({
     fromUrl: getAppParamValue("from_url", { defaultValue: windowObj.location?.href || '/' }),
     functionsVersion: getAppParamValue("functions_version", { defaultValue: "", persistToLocalStorage: true }),
     appBaseUrl: getAppParamValue("app_base_url", { defaultValue: typeof import.meta !== 'undefined' ? import.meta.env?.VITE_APP_BASE_URL : "", persistToLocalStorage: true }),
+    // Keep the existing published API routing unchanged.
+    apiServerUrl: "",
   };
 }
 
