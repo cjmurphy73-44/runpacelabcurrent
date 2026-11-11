@@ -20,6 +20,7 @@ import { UIPreferencesProvider } from '@/context/UIPreferencesContext';
 import { ServiceProvider } from '@/services/providers/ServiceContext';
 import { Toaster } from '@/components/ui/toaster';
 import { appParams } from '@/lib/app-params';
+import PreviewStagingCheck from '@/components/PreviewStagingCheck';
 
 // In-app pages load on demand so the first visit downloads far less code.
 const CoachChat = lazy(() => import('@/pages/CoachChat'));
@@ -59,6 +60,13 @@ export default function App() {
         </p>
       </main>
     );
+  }
+
+  // This diagnostics route is accessible only on a configured Preview build.
+  // It mounts no auth or athlete data providers and never runs automatically.
+  if (appParams.isPreview && typeof window !== 'undefined' &&
+      window.location.pathname === '/staging-check') {
+    return <PreviewStagingCheck />;
   }
 
   return (
