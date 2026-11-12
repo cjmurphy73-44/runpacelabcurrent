@@ -17,6 +17,7 @@ import { calcTrimp } from '../../shared/physiology.ts';
 import { resolveSessionLoad } from '../../shared/loadModel.ts';
 import { recomputeCTLATLTSB } from '../../shared/ctlRecalc.ts';
 import { assertSafeFileUrl } from '../../shared/urlGuard.ts';
+import { isUsableTelemetry } from '../../shared/streamValidity.ts';
 import { garminConfig, refreshGarminToken } from '../../shared/garminAuth.ts';
 import { corosAccessToken, queryCorosRecords, downloadCorosFit } from '../../shared/corosMcp.ts';
 
@@ -54,18 +55,6 @@ function typeFromName(name) {
 // happily turns those rows into a fake "stream". Before any of it is stored, the
 // samples have to look like real telemetry: enough points, a plausible time span for
 // the session, and at least one physiological channel actually populated.
-function isUsableTelemetry(stream, durationSeconds) {
-  if (!Array.isArray(stream) || stream.length < 60) return false;
-  const times = stream.map((p) => Number(p.time)).filter((t) => Number.isFinite(t));
-  if (times.length < stream.length * 0.9) return false;
-  const span = Math.max(...times) - Math.min(...times);
-  const maxSpan = Math.max((Number(durationSeconds) || 0) * 1.5, 60) + 300;
-  if (span > maxSpan) return false;
-  const withHr = stream.filter((p) => typeof p.heart_rate === 'number' && p.heart_rate > 0).length;
-  const withPower = stream.filter((p) => typeof p.power === 'number' && p.power > 0).length;
-  return withHr >= stream.length * 0.5 || withPower >= stream.length * 0.5;
-}
-
 function nameFromUrl(url, sourceFormat) {
   try {
     const base = decodeURIComponent(new URL(url).pathname.split('/').pop() || '');
