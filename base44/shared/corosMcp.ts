@@ -211,7 +211,19 @@ export async function queryCorosRecords(accessToken: string, startDate: string, 
 // on the next. Only the https URLs on COROS storage are used.
 export function fitUrlsFromText(text: string): string[] {
   if (!text || typeof text !== 'string') return [];
-  return [...text.matchAll(/https:\/\/[^\s"')]+\.fit/gi)].map((m) => m[0]);
+  const urls = new Set<string>();
+  // Preserve signed query parameters. Truncating at ".fit" drops COROS storage
+  // credentials, producing an HTTP 403 and an unjustified summary-only fallback.
+  for (const match of text.matchAll(/https:\/\/[^\s"'<>]+/gi)) {
+    const candidate = match[0].replace(/[),;]+$/, '');
+    try {
+      const parsed = new URL(candidate);
+      if (parsed.protocol === 'https:' && /\.fit$/i.test(parsed.pathname)) {
+        urls.add(candidate);
+      }
+    } catch { /* invalid URL: ignore */ }
+  }
+  return [...urls];
 }
 
 // Download and parse one activity's original FIT file. Returns null when COROS has no
