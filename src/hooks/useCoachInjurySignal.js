@@ -99,10 +99,18 @@ export function useCoachInjurySignal(athleteId) {
     setClearError(null);
     try {
       const now = new Date().toISOString();
-      const saved = await base44.entities.AthleteProfile.update(athleteId, {
+      await base44.entities.AthleteProfile.update(athleteId, {
         coach_hold_cleared_at: now,
       });
-      const persisted = saved?.coach_hold_cleared_at || now;
+      // Do not infer persistence from a successful update request alone: some
+      // SDK responses contain only an ID. Read the stored profile back before
+      // releasing the hold on any mounted surface.
+      const verified = await base44.entities.AthleteProfile.get(athleteId);
+      const persisted = verified?.coach_hold_cleared_at;
+      const persistedMs = Date.parse(persisted || "");
+      if (!Number.isFinite(persistedMs) || persistedMs < Date.parse(now) - 1000) {
+        throw new Error("Clearance could not be verified. The coach hold remains active.");
+      }
       if (mountedRef.current) setClearedAt(persisted);
       publishHoldCleared(athleteId, persisted);
     } catch (e) {
