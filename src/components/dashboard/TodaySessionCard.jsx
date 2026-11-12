@@ -51,16 +51,15 @@ export default function TodaySessionCard({ athleteId }) {
         <CardTitle className="text-sm text-muted-foreground font-heading uppercase tracking-wide">Today's Session</CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
-        {injury.level === "hold" && (
-          <CoachHoldCard
-            injury={injury}
-            swappedLabel={
-              runOnHold
-                ? `Today's ${session?.prescribed_duration_minutes ?? ""} min ${session?.prescribed_intensity_zone || ""} run is swapped to rest or very easy cross-training.`
-                : "No run today. Keep it to rest or very easy cross-training until you're cleared."
-            }
-          />
-        )}
+        <CoachHoldCard
+          injury={injury}
+          hideWhenNone
+          swappedLabel={
+            runOnHold
+              ? `Today's ${session?.prescribed_duration_minutes ?? ""} min ${session?.prescribed_intensity_zone || ""} run is swapped to rest or very easy cross-training.`
+              : "No running today. Keep it to rest or very easy cross-training until you're cleared."
+          }
+        />
 
         {session === undefined ? (
           <p className="text-sm text-muted-foreground">Loading...</p>

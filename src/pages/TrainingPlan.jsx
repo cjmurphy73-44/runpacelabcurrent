@@ -153,14 +153,34 @@ export default function TrainingPlan() {
           <Button variant="outline" size="sm" onClick={() => setShowGenerator(true)}>Generate New Plan</Button>
         </div>
       )}
-      <CoachHoldCard
-        injury={injury}
-        compact
-        swappedLabel="Running sessions in this plan become rest, easy cross-training or easy strength."
-      />
-      <TrainingPlanTimeline plan={plan} />
-      <TrainingPlanWeeklyBreakdown weeklyPlans={plan.weekly_plans || []} />
-      <TrainingPlanExtras plan={plan} />
+      <section aria-labelledby="current-coaching-status" className="space-y-2">
+        <h2
+          id="current-coaching-status"
+          className="text-xs font-heading font-semibold uppercase tracking-wide text-muted-foreground"
+        >
+          Current coaching status
+        </h2>
+        <CoachHoldCard injury={injury} swappedLabel="While the hold is on, running sessions become rest, easy cross-training or easy strength." />
+      </section>
+
+      <section aria-labelledby="plan-context" className="space-y-3">
+        <div className="space-y-1">
+          <h2
+            id="plan-context"
+            className="text-xs font-heading font-semibold uppercase tracking-wide text-muted-foreground"
+          >
+            Plan context — recorded when generated
+          </h2>
+          <p className="text-xs text-muted-foreground">
+            The summary and sessions below reflect your physiology and coach notes at the time this
+            plan was written. They are not a live medical clearance; your current coaching status
+            above is what applies today.
+          </p>
+        </div>
+        <TrainingPlanTimeline plan={plan} />
+        <TrainingPlanWeeklyBreakdown weeklyPlans={plan.weekly_plans || []} />
+        <TrainingPlanExtras plan={plan} />
+      </section>
       <div><HelpLink section="plans" label="How training plans work" /></div>
     </div>
   );

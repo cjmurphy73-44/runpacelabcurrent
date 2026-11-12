@@ -5,6 +5,10 @@ import moment from "moment";
 // discrete level (none / caution / hold) plus evidence. Surfaces the same signal
 // across Today's Session, Intelligence Hub, Training Plan and Calendar so a coach
 // conversation about an injury actually changes what the app prescribes.
+//
+// The signal is derived only from the coach conversation and the athlete's persisted
+// clearance timestamp. A generated training plan is never read here: plan wording is
+// not medical clearance and must not be able to retire a hold on its own.
 
 const HOLD_KEYWORDS = [
   "injur", "can't run", "cant run", "cannot run", "no running", "stop running",
@@ -35,6 +39,20 @@ const CAUTION_KEYWORDS = [
   "watch it", "play it safe", "don't push", "hold off on hard", "be careful",
 ];
 
+const SOURCE_LABELS = {
+  coach: "Coach message",
+  performance_summary: "Coach performance summary",
+  micro_adjustment: "Coach micro-adjustment",
+  plan_generation: "Coach message sent with plan generation",
+  athlete_reply: "Athlete reply",
+};
+
+/** Human-readable source for an evidence row, so a hold always shows where it came from. */
+export function describeSource(type) {
+  if (!type) return "Coach conversation";
+  return SOURCE_LABELS[type] || "Coach conversation";
+}
+
 function snippet(text, keyword, radius = 140) {
   if (!text) return "";
   const idx = text.toLowerCase().indexOf(keyword);
@@ -59,9 +77,19 @@ function fmt(dateStr) {
   }
 }
 
+// Timestamps we cannot trust must never move the hold either way: an unparseable or
+// future-dated value is treated as absent rather than as "cleared since forever".
+function usableTime(value, nowMs) {
+  if (!value) return 0;
+  const t = new Date(value).getTime();
+  if (!Number.isFinite(t)) return 0;
+  if (t > nowMs) return 0;
+  return t;
+}
+
 /**
  * @param {Array<{content_text:string, created_date:string, message_type:string}>} messages
- * @param {{ now?: Date }} opts
+ * @param {{ now?: Date, clearedAt?: string|null }} opts
  */
 export function computeInjurySignal(messages, { now = new Date(), clearedAt = null } = {}) {
   const list = (Array.isArray(messages) ? messages : [])
@@ -73,12 +101,14 @@ export function computeInjurySignal(messages, { now = new Date(), clearedAt = nu
   // A hold ends at the newest of: the moment the athlete cleared it themselves, or a
   // coach message that releases them. Only messages after that instant can raise it
   // again, so a resolved injury stops following the athlete around.
-  const manualMs = clearedAt ? new Date(clearedAt).getTime() || 0 : 0;
+  const manualMs = usableTime(clearedAt, nowMs);
   const coachClear = list.find((m) => {
-    const t = new Date(m.created_date).getTime();
-    return Number.isFinite(t) && t <= nowMs && CLEAR_KEYWORDS.some((k) => m.content_text.toLowerCase().includes(k));
+    const t = usableTime(m.created_date, nowMs);
+    if (!t) return false;
+    const text = m.content_text.toLowerCase();
+    return CLEAR_KEYWORDS.some((k) => text.includes(k)) && !isInjuryOnly(text);
   });
-  const coachMs = coachClear ? new Date(coachClear.created_date).getTime() : 0;
+  const coachMs = coachClear ? usableTime(coachClear.created_date, nowMs) : 0;
   const clearMs = Math.max(manualMs, coachMs);
   const cleared = {
     clearedAt: clearMs ? new Date(clearMs).toISOString() : null,
@@ -94,9 +124,9 @@ export function computeInjurySignal(messages, { now = new Date(), clearedAt = nu
   const evidence = [];
 
   for (const m of list) {
-    const t = new Date(m.created_date).getTime();
+    const t = usableTime(m.created_date, nowMs);
     // Ignore bad and future-dated timestamps: clock drift must not create or clear a hold.
-    if (!Number.isFinite(t) || t > nowMs || t <= clearMs) continue;
+    if (!t || t <= clearMs) continue;
     const ageDays = (nowMs - t) / 86400000;
     const text = m.content_text.toLowerCase();
     const holdHit = HOLD_KEYWORDS.find((k) => text.includes(k));
@@ -116,6 +146,7 @@ export function computeInjurySignal(messages, { now = new Date(), clearedAt = nu
       evidence.unshift({
         date: m.created_date,
         type: m.message_type,
+        source: describeSource(m.message_type),
         snippet: snippet(m.content_text, holdHit || cautionHit),
       });
       if (evidence.length >= 3) break;
@@ -126,11 +157,18 @@ export function computeInjurySignal(messages, { now = new Date(), clearedAt = nu
   let holdReason = null;
   const head = evidence[0];
   if (level === "hold") {
-    summary = `Your coach paused running in the conversation on ${fmt(head?.date)}. It stays paused until you're cleared.`;
+    summary = `Your coach paused running in the conversation on ${fmt(head?.date)}. It stays paused until you are cleared.`;
     holdReason = summary;
   } else if (level === "caution") {
     summary = `The conversation on ${fmt(head?.date)} flagged a niggle or soreness. Back off if it persists and check with your coach before a hard effort.`;
   }
 
   return { level, evidence, lastInjuryDate, summary, holdReason, ...cleared };
+}
+
+// A message that contains hold wording is not a clearance even if it borrows a clearance
+// phrase (for example "not cleared to run yet"). Keep the two from cancelling each other.
+function isInjuryOnly(text) {
+  const blocked = ["not cleared", "no longer cleared", "can't run", "cant run", "cannot run", "still on hold", "not yet cleared"];
+  return blocked.some((k) => text.includes(k));
 }
