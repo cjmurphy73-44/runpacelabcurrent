@@ -117,8 +117,9 @@ export default function TodaySessionCard({ athleteId }) {
         )}
 
         {!anomaly && session && !runOnHold && (
-          <div className="flex items-center gap-1 text-xs text-muted-foreground">
-            <CheckCircle2 className="w-3.5 h-3.5 text-primary" /> Readiness normal, proceed as prescribed.
+          <div className="flex items-start gap-1.5 text-xs text-muted-foreground">
+            <CheckCircle2 className="w-3.5 h-3.5 mt-0.5 shrink-0 text-muted-foreground" aria-hidden="true" />
+            <span>No low-HRV alert detected from available readings. This does not confirm recovery or clearance to train; consider your symptoms and current coach guidance.</span>
           </div>
         )}
       </CardContent>
