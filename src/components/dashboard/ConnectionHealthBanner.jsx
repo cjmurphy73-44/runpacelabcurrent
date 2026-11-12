@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useState } from "react";
 import { base44 } from "@/api/base44Client";
 import { Button } from "@/components/ui/button";
 import { AlertCircle, AlertTriangle, RefreshCw } from "lucide-react";
+import { classifyProviderConnection } from "@/lib/providerConnectionState";
 
 // One dashboard banner for every connection that has stopped delivering data.
 // Covers Garmin as well as COROS, says what stopped and what is safe, and starts
@@ -26,9 +27,7 @@ export default function ConnectionHealthBanner() {
           try {
             const res = await base44.functions.invoke(fn, { action: "status" });
             const s = res?.data || res || {};
-            if (s?.needs_reconnect === true) return { fn, label, state: "expired", reason: s.last_error || null };
-            if (s?.needs_reconnect === false || s?.connected === false) return { fn, label, state: "ok" };
-            return { fn, label, state: "unknown" };
+            return { fn, label, state: classifyProviderConnection(s), reason: s.last_error || null };
           } catch {
             // Unknown is not proof of a healthy connection or expired authorization.
             return { fn, label, state: "unknown" };
