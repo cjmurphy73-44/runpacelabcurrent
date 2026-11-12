@@ -13,24 +13,33 @@ const PROVIDERS = [
 
 export default function ConnectionHealthBanner() {
   const [broken, setBroken] = useState([]);
+  const [unknown, setUnknown] = useState([]);
+  const [checking, setChecking] = useState(true);
   const [busy, setBusy] = useState(null);
   const [error, setError] = useState(null);
 
   const load = useCallback(async () => {
-    const rows = await Promise.all(
-      PROVIDERS.map(async ({ fn, label }) => {
-        try {
-          const res = await base44.functions.invoke(fn, { action: "status" });
-          const s = res?.data || res || {};
-          return s?.needs_reconnect ? { fn, label, reason: s.last_error || null } : null;
-        } catch {
-          // A failed check is unknown, not "expired", never nag about a connection
-          // we couldn't read.
-          return null;
-        }
-      }),
-    );
-    setBroken(rows.filter(Boolean));
+    setChecking(true);
+    try {
+      const rows = await Promise.all(
+        PROVIDERS.map(async ({ fn, label }) => {
+          try {
+            const res = await base44.functions.invoke(fn, { action: "status" });
+            const s = res?.data || res || {};
+            if (s?.needs_reconnect === true) return { fn, label, state: "expired", reason: s.last_error || null };
+            if (s?.needs_reconnect === false) return { fn, label, state: "ok" };
+            return { fn, label, state: "unknown" };
+          } catch {
+            // Unknown is not proof of a healthy connection or expired authorization.
+            return { fn, label, state: "unknown" };
+          }
+        }),
+      );
+      setBroken(rows.filter((row) => row.state === "expired"));
+      setUnknown(rows.filter((row) => row.state === "unknown"));
+    } finally {
+      setChecking(false);
+    }
   }, []);
 
   useEffect(() => {
@@ -60,7 +69,7 @@ export default function ConnectionHealthBanner() {
     }
   };
 
-  if (!broken.length) return null;
+  if (!broken.length && !unknown.length) return null;
 
   return (
     <div className="space-y-2">
@@ -82,7 +91,7 @@ export default function ConnectionHealthBanner() {
           <Button
             variant="outline"
             size="sm"
-            className="h-8 shrink-0 text-xs"
+            className="min-h-[44px] shrink-0 text-xs"
             onClick={() => reconnect(b)}
             disabled={busy === b.fn}
           >
@@ -91,6 +100,21 @@ export default function ConnectionHealthBanner() {
           </Button>
         </div>
       ))}
+      {unknown.length > 0 && (
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-md border border-border bg-muted/40 p-3" role="status">
+          <div className="flex items-start gap-2 text-sm">
+            <AlertCircle className="w-4 h-4 shrink-0 mt-0.5 text-muted-foreground" aria-hidden="true" />
+            <span>
+              Could not verify {unknown.map((provider) => provider.label).join(" and ")} sync status.
+              This does not mean recordings are up to date.
+            </span>
+          </div>
+          <Button variant="outline" size="sm" className="min-h-[44px] w-full sm:w-auto shrink-0" onClick={load} disabled={checking}>
+            <RefreshCw className={`mr-1.5 h-3.5 w-3.5 ${checking ? "animate-spin" : ""}`} aria-hidden="true" />
+            Check again
+          </Button>
+        </div>
+      )}
       {error && (
         <p className="flex items-center gap-1.5 text-xs text-destructive">
           <AlertCircle className="h-3.5 w-3.5" />
