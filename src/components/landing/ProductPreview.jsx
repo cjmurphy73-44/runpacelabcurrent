@@ -23,8 +23,9 @@ const STATS = [
 
 export default function ProductPreview() {
   return (
-    <div className="rounded-lg border border-border bg-card shadow-xl overflow-hidden">
+    <div className="rounded-lg border border-border bg-card shadow-xl overflow-hidden" aria-label="Illustrative dashboard preview using example data">
       <div className="p-5 space-y-4">
+        <p className="text-xs font-medium text-muted-foreground">Illustrative preview · Example data, not a live athlete</p>
         <div className="flex items-center justify-between">
           <div>
             <p className="text-xs text-muted-foreground uppercase tracking-wider">Today</p>
