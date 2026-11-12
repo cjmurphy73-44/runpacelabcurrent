@@ -45,6 +45,7 @@ export default function TrainingCalendar({ athleteId, currentTsb }) {
       <CoachHoldCard
         injury={injury}
         compact
+        hideWhenNone
         swappedLabel="Running days below are replaced by rest or easy cross-training."
       />
       <div className="flex items-center justify-between flex-wrap gap-2">
