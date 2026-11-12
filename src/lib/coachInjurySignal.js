@@ -68,13 +68,15 @@ export function computeInjurySignal(messages, { now = new Date(), clearedAt = nu
     .filter((m) => m && typeof m.content_text === "string" && m.content_text.trim())
     .sort((a, b) => new Date(b.created_date || 0) - new Date(a.created_date || 0));
 
+  const nowMs = now.getTime();
+
   // A hold ends at the newest of: the moment the athlete cleared it themselves, or a
   // coach message that releases them. Only messages after that instant can raise it
   // again, so a resolved injury stops following the athlete around.
   const manualMs = clearedAt ? new Date(clearedAt).getTime() || 0 : 0;
   const coachClear = list.find((m) => {
     const t = new Date(m.created_date).getTime();
-    return isFinite(t) && CLEAR_KEYWORDS.some((k) => m.content_text.toLowerCase().includes(k));
+    return Number.isFinite(t) && t <= nowMs && CLEAR_KEYWORDS.some((k) => m.content_text.toLowerCase().includes(k));
   });
   const coachMs = coachClear ? new Date(coachClear.created_date).getTime() : 0;
   const clearMs = Math.max(manualMs, coachMs);
@@ -87,14 +89,14 @@ export function computeInjurySignal(messages, { now = new Date(), clearedAt = nu
     return { level: "none", evidence: [], lastInjuryDate: null, summary: null, holdReason: null, ...cleared };
   }
 
-  const nowMs = now.getTime();
   let level = "none";
   let lastInjuryDate = null;
   const evidence = [];
 
   for (const m of list) {
     const t = new Date(m.created_date).getTime();
-    if (!isFinite(t) || t <= clearMs) continue;
+    // Ignore bad and future-dated timestamps: clock drift must not create or clear a hold.
+    if (!Number.isFinite(t) || t > nowMs || t <= clearMs) continue;
     const ageDays = (nowMs - t) / 86400000;
     const text = m.content_text.toLowerCase();
     const holdHit = HOLD_KEYWORDS.find((k) => text.includes(k));
