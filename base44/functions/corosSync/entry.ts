@@ -12,6 +12,7 @@ import { getSyncLookbackDays } from '../../shared/syncLookback.ts';
 import { parseFitWithLaps, summarizeStream } from '../../shared/workoutParsers.ts';
 import { isUsableTelemetry, storageStream, MAX_STREAM_SAMPLES } from '../../shared/streamValidity.ts';
 import { persistCorosBatches } from '../../shared/corosBatchPersistence.ts';
+import { corosActivityId, isDuplicateCorosSession } from '../../shared/corosActivityIdentity.ts';
 import {
   corosAccessToken, fetchWithTimeout, mcpPost, mcpToolCall,
   downloadCorosFit, queryCorosRecords,
@@ -277,10 +278,14 @@ async function handleWebhook(req, base44) {
   const athlete = await base44.asServiceRole.entities.AthleteProfile.get(athleteId).catch(() => null);
   if (!athlete) return Response.json({ error: 'Athlete profile not found' }, { status: 404 });
 
-  const existingSessions = await base44.asServiceRole.entities.WorkoutSession.filter({ athlete_id: athleteId, date });
-  const isDuplicate = existingSessions.some((s) =>
-    s.sport === sport && Math.abs((s.duration_minutes || 0) - durationMinutes) < 1 && Math.abs((s.distance_km || 0) - distanceKm) < 0.1
+  const providerActivityId = corosActivityId(
+    activity.label_id ?? activity.LabelId ?? body.label_id,
+    activity.sport_type ?? activity.SportType ?? body.sport_type,
   );
+  const existingSessions = await base44.asServiceRole.entities.WorkoutSession.filter({ athlete_id: athleteId, date });
+  const candidate = { date, sport, duration_minutes: durationMinutes, distance_km: distanceKm,
+    source_provider: 'coros', provider_activity_id: providerActivityId };
+  const isDuplicate = existingSessions.some((s) => isDuplicateCorosSession(s, candidate));
   if (isDuplicate) return Response.json({ success: true, skipped: true });
 
   const restHr = athlete.resting_hr || 60;
@@ -309,6 +314,8 @@ async function handleWebhook(req, base44) {
   const session = await base44.asServiceRole.entities.WorkoutSession.create({
     athlete_id: athleteId,
     created_by_id: athlete.created_by_id,
+    source_provider: 'coros',
+    provider_activity_id: providerActivityId || undefined,
     date,
     sport,
     duration_minutes: Math.round(durationMinutes * 100) / 100,
@@ -532,6 +539,9 @@ async function syncHistoricalFor(athlete: any, accessToken: string, base44, look
   for (const a of records) {
     const mapped = mapRecord(a, athlete);
     if (!mapped) { errors++; continue; }
+    mapped.source_provider = 'coros';
+    const activityId = corosActivityId(a.label_id, a.sport_type);
+    if (activityId) mapped.provider_activity_id = activityId;
     if (a.label_id) fileKeys.set(mapped, { labelId: a.label_id, sportType: a.sport_type ?? null });
     mappedRecords.push(mapped);
   }
@@ -558,7 +568,7 @@ async function syncHistoricalFor(athlete: any, accessToken: string, base44, look
   const toCreate = [];
   for (const mapped of mappedRecords) {
     const sameDay = existingByDate.get(mapped.date) || [];
-    const isDuplicate = (s) => s.sport === mapped.sport && Math.abs((s.duration_minutes || 0) - mapped.duration_minutes) < 1 && Math.abs((s.distance_km || 0) - mapped.distance_km) < 0.1;
+    const isDuplicate = (s) => isDuplicateCorosSession(s, mapped);
     if (sameDay.some(isDuplicate) || toCreate.some((s) => s.date === mapped.date && isDuplicate(s))) { duplicates++; continue; }
     toCreate.push(mapped);
   }
