@@ -17,6 +17,18 @@
       "minimum": 0,
       "description": "Aggregate daily training stress (sum of session TRIMP, or rTSS fallback when HR is unavailable)"
     },
+    "verified_trimp": {
+      "type": "number",
+      "default": 0,
+      "minimum": 0,
+      "description": "Portion of total_trimp contributed by sessions whose load was integrated from a verified per-second stream (load_source 'stream'). This is the measured part of the day."
+    },
+    "summary_trimp": {
+      "type": "number",
+      "default": 0,
+      "minimum": 0,
+      "description": "Portion of total_trimp contributed by sessions whose load was estimated from their average heart rate (load_source 'summary'). total_trimp = verified_trimp + summary_trimp."
+    },
     "calculated_ctl": {
       "type": "number",
       "default": 0,

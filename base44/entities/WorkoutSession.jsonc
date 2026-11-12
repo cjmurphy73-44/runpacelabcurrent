@@ -84,6 +84,21 @@
       "minimum": 0,
       "description": "rTSS (Running Training Stress Score) fallback computed from Normalized Graded Pace when heart rate is unavailable"
     },
+    "load_source": {
+      "type": "string",
+      "enum": [
+        "stream",
+        "summary",
+        "none"
+      ],
+      "description": "Provenance of this session's training load: 'stream' means session_trimp was integrated sample by sample from a verified per-second HR stream (measured); 'summary' means it came from Banister's average-HR equation (an estimate); 'none' means there was no heart rate to compute from. Never present a 'summary' load as measured."
+    },
+    "load_coverage_pct": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 100,
+      "description": "Percentage of the session's duration that carried heart-rate samples when the load was integrated from a stream. 0 when the load is a summary estimate."
+    },
     "efficiency_factor": {
       "type": "number",
       "minimum": 0,

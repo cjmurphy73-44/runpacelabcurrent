@@ -1,5 +1,7 @@
 # TrainPaceLab — Next-Phase Reliability Roadmap
 
+> **Superseded for sequencing.** `MVP_ROADMAP.md` now owns the delivery order (MVP value first, separate load models, no staging). This file remains the traceability and status appendix for its M0 to M6 rows.
+
 _Concise, risk-first, ordered plan across the three open tracks: beta readiness, wearable (COROS) reconnection, and science reliability._
 _Status legend: ✅ pass · ❌ fail · 🟡 unverified · ⛔ blocked. An item stays 🟡 until fresh runtime evidence is recorded._
 

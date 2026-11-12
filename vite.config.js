@@ -10,6 +10,8 @@ export default defineConfig({
     }
   },
   build: {
+    // Proprietary physiology logic must not be published as original-source maps.
+    sourcemap: false,
     rollupOptions: {
       // Externalize base44 runtime so Vite doesn't look for it locally
       external: ['@base44/runtime']

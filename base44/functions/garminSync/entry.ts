@@ -208,6 +208,7 @@ async function handleSyncHistorical(base44) {
         max_hr: maxHrRow || undefined,
         source_format: 'webhook',
         session_trimp: avgHr ? calcTrimp(durationMinutes, avgHr, restHr, maxHr, athlete.sex) : 0,
+        load_source: avgHr ? 'summary' : 'none',
         zone_seconds: zoneResult.zone_seconds,
         zone_method: zoneResult.zone_method,
         zone_bounds_bpm: zoneResult.zone_bounds_bpm,

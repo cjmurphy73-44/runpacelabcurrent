@@ -36,6 +36,9 @@ export default async function(req) {
       () => e.Subscription.deleteMany({ user_id: user.id }),
       () => e.LabResult.deleteMany(owned),
       () => e.BetaFeedback.deleteMany(owned),
+      // WebhookEvent rows are written by service-role sync functions, so created_by_id
+      // never points at the athlete; match on athlete_id instead or deletion leaves them.
+      ...(user.data?.athlete_profile_id ? [() => e.WebhookEvent.deleteMany({ athlete_id: user.data.athlete_profile_id })] : []),
     ];
     for (const del of cleanup) {
       try { await del(); } catch (err) { /* best-effort; continue */ }

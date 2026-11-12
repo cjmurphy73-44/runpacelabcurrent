@@ -4,9 +4,10 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import ZoneBadge from "@/components/ui/ZoneBadge";
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 import { useFitness } from "@/context/FitnessContext";
-import { CheckCircle2, Moon, AlertTriangle, ShieldAlert, BedDouble } from "lucide-react";
+import { CheckCircle2, Moon, AlertTriangle } from "lucide-react";
 import moment from "moment";
 import { useCoachInjurySignal } from "@/hooks/useCoachInjurySignal";
+import CoachHoldCard from "@/components/dashboard/CoachHoldCard";
 
 function detectAnomaly(biometricTelemetry) {
   const sorted = [...(biometricTelemetry || [])].sort((a, b) => b.date.localeCompare(a.date));
@@ -40,6 +41,9 @@ export default function TodaySessionCard({ athleteId }) {
   // Pace zones in the plan are running-derived, so only apply them to running sessions.
   const paceZone = isRunning ? plan?.pace_zones?.find((z) => z.zone === session?.prescribed_intensity_zone) : null;
   const hrvAdvice = plan?.hrv_framework?.find((f) => /hrv|suppress|low/i.test(f.condition || ""));
+  // A coach hold pauses running: the run day is replaced by the hold card, which shows
+  // why it is on, lets the athlete read the coach's own words and clear it in one tap.
+  const runOnHold = injury.level === "hold" && isRunning;
 
   return (
     <Card className="h-full border-border shadow-sm">
@@ -47,33 +51,20 @@ export default function TodaySessionCard({ athleteId }) {
         <CardTitle className="text-sm text-muted-foreground font-heading uppercase tracking-wide">Today's Session</CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
+        {injury.level === "hold" && (
+          <CoachHoldCard
+            injury={injury}
+            swappedLabel={
+              runOnHold
+                ? `Today's ${session?.prescribed_duration_minutes ?? ""} min ${session?.prescribed_intensity_zone || ""} run is swapped to rest or very easy cross-training.`
+                : "No run today. Keep it to rest or very easy cross-training until you're cleared."
+            }
+          />
+        )}
+
         {session === undefined ? (
           <p className="text-sm text-muted-foreground">Loading...</p>
-        ) : session ? (
-          injury.level === "hold" && session.sport?.toLowerCase().startsWith("run") ? (
-            <div className="space-y-3">
-              <Alert variant="destructive">
-                <ShieldAlert className="w-4 h-4" />
-                <AlertTitle>Coach hold, running paused</AlertTitle>
-                <AlertDescription className="space-y-1">
-                  <p>{injury.summary}</p>
-                  {injury.evidence[0]?.snippet && (
-                    <p className="italic text-xs">“{injury.evidence[0].snippet}”</p>
-                  )}
-                </AlertDescription>
-              </Alert>
-              <div className="flex items-center gap-3 py-1">
-                <BedDouble className="w-8 h-8 text-primary" />
-                <div>
-                  <p className="font-heading font-bold text-lg">Recovery Day (Coach Hold)</p>
-                  <p className="text-sm text-muted-foreground">Rest or swap to cross-train (bike / pool) at very easy effort. Resume running once the coach clears you.</p>
-                </div>
-              </div>
-              <div className="text-xs text-muted-foreground line-through opacity-60">
-                Was: {session.sport} · {session.prescribed_duration_minutes} min · {session.prescribed_intensity_zone || "—"}
-              </div>
-            </div>
-          ) : (
+        ) : session && !runOnHold ? (
           <div className="space-y-3">
             <div className="flex items-center gap-2 flex-wrap">
               <h3 className="text-2xl font-heading font-bold capitalize">{session.sport}</h3>
@@ -105,8 +96,7 @@ export default function TodaySessionCard({ athleteId }) {
             </div>
             {session.rationale_text && <p className="text-sm text-muted-foreground">{session.rationale_text}</p>}
           </div>
-          )
-        ) : (
+        ) : !session ? (
           <div className="flex items-center gap-3 py-2">
             <Moon className="w-8 h-8 text-primary" />
             <div>
@@ -114,7 +104,7 @@ export default function TodaySessionCard({ athleteId }) {
               <p className="text-sm text-muted-foreground">No session scheduled, focus on recovery.</p>
             </div>
           </div>
-        )}
+        ) : null}
 
         {anomaly && (
           <Alert variant="destructive">
@@ -126,9 +116,10 @@ export default function TodaySessionCard({ athleteId }) {
           </Alert>
         )}
 
-        {!anomaly && session && !(injury.level === "hold" && session.sport?.toLowerCase().startsWith("run")) && (
-          <div className="flex items-center gap-1 text-xs text-muted-foreground">
-            <CheckCircle2 className="w-3.5 h-3.5 text-primary" /> Readiness normal, proceed as prescribed.
+        {!anomaly && session && !runOnHold && (
+          <div className="flex items-start gap-1.5 text-xs text-muted-foreground">
+            <CheckCircle2 className="w-3.5 h-3.5 mt-0.5 shrink-0 text-muted-foreground" aria-hidden="true" />
+            <span>No low-HRV alert detected from available readings. This does not confirm recovery or clearance to train; consider your symptoms and current coach guidance.</span>
           </div>
         )}
       </CardContent>

@@ -159,6 +159,7 @@ Deno.serve(async (req) => {
       max_hr: summary.max_hr || undefined,
       source_format: sourceFormat,
       session_trimp: summary.avg_hr ? calcTrimp(durationMinutes, summary.avg_hr, restHr, maxHr, athlete.sex) : 0,
+      load_source: summary.avg_hr ? 'summary' : 'none',
       zone_seconds: zoneResult.zone_seconds,
       zone_method: zoneResult.zone_method,
       zone_bounds_bpm: zoneResult.zone_bounds_bpm,

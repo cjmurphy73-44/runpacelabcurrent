@@ -18,6 +18,16 @@ const HOLD_KEYWORDS = [
   "completely off", "off for a",
 ];
 
+// Phrases a coach uses to release a hold. A clearance newer than the injury wording
+// resolves it automatically, so "you're cleared to run" ends the hold without the
+// athlete having to do anything.
+const CLEAR_KEYWORDS = [
+  "cleared to run", "cleared for running", "you're cleared", "youre cleared",
+  "you are cleared", "resume running", "back to running", "return to running",
+  "start running again", "can run again", "good to go", "green light",
+  "back on the road", "ease back into running", "no longer on hold", "hold lifted",
+];
+
 const CAUTION_KEYWORDS = [
   "sore", "tight", "niggle", "tweak", "monitor", "ease back", "back off",
   "deload", "caution", "stiff", "overdone", "overreached", "fatigued",
@@ -53,13 +63,28 @@ function fmt(dateStr) {
  * @param {Array<{content_text:string, created_date:string, message_type:string}>} messages
  * @param {{ now?: Date }} opts
  */
-export function computeInjurySignal(messages, { now = new Date() } = {}) {
+export function computeInjurySignal(messages, { now = new Date(), clearedAt = null } = {}) {
   const list = (Array.isArray(messages) ? messages : [])
     .filter((m) => m && typeof m.content_text === "string" && m.content_text.trim())
     .sort((a, b) => new Date(b.created_date || 0) - new Date(a.created_date || 0));
 
+  // A hold ends at the newest of: the moment the athlete cleared it themselves, or a
+  // coach message that releases them. Only messages after that instant can raise it
+  // again, so a resolved injury stops following the athlete around.
+  const manualMs = clearedAt ? new Date(clearedAt).getTime() || 0 : 0;
+  const coachClear = list.find((m) => {
+    const t = new Date(m.created_date).getTime();
+    return isFinite(t) && CLEAR_KEYWORDS.some((k) => m.content_text.toLowerCase().includes(k));
+  });
+  const coachMs = coachClear ? new Date(coachClear.created_date).getTime() : 0;
+  const clearMs = Math.max(manualMs, coachMs);
+  const cleared = {
+    clearedAt: clearMs ? new Date(clearMs).toISOString() : null,
+    clearedByCoach: coachMs > manualMs,
+  };
+
   if (!list.length) {
-    return { level: "none", evidence: [], lastInjuryDate: null, summary: null, holdReason: null };
+    return { level: "none", evidence: [], lastInjuryDate: null, summary: null, holdReason: null, ...cleared };
   }
 
   const nowMs = now.getTime();
@@ -69,7 +94,7 @@ export function computeInjurySignal(messages, { now = new Date() } = {}) {
 
   for (const m of list) {
     const t = new Date(m.created_date).getTime();
-    if (!isFinite(t)) continue;
+    if (!isFinite(t) || t <= clearMs) continue;
     const ageDays = (nowMs - t) / 86400000;
     const text = m.content_text.toLowerCase();
     const holdHit = HOLD_KEYWORDS.find((k) => text.includes(k));
@@ -99,11 +124,11 @@ export function computeInjurySignal(messages, { now = new Date() } = {}) {
   let holdReason = null;
   const head = evidence[0];
   if (level === "hold") {
-    summary = `Coach-directed running hold from your conversation on ${fmt(head?.date)}, running is on hold. Today's run has been auto-swapped to rest/recovery (cross-train at easy effort) until the coach clears you.`;
+    summary = `Your coach paused running in the conversation on ${fmt(head?.date)}. It stays paused until you're cleared.`;
     holdReason = summary;
   } else if (level === "caution") {
-    summary = `Recent coach conversation on ${fmt(head?.date)} flagged a niggle or soreness, back off if symptoms persist and check with the coach before any hard effort.`;
+    summary = `The conversation on ${fmt(head?.date)} flagged a niggle or soreness. Back off if it persists and check with your coach before a hard effort.`;
   }
 
-  return { level, evidence, lastInjuryDate, summary, holdReason };
+  return { level, evidence, lastInjuryDate, summary, holdReason, ...cleared };
 }

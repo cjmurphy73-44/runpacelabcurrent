@@ -1,5 +1,6 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
 import { VALID_SPORTS, calcTrimp, normalizeSport, getOwnedAthlete } from '../../shared/workoutIngest.ts';
+import { resolveSessionLoad } from '../../shared/loadModel.ts';
 import { resolveTimeInZone } from '../../shared/hrZones.ts';
 import { resolveActiveCalories } from '../../shared/calories.ts';
 import { env, hmacBase64Url } from '../../shared/oauth.ts';
@@ -422,10 +423,20 @@ function applyFitTelemetry(payload: any, fit: any, athlete: any): boolean {
   payload.duration_seconds = durationSeconds;
   payload.duration_minutes = Math.round((durationSeconds / 60) * 100) / 100;
   if (measured.distance_km) payload.distance_km = measured.distance_km;
-  if (measured.avg_hr) {
-    payload.avg_hr = measured.avg_hr;
-    payload.session_trimp = calcTrimp(durationSeconds / 60, measured.avg_hr, restHr, maxHr, athlete.sex);
-  }
+  if (measured.avg_hr) payload.avg_hr = measured.avg_hr;
+  // The downloaded recording is the measured source, so the load is integrated from it
+  // rather than recomputed from the summary average the report carried.
+  const load = resolveSessionLoad({
+    stream: fit.stream,
+    durationSeconds,
+    avgHr: measured.avg_hr || payload.avg_hr,
+    restHr,
+    maxHr,
+    sex: athlete.sex,
+  });
+  payload.session_trimp = load.session_trimp;
+  payload.load_source = load.load_source;
+  payload.load_coverage_pct = load.load_coverage_pct;
   if (measured.max_hr) payload.max_hr = measured.max_hr;
   if (measured.avg_power) payload.avg_power = measured.avg_power;
   if (measured.avg_cadence) payload.avg_cadence = measured.avg_cadence;
@@ -489,6 +500,7 @@ function mapRecord(a: any, athlete: any) {
     max_hr: maxHrRow || undefined,
     source_format: 'webhook',
     session_trimp: avgHr ? calcTrimp(durationMinutes, avgHr, restHr, maxHr, athlete.sex) : 0,
+    load_source: avgHr ? 'summary' : 'none',
     zone_seconds: zoneResult.zone_seconds,
     zone_method: zoneResult.zone_method,
     zone_bounds_bpm: zoneResult.zone_bounds_bpm,
