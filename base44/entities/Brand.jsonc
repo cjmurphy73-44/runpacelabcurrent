@@ -1,4 +1,5 @@
 {
+  "name": "Brand",
   "$id": "Brand",
   "type": "object",
   "properties": {
