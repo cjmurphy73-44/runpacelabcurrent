@@ -27,7 +27,7 @@ export default function ConnectionHealthBanner() {
             const res = await base44.functions.invoke(fn, { action: "status" });
             const s = res?.data || res || {};
             if (s?.needs_reconnect === true) return { fn, label, state: "expired", reason: s.last_error || null };
-            if (s?.needs_reconnect === false) return { fn, label, state: "ok" };
+            if (s?.needs_reconnect === false || s?.connected === false) return { fn, label, state: "ok" };
             return { fn, label, state: "unknown" };
           } catch {
             // Unknown is not proof of a healthy connection or expired authorization.
