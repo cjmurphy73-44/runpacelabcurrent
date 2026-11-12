@@ -10,7 +10,6 @@ import RosterCard from "@/components/coach/RosterCard";
 import AddAthleteDialog from "@/components/coach/AddAthleteDialog";
 import ComparisonTable from "@/components/coach/ComparisonTable";
 import RosterDashboard from "@/components/coach/RosterDashboard";
-import { Link } from "react-router-dom";
 import { useCoachAccess } from "@/hooks/useCoachAccess";
 import FeatureGate from "@/components/billing/FeatureGate";
 
