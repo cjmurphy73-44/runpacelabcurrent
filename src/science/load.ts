@@ -59,7 +59,8 @@ export function calculaterTSS(
   avgPaceSecondsPerKm: number,
   thresholdPaceSecondsPerKm: number,
 ): { tss: number; intensityFactor: number } {
-  if (avgPaceSecondsPerKm <= 0 || thresholdPaceSecondsPerKm <= 0) {
+  if (![durationSeconds, avgPaceSecondsPerKm, thresholdPaceSecondsPerKm].every(Number.isFinite) ||
+      durationSeconds <= 0 || avgPaceSecondsPerKm <= 0 || thresholdPaceSecondsPerKm <= 0) {
     return { tss: 0, intensityFactor: 0 };
   }
   const intensityFactor = thresholdPaceSecondsPerKm / avgPaceSecondsPerKm;
@@ -76,7 +77,12 @@ export function calculatehrTSS(
   thresholdHeartRate: number,
 ): { tss: number; intensityFactor: number } {
   const hrReserve = maxHeartRate - restingHeartRate;
-  if (hrReserve <= 0) return { tss: 0, intensityFactor: 0 };
+  if (![durationSeconds, avgHeartRate, restingHeartRate, maxHeartRate, thresholdHeartRate].every(Number.isFinite) ||
+      durationSeconds <= 0 || hrReserve <= 0 ||
+      restingHeartRate < 0 || avgHeartRate < restingHeartRate || avgHeartRate > maxHeartRate ||
+      thresholdHeartRate <= restingHeartRate || thresholdHeartRate > maxHeartRate) {
+    return { tss: 0, intensityFactor: 0 };
+  }
   const avgHRR = (avgHeartRate - restingHeartRate) / hrReserve;
   const thresholdHRR = (thresholdHeartRate - restingHeartRate) / hrReserve;
   const intensityFactor = avgHRR / thresholdHRR;
