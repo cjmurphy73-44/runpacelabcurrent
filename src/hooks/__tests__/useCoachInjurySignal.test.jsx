@@ -80,10 +80,16 @@ describe("useCoachInjurySignal", () => {
     mocks.filter.mockResolvedValue([
       injury("Stop running until the injury settles.", hoursAgo(5)),
     ]);
-    mocks.get.mockResolvedValue({ id: "ath-1", coach_hold_cleared_at: null });
+    let persisted = null;
+    mocks.get.mockImplementation(async () => ({ id: "ath-1", coach_hold_cleared_at: persisted }));
     let resolveUpdate;
     mocks.update.mockImplementation(
-      () => new Promise((resolve) => { resolveUpdate = resolve; })
+      (_id, data) => new Promise((resolve) => {
+        resolveUpdate = () => {
+          persisted = data.coach_hold_cleared_at;
+          resolve({ id: "ath-1" });
+        };
+      })
     );
 
     const { result } = renderHook(() => useCoachInjurySignal("ath-1"), { wrapper });
@@ -96,12 +102,32 @@ describe("useCoachInjurySignal", () => {
       second = result.current.clearHold();
     });
     await act(async () => {
-      resolveUpdate({ id: "ath-1" });
+      resolveUpdate();
       await Promise.all([first, second]);
     });
 
     expect(mocks.update).toHaveBeenCalledTimes(1);
     expect(result.current.level).toBe("none");
+  });
+
+  it("does not clear the hold when an update succeeds but the saved profile lacks clearance", async () => {
+    mocks.filter.mockResolvedValue([
+      injury("Stop running until the injury settles.", hoursAgo(5)),
+    ]);
+    mocks.get.mockResolvedValue({ id: "ath-1", coach_hold_cleared_at: null });
+    mocks.update.mockResolvedValue({ id: "ath-1" });
+
+    const { result } = renderHook(() => useCoachInjurySignal("ath-1"), { wrapper });
+    await waitFor(() => expect(result.current.loading).toBe(false));
+
+    await act(async () => {
+      await expect(result.current.clearHold()).rejects.toThrow("could not be verified");
+    });
+
+    expect(mocks.get).toHaveBeenCalledTimes(2);
+    expect(result.current.level).toBe("hold");
+    expect(result.current.clearedAt).toBeNull();
+    expect(result.current.clearError).toMatch(/could not be verified/);
   });
 
   it("9. a failed load is reported as unavailable, never as clearance", async () => {
@@ -120,8 +146,12 @@ describe("useCoachInjurySignal", () => {
     mocks.filter.mockResolvedValue([
       injury("Stop running until the injury settles.", hoursAgo(5)),
     ]);
-    mocks.get.mockResolvedValue({ id: "ath-1", coach_hold_cleared_at: null });
-    mocks.update.mockResolvedValue({ id: "ath-1" });
+    let persisted = null;
+    mocks.get.mockImplementation(async () => ({ id: "ath-1", coach_hold_cleared_at: persisted }));
+    mocks.update.mockImplementation(async (_id, data) => {
+      persisted = data.coach_hold_cleared_at;
+      return { id: "ath-1" };
+    });
 
     const first = renderHook(() => useCoachInjurySignal("ath-1"), { wrapper });
     const second = renderHook(() => useCoachInjurySignal("ath-1"), { wrapper });
