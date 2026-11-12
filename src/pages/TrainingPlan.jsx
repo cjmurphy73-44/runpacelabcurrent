@@ -11,6 +11,7 @@ import TrainingPlanGenerator from "@/components/trainingplan/TrainingPlanGenerat
 import TrainingPlanTimeline from "@/components/trainingplan/TrainingPlanTimeline";
 import TrainingPlanWeeklyBreakdown from "@/components/trainingplan/TrainingPlanWeeklyBreakdown";
 import TrainingPlanExtras from "@/components/trainingplan/TrainingPlanExtras";
+import { planCommitBlockReason } from "@/lib/planCommitGate";
 
 export default function TrainingPlan() {
   const [loading, setLoading] = useState(true);
@@ -60,6 +61,8 @@ export default function TrainingPlan() {
 
   const handleCommit = async () => {
     if (!plan?.id) return;
+    const blocked = planCommitBlockReason(injury);
+    if (blocked) { setCommitError(blocked); return; }
     setCommitting(true);
     setCommitError(null);
     try {
@@ -128,6 +131,8 @@ export default function TrainingPlan() {
   }
 
   const isDraft = plan?.status === "draft";
+  const holdActive = injury.level === "hold";
+  const commitBlockReason = planCommitBlockReason(injury);
 
   return (
     <div className="space-y-6">
@@ -139,10 +144,13 @@ export default function TrainingPlan() {
             <span>This plan is a draft, nothing has been added to your calendar yet. Review the macrocycle below, then confirm to commit it.</span>
             <div className="flex gap-2 shrink-0">
               <Button variant="outline" size="sm" onClick={() => setShowGenerator(true)}>Discard & Regenerate</Button>
-              <Button size="sm" onClick={handleCommit} disabled={committing}>
+              <Button size="sm" onClick={handleCommit} disabled={committing || Boolean(commitBlockReason)}>
                 {committing ? "Committing..." : "Confirm & Commit to Calendar"}
               </Button>
             </div>
+            {commitBlockReason && (
+              <p role="status" className="text-xs text-muted-foreground w-full mt-2">{commitBlockReason}</p>
+            )}
             {commitError && (
               <p className="text-xs text-destructive w-full mt-2">{commitError}</p>
             )}
@@ -177,7 +185,12 @@ export default function TrainingPlan() {
             above is what applies today.
           </p>
         </div>
-        <TrainingPlanTimeline plan={plan} />
+        {holdActive && (
+          <p role="status" className="rounded-md border border-warning/30 bg-warning/10 p-3 text-sm font-medium">
+            Historical plan only — running sessions and progression targets are paused while the coach hold remains active. Week targets are not instructions to resume running or guarantees of recovery.
+          </p>
+        )}
+        <TrainingPlanTimeline plan={plan} holdActive={holdActive} />
         <TrainingPlanWeeklyBreakdown weeklyPlans={plan.weekly_plans || []} />
         <TrainingPlanExtras plan={plan} />
       </section>
