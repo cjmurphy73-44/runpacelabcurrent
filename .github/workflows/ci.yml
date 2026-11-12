@@ -6,13 +6,24 @@ on:
   pull_request:
     branches: [ main, master, dev ]
 
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   validate:
+    name: validate
     runs-on: ubuntu-latest
+    timeout-minutes: 20
 
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
+        with:
+          persist-credentials: false
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -27,4 +38,16 @@ jobs:
         run: npm run typecheck
 
       - name: Run Test Suite
-        run: npm test
+        run: npm run test:ci
+
+      - name: Build production frontend
+        run: npm run build
+
+      - name: Verify release bundle contains no source maps
+        shell: bash
+        run: |
+          if find dist -type f -name '*.map' -print -quit | grep -q .; then
+            echo 'Release bundle contains source maps; aborting.'
+            exit 1
+          fi
+          echo 'No source maps in release bundle.'
