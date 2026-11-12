@@ -603,8 +603,17 @@ Deno.serve(async (req) => {
     }
 
     if (sessionsToCreate.length === 0) {
-      // Every row was invalid/duplicate/unparseable — a normal outcome of a batch import, not a bad request.
-      return Response.json({ success: true, created_count: 0, errors });
+      // Duplicates are expected skips; invalid/unparseable inputs are failures.
+      const duplicate_count = errors.filter((e) => /^Skipped duplicate workout/.test(e.error || '')).length;
+      const failed_count = errors.length - duplicate_count;
+      return Response.json({
+        success: failed_count === 0,
+        outcome: failed_count > 0 ? 'failed' : 'skipped',
+        created_count: 0,
+        duplicate_count,
+        failed_count,
+        errors,
+      });
     }
 
     const createdSessions = [];
@@ -622,7 +631,15 @@ Deno.serve(async (req) => {
     }
 
     if (createdSessions.length === 0) {
-      return Response.json({ success: true, created_count: 0, errors });
+      const duplicate_count = errors.filter((e) => /^Skipped duplicate workout/.test(e.error || '')).length;
+      return Response.json({
+        success: false,
+        outcome: 'failed',
+        created_count: 0,
+        duplicate_count,
+        failed_count: errors.length - duplicate_count,
+        errors,
+      });
     }
 
     // New ingestion model: raw files are simply appended to the master WorkoutSession log.
@@ -630,11 +647,18 @@ Deno.serve(async (req) => {
     // calculations — is run separately/on-demand against this log, not inline during the bulk
     // import. This keeps the batch resilient and free of the timeout/sequencing complications
     // that arose when coupling ingest to the recompute pipeline.
+    const duplicate_count = errors.filter((e) => /^Skipped duplicate workout/.test(e.error || '')).length;
+    const failed_count = errors.length - duplicate_count;
     return Response.json({
-      success: true,
+      // Never claim a completely successful import if any input failed to persist.
+      // Partial batches keep saved sessions and disclose failures for safe retries.
+      success: failed_count === 0,
+      outcome: failed_count > 0 ? 'partial' : 'completed',
       successCount: createdSessions.length,
-      errorCount: errors.length,
+      errorCount: failed_count,
       created_count: createdSessions.length,
+      duplicate_count,
+      failed_count,
       affected_dates: [...new Set(createdSessions.map((s) => s.date))],
       errors,
     });
