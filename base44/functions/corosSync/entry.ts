@@ -11,6 +11,7 @@ import { constantTimeEqual } from '../../shared/crypto.ts';
 import { getSyncLookbackDays } from '../../shared/syncLookback.ts';
 import { parseFitWithLaps, summarizeStream } from '../../shared/workoutParsers.ts';
 import { isUsableTelemetry, storageStream, MAX_STREAM_SAMPLES } from '../../shared/streamValidity.ts';
+import { persistCorosBatches } from '../../shared/corosBatchPersistence.ts';
 import {
   corosAccessToken, fetchWithTimeout, mcpPost, mcpToolCall,
   downloadCorosFit, queryCorosRecords,
@@ -511,7 +512,7 @@ function mapRecord(a: any, athlete: any) {
 
 // Service-role core: pulls 90 days of sport records for one athlete. Shared by the
 // user-scoped on-demand sync and the scheduled sync_all loop.
-async function syncHistoricalFor(athlete: any, accessToken: string, base44, lookbackDays = 90): Promise<{ imported: number; errors: number; records_found: number; duplicates: number }> {
+async function syncHistoricalFor(athlete: any, accessToken: string, base44, lookbackDays = 90): Promise<{ imported: number; errors: number; records_found: number; duplicates: number; summary_only: number; write_uncertain: number; error_messages: string[] }> {
   // End date is bumped +1 day so today's workout is always inside the window
   // regardless of the athlete's timezone — the server runs in UTC, and a morning
   // session in UTC+10 would otherwise fall on "yesterday" and be skipped.
@@ -565,23 +566,40 @@ async function syncHistoricalFor(athlete: any, accessToken: string, base44, look
   // that carries second-by-second telemetry, so it is fetched for every new session. When
   // no file exists the session is still created, summary-only, and stays out of zone
   // analytics because it has no stream.
-  if (toCreate.length) {
-    for (const payload of toCreate) {
-      const key = fileKeys.get(payload);
-      if (!key) continue;
-      try {
-        applyFitTelemetry(payload, await downloadCorosFit(accessToken, key.labelId, key.sportType), athlete);
-      } catch (e) { console.warn('COROS FIT ingest failed:', (e as Error).message); }
-    }
-    for (let i = 0; i < toCreate.length; i += 500) {
-      await base44.asServiceRole.entities.WorkoutSession.bulkCreate(toCreate.slice(i, i + 500));
+  let summary_only = 0;
+  const error_messages: string[] = [];
+  for (const payload of toCreate) {
+    const key = fileKeys.get(payload);
+    if (!key) { summary_only++; continue; }
+    try {
+      const fit = await downloadCorosFit(accessToken, key.labelId, key.sportType);
+      if (!applyFitTelemetry(payload, fit, athlete)) {
+        summary_only++;
+        error_messages.push('Original COROS FIT was unavailable or did not contain usable telemetry.');
+      }
+    } catch (e) {
+      summary_only++;
+      error_messages.push('Original COROS FIT retrieval failed; session retained as summary-only.');
+      console.warn('COROS FIT ingest failed:', (e as Error).message);
     }
   }
-  const dates = [...new Set(toCreate.map((s) => s.date))];
-  for (const d of dates) {
-    try { await base44.asServiceRole.functions.invoke('calculateDailyTRIMP', { athlete_id: athlete.id, date: d }); } catch { /* keep going */ }
+  const write = await persistCorosBatches(
+    toCreate,
+    (batch) => base44.asServiceRole.entities.WorkoutSession.bulkCreate(batch),
+  );
+  error_messages.push(...write.errors);
+  // Recompute load only for sessions the persistence API actually confirmed.
+  for (const d of write.persisted_dates) {
+    try { await base44.asServiceRole.functions.invoke('calculateDailyTRIMP', { athlete_id: athlete.id, date: d }); }
+    catch {
+      error_messages.push('Daily load recomputation failed; sessions remain saved.');
+    }
   }
-  return { imported: toCreate.length, errors, records_found: records.length, duplicates };
+  errors += write.failed + write.uncertain;
+  return {
+    imported: write.imported, errors, records_found: records.length, duplicates,
+    summary_only, write_uncertain: write.uncertain, error_messages,
+  };
 }
 
 async function handleSyncHistorical(base44) {
@@ -603,8 +621,12 @@ async function handleSyncHistorical(base44) {
   try {
     const lookbackDays = await getSyncLookbackDays(base44, user.id);
     const out = await syncHistoricalFor(athlete, accessToken, base44, lookbackDays);
-    await base44.asServiceRole.entities.CorosConnection.update(conn.id, { last_sync_at: new Date().toISOString(), last_error: '' });
-    return Response.json({ success: true, ...out });
+    const incomplete = out.errors > 0 || out.error_messages.length > 0;
+    await base44.asServiceRole.entities.CorosConnection.update(conn.id, {
+      last_sync_at: new Date().toISOString(),
+      last_error: incomplete ? 'COROS sync incomplete: check recording and write diagnostics.' : '',
+    });
+    return Response.json({ success: !incomplete, outcome: incomplete ? 'partial' : 'completed', ...out });
   } catch (e) {
     await base44.asServiceRole.entities.CorosConnection.update(conn.id, { last_error: e.message });
     return Response.json({ error: e.message }, { status: 502 });
@@ -809,7 +831,11 @@ async function handleSyncAll(base44) {
     }
     try { r.historical = await syncHistoricalFor(athlete, accessToken, base44); } catch (e) { r.historical_error = e.message; }
     try { r.recovery = await syncRecoveryFor(athlete, accessToken, base44); } catch (e) { r.recovery_error = e.message; }
-    const errMsg = [r.historical_error, r.recovery_error].filter(Boolean).join('; ');
+    const errMsg = [
+      r.historical_error, r.recovery_error,
+      r.historical?.errors || r.historical?.error_messages?.length ? 'Historical sync incomplete' : null,
+      r.recovery?.errors || r.recovery?.toolErrors?.length ? 'Recovery sync incomplete' : null,
+    ].filter(Boolean).join('; ');
     await base44.asServiceRole.entities.CorosConnection.update(conn.id, {
       last_sync_at: new Date().toISOString(),
       last_error: errMsg || '',
