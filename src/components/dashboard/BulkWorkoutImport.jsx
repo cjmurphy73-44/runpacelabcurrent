@@ -1,4 +1,5 @@
 import React, { useRef, useState } from "react";
+import { summarizeBulkIngestResponse } from "@/lib/bulkIngestOutcome";
 import { base44 } from "@/api/base44Client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -59,16 +60,11 @@ export default function BulkWorkoutImport({ athleteId, onUploaded }) {
           fileEntries.push({ file_url, file_name: f.name, sport });
         }
         const res = await base44.functions.invoke("bulkIngestWorkouts", { athlete_id: athleteId, files: fileEntries });
-        const data = res?.data || {};
-        // Partial responses can contain real persisted sessions even when success is false.
-        // Always keep the server's verified created count and surface every row error.
-        createdCount += Number(data.created_count) || 0;
-        duplicateCount += Number(data.duplicate_count) || 0;
-        const rowErrors = Array.isArray(data.errors) ? data.errors : [];
-        allErrors.push(...rowErrors.filter((item) => !/^Skipped duplicate workout/.test(item?.error || "")));
-        if (data.success === false && rowErrors.length === 0) {
-          allErrors.push({ file_name: `Batch ${b + 1}`, error: data.error || "Batch failed — verify saved workouts before retrying." });
-        }
+        const outcome = summarizeBulkIngestResponse(res?.data);
+        // A failed batch can still have successfully persisted sessions.
+        createdCount += outcome.created;
+        duplicateCount += outcome.duplicates;
+        allErrors.push(...outcome.failures);
       } catch (err) {
         allErrors.push({ file_name: `Batch ${b + 1}`, error: err.message });
       }
