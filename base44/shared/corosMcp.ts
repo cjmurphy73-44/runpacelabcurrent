@@ -14,6 +14,8 @@
 import { env } from './oauth.ts';
 import { parseFitWithLaps } from './workoutParsers.ts';
 import { assertSafeFileUrl } from './urlGuard.ts';
+import { fitUrlsFromText } from './corosFitUrls.ts';
+export { fitUrlsFromText } from './corosFitUrls.ts';
 
 export const COROS_MCP_RESOURCE = 'https://mcpus.coros.com/mcp';
 export const COROS_TOKEN_ENDPOINT = 'https://mcpus.coros.com/oauth2/token';
@@ -209,11 +211,6 @@ export async function queryCorosRecords(accessToken: string, startDate: string, 
 
 // The download-URL tool answers with a short text list: file name on one line, https URL
 // on the next. Only the https URLs on COROS storage are used.
-export function fitUrlsFromText(text: string): string[] {
-  if (!text || typeof text !== 'string') return [];
-  return [...text.matchAll(/https:\/\/[^\s"')]+\.fit/gi)].map((m) => m[0]);
-}
-
 // Download and parse one activity's original FIT file. Returns null when COROS has no
 // file for the activity or the file does not decode — the caller then keeps the summary.
 export async function downloadCorosFit(accessToken: string, labelId: string | number, sportType: number | string | null): Promise<{ fileType: string; stream: any[]; laps: any[] } | null> {
