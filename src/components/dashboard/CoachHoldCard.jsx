@@ -30,11 +30,19 @@ export default function CoachHoldCard({ injury, swappedLabel = null, compact = f
   const evidence = (injury.evidence || []).slice(0, compact ? 1 : 2);
 
   const handleClear = async () => {
-    await injury.clearHold();
-    toast({
-      title: "Coach hold cleared",
-      description: "Running is back on. Your plan returns to its prescribed sessions.",
-    });
+    try {
+      await injury.clearHold();
+      toast({
+        title: "Coach hold cleared",
+        description: "The recorded hold was cleared. Review your plan and current symptoms before training.",
+      });
+    } catch {
+      toast({
+        title: "Could not clear coach hold",
+        description: "The hold remains in place. Please try again or contact your coach.",
+        variant: "destructive",
+      });
+    }
   };
 
   return (
