@@ -2,6 +2,7 @@ import React from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import WorkoutDetailModal from "@/components/workout/WorkoutDetailModal";
+import { workoutLoadPresentation } from "@/lib/workoutLoadPresentation";
 
 export default function RecentWorkouts({ workouts, athlete, onChanged }) {
   return (
@@ -20,7 +21,10 @@ export default function RecentWorkouts({ workouts, athlete, onChanged }) {
                     {w.duration_minutes ? `${w.duration_minutes} min` : ""} {w.distance_km ? `· ${w.distance_km} km` : ""} {w.avg_hr ? `· ${w.avg_hr} bpm avg` : ""}
                   </p>
                 </div>
-                <p className="text-sm font-heading font-semibold">{Math.round(w.session_trimp || 0)} TRIMP</p>
+                <div className="min-w-[110px] text-right">
+                  <p className="text-sm font-heading font-semibold">{workoutLoadPresentation(w).amount}</p>
+                  <p className="text-[11px] text-muted-foreground">{workoutLoadPresentation(w).label}</p>
+                </div>
               </div>
             </WorkoutDetailModal>
           ))
