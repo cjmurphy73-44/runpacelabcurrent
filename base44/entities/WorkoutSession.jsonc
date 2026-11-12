@@ -58,6 +58,14 @@
       "minimum": 0,
       "description": "Average cadence"
     },
+    "source_provider": {
+      "type": "string",
+      "description": "Optional originating wearable provider for idempotent import; never contains OAuth tokens."
+    },
+    "provider_activity_id": {
+      "type": "string",
+      "description": "Opaque provider-scoped activity identifier. COROS uses SportType:LabelId to distinguish same-day workouts."
+    },
     "source_format": {
       "type": "string",
       "enum": [
