@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Sparkles, RefreshCw } from "lucide-react";
+import { Sparkles, RefreshCw, ChevronDown, ChevronUp } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import { useFitness } from "@/context/FitnessContext";
 import { useServices } from "@/services/providers/ServiceContext";
@@ -96,6 +96,7 @@ export default function CoachBriefing({ athlete }) {
   const [briefing, setBriefing] = useState(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState(null);
+  const [detailsOpen, setDetailsOpen] = useState(false);
   const ranSignature = useRef("");
 
   const payload = useMemo(() => buildPayload(athlete, workoutSessions, dailyMetrics), [athlete, workoutSessions, dailyMetrics]);
@@ -183,9 +184,22 @@ ${JSON.stringify(payload)}`;
           </div>
         ) : briefing ? (
           <>
-            <div className="prose prose-sm dark:prose-invert max-w-none text-sm leading-relaxed">
+            <div className={`prose prose-sm dark:prose-invert max-w-none text-sm leading-relaxed ${detailsOpen ? "" : "line-clamp-3"}`}>
               <ReactMarkdown>{briefing.assessment}</ReactMarkdown>
             </div>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="min-h-11 w-full justify-center gap-2 sm:w-auto"
+              aria-expanded={detailsOpen}
+              aria-controls="coach-briefing-details"
+              onClick={() => setDetailsOpen((open) => !open)}
+            >
+              {detailsOpen ? "Show less" : "Read full briefing"}
+              {detailsOpen ? <ChevronUp className="h-4 w-4" aria-hidden="true" /> : <ChevronDown className="h-4 w-4" aria-hidden="true" />}
+            </Button>
+            <div id="coach-briefing-details" hidden={!detailsOpen}>
             {Array.isArray(briefing.highlights) && briefing.highlights.length > 0 && (
               <ul className="space-y-2">
                 {briefing.highlights.map((h, i) => {
@@ -204,6 +218,7 @@ ${JSON.stringify(payload)}`;
                 })}
               </ul>
             )}
+            </div>
           </>
         ) : null}
       </CardContent>
