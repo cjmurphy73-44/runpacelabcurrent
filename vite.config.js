@@ -10,6 +10,7 @@ export default defineConfig({
     }
   },
   build: {
+    sourcemap: false,
     rollupOptions: {
       // Externalize base44 runtime so Vite doesn't look for it locally
       external: ['@base44/runtime']
