@@ -11,7 +11,7 @@ const BATCH_SIZE = 5;
 
 function isSupportedFile(name) {
   const lower = name.toLowerCase();
-  return lower.endsWith(".fit") || lower.endsWith(".csv") || lower.endsWith(".gpx") || lower.endsWith(".tcx");
+  return lower.endsWith(".fit") || lower.endsWith(".csv");
 }
 
 export default function BulkWorkoutImport({ athleteId, onUploaded }) {
@@ -59,13 +59,15 @@ export default function BulkWorkoutImport({ athleteId, onUploaded }) {
           fileEntries.push({ file_url, file_name: f.name, sport });
         }
         const res = await base44.functions.invoke("bulkIngestWorkouts", { athlete_id: athleteId, files: fileEntries });
-        const data = res.data;
-        if (data?.success) {
-          createdCount += data.created_count || 0;
-          duplicateCount += data.duplicate_count || 0;
-          if (data.errors) allErrors.push(...data.errors);
-        } else {
-          allErrors.push({ file_name: `Batch ${b + 1}`, error: data?.error || "Batch execution failed" });
+        const data = res?.data || {};
+        // Partial responses can contain real persisted sessions even when success is false.
+        // Always keep the server's verified created count and surface every row error.
+        createdCount += Number(data.created_count) || 0;
+        duplicateCount += Number(data.duplicate_count) || 0;
+        const rowErrors = Array.isArray(data.errors) ? data.errors : [];
+        allErrors.push(...rowErrors.filter((item) => !/^Skipped duplicate workout/.test(item?.error || "")));
+        if (data.success === false && rowErrors.length === 0) {
+          allErrors.push({ file_name: `Batch ${b + 1}`, error: data.error || "Batch failed — verify saved workouts before retrying." });
         }
       } catch (err) {
         allErrors.push({ file_name: `Batch ${b + 1}`, error: err.message });
@@ -80,12 +82,12 @@ export default function BulkWorkoutImport({ athleteId, onUploaded }) {
     });
 
     setStatus({
-      type: allErrors.length > 0 ? "warning" : "success",
-      message: `Batch ingestion completed: ${createdCount} created, ${duplicateCount} duplicates skipped, ${allErrors.length} errors.`,
+      type: allErrors.length > 0 ? (createdCount > 0 ? "warning" : "error") : "success",
+      message: `${allErrors.length ? "Import needs review" : "Import completed"}: ${createdCount} created, ${duplicateCount} duplicates skipped, ${allErrors.length} failed. ${allErrors.length ? "Check your workout log before retrying to avoid duplicate sessions." : ""}`,
     });
 
-    setFileList([]);
-    if (onUploaded) onUploaded();
+    if (!allErrors.length) setFileList([]);
+    if (createdCount > 0 && onUploaded) onUploaded();
     setBusy(false);
     setProgress(null);
   };
@@ -104,11 +106,11 @@ export default function BulkWorkoutImport({ athleteId, onUploaded }) {
       <CardContent>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <Label className="text-xs font-semibold">Select Activity Files (.fit, .gpx, .tcx, .csv)</Label>
+            <Label className="text-xs font-semibold">Select Activity Files (.fit, .csv)</Label>
             <div className="mt-1.5 flex flex-col gap-2">
               <Input
                 type="file"
-                accept=".fit,.gpx,.tcx,.csv,application/vnd.ant.fit,application/octet-stream"
+                accept=".fit,.csv,application/vnd.ant.fit,application/octet-stream"
                 multiple
                 onChange={(e) => addFiles(Array.from(e.target.files || []))}
                 className="text-xs"
@@ -155,12 +157,12 @@ export default function BulkWorkoutImport({ athleteId, onUploaded }) {
             </Select>
           </div>
 
-          <Button type="submit" disabled={busy || fileList.length === 0} className="w-full text-xs h-9">
+          <Button type="submit" disabled={busy || fileList.length === 0} className="w-full text-xs min-h-[44px]">
             {buttonLabel}
           </Button>
 
           {status && (
-            <div className={`p-3 rounded-md text-xs border ${
+            <div role="status" aria-live="polite" className={`p-3 rounded-md text-xs border ${
               status.type === "error"
                 ? "bg-destructive/10 border-destructive/30 text-destructive"
                 : status.type === "warning"
