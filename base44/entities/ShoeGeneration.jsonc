@@ -1,4 +1,5 @@
 {
+  "name": "ShoeGeneration",
   "$id": "ShoeGeneration",
   "type": "object",
   "properties": {
