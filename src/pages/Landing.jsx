@@ -1,5 +1,5 @@
 import React from "react";
-import { Link } from "react-router-dom";
+import { Link, Navigate } from "react-router-dom";
 import { useAuth } from "@/lib/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -40,28 +40,28 @@ const PILLARS = [
   {
     icon: Activity,
     title: "Architected by athletes who race",
-    body: "The algorithms are written, tested, and validated by runners who train at threshold and know what a hard week feels like. The model is calibrated against real race results, not theoretical midpoints. When the plan says back off, it's because your body said it first.",
+    body: "The training models are built around explicit physiological assumptions and measurable workout data. We expose the numbers behind each recommendation so athletes and coaches can evaluate the reasoning rather than relying on a black box.",
   },
 ];
 
 const FEATURES = [
   { icon: BrainCircuit, title: "Adaptive physiology engine", body: "Daily CTL/ATL/TSB modeling, HR-based TRIMP, and VDOT calibration that reshapes your plan as you train." },
-  { icon: Watch, title: "Wearable sync", body: "Automatic workout and recovery sync from COROS today, plus FIT, TCX, or CSV upload from any watch. Recovery sync from Oura, WHOOP, Polar, Withings, and Fitbit is ready once credentials are configured. Multi-file reconciliation unifies multiple files into one master record." },
+  { icon: Watch, title: "Wearable connections and file import", body: "Check your COROS connection and sync status, or upload supported FIT, TCX and CSV files. Other direct connections depend on provider setup and availability. A listed device is not a confirmed active connection." },
   { icon: Sparkles, title: "Modest, grounded AI", body: "Post-workout insights, micro-adjustments, and race strategy synthesised from your real telemetry, built from your own training history." },
   { icon: Users, title: "Coach workspace", body: "Manage a roster, compare athletes side-by-side, and assign plans. Built for squads and individual coaches alike." },
   { icon: ShieldCheck, title: "Injury-aware loading", body: "Your injury history shapes prehab routines and load caps so the plan pushes you forward without breaking you." },
-  { icon: Dumbbell, title: "Structured workout export", body: "Send .fit workouts straight to your watch so prescribed intervals land on your wrist, ready to run." },
+  { icon: Dumbbell, title: "Structured workout export", body: "Build structured sessions and export compatible workout files where supported. Direct watch delivery depends on the connected provider and is not guaranteed." },
 ];
 
 const STEPS = [
-  { icon: Watch, title: "Connect your wearables", body: "Sync COROS automatically today, or upload FIT, TCX, and CSV from any watch. Recovery sync from Oura, WHOOP, Polar, Withings, and Fitbit is ready once credentials are configured." },
+  { icon: Watch, title: "Bring in your data", body: "Check available connections, upload a supported workout file, or log a session manually. Check each provider's status before relying on automatic sync." },
   { icon: BrainCircuit, title: "We model your physiology", body: "Daily CTL/ATL/TSB, HR-based TRIMP, and VDOT calibration build a living picture of your fitness and fatigue, with the specificity to distinguish a threshold session from a recovery jog." },
   { icon: Sparkles, title: "Get an adaptive plan that reads your body", body: "Your plan reshapes every session as you train. When recovery is low, tomorrow eases. When you're ready to absorb work, it pushes, grounded in your numbers, not a static checklist." },
 ];
 
 const FAQ = [
   { q: "Do I need a paid plan to try it?", a: "No. The free tier gives you the dashboard, physiology lab, wearable sync with 90 days of history, 10 file imports a day, and 20 AI coach messages a week. Upgrade only when you want full history, adaptive re-planning, and structured workout export." },
-  { q: "Which wearables are supported?", a: "COROS has direct automated sync today (workouts + recovery). Recovery sync from Oura, WHOOP, Polar, Withings, and Fitbit is built and ready once the team adds each provider's credentials. For Garmin and Strava, upload FIT, TCX, or CSV files from any device, or use a COROS watch as a bridge. Multi-file reconciliation unifies them into one master record." },
+  { q: "Which wearables are supported?", a: "COROS has a connection flow; check its current connection and sync status in Settings. Garmin and other recovery connections depend on provider setup and availability. Direct Strava sync is not available yet. You can upload supported FIT, TCX and CSV workout files or log workouts and recovery manually." },
   { q: "Is this only for runners?", a: "No. TrainPaceLab is multi-sport, running, cycling, swimming, triathlon, and strength all feed the same physiology model so your training load reflects everything you do." },
   { q: "How does the physiology model work?", a: "Standard platforms model fitness as a single exponential curve of past mileage. TrainPaceLab distinguishes the metabolic and autonomic cost of different session types, threshold work, aerobic volume, VO2max intervals, so your training load reflects what your body actually experienced, not just how many minutes you ran." },
   { q: "What does the AI actually do?", a: "It parses messy multi-source data, generates post-workout insights, suggests micro-adjustments, and builds race strategy, all grounded in your real telemetry. Where the math is deterministic, the math runs, and language is used only to summarise the result. Where language adds value, the AI synthesises." },
@@ -69,8 +69,20 @@ const FAQ = [
 ];
 
 export default function Landing() {
-  const { user } = useAuth();
+  const { user, isAuthenticated, authChecked, isLoadingAuth } = useAuth();
   const cta = user ? { to: "/app", label: "Go to dashboard" } : { to: "/register", label: "Get started free" };
+
+  if (!authChecked || isLoadingAuth) {
+    return (
+      <div role="status" className="min-h-screen flex items-center justify-center text-muted-foreground">
+        Checking your session…
+      </div>
+    );
+  }
+
+  if (isAuthenticated && user) {
+    return <Navigate to="/app" replace />;
+  }
 
   return (
     <div className="min-h-screen bg-background text-foreground">
@@ -81,17 +93,19 @@ export default function Landing() {
             <Activity className="w-5 h-5 text-primary" />
             <span>TrainPaceLab</span>
           </Link>
-          <div className="flex items-center gap-1 sm:gap-2">
+          <nav aria-label="Main navigation" className="flex items-center gap-1 sm:gap-2">
+            <a href="#how-it-works" className="hidden md:inline-flex items-center min-h-11 px-3 text-sm text-muted-foreground hover:text-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary">How it works</a>
+            <a href="#pricing" className="hidden md:inline-flex items-center min-h-11 px-3 text-sm text-muted-foreground hover:text-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary">Pricing</a>
             <ThemeToggle />
             {!user && (
-              <Button asChild variant="ghost" size="sm" className="hidden sm:inline-flex text-muted-foreground hover:text-foreground">
+              <Button asChild variant="ghost" size="sm" className="inline-flex min-h-11 px-2 sm:px-3 text-muted-foreground hover:text-foreground">
                 <Link to="/login">Sign in</Link>
               </Button>
             )}
-            <Button asChild size="sm" className="font-bold">
+            <Button asChild size="sm" className="font-bold min-h-11 px-3 sm:px-4">
               <Link to={cta.to}>{cta.label}</Link>
             </Button>
-          </div>
+          </nav>
         </div>
       </header>
 
@@ -112,15 +126,16 @@ export default function Landing() {
                 then reshapes your plan around your real recovery, so you arrive at your race fit, fresh,
                 and healthy.
               </p>
-              <div className="mt-8">
-                <Button asChild size="lg" className="gap-2">
+              <div className="mt-8 flex flex-wrap items-center gap-3">
+                <Button asChild size="lg" className="gap-2 min-h-11">
                   <Link to={cta.to}>{cta.label}<ArrowRight className="w-4 h-4" /></Link>
                 </Button>
+                <a href="#how-it-works" className="inline-flex min-h-11 items-center rounded-md px-3 text-sm font-semibold text-foreground underline-offset-4 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary">See how it works</a>
               </div>
               <div className="mt-6 flex flex-wrap items-center gap-x-5 gap-y-2 text-xs font-medium text-muted-foreground">
                 <span className="flex items-center gap-1.5"><Ban className="w-3.5 h-3.5 text-primary" />No templated plans</span>
                 <span className="flex items-center gap-1.5"><Ban className="w-3.5 h-3.5 text-primary" />No black-box advice</span>
-                <span className="flex items-center gap-1.5"><Ban className="w-3.5 h-3.5 text-primary" />No data mining</span>
+                <span className="flex items-center gap-1.5"><Ban className="w-3.5 h-3.5 text-primary" />Your training data stays yours</span>
               </div>
             </div>
             <div className="relative">
@@ -131,7 +146,7 @@ export default function Landing() {
       </section>
 
       {/* Three pillars */}
-      <section className="border-y border-border bg-muted/40">
+      <section id="how-it-works" className="scroll-mt-24 border-y border-border bg-muted/40">
         <div className="max-w-6xl mx-auto px-4 py-16 sm:py-20">
           <div className="mb-12 max-w-2xl">
             <h2 className="font-heading text-3xl sm:text-4xl font-bold">A different kind of training platform</h2>
@@ -193,7 +208,7 @@ export default function Landing() {
             ))}
             <li>
               <Button asChild variant="outline" className="mt-2 gap-2">
-                <Link to="/app">Explore the dashboard<ArrowRight className="w-4 h-4" /></Link>
+                <Link to={cta.to}>{user ? "Explore your dashboard" : "Create an account to explore"}<ArrowRight className="w-4 h-4" /></Link>
               </Button>
             </li>
           </ul>
@@ -317,7 +332,7 @@ export default function Landing() {
       </section>
 
       {/* Pricing summary */}
-      <section className="border-t border-border">
+      <section id="pricing" className="scroll-mt-24 border-t border-border">
         <div className="max-w-6xl mx-auto px-4 py-16">
           <div className="mb-10">
             <h2 className="font-heading text-3xl sm:text-4xl font-bold">Simple pricing</h2>
@@ -377,7 +392,7 @@ export default function Landing() {
       <section className="bg-primary">
         <div className="max-w-6xl mx-auto px-4 py-14 text-center text-primary-foreground">
           <h2 className="font-heading text-3xl font-bold">Ready to train smarter?</h2>
-          <p className="mt-2 text-primary-foreground/85">Connect your wearables and get your first adaptive plan in minutes.</p>
+          <p className="mt-2 text-primary-foreground/85">Start with a supported workout upload or manual session. Automatic wearable sync depends on your provider's connection status.</p>
           <Button asChild size="lg" variant="secondary" className="mt-6 gap-2">
             <Link to={cta.label === "Go to dashboard" ? "/app" : "/register"}>{cta.label}<ArrowRight className="w-4 h-4" /></Link>
           </Button>
