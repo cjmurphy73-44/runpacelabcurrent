@@ -2,7 +2,7 @@
 
 Use this repository to run and edit the app locally, then publish changes back through Base44.
 
-Any change pushed to the repo will also be reflected in the Base44 Builder.
+**Source and publishing are separate.** GitHub `main` is protected by PRs and CI, while this Base44 app's two-way sync attempts direct pushes to `main`. That push is currently blocked. Do not assume a GitHub merge reached the Builder or published app. See [atomic backlog](docs/MVP_ATOMIC_BACKLOG.md) and [release issue #24](https://github.com/cjmurphy73-44/runpacelabcurrent/issues/24).
 
 ## Prerequisites
 
@@ -62,7 +62,7 @@ When you use `base44 dev`, the command injects the local Base44 values for you, 
 
 ## Publish Your Changes
 
-After pushing your changes to git, open the Base44 dashboard and publish the app:
+**Publishing is currently blocked by the Base44 checkpoint/source SHA mismatch.** Do not deploy a checkpoint carrying stale `3f386d4` just because a newer GitHub PR merged. Do not bypass protected `main` to make the Builder sync green. Once the integration is repaired, verify the source SHA, checkpoint and staging preview before using Publish in the Base44 dashboard:
 
 ```bash
 base44 dashboard open
