@@ -15,7 +15,7 @@ function phaseColor(phase) {
   return PHASE_COLORS[key] || "bg-muted-foreground/40";
 }
 
-export default function TrainingPlanTimeline({ plan }) {
+export default function TrainingPlanTimeline({ plan, holdActive = false }) {
   const [openWeek, setOpenWeek] = useState(null);
   const macrocycle = plan.macrocycle || [];
   const active = macrocycle.find((w) => w.week_number === openWeek);
@@ -28,6 +28,7 @@ export default function TrainingPlanTimeline({ plan }) {
       <Card>
         <CardHeader>
           <CardTitle className="text-xl font-heading">{plan.plan_title}</CardTitle>
+          {holdActive && <Badge variant="outline" className="w-fit">Archived targets · running paused</Badge>}
           <Badge variant="secondary" className="w-fit capitalize">{plan.tier} tier</Badge>
         </CardHeader>
         <CardContent>
@@ -68,10 +69,10 @@ export default function TrainingPlanTimeline({ plan }) {
 
           {milestones.length > 0 && (
             <div className="pt-2 border-t border-border">
-              <p className="text-xs text-muted-foreground mb-2">Goal Milestones</p>
+              <p className="text-xs text-muted-foreground mb-2">{holdActive ? "Historical goal milestones — not active running targets" : "Goal Milestones"}</p>
               <div className="flex flex-wrap gap-2">
                 {milestones.map((m, idx) => (
-                  <Badge key={idx} variant="outline" className="font-normal">
+                  <Badge key={idx} variant="outline" className={`font-normal ${holdActive ? "opacity-60" : ""}`}>
                     {m.metric}: {m.label} → {m.target}
                   </Badge>
                 ))}
