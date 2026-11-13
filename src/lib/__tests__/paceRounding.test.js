@@ -25,6 +25,17 @@ describe("workout pace display rounding", () => {
     expect(normalizedPacePower({ sport: "running", duration_minutes: 4.995, distance_km: 1 })).toBe("5:00 /km");
     expect(normalizedPacePower({ sport: "running", duration_seconds: 599.4, distance_km: 2 })).toBe("5:00 /km");
   });
+  it("never shows Infinity, NaN, or negative cycling speed", () => {
+    expect(normalizedPacePower({ sport: "cycling", duration_seconds: 1200, distance_km: -10 })).toBe("—");
+    expect(normalizedPacePower({ sport: "cycling", duration_seconds: -1200, distance_km: 10 })).toBe("—");
+    expect(normalizedPacePower({ sport: "cycling", duration_seconds: Number.NaN, distance_km: 10 })).toBe("—");
+    expect(normalizedPacePower({ sport: "cycling", duration_seconds: 1200, distance_km: Number.POSITIVE_INFINITY })).toBe("—");
+  });
+  it("rejects invalid measured power rather than displaying Infinity W", () => {
+    expect(normalizedPacePower({ sport: "cycling", avg_power: Number.POSITIVE_INFINITY })).toBe("—");
+    expect(normalizedPacePower({ sport: "cycling", avg_power: -200 })).toBe("—");
+    expect(normalizedPacePower({ sport: "cycling", avg_power: 220 })).toBe("220 W");
+  });
   it("leaves measured power and cycling speed output unchanged", () => {
     expect(normalizedPacePower({ sport: "cycling", avg_power: 220, duration_seconds: 1200, distance_km: 10 })).toBe("220 W");
     expect(normalizedPacePower({ sport: "cycling", duration_seconds: 1200, distance_km: 10 })).toBe("30.0 km/h");
