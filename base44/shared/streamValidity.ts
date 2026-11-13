@@ -27,10 +27,12 @@ export function isUsableTelemetry(stream, durationSeconds) {
   return withHr >= stream.length * 0.5 || withPower >= stream.length * 0.5;
 }
 
-// The persisted stream shape (WorkoutSession.streams). Power is used for analysis at
-// ingest time but is not part of the stored per-sample channels.
+// The persisted stream shape (WorkoutSession.streams). Preserve directly measured
+// power samples, including true zero-watt coasting, without inventing data where
+// the FIT/TCX recording provides no power channel.
 export function storageStream(stream) {
   return stream.map((p) => ({
     time: p.time, heart_rate: p.heart_rate, altitude: p.altitude, distance: p.distance, cadence: p.cadence, speed: p.speed,
+    power: typeof p.power === 'number' && Number.isFinite(p.power) && p.power >= 0 && p.power <= 2500 ? p.power : null,
   }));
 }
