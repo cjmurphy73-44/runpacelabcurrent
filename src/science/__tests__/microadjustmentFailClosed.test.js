@@ -21,6 +21,6 @@ describe('micro-adjustment endpoint fail-closed contract', () => {
   });
 
   it('cannot persist AI-proposed session changes or coach messages', () => {
-    expect(source).not.toMatch(/InvokeLLM|bulkUpdate|TrainingPlanSession\\.update|CoachMessage\\.create/);
+    expect(source).not.toMatch(/InvokeLLM|bulkUpdate|TrainingPlanSession\.update|CoachMessage\.create/);
   });
 });
