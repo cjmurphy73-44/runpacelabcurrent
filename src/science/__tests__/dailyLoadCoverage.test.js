@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { assessDailyLoadCoverage, verifiedDailyLoadForAdaptation } from '../dailyLoadCoverage';
+import { assessDailyLoadCoverage, verifiedDailyLoadForAdaptation, forecastVerifiedDailyLoad } from '../dailyLoadCoverage';
 
 describe('daily load provenance for adaptation', () => {
   const range = { startDate: '2026-11-01', endDate: '2026-11-03' };
@@ -45,5 +45,33 @@ describe('daily load provenance for adaptation', () => {
   it('rejects invalid calendar ranges rather than rolling dates over', () => {
     expect(assessDailyLoadCoverage({ startDate: '2026-02-30', endDate: '2026-03-02' }).reason).toBe('invalid_range');
     expect(assessDailyLoadCoverage({ startDate: '2026-11-04', endDate: '2026-11-03' }).complete).toBe(false);
+  });
+});
+
+describe('verified load forecast', () => {
+  const input = {
+    startDate: '2026-11-01', endDate: '2026-11-03',
+    sessions: [{ date: '2026-11-01', session_trimp: 40 }, { date: '2026-11-03', session_trimp: 60 }],
+    confirmedRestDates: ['2026-11-02'],
+  };
+
+  it('refuses projection with unknown history', () => {
+    const result = forecastVerifiedDailyLoad({ ...input, confirmedRestDates: [] });
+    expect(result).toMatchObject({ eligible: false, points: [], missingDates: ['2026-11-02'] });
+  });
+
+  it('produces a reproducible EWMA scenario with explicit future load', () => {
+    const result = forecastVerifiedDailyLoad(input, { daysAhead: 2, futureDailyLoads: [{ date: '2026-11-04', load: 80 }] });
+    expect(result.eligible).toBe(true);
+    expect(result.points.map(p => [p.date, p.dailyLoad, p.isProjected])).toEqual([
+      ['2026-11-01', 40, false], ['2026-11-02', 0, false], ['2026-11-03', 60, false],
+      ['2026-11-04', 80, true], ['2026-11-05', 0, true],
+    ]);
+    expect(result.points.every(p => Number.isFinite(p.ctl) && Number.isFinite(p.atl) && Number.isFinite(p.tsb))).toBe(true);
+  });
+
+  it('rejects invalid future load and horizon', () => {
+    expect(forecastVerifiedDailyLoad(input, { futureDailyLoads: [{ date: '2026-11-04', load: Infinity }] }).reason).toBe('invalid_planned_load');
+    expect(forecastVerifiedDailyLoad(input, { daysAhead: 366 }).reason).toBe('invalid_horizon_or_history');
   });
 });
