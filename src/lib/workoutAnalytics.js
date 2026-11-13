@@ -9,26 +9,28 @@ const ZONE_BOUNDARIES = [0, 0.6, 0.7, 0.8, 0.9, 2];
 // heart rate is never expanded into a synthetic distribution.
 export function computeHrZoneDistribution(workout, maxHr) {
   const seconds = [0, 0, 0, 0, 0];
-  if (!maxHr) return seconds.map(() => ({ pct: 0 }));
-
-  if (workout.streams && workout.streams.length > 1) {
-    for (let i = 1; i < workout.streams.length; i++) {
-      const pt = workout.streams[i];
-      const prev = workout.streams[i - 1];
-      const dt = Math.max((pt.time || 0) - (prev.time || 0), 1);
-      const pct = (pt.heart_rate || 0) / maxHr;
-      for (let z = 0; z < 5; z++) {
-        if (pct >= ZONE_BOUNDARIES[z] && pct < ZONE_BOUNDARIES[z + 1]) {
-          seconds[z] += dt;
-          break;
-        }
+  if (!Number.isFinite(Number(maxHr)) || Number(maxHr) <= 0 ||
+      !hasVerifiedStreams(workout)) return seconds.map(() => ({ pct: 0 }));
+  const stream = workout.streams;
+  for (let i = 1; i < stream.length; i++) {
+    const pt = stream[i], prev = stream[i - 1];
+    const dt = Number(pt.time) - Number(prev.time);
+    const hr = Number(pt.heart_rate);
+    // Never fill gaps with a previous HR, or infer zone distribution from
+    // session-average HR. Missing and implausible measurements stay missing.
+    if (!Number.isFinite(dt) || dt <= 0 || dt > 5 ||
+        pt.heart_rate == null || !Number.isFinite(hr) ||
+        hr < 30 || hr > 250) continue;
+    const pct = hr / Number(maxHr);
+    for (let z = 0; z < 5; z++) {
+      if (pct >= ZONE_BOUNDARIES[z] && pct < ZONE_BOUNDARIES[z + 1]) {
+        seconds[z] += dt;
+        break;
       }
     }
   }
-
   const total = seconds.reduce((a, b) => a + b, 0);
-  if (!total) return seconds.map(() => ({ pct: 0 }));
-  return seconds.map((s) => ({ pct: (s / total) * 100 }));
+  return seconds.map((count) => ({ pct: total ? (count / total) * 100 : 0 }));
 }
 
 // Keytel HR-based calorie estimate; falls back to a flat duration estimate
@@ -95,12 +97,15 @@ export function sessionZoneDistribution(workout, athlete) {
 
   const seconds = [0, 0, 0, 0, 0];
   const stream = workout.streams;
-  let last = null;
   for (let i = 1; i < stream.length; i++) {
-    const dt = Math.min(Math.max((stream[i].time || 0) - (stream[i - 1].time || 0), 0), 60);
-    const hr = stream[i].heart_rate || last;
-    if (dt && hr) seconds[zoneIndexForHr(hr, restHr, maxHr)] += dt;
-    if (stream[i].heart_rate) last = stream[i].heart_rate;
+    const dt = Number(stream[i].time) - Number(stream[i - 1].time);
+    const hr = Number(stream[i].heart_rate);
+    // Timestamp gaps and absent sensor values are not observed time-in-zone.
+    // Avoid truncating a 60s gap to 60s and treating it as measured data.
+    if (!Number.isFinite(dt) || dt <= 0 || dt > 5 ||
+        stream[i].heart_rate == null || !Number.isFinite(hr) ||
+        hr < 30 || hr > 250) continue;
+    seconds[zoneIndexForHr(hr, restHr, maxHr)] += dt;
   }
   if (seconds.some((s) => s > 0)) {
     return { zones: buildZones(seconds), method: "stream", bounds, totalSeconds: seconds.reduce((a, b) => a + b, 0) };
