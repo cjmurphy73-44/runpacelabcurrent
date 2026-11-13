@@ -1,13 +1,14 @@
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import { base44 } from "@/api/base44Client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import ZoneBadge from "@/components/ui/ZoneBadge";
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 import { useFitness } from "@/context/FitnessContext";
-import { CheckCircle2, Moon, AlertTriangle } from "lucide-react";
+import { CheckCircle2, Moon, AlertTriangle, RefreshCw } from "lucide-react";
 import moment from "moment";
 import { useCoachInjurySignal } from "@/hooks/useCoachInjurySignal";
 import CoachHoldCard from "@/components/dashboard/CoachHoldCard";
+import { Button } from "@/components/ui/button";
 
 function detectAnomaly(biometricTelemetry) {
   const sorted = [...(biometricTelemetry || [])].sort((a, b) => b.date.localeCompare(a.date));
@@ -23,18 +24,38 @@ export default function TodaySessionCard({ athleteId }) {
   const [session, setSession] = useState(undefined);
   const [plan, setPlan] = useState(null);
 
-  useEffect(() => {
-    if (!athleteId) return;
-    (async () => {
+  const [loadError, setLoadError] = useState(false);
+  const requestId = useRef(0);
+
+  const loadSession = useCallback(async () => {
+    const currentRequest = ++requestId.current;
+    setSession(undefined);
+    setPlan(null);
+    setLoadError(false);
+    if (!athleteId) {
+      setLoadError(true);
+      return;
+    }
+    try {
       const todayStr = moment().format("YYYY-MM-DD");
       const [sessions, plans] = await Promise.all([
         base44.entities.TrainingPlanSession.filter({ athlete_id: athleteId, date: todayStr }),
         base44.entities.TrainingPlan.filter({ athlete_id: athleteId, status: "active" }, "-created_date", 1),
       ]);
+      if (requestId.current !== currentRequest) return;
       setSession(sessions?.[0] || null);
       setPlan(plans?.[0] || null);
-    })();
+    } catch {
+      if (requestId.current !== currentRequest) return;
+      setLoadError(true);
+      setSession(null);
+    }
   }, [athleteId]);
+
+  useEffect(() => {
+    loadSession();
+    return () => { requestId.current += 1; };
+  }, [loadSession]);
 
   const anomaly = detectAnomaly(biometricTelemetry);
   const isRunning = session?.sport?.toLowerCase() === "running";
@@ -61,8 +82,16 @@ export default function TodaySessionCard({ athleteId }) {
           }
         />
 
-        {session === undefined ? (
-          <p className="text-sm text-muted-foreground">Loading...</p>
+        {loadError ? (
+          <div role="alert" className="space-y-3 rounded-md border border-border p-3">
+            <p className="text-sm font-medium">Today's session could not be loaded</p>
+            <p className="text-xs text-muted-foreground">Your training plan is unchanged. Check your connection and try again.</p>
+            <Button variant="outline" size="sm" className="min-h-[44px] gap-2" onClick={loadSession}>
+              <RefreshCw className="h-4 w-4" aria-hidden="true" /> Retry session
+            </Button>
+          </div>
+        ) : session === undefined ? (
+          <p className="text-sm text-muted-foreground" role="status">Loading today's session…</p>
         ) : session && !runOnHold ? (
           <div className="space-y-3">
             <div className="flex items-center gap-2 flex-wrap">
@@ -105,7 +134,7 @@ export default function TodaySessionCard({ athleteId }) {
           </div>
         ) : null}
 
-        {anomaly && (
+        {!loadError && anomaly && (
           <Alert variant="destructive">
             <AlertTriangle className="w-4 h-4" />
             <AlertTitle>Recovery Alert</AlertTitle>
@@ -115,7 +144,7 @@ export default function TodaySessionCard({ athleteId }) {
           </Alert>
         )}
 
-        {!anomaly && session && !runOnHold && (
+        {!loadError && !anomaly && session && !runOnHold && (
           <div className="flex items-start gap-1.5 text-xs text-muted-foreground">
             <CheckCircle2 className="w-3.5 h-3.5 mt-0.5 shrink-0 text-muted-foreground" aria-hidden="true" />
             <span>No low-HRV alert detected from available readings. This does not confirm recovery or clearance to train; consider your symptoms and current coach guidance.</span>
