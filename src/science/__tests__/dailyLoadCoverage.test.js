@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { assessDailyLoadCoverage, verifiedDailyLoadForAdaptation, forecastVerifiedDailyLoad } from '../dailyLoadCoverage';
 
 describe('daily load provenance for adaptation', () => {
-  const range = { startDate: '2026-11-01', endDate: '2026-11-03' };
+  const range = { startDate: '2026-11-01', endDate: '2026-11-03', loadMetric: 'trimp' };
 
   it('blocks missing days, even when a provider sync was observed', () => {
     const result = assessDailyLoadCoverage({
@@ -39,7 +39,7 @@ describe('daily load provenance for adaptation', () => {
     });
     expect(result.complete).toBe(false);
     expect(result.days[0]).toMatchObject({ status: 'invalid_load', load: null });
-    expect(result.missingDates).toEqual(['2026-11-01']);
+    expect(result.missingDates).toEqual(['2026-11-01', '2026-11-03']);
   });
 
   it('rejects invalid calendar ranges rather than rolling dates over', () => {
@@ -50,7 +50,7 @@ describe('daily load provenance for adaptation', () => {
 
 describe('verified load forecast', () => {
   const input = {
-    startDate: '2026-11-01', endDate: '2026-11-03',
+    startDate: '2026-11-01', endDate: '2026-11-03', loadMetric: 'trimp',
     sessions: [{ date: '2026-11-01', session_trimp: 40 }, { date: '2026-11-03', session_trimp: 60 }],
     confirmedRestDates: ['2026-11-02'],
   };
@@ -75,5 +75,38 @@ describe('verified load forecast', () => {
     expect(forecastVerifiedDailyLoad(input, { daysAhead: 366 }).reason).toBe('invalid_horizon_or_history');
     expect(forecastVerifiedDailyLoad(input, { daysAhead: 2, futureDailyLoads: [{ date: '2026-11-03', load: 5 }] }).reason).toBe('invalid_planned_load');
     expect(forecastVerifiedDailyLoad(input, { daysAhead: 2, futureDailyLoads: [{ date: '2026-11-06', load: 5 }] }).reason).toBe('invalid_planned_load');
+  });
+});
+
+describe('load metric isolation', () => {
+  const base = {
+    startDate: '2026-11-01', endDate: '2026-11-02',
+    sessions: [
+      { date: '2026-11-01', session_trimp: 35, session_tss: 70 },
+      { date: '2026-11-02', session_tss: 45 },
+    ],
+  };
+
+  it('refuses implicit TRIMP/TSS selection', () => {
+    expect(assessDailyLoadCoverage(base).reason).toBe('load_metric_required');
+    expect(forecastVerifiedDailyLoad(base).eligible).toBe(false);
+  });
+
+  it('does not silently substitute TSS when TRIMP is absent', () => {
+    const result = assessDailyLoadCoverage({ ...base, loadMetric: 'trimp' });
+    expect(result.complete).toBe(false);
+    expect(result.missingDates).toEqual(['2026-11-02']);
+    expect(result.days[0].load).toBe(35);
+  });
+
+  it('calculates an explicitly TSS-only history', () => {
+    const result = forecastVerifiedDailyLoad({ ...base, loadMetric: 'tss' }, { daysAhead: 1 });
+    expect(result.eligible).toBe(true);
+    expect(result.loadMetric).toBe('tss');
+    expect(result.points.map(p => p.dailyLoad)).toEqual([70, 45, 0]);
+  });
+
+  it('rejects invalid provenance collections', () => {
+    expect(assessDailyLoadCoverage({ ...base, loadMetric: 'tss', sessions: null }).reason).toBe('invalid_evidence');
   });
 });
