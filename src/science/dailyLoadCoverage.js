@@ -64,3 +64,40 @@ export function verifiedDailyLoadForAdaptation(input) {
   if (!coverage.complete) return { eligible: false, reason: coverage.reason, dailyLoads: [], missingDates: coverage.missingDates };
   return { eligible: true, reason: null, dailyLoads: coverage.days.map(({ date, load }) => ({ date, load })), missingDates: [] };
 }
+
+
+// Forward modelling must consume verified calendar coverage, not raw session lists.
+// Explicit future loads must be provided in the SAME load unit as historical days.
+// An absent planned day is a zero-load scenario assumption, not a confirmed rest day.
+export function forecastVerifiedDailyLoad(input, { futureDailyLoads = [], daysAhead = 7 } = {}) {
+  const verified = verifiedDailyLoadForAdaptation(input);
+  if (!verified.eligible) return { eligible: false, reason: verified.reason, points: [], missingDates: verified.missingDates };
+  if (!Number.isInteger(daysAhead) || daysAhead < 0 || daysAhead > 365 || verified.dailyLoads.length === 0) {
+    return { eligible: false, reason: 'invalid_horizon_or_history', points: [], missingDates: [] };
+  }
+  const planned = new Map();
+  for (const day of futureDailyLoads) {
+    if (!validDateKey(day?.date) || typeof day.load !== 'number' || !Number.isFinite(day.load) || day.load < 0) {
+      return { eligible: false, reason: 'invalid_planned_load', points: [], missingDates: [] };
+    }
+    planned.set(day.date, (planned.get(day.date) ?? 0) + day.load);
+  }
+  // This is an EWMA scenario, not a calibrated Banister performance prediction.
+  const kCtl = 1 - Math.exp(-1 / 42);
+  const kAtl = 1 - Math.exp(-1 / 7);
+  const points = [];
+  let ctl = null;
+  let atl = null;
+  const push = (date, load, isProjected) => {
+    ctl = ctl === null ? load : ctl + kCtl * (load - ctl);
+    atl = atl === null ? load : atl + kAtl * (load - atl);
+    points.push({ date, ctl, atl, tsb: ctl - atl, dailyLoad: load, isProjected });
+  };
+  for (const day of verified.dailyLoads) push(day.date, day.load, false);
+  let cursor = input.endDate;
+  for (let i = 0; i < daysAhead; i += 1) {
+    cursor = nextDay(cursor);
+    push(cursor, planned.get(cursor) ?? 0, true);
+  }
+  return { eligible: true, reason: null, points, missingDates: [], projectedAssumptions: 'unscheduled_future_days_zero' };
+}
