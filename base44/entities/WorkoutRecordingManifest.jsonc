@@ -1,0 +1,96 @@
+{
+  "name": "WorkoutRecordingManifest",
+  "type": "object",
+  "description": "Server-committed manifest of fully verified recording chunks; immutable, version 1. This entity is source-only and must not be deployed until atomic/unique per-session lease, paginated reads and storage-size acceptance are proven.",
+  "properties": {
+    "athlete_id": {
+      "type": "string",
+      "description": "AthleteProfile.id for scoped ownership"
+    },
+    "session_id": {
+      "type": "string",
+      "description": "WorkoutSession.id verified parent"
+    },
+    "version": {
+      "type": "integer",
+      "enum": [
+        1
+      ],
+      "description": "Manifest serialization version"
+    },
+    "state": {
+      "type": "string",
+      "enum": [
+        "complete"
+      ],
+      "description": "Written only after SHA-256 verification of all stored chunks"
+    },
+    "chunk_count": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 96
+    },
+    "sample_count": {
+      "type": "integer",
+      "minimum": 2,
+      "maximum": 28800
+    },
+    "first_time_s": {
+      "type": "number",
+      "minimum": 0
+    },
+    "last_time_s": {
+      "type": "number",
+      "minimum": 0
+    },
+    "recording_sha256": {
+      "type": "string",
+      "description": "SHA-256 lowercase hex digest of canonical complete measured stream"
+    }
+  },
+  "required": [
+    "athlete_id",
+    "session_id",
+    "version",
+    "state",
+    "chunk_count",
+    "sample_count",
+    "first_time_s",
+    "last_time_s",
+    "recording_sha256"
+  ],
+  "rls": {
+    "create": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "read": {
+      "$or": [
+        {
+          "data.athlete_id": "{{user.data.athlete_profile_id}}"
+        },
+        {
+          "data.athlete_id": {
+            "$in": "{{user.data.coached_athletes}}"
+          }
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    },
+    "update": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "delete": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
+}
