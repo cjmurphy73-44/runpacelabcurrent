@@ -1,6 +1,7 @@
 // Pure, bounded full-duration telemetry preparation. This module does not
 // persist chunks or mutate WorkoutSession; callers must complete auth, storage
 // integrity, idempotency and transactional/partial-write checks before release.
+// @ts-ignore Deno import extension required at runtime; app TypeScript disallows it.
 import { storageStream } from './streamValidity.ts';
 
 export const RECORDING_CHUNK_SAMPLES = 300;
