@@ -13,7 +13,7 @@ export default function DashboardMetricBanner({ athlete, workouts = [] }) {
 
   const { ctl, atl, tsb } = useMemo(() => {
     const timeline = calculateHistoricalAndProjectedLoad(workouts, [], 0);
-    if (timeline.length === 0) return { ctl: 0, atl: 0, tsb: 0 };
+    if (timeline.length === 0) return { ctl: null, atl: null, tsb: null };
     const current = [...timeline].reverse().find((p) => !p.isProjected) || timeline[timeline.length - 1];
     return { ctl: current.ctl, atl: current.atl, tsb: current.tsb };
   }, [workouts]);
@@ -24,14 +24,14 @@ export default function DashboardMetricBanner({ athlete, workouts = [] }) {
       .filter((w) => w?.date && Date.parse(w.date) >= cutoff)
       .reduce((s, w) => s + (w.session_trimp || w.session_tss || 0), 0);
   }, [workouts]);
-  const weeklyGoal = Math.round(Math.max(ctl, 0) * 7);
-  const goalPct = weeklyGoal > 0 ? Math.max(0, Math.min(100, Math.round((weeklyTss / weeklyGoal) * 100))) : 0;
+  const weeklyGoal = ctl === null ? null : Math.round(Math.max(ctl, 0) * 7);
+  const goalPct = weeklyGoal !== null && weeklyGoal > 0 ? Math.max(0, Math.min(100, Math.round((weeklyTss / weeklyGoal) * 100))) : 0;
 
   const cards = [
-    { label: "CTL · Fitness", value: Math.round(ctl), icon: Activity },
-    { label: "ATL · Fatigue", value: Math.round(atl), icon: Zap },
-    { label: "TSB · Form", value: Math.round(tsb), icon: Gauge, tone: tsb >= 0 ? "pos" : "neg" },
-    { label: "Wk TSS · Goal", value: `${Math.round(weeklyTss)} / ${weeklyGoal}`, icon: Target, bar: goalPct },
+    { label: "CTL · Fitness", value: ctl === null ? "—" : Math.round(ctl), icon: Activity },
+    { label: "ATL · Fatigue", value: atl === null ? "—" : Math.round(atl), icon: Zap },
+    { label: "TSB · Form", value: tsb === null ? "—" : Math.round(tsb), icon: Gauge, tone: tsb === null ? undefined : tsb >= 0 ? "pos" : "neg" },
+    { label: "Wk TSS · Goal", value: weeklyGoal === null ? "—" : `${Math.round(weeklyTss)} / ${weeklyGoal}`, icon: Target, bar: weeklyGoal === null ? undefined : goalPct },
     ...(readinessForecast ? [{
       label: "Readiness Forecast",
       value: `${Math.round(readinessForecast.projectedReadiness)}%`,
@@ -55,6 +55,9 @@ export default function DashboardMetricBanner({ athlete, workouts = [] }) {
           >
             {c.value}
           </div>
+          {c.value === "—" && (
+            <p className="mt-1 text-xs text-muted-foreground">Insufficient recorded load history</p>
+          )}
           {c.sub && (
             <div className="mt-1 text-xs text-muted-foreground font-mono">
               {c.sub}
