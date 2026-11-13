@@ -1,5 +1,6 @@
 // Pure preparation: never mutate existing plans until the replacement draft
 // has passed structural validation and its calendar sessions are constructed.
+// @ts-ignore Deno requires explicit .ts specifiers; app jsconfig disallows them.
 import { validatePlanStructure } from './planValidation.ts';
 
 export function prepareDraftPlanCommit(plan: any): {
