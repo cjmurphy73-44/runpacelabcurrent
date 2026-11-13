@@ -82,8 +82,8 @@ export default function WorkoutFitnessImpact({ workout, athleteId }) {
         <Tile label="Fitness · CTL" value={current.calculated_ctl} delta={current.calculated_ctl != null && previous?.calculated_ctl != null ? current.calculated_ctl - previous.calculated_ctl : null} />
         <Tile label="Fatigue · ATL" value={current.calculated_atl} delta={current.calculated_atl != null && previous?.calculated_atl != null ? current.calculated_atl - previous.calculated_atl : null} />
         <Tile label="Form · TSB" value={current.calculated_tsb} delta={null} hint="CTL − ATL" />
-      {!previous && <p role="status" className="text-xs text-muted-foreground">No previous-day baseline is available. Daily changes are hidden rather than compared with an older record.</p>}
       </div>
+      {!previous && <p role="status" className="text-xs text-muted-foreground">No previous-day baseline is available. Daily changes are hidden rather than compared with an older record.</p>}
     </div>
   );
 }
