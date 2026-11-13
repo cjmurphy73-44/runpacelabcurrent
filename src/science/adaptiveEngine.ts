@@ -1,3 +1,5 @@
+// Advisory-only workload interpretation. ACWR is not a validated individual
+// injury probability and cannot independently authorize progression.
 export interface AdaptiveRecommendation {
   status: 'optimal' | 'caution' | 'danger';
   adjustmentPercentage: number;
@@ -12,31 +14,20 @@ export interface AdaptiveInput {
 }
 
 export const calculateAdaptiveRecommendation = (input: AdaptiveInput): AdaptiveRecommendation => {
-  const { acwr } = input;
-  
-  if (acwr > 1.5) {
-    return {
-      status: 'danger',
-      adjustmentPercentage: -30,
-      guidanceText: 'High ACWR detected. Significant risk of overtraining. Recommend reducing intensity by 30% and focusing on recovery.'
-    };
-  } else if (acwr > 1.25) {
-    return {
-      status: 'caution',
-      adjustmentPercentage: -10,
-      guidanceText: 'ACWR trending high. Monitor fatigue closely and consider a 10% reduction in volume.'
-    };
-  } else if (acwr < 0.8) {
-    return {
-      status: 'caution',
-      adjustmentPercentage: 10,
-      guidanceText: 'ACWR indicates potential underloading. Safe to progress training load by 10%.'
-    };
+  const { acwr, chronic, acute, rpe } = input;
+  if (![acwr, chronic, acute, rpe].every(Number.isFinite) || acwr < 0 || chronic <= 0 || acute < 0 || rpe < 0 || rpe > 10) {
+    return { status: 'caution', adjustmentPercentage: 0, guidanceText: 'Insufficient or invalid workload data. Keep the current plan unchanged and verify recordings before considering an adjustment.' };
   }
-  
-  return {
-    status: 'optimal',
-    adjustmentPercentage: 0,
-    guidanceText: 'Load is optimal. Maintain current training volume.'
-  };
+  // No workload ratio can establish an injury diagnosis or a safe automatic
+  // percentage adjustment. Changes require the broader athlete state and review.
+  if (acwr > 1.5) {
+    return { status: 'danger', adjustmentPercentage: 0, guidanceText: 'Recent load is substantially above the chronic baseline. Review training, recovery, symptoms and data quality before changing the plan.' };
+  }
+  if (acwr > 1.25 || rpe >= 9) {
+    return { status: 'caution', adjustmentPercentage: 0, guidanceText: 'Elevated recent load or perceived exertion. Review recovery and upcoming intensity; no automatic change has been applied.' };
+  }
+  if (acwr < 0.8) {
+    return { status: 'caution', adjustmentPercentage: 0, guidanceText: 'Recent load is below the chronic baseline. This alone does not justify increasing training. Review missed sessions, recovery and goals.' };
+  }
+  return { status: 'optimal', adjustmentPercentage: 0, guidanceText: 'Recent workload ratio is within the configured review range. This does not establish readiness or clearance; the plan is unchanged.' };
 };
