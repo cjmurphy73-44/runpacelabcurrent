@@ -62,6 +62,10 @@
           }
         }
       }
+    },
+    "content_sha256": {
+      "type": "string",
+      "description": "SHA-256 digest of canonical persisted sample channels, for readback integrity verification."
     }
   },
   "required": [
@@ -71,7 +75,8 @@
     "sample_count",
     "start_time_s",
     "end_time_s",
-    "samples"
+    "samples",
+    "content_sha256"
   ],
   "rls": {
     "create": {
