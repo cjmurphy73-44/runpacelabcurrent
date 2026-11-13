@@ -19,6 +19,10 @@ export function assessDailyLoadCoverage({ startDate, endDate, sessions = [], con
   if (!validDateKey(startDate) || !validDateKey(endDate) || startDate > endDate) {
     return { complete: false, reason: 'invalid_range', days: [], missingDates: [] };
   }
+  const spanDays = (Date.parse(endDate + 'T00:00:00Z') - Date.parse(startDate + 'T00:00:00Z')) / 86400000;
+  if (spanDays > 3650) {
+    return { complete: false, reason: 'range_too_long', days: [], missingDates: [] };
+  }
   if (!['trimp', 'tss'].includes(loadMetric)) {
     return { complete: false, reason: 'load_metric_required', days: [], missingDates: [] };
   }
@@ -89,7 +93,7 @@ export function forecastVerifiedDailyLoad(input, { futureDailyLoads = [], daysAh
   const forecastEnd = (() => { let date = input.endDate; for (let i = 0; i < daysAhead; i += 1) date = nextDay(date); return date; })();
   const planned = new Map();
   for (const day of futureDailyLoads) {
-    if (!validDateKey(day?.date) || day.date <= input.endDate || day.date > forecastEnd || typeof day.load !== 'number' || !Number.isFinite(day.load) || day.load < 0) {
+    if (!validDateKey(day?.date) || day.date <= input.endDate || day.date > forecastEnd || day.loadMetric !== input.loadMetric || typeof day.load !== 'number' || !Number.isFinite(day.load) || day.load < 0) {
       return { eligible: false, reason: 'invalid_planned_load', points: [], missingDates: [] };
     }
     planned.set(day.date, (planned.get(day.date) ?? 0) + day.load);
