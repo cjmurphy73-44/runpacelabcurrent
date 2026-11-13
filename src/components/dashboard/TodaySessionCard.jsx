@@ -82,8 +82,16 @@ export default function TodaySessionCard({ athleteId }) {
           }
         />
 
-        {session === undefined ? (
-          <p className="text-sm text-muted-foreground">Loading...</p>
+        {loadError ? (
+          <div role="alert" className="space-y-3 rounded-md border border-border p-3">
+            <p className="text-sm font-medium">Today's session could not be loaded</p>
+            <p className="text-xs text-muted-foreground">Your training plan is unchanged. Check your connection and try again.</p>
+            <Button variant="outline" size="sm" className="min-h-[44px] gap-2" onClick={loadSession}>
+              <RefreshCw className="h-4 w-4" aria-hidden="true" /> Retry session
+            </Button>
+          </div>
+        ) : session === undefined ? (
+          <p className="text-sm text-muted-foreground" role="status">Loading today's session…</p>
         ) : session && !runOnHold ? (
           <div className="space-y-3">
             <div className="flex items-center gap-2 flex-wrap">
