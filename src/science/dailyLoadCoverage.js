@@ -75,9 +75,13 @@ export function forecastVerifiedDailyLoad(input, { futureDailyLoads = [], daysAh
   if (!Number.isInteger(daysAhead) || daysAhead < 0 || daysAhead > 365 || verified.dailyLoads.length === 0) {
     return { eligible: false, reason: 'invalid_horizon_or_history', points: [], missingDates: [] };
   }
+  if (!Array.isArray(futureDailyLoads)) {
+    return { eligible: false, reason: 'invalid_planned_load', points: [], missingDates: [] };
+  }
+  const forecastEnd = (() => { let date = input.endDate; for (let i = 0; i < daysAhead; i += 1) date = nextDay(date); return date; })();
   const planned = new Map();
   for (const day of futureDailyLoads) {
-    if (!validDateKey(day?.date) || typeof day.load !== 'number' || !Number.isFinite(day.load) || day.load < 0) {
+    if (!validDateKey(day?.date) || day.date <= input.endDate || day.date > forecastEnd || typeof day.load !== 'number' || !Number.isFinite(day.load) || day.load < 0) {
       return { eligible: false, reason: 'invalid_planned_load', points: [], missingDates: [] };
     }
     planned.set(day.date, (planned.get(day.date) ?? 0) + day.load);
