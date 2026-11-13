@@ -243,7 +243,7 @@ export function parseCsv(text) {
 
   for (let i = 1; i < lines.length; i++) {
     const cols = lines[i].split(',');
-    const point = { time: null, heart_rate: null, altitude: null, distance: null, cadence: null, speed: null };
+    const point = { time: null, heart_rate: null, altitude: null, distance: null, cadence: null, speed: null, power: null };
 
     if (timeIdx !== -1) {
       const raw = cols[timeIdx];
