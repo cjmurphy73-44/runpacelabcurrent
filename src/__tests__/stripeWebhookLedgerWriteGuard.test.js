@@ -1,10 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 
 // Base44 runtime-only modules prevent direct Node execution of this entrypoint.
 // This source-level regression protects the acknowledgement policy until an
 // isolated Base44 integration harness is available.
-const source = readFileSync(new URL('../../base44/functions/stripeWebhook/entry.ts', import.meta.url), 'utf8');
+const source = readFileSync(resolve(process.cwd(), 'base44/functions/stripeWebhook/entry.ts'), 'utf8');
 const ledgerWriter = source.match(/const logEvent = async \(outcome\) => \{([\s\S]*?)\n    \};/);
 
 describe('Stripe event-ledger write acknowledgement', () => {
