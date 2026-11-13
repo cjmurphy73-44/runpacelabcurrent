@@ -19,6 +19,7 @@ import WorkoutMetricTile from "@/components/workout/WorkoutMetricTile";
 import WorkoutZonePanel from "@/components/workout/WorkoutZonePanel";
 import WorkoutFitnessImpact from "@/components/workout/WorkoutFitnessImpact";
 import WorkoutSplitsTable from "@/components/workout/WorkoutSplitsTable";
+import CyclingPowerScenario from "@/components/workout/CyclingPowerScenario";
 import EditWorkoutModal from "@/components/workout/EditWorkoutModal";
 import { sessionCalories, normalizedPacePower } from "@/lib/workoutAnalytics";
 
@@ -110,6 +111,8 @@ export default function WorkoutDetailModal({ workout, athlete, children, onChang
           />
           <WorkoutMetricTile label="Efficiency Factor" value={workout.efficiency_factor ? Number(workout.efficiency_factor).toFixed(2) : "—"} />
         </div>
+
+        <CyclingPowerScenario workout={workout} athlete={athlete} />
 
         <div className="pt-2">
           <WorkoutZonePanel workout={workout} athlete={athlete} />
