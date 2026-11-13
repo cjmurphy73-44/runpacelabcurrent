@@ -1,10 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 
 // Contract test for the deployed Base44 function source. It must not quietly
 // reintroduce plan writes or AI-authored physiological prescriptions.
 const source = readFileSync(
-  new URL('../../../base44/functions/requestMicroadjustment/entry.ts', import.meta.url),
+  resolve(process.cwd(), 'base44/functions/requestMicroadjustment/entry.ts'),
   'utf8',
 );
 
