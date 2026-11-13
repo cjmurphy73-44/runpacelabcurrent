@@ -17,7 +17,7 @@
 //  - Coggan 2003 (CTL / ATL / TSB performance manager).
 //
 // Limitations:
-//  - ACWR is fragile on short histories; it returns null until both windows have
+//  - Missing calendar days are not assumed to be rest days; adaptation flags are withheld.\n//  - ACWR is fragile on short histories; it returns null until both windows have
 //    enough load-bearing days (see MIN_ACWR_DAYS).
 //  - Load is single-valued per day; multi-session days must be summed first.
 
@@ -131,10 +131,23 @@ export function buildLoadSeries(
   });
 }
 
+/** True only for consecutive calendar days. A missing date is unknown telemetry,
+ * not a zero-load rest day, and must not silently count as one model day. */
+function consecutiveDates(dates: string[]): boolean {
+  if (dates.length < 2) return true;
+  for (let i = 1; i < dates.length; i++) {
+    const previous = Date.parse(dates[i - 1] + 'T00:00:00Z');
+    const current = Date.parse(dates[i] + 'T00:00:00Z');
+    if (!Number.isFinite(previous) || !Number.isFinite(current) || current - previous !== 86_400_000) return false;
+  }
+  return true;
+}
+
 /** Trailing count of days whose TSB stays below the floor. */
 export function tsbNegativeStreak(series: LoadSeriesPoint[], floor = OVERREACHING_TSB_FLOOR): number {
   let streak = 0;
   for (let i = series.length - 1; i >= 0; i--) {
+    if (i < series.length - 1 && !consecutiveDates([series[i].date, series[i + 1].date])) break;
     if (series[i].tsb < floor) streak++;
     else break;
   }
@@ -143,7 +156,7 @@ export function tsbNegativeStreak(series: LoadSeriesPoint[], floor = OVERREACHIN
 
 /** CTL change over the trailing 7 days (null when the history is too short). */
 export function ctlRamp7d(series: LoadSeriesPoint[]): number | null {
-  if (series.length < 8) return null;
+  if (series.length < 8 || !consecutiveDates(series.slice(-8).map((day) => day.date))) return null;
   const delta = series[series.length - 1].ctl - series[series.length - 8].ctl;
   return round(delta, 2);
 }
@@ -158,7 +171,7 @@ export function acuteChronicRatio(
   options: AdaptationOptions = {},
 ): number | null {
   const days = normalizeDailyLoads(points);
-  if (days.length < MIN_ACWR_DAYS) return null;
+  if (days.length < MIN_ACWR_DAYS || !consecutiveDates(days.map((day) => day.date))) return null;
 
   const atlTau = options.atlTimeConstantDays ?? 7;
   const chronicTau = options.chronicTimeConstantDays ?? 28;
@@ -183,9 +196,12 @@ export function evaluateAdaptation(
 ): AdaptationAssessment {
   const series = buildLoadSeries(points, options);
   const last = series[series.length - 1] || { ctl: 0, atl: 0, tsb: 0, date: '', load: 0 };
-  const acwr = acuteChronicRatio(points, options);
-  const ramp = ctlRamp7d(series);
-  const streak = tsbNegativeStreak(series, options.tsbFloor ?? OVERREACHING_TSB_FLOOR);
+  // The EWMA series is only meaningful across fully observed calendar days.
+  // Fail closed on gaps rather than treating irregular observations as daily steps.
+  const continuous = consecutiveDates(series.map((day) => day.date));
+  const acwr = continuous ? acuteChronicRatio(points, options) : null;
+  const ramp = continuous ? ctlRamp7d(series) : null;
+  const streak = continuous ? tsbNegativeStreak(series, options.tsbFloor ?? OVERREACHING_TSB_FLOOR) : 0;
 
   const acwrThreshold = options.acwrThreshold ?? ACWR_SPIKE_THRESHOLD;
   const rampThreshold = options.rampThreshold ?? HIGH_RAMP_RATE_POINTS;
