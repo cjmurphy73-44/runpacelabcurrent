@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { parseFitWithLaps } from '../../../base44/shared/workoutParsers.ts';
+import { parseFitWithLaps } from '../../../base44/shared/workoutParsers';
 
 // Synthetic FIT bytes: no athlete recordings or proprietary training values.
 type Field = { id: number; size: number; type: number; value: number };
