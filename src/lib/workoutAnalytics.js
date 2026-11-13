@@ -132,18 +132,20 @@ export function formatZoneMethod(method) {
 }
 
 export function normalizedPacePower(workout) {
-  if (workout.avg_power) return `${Math.round(workout.avg_power)} W`;
-  if (!workout.distance_km || !(workout.duration_minutes || workout.duration_seconds)) return "—";
+  const power = Number(workout?.avg_power);
+  if (Number.isFinite(power) && power > 0) return `${Math.round(power)} W`;
 
-  const durationMin = workout.duration_minutes || workout.duration_seconds / 60;
+  const distanceKm = Number(workout?.distance_km);
+  const durationMin = Number(workout?.duration_minutes) || Number(workout?.duration_seconds) / 60;
+  if (!Number.isFinite(distanceKm) || distanceKm <= 0 || !Number.isFinite(durationMin) || durationMin <= 0) return "—";
 
   // Cycling has no meaningful running "pace", show speed (km/h) instead, never min/km.
   if (workout.sport === "cycling") {
-    const kmh = workout.distance_km / (durationMin / 60);
-    return `${kmh.toFixed(1)} km/h`;
+    const kmh = distanceKm / (durationMin / 60);
+    return Number.isFinite(kmh) && kmh > 0 ? `${kmh.toFixed(1)} km/h` : "—";
   }
 
-  const paceMinPerKm = durationMin / workout.distance_km;
+  const paceMinPerKm = durationMin / distanceKm;
   // Round total seconds first so 4:59.7 becomes 5:00, never "4:60".
   // Do not display a plausible pace for invalid or non-positive values.
   if (!Number.isFinite(paceMinPerKm) || paceMinPerKm <= 0) return "—";
