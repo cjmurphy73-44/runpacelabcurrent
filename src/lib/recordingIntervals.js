@@ -50,7 +50,7 @@ export function recordingIntervals(workout, intervalSeconds = 600) {
     startSeconds: b.startSeconds,
     durationSeconds: b.durationSeconds,
     hrCoverage: b.durationSeconds ? b.hrSeconds / b.durationSeconds : 0,
-    avgHr: b.hrSeconds >= b.durationSeconds * 0.5 && b.durationSeconds > 0
+    avgHr: b.hrSeconds >= b.durationSeconds * 0.8 && b.durationSeconds > 0
       ? Math.round(b.hrWeighted / b.hrSeconds) : null,
     distanceKm: b.distanceSeconds >= b.durationSeconds * 0.8 && b.durationSeconds > 0
       ? Math.round(b.distanceMeters / 10) / 100 : null,
