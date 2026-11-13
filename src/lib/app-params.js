@@ -58,8 +58,79 @@ function getAppParamValue(name, { defaultValue = null, removeFromUrl = false, pe
 // ("Invalid id value -> Object not found"). This id is fixed for this app.
 const PUBLISHED_APP_ID = "6a504ebe6a5a6d1be058226c";
 
-export function getAppParams() {
+// Owner-confirmed independent Base44 project. Preview may only connect here.
+// IDs and origins are public identifiers, not secrets. Changing staging
+// backends requires a reviewed code change as well as Vercel env updates.
+const STAGING_APP_ID = "6aefe9d09e2788fc8591c758";
+const STAGING_APP_BASE_URL = "https://train-pace-lab-copy-8591c758.base44.app";
+
+// Vercel exposes VERCEL_ENV to its build process. vite.config.js embeds it
+// into import.meta.env.VERCEL_ENV, so previews cannot silently inherit the
+// published app ID when VITE_APP_ID is missing.
+function isPreviewDeployment(deploymentEnvironment, hostname) {
+  return deploymentEnvironment === "preview" ||
+    (hostname.endsWith(".vercel.app") && hostname.includes("-git-"));
+}
+
+function isValidHttpsBaseUrl(value) {
+  try {
+    const url = new URL(value);
+    return url.protocol === "https:" && Boolean(url.hostname) &&
+      !url.username && !url.password && !url.search && !url.hash;
+  } catch {
+    return false;
+  }
+}
+
+// The build-time configuration is authoritative for preview. In particular,
+// OAuth URL parameters and browser storage cannot change the target app.
+export function getAppParams({
+  environment = import.meta.env,
+  deploymentEnvironment = import.meta.env.VERCEL_ENV || "",
+  hostname = typeof window !== "undefined" ? window.location?.hostname || "" : "",
+} = {}) {
   const windowObj = typeof window !== 'undefined' ? window : {};
+  if (isPreviewDeployment(deploymentEnvironment, hostname)) {
+    const previewAppId = String(environment?.VITE_APP_ID || "").trim();
+    const previewBaseUrl = String(environment?.VITE_APP_BASE_URL || "").trim();
+    const valid = previewAppId === STAGING_APP_ID &&
+      previewBaseUrl === STAGING_APP_BASE_URL &&
+      isValidHttpsBaseUrl(previewBaseUrl);
+
+    // Always strip a returned OAuth token from the address bar, including when
+    // misconfigured; never initialize the app or authenticate in that state.
+    const token = new URLSearchParams(windowObj.location?.search || "").get("access_token");
+    getAppParamValue("access_token", { removeFromUrl: true });
+    // The Base44 SDK independently reads base44_access_token from localStorage.
+    // Prevent a token saved by a previous app on this Preview origin from being
+    // reused with the staging app ID, while preserving valid staging sessions.
+    try {
+      const storage = windowObj.localStorage;
+      if (storage && (!valid || storage.getItem("tpl_base44_token_app_id") !== previewAppId)) {
+        storage.removeItem("base44_access_token");
+        storage.removeItem("token");
+      }
+      if (storage && valid && token) {
+        storage.setItem("tpl_base44_token_app_id", previewAppId);
+      }
+    } catch {
+      // Storage can be unavailable in privacy-restricted browser contexts.
+    }
+    return {
+      isPreview: true,
+      appId: valid ? previewAppId : null,
+      token: valid ? token : null,
+      fromUrl: windowObj.location?.href || "/",
+      functionsVersion: "",
+      appBaseUrl: valid ? previewBaseUrl : "",
+      // API calls must reach staging directly; Vercel Preview has no /api proxy.
+      apiServerUrl: valid ? previewBaseUrl : "",
+      configurationError: valid ? null :
+        "Preview requires the exact approved TrainPaceLab staging app ID and HTTPS base URL. Other backends are not allowed.",
+    };
+  }
+
+
   const envAppId = typeof import.meta !== 'undefined' ? (import.meta.env?.VITE_APP_ID || PUBLISHED_APP_ID) : PUBLISHED_APP_ID;
 
   // Resolve app_id with stale-storage guard: the URL value (present on normal
@@ -83,11 +154,14 @@ export function getAppParams() {
   if (!resolvedAppId) resolvedAppId = envAppId;
 
   return {
+    isPreview: false,
     appId: resolvedAppId,
     token: getAppParamValue("access_token", { removeFromUrl: true }),
     fromUrl: getAppParamValue("from_url", { defaultValue: windowObj.location?.href || '/' }),
     functionsVersion: getAppParamValue("functions_version", { defaultValue: "", persistToLocalStorage: true }),
     appBaseUrl: getAppParamValue("app_base_url", { defaultValue: typeof import.meta !== 'undefined' ? import.meta.env?.VITE_APP_BASE_URL : "", persistToLocalStorage: true }),
+    // Keep the existing published API routing unchanged.
+    apiServerUrl: "",
   };
 }
 
