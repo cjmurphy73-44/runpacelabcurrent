@@ -26,10 +26,18 @@ function fmtSpeed(mps) {
 export default function WorkoutSplitsTable({ laps, sport }) {
   if (!Array.isArray(laps) || laps.length === 0) return null;
   const showSpeed = sport === "cycling";
+  // Previously imported FIT laps may contain max_speed in avg_hr due to an old
+  // field-id mapping. Never display those values as physiological measurements.
+  const hasInvalidHr = laps.some((lap) => lap.avg_hr != null && (!Number.isFinite(Number(lap.avg_hr)) || Number(lap.avg_hr) > 255 || Number(lap.avg_hr) < 0));
 
   return (
     <div className="space-y-2">
       <h4 className="text-xs font-semibold text-muted-foreground">Splits</h4>
+      {hasInvalidHr && (
+        <p role="status" className="text-xs text-warning">
+          Some older FIT splits contain invalid heart-rate values. They are hidden; reprocess the original recording to rebuild these lap metrics.
+        </p>
+      )}
       <div className="overflow-x-auto rounded-lg border border-border/60">
         <table className="w-full text-xs">
           <thead className="bg-secondary/40 text-muted-foreground">
@@ -50,7 +58,7 @@ export default function WorkoutSplitsTable({ laps, sport }) {
                   <td className="px-2 py-1.5 text-right">{fmtDuration(lap.duration_s)}</td>
                   <td className="px-2 py-1.5 text-right">{lap.distance_km ? `${lap.distance_km.toFixed(2)} km` : "—"}</td>
                   <td className="px-2 py-1.5 text-right">{showSpeed ? speed || "—" : fmtPace(lap.duration_s, lap.distance_km)}</td>
-                  <td className="px-2 py-1.5 text-right">{lap.avg_hr ? `${lap.avg_hr}` : "—"}</td>
+                  <td className="px-2 py-1.5 text-right">{Number.isFinite(Number(lap.avg_hr)) && Number(lap.avg_hr) > 0 && Number(lap.avg_hr) < 255 ? `${lap.avg_hr}` : "—"}</td>
                 </tr>
               );
             })}

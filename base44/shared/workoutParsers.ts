@@ -123,23 +123,29 @@ export function parseFitWithLaps(bytes) {
     }))
     .sort((a, b) => a.time - b.time);
 
-  // Lap message 19 field scaling: total_elapsed_time(8)/1000, total_distance(5)/100,
-  // avg_speed(3)/1000, avg_heart_rate(14), max_heart_rate(15), start_time(7) absolute epoch.
+  // FIT SDK Lap message (global 19) fields, distinct from Record fields:
+  // start_time(2), total_elapsed_time(7)/1000, total_timer_time(8)/1000,
+  // total_distance(9)/100, avg_speed(13)/1000, max_speed(14)/1000,
+  // avg_heart_rate(15), max_heart_rate(16). Never treat max_speed as HR.
+  // Ref: Garmin FIT SDK profile / LapMesg (not Session or Record field ids).
+  const validField = (raw, id, invalid) =>
+    typeof raw[id] === 'number' && Number.isFinite(raw[id]) && raw[id] !== invalid;
   const laps = rawLaps.map((raw, i) => {
-    const duration = (typeof raw[8] === 'number' ? raw[8] : (typeof raw[9] === 'number' ? raw[9] : 0)) / 1000;
-    let startOffset;
-    if (typeof raw[7] === 'number') startOffset = raw[7] - firstTs;
-    else if (typeof raw[253] === 'number') startOffset = Math.max(0, raw[253] - firstTs - duration);
-    else startOffset = 0;
-    const distMeters = typeof raw[5] === 'number' ? raw[5] / 100 : null;
+    const duration = validField(raw, 7, 0xFFFFFFFF)
+      ? raw[7] / 1000
+      : (validField(raw, 8, 0xFFFFFFFF) ? raw[8] / 1000 : 0);
+    const startOffset = validField(raw, 2, 0xFFFFFFFF)
+      ? raw[2] - firstTs
+      : (validField(raw, 253, 0xFFFFFFFF) ? raw[253] - firstTs - duration : 0);
+    const distanceMeters = validField(raw, 9, 0xFFFFFFFF) ? raw[9] / 100 : null;
     return {
       lap_index: i,
       start_time_offset_s: Math.max(0, Math.round(startOffset * 100) / 100),
       duration_s: Math.round(duration * 100) / 100,
-      distance_km: distMeters !== null ? Math.round((distMeters / 1000) * 100) / 100 : null,
-      avg_hr: (typeof raw[14] === 'number' && raw[14] !== 0xFF) ? raw[14] : null,
-      max_hr: (typeof raw[15] === 'number' && raw[15] !== 0xFF) ? raw[15] : null,
-      avg_speed: (typeof raw[3] === 'number' && raw[3] !== 0xFFFF) ? Math.round((raw[3] / 1000) * 100) / 100 : null,
+      distance_km: distanceMeters !== null ? Math.round((distanceMeters / 1000) * 100) / 100 : null,
+      avg_hr: validField(raw, 15, 0xFF) ? raw[15] : null,
+      max_hr: validField(raw, 16, 0xFF) ? raw[16] : null,
+      avg_speed: validField(raw, 13, 0xFFFF) ? Math.round((raw[13] / 1000) * 100) / 100 : null,
     };
   }).filter((l) => l.duration_s > 0 || l.distance_km !== null);
 
@@ -237,7 +243,7 @@ export function parseCsv(text) {
 
   for (let i = 1; i < lines.length; i++) {
     const cols = lines[i].split(',');
-    const point = { time: null, heart_rate: null, altitude: null, distance: null, cadence: null, speed: null };
+    const point = { time: null, heart_rate: null, altitude: null, distance: null, cadence: null, speed: null, power: null };
 
     if (timeIdx !== -1) {
       const raw = cols[timeIdx];
