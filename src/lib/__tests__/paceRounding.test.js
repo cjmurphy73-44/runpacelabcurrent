@@ -16,6 +16,15 @@ describe("workout pace display rounding", () => {
     expect(normalizedPacePower({ sport: "running", duration_seconds: 300, distance_km: Number.NaN })).toBe("—");
     expect(normalizedPacePower({ sport: "running", duration_seconds: 0.001, distance_km: 999 })).toBe("—");
   });
+  it("rounds subsecond boundaries without generating a 60-second component", () => {
+    expect(normalizedPacePower({ sport: "running", duration_seconds: 299.49, distance_km: 1 })).toBe("4:59 /km");
+    expect(normalizedPacePower({ sport: "running", duration_seconds: 299.5, distance_km: 1 })).toBe("5:00 /km");
+    expect(normalizedPacePower({ sport: "running", duration_seconds: 3600, distance_km: 1 })).toBe("60:00 /km");
+  });
+  it("uses supplied duration in minutes consistently with seconds", () => {
+    expect(normalizedPacePower({ sport: "running", duration_minutes: 4.995, distance_km: 1 })).toBe("5:00 /km");
+    expect(normalizedPacePower({ sport: "running", duration_seconds: 599.4, distance_km: 2 })).toBe("5:00 /km");
+  });
   it("leaves measured power and cycling speed output unchanged", () => {
     expect(normalizedPacePower({ sport: "cycling", avg_power: 220, duration_seconds: 1200, distance_km: 10 })).toBe("220 W");
     expect(normalizedPacePower({ sport: "cycling", duration_seconds: 1200, distance_km: 10 })).toBe("30.0 km/h");
