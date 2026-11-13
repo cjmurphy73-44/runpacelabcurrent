@@ -22,6 +22,7 @@ import WorkoutSplitsTable from "@/components/workout/WorkoutSplitsTable";
 import CyclingPowerScenario from "@/components/workout/CyclingPowerScenario";
 import RecordingIntervals from "@/components/workout/RecordingIntervals";
 import { recordingCoverage } from "@/lib/recordingCoverage";
+import { efficiencyFactorInterpretation, aerobicDecouplingInterpretation } from "@/lib/workoutInterpretation";
 import EditWorkoutModal from "@/components/workout/EditWorkoutModal";
 import { sessionCalories, normalizedPacePower } from "@/lib/workoutAnalytics";
 
@@ -51,16 +52,10 @@ export default function WorkoutDetailModal({ workout, athlete, children, onChang
           : "TRIMP, Banister's heart-rate impulse computed from the session average, so it is an estimate";
       out.push(`Session load ${Math.round(load)} ${basis}.`);
     }
-    if (workout.efficiency_factor) {
-      out.push(
-        `Efficiency factor ${Number(workout.efficiency_factor).toFixed(2)}, ${workout.sport === "cycling" ? "watts" : "pace"} produced per heartbeat. A rising trend across similar sessions is an aerobic gain.`
-      );
-    }
-    if (workout.aerobic_decoupling != null && Math.abs(workout.aerobic_decoupling) >= 5) {
-      out.push(
-        `Aerobic decoupling ${Number(workout.aerobic_decoupling).toFixed(1)}%, the second half cost more for the same output, which points to fatigue, heat or fuelling.`
-      );
-    }
+    const efficiencyDescription = efficiencyFactorInterpretation(workout.efficiency_factor, workout.sport);
+    if (efficiencyDescription) out.push(efficiencyDescription);
+    const decouplingDescription = aerobicDecouplingInterpretation(workout.aerobic_decoupling);
+    if (decouplingDescription) out.push(decouplingDescription);
     if (calories.source === "device") {
       out.push("Energy comes from the watch's own model, which accounts for motion and your profile. It is never replaced by a formula here.");
     }
