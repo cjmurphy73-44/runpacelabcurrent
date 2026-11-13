@@ -6,19 +6,21 @@ import { hasVerifiedStreams } from "./streamValidity";
 export function recordingIntervals(workout, intervalSeconds = 600) {
   if (!hasVerifiedStreams(workout) || ![300, 600].includes(intervalSeconds)) return [];
   const stream = workout.streams;
-  const start = Number(stream[0].time);
+  // Workout sample timestamps are seconds elapsed from session start.
+  // Do not shift the first saved sample back to zero: an absent early segment
+  // must remain an uncovered interval, not become fabricated workout time.
   const end = Number(stream[stream.length - 1].time);
-  const bucketCount = Math.ceil((end - start) / intervalSeconds);
+  const bucketCount = Math.ceil(end / intervalSeconds);
   if (bucketCount <= 0 || bucketCount > 96) return [];
   const buckets = Array.from({ length: bucketCount }, (_, index) => ({
     index, startSeconds: index * intervalSeconds,
-    durationSeconds: Math.min(intervalSeconds, end - start - index * intervalSeconds),
+    durationSeconds: Math.min(intervalSeconds, end - index * intervalSeconds),
     hrWeighted: 0, hrSeconds: 0, distanceMeters: 0, distanceSeconds: 0,
     speedWeighted: 0, speedSeconds: 0,
   }));
   for (let i = 1; i < stream.length; i++) {
     const a = stream[i - 1], b = stream[i];
-    const t0 = Number(a.time) - start, t1 = Number(b.time) - start;
+    const t0 = Number(a.time), t1 = Number(b.time);
     const dt = t1 - t0;
     if (!Number.isFinite(dt) || dt <= 0 || dt > 10) continue;
     const hr = Number(b.heart_rate);
