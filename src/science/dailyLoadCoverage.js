@@ -1,7 +1,7 @@
 // Strict historical coverage gate for workload-based adaptation.
 // A day with no session is unknown unless an independent source confirms rest.
 // This helper does not infer rest from an empty activity list or from plan entries.
-const DATE_KEY = /^\\d{4}-\\d{2}-\\d{2}$/;
+const DATE_KEY = /^\d{4}-\d{2}-\d{2}$/;
 
 function validDateKey(key) {
   if (typeof key !== 'string' || !DATE_KEY.test(key)) return false;
