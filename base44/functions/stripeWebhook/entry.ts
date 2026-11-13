@@ -102,7 +102,7 @@ export default async function(req) {
     };
 
     const logEvent = async (outcome) => {
-      try { await sr.entities.WebhookEvent.create({ event_id: eventId, provider: "stripe", outcome }); } catch (e) { console.warn("WebhookEvent log failed:", e); }
+      // Do not acknowledge an event that was processed but not recorded: Stripe\n      // must retry, and the next delivery must be checked against the ledger.\n      // This is not a transaction or concurrency lock; exactly-once writes still\n      // require a unique event key/atomic backend operation.\n      await sr.entities.WebhookEvent.create({ event_id: eventId, provider: "stripe", outcome });
     };
 
     // Paid access is granted by Stripe Checkout only, and only once payment is actually
