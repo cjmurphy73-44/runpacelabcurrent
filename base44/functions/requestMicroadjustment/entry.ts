@@ -11,6 +11,18 @@ Deno.serve(async (req) => {
     const gate = await assertPaidPlan(base44, user);
     if (!gate.ok) return Response.json({ error: 'Micro-adjustments require a Pro plan.', plan: gate.plan }, { status: 402 });
 
+    // Safety gate: the current endpoint derives physiological adjustments from
+    // unverified TSB and short telemetry windows, then writes AI-proposed changes.
+    // Until athlete ownership, complete daily load provenance, calibrated
+    // deterministic decisions, and explicit review are integrated end-to-end,
+    // fail closed. Do not mutate any plan sessions or create coach messages.
+    return Response.json({
+      error: 'Automatic training-plan adjustments are temporarily unavailable while verified training-history safeguards are implemented.',
+      code: 'ADAPTATION_REQUIRES_VERIFIED_HISTORY',
+      adjusted: [],
+      retryable: false,
+    }, { status: 409 });
+
     const { athlete_id, current_tsb } = await req.json();
     if (!athlete_id) return Response.json({ error: 'athlete_id is required' }, { status: 400 });
 
