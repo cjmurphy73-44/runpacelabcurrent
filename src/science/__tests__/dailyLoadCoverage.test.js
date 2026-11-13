@@ -73,5 +73,7 @@ describe('verified load forecast', () => {
   it('rejects invalid future load and horizon', () => {
     expect(forecastVerifiedDailyLoad(input, { futureDailyLoads: [{ date: '2026-11-04', load: Infinity }] }).reason).toBe('invalid_planned_load');
     expect(forecastVerifiedDailyLoad(input, { daysAhead: 366 }).reason).toBe('invalid_horizon_or_history');
+    expect(forecastVerifiedDailyLoad(input, { daysAhead: 2, futureDailyLoads: [{ date: '2026-11-03', load: 5 }] }).reason).toBe('invalid_planned_load');
+    expect(forecastVerifiedDailyLoad(input, { daysAhead: 2, futureDailyLoads: [{ date: '2026-11-06', load: 5 }] }).reason).toBe('invalid_planned_load');
   });
 });
