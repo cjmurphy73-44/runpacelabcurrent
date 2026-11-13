@@ -23,7 +23,7 @@ function fakeStorage() {
   let manifestWrites = 0;
   const store = {
     listAll: async () => ({ complete: true, rows: [...chunks] }),
-    createBatch: async (rows: ChunkRow[]) => { chunkWrites++; chunks.push(...rows); },
+    createBatch: async (rows: ChunkRow[]) => { chunkWrites++; chunks.push(...rows.map(row => JSON.parse(JSON.stringify(row)) as ChunkRow)); },
   };
   const manifestStore = {
     listAll: async () => ({ complete: true, rows: [...manifests] }),
