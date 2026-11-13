@@ -10,7 +10,7 @@ const synthetic = (count: number) => Array.from({ length: count }, (_, time) => 
 }));
 async function fixture(count = 5041) {
   const planned = planRecordingChunks(synthetic(count));
-  if (!planned.ok) throw Error(planned.reason);
+  if (!planned.ok) throw Error('Synthetic recording planner rejected input');
   const prepared = await prepareRecordingManifest('synthetic-athlete', 'synthetic-session', planned.chunks, cryptoApi);
   if (!prepared) throw Error('Manifest failed');
   return prepared;
