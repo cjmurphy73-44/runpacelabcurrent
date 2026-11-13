@@ -12,6 +12,7 @@ import { Check, Sparkles, ArrowLeft, Ticket, Loader2, ReceiptText } from "lucide
 import PageShell from "@/components/layout/PageShell";
 import { PLAN_DETAILS, PLAN_TIERS } from "@/lib/subscriptionFeatures";
 import { billingReturnNotice, freePlanAction } from "@/lib/billingReturnNotice";
+import { planHighlightLabel } from "@/lib/publicPricing";
 
 export default function Subscribe() {
   const { user } = useAuth();
@@ -120,7 +121,7 @@ export default function Subscribe() {
           const isCurrent = currentPlan === tier || (tier === "free" && (!currentPlan || currentPlan === "free"));
           return (
             <Card key={tier} className={`relative ${d.highlighted ? "border-primary shadow-md" : ""}`}>
-              {d.highlighted && <span className="absolute -top-2.5 left-1/2 -translate-x-1/2 bg-primary text-primary-foreground text-[10px] font-semibold px-2 py-0.5 rounded-full">Most popular</span>}
+              {planHighlightLabel(d) && <span className="absolute -top-2.5 left-1/2 -translate-x-1/2 bg-primary text-primary-foreground text-[10px] font-semibold px-2 py-0.5 rounded-full">{planHighlightLabel(d)}</span>}
               {d.comingSoon && <span className="absolute -top-2.5 left-1/2 -translate-x-1/2 bg-muted text-muted-foreground text-[10px] font-semibold px-2 py-0.5 rounded-full border border-border">Coming Soon</span>}
               <CardHeader>
                 <div className="flex items-center justify-between">
