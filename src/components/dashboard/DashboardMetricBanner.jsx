@@ -21,18 +21,25 @@ export default function DashboardMetricBanner({ athlete, workouts = [] }) {
   const weeklyTss = useMemo(() => {
     const cutoff = Date.now() - 7 * 86400000;
     return (workouts || [])
-      .filter((w) => w?.date && Date.parse(w.date) >= cutoff)
-      .reduce((s, w) => s + (w.session_trimp || w.session_tss || 0), 0);
+      .filter((w) => w?.date && Number.isFinite(Date.parse(w.date)) && Date.parse(w.date) >= cutoff)
+      .reduce((sum, w) => {
+        const raw = w.session_trimp ?? w.session_tss;
+        const load = typeof raw === "number" ? raw : Number.NaN;
+        return Number.isFinite(load) && load >= 0 ? sum + load : sum;
+      }, 0);
   }, [workouts]);
   const weeklyGoal = ctl === null ? null : Math.round(Math.max(ctl, 0) * 7);
   const goalPct = weeklyGoal !== null && weeklyGoal > 0 ? Math.max(0, Math.min(100, Math.round((weeklyTss / weeklyGoal) * 100))) : 0;
+
+  const hasReadiness = Number.isFinite(readinessForecast?.projectedReadiness)
+    && Number.isFinite(readinessForecast?.currentReadiness);
 
   const cards = [
     { label: "CTL · Fitness", value: ctl === null ? "—" : Math.round(ctl), icon: Activity },
     { label: "ATL · Fatigue", value: atl === null ? "—" : Math.round(atl), icon: Zap },
     { label: "TSB · Form", value: tsb === null ? "—" : Math.round(tsb), icon: Gauge, tone: tsb === null ? undefined : tsb >= 0 ? "pos" : "neg" },
     { label: "Wk TSS · Goal", value: weeklyGoal === null ? "—" : `${Math.round(weeklyTss)} / ${weeklyGoal}`, icon: Target, bar: weeklyGoal === null ? undefined : goalPct },
-    ...(readinessForecast ? [{
+    ...(hasReadiness ? [{
       label: "Readiness Forecast",
       value: `${Math.round(readinessForecast.projectedReadiness)}%`,
       sub: `Current: ${Math.round(readinessForecast.currentReadiness)}%`,
@@ -42,7 +49,7 @@ export default function DashboardMetricBanner({ athlete, workouts = [] }) {
   ];
 
   return (
-    <div className={`grid grid-cols-2 ${readinessForecast ? 'lg:grid-cols-5' : 'lg:grid-cols-4'} gap-3`}>
+    <div className={`grid grid-cols-2 ${hasReadiness ? 'lg:grid-cols-5' : 'lg:grid-cols-4'} gap-3`}>
       {cards.map((c) => (
         <div key={c.label} className="rounded-md border border-border bg-card p-4 shadow-sm">
           <div className="flex items-center gap-1.5 text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
