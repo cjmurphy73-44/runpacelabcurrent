@@ -102,7 +102,7 @@ export default function WorkoutDetailModal({ workout, athlete, children, onChang
           <WorkoutMetricTile label="Load (TRIMP)" value={load ? Math.round(load) : "—"} />
           <WorkoutMetricTile label="Avg HR" value={workout.avg_hr ? `${workout.avg_hr} bpm` : "—"} />
           <WorkoutMetricTile label="Max HR" value={workout.max_hr ? `${workout.max_hr} bpm` : "—"} />
-          <WorkoutMetricTile label="Norm. Pace/Power" value={pacePower} />
+          <WorkoutMetricTile label={workout.avg_power ? "Avg Power" : workout.sport === "cycling" ? "Avg Speed" : "Avg Pace"} value={pacePower} />
           <WorkoutMetricTile
             label="Calories"
             value={calories.kcal ? `${calories.kcal} kcal` : "—"}
