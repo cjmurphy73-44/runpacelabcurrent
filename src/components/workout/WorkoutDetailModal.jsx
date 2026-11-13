@@ -20,6 +20,7 @@ import WorkoutZonePanel from "@/components/workout/WorkoutZonePanel";
 import WorkoutFitnessImpact from "@/components/workout/WorkoutFitnessImpact";
 import WorkoutSplitsTable from "@/components/workout/WorkoutSplitsTable";
 import CyclingPowerScenario from "@/components/workout/CyclingPowerScenario";
+import RecordingIntervals from "@/components/workout/RecordingIntervals";
 import EditWorkoutModal from "@/components/workout/EditWorkoutModal";
 import { sessionCalories, normalizedPacePower } from "@/lib/workoutAnalytics";
 
@@ -127,6 +128,10 @@ export default function WorkoutDetailModal({ workout, athlete, children, onChang
             <WorkoutSplitsTable laps={workout.laps} sport={workout.sport} />
           </div>
         )}
+
+        <div className="pt-3 border-t border-border/50">
+          <RecordingIntervals workout={workout} />
+        </div>
 
         <div className="pt-3 border-t border-border/50 space-y-2">
           <div className="rounded-lg border border-border/60 bg-secondary/30 p-3 space-y-1.5">
