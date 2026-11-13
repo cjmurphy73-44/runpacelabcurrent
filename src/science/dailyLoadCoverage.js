@@ -15,9 +15,15 @@ function nextDay(key) {
   return date.toISOString().slice(0, 10);
 }
 
-export function assessDailyLoadCoverage({ startDate, endDate, sessions = [], confirmedRestDates = [], confirmedSyncDates = [] }) {
+export function assessDailyLoadCoverage({ startDate, endDate, sessions = [], confirmedRestDates = [], confirmedSyncDates = [], loadMetric = null }) {
   if (!validDateKey(startDate) || !validDateKey(endDate) || startDate > endDate) {
     return { complete: false, reason: 'invalid_range', days: [], missingDates: [] };
+  }
+  if (!['trimp', 'tss'].includes(loadMetric)) {
+    return { complete: false, reason: 'load_metric_required', days: [], missingDates: [] };
+  }
+  if (!Array.isArray(sessions) || !Array.isArray(confirmedRestDates) || !Array.isArray(confirmedSyncDates)) {
+    return { complete: false, reason: 'invalid_evidence', days: [], missingDates: [] };
   }
   const rest = new Set(confirmedRestDates.filter(validDateKey));
   // A successful provider sync proves the provider was queried, NOT that all
@@ -27,7 +33,9 @@ export function assessDailyLoadCoverage({ startDate, endDate, sessions = [], con
   const invalidLoadDates = new Set();
   for (const session of sessions) {
     if (!validDateKey(session?.date)) continue;
-    const raw = session.session_trimp ?? session.session_tss;
+    // A session must carry the explicitly selected metric; never substitute
+    // TSS for TRIMP or vice versa, even if the other field is populated.
+    const raw = loadMetric === 'trimp' ? session.session_trimp : session.session_tss;
     if (raw == null || typeof raw !== 'number' || !Number.isFinite(raw) || raw < 0) {
       invalidLoadDates.add(session.date);
       continue;
@@ -103,5 +111,5 @@ export function forecastVerifiedDailyLoad(input, { futureDailyLoads = [], daysAh
     cursor = nextDay(cursor);
     push(cursor, planned.get(cursor) ?? 0, true);
   }
-  return { eligible: true, reason: null, points, missingDates: [], projectedAssumptions: 'unscheduled_future_days_zero' };
+  return { eligible: true, reason: null, points, missingDates: [], loadMetric: input.loadMetric, projectedAssumptions: 'unscheduled_future_days_zero' };
 }
