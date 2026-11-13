@@ -11,6 +11,7 @@ import { Input } from "@/components/ui/input";
 import { Check, Sparkles, ArrowLeft, Ticket, Loader2, ReceiptText } from "lucide-react";
 import PageShell from "@/components/layout/PageShell";
 import { PLAN_DETAILS, PLAN_TIERS } from "@/lib/subscriptionFeatures";
+import { billingReturnNotice, freePlanAction } from "@/lib/billingReturnNotice";
 
 export default function Subscribe() {
   const { user } = useAuth();
@@ -24,14 +25,12 @@ export default function Subscribe() {
   const [portalBusy, setPortalBusy] = useState(false);
 
   React.useEffect(() => {
-    const status = params.get("status");
-    if (status === "success") {
-      toast({ title: "Subscription active 🎉", description: "Your plan is unlocked." });
-      // Refresh entitlement state immediately so the UI reflects the new plan
-      // without requiring a manual page reload.
-      refresh();
-    }
-    if (status === "canceled") toast({ title: "Checkout canceled", variant: "destructive" });
+    const notice = billingReturnNotice(params.get("status"));
+    if (!notice) return;
+    toast({ title: notice.title, description: notice.description, variant: notice.variant });
+    // Checkout return query params are NOT evidence of active entitlement.
+    // The server-sourced subscription state is authoritative.
+    if (notice.refreshEntitlement) refresh();
   }, [params, refresh]);
 
   const openBillingPortal = async () => {
@@ -144,7 +143,11 @@ export default function Subscribe() {
                   ))}
                 </ul>
                 {tier === "free" ? (
-                  <Button variant="outline" className="w-full" disabled={isCurrent}>{isCurrent ? "Your current plan" : "Downgrade"}</Button>
+                  <Button variant="outline" className="w-full"
+                    disabled={!freePlanAction(currentPlan).manageBilling || portalBusy}
+                    onClick={openBillingPortal}>
+                    {portalBusy ? "Opening billing…" : freePlanAction(currentPlan).label}
+                  </Button>
                 ) : d.comingSoon ? (
                   <Button variant="outline" className="w-full" disabled>Coming Soon</Button>
                 ) : (
