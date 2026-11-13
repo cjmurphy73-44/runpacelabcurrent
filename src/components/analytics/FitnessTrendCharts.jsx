@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Button } from "@/components/ui/button";
 import { LineChart, Line, BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, ReferenceLine, CartesianGrid } from "recharts";
 import { Loader2, TrendingUp, BarChart3 } from "lucide-react";
+import { weeklyLoadPresentation } from "@/lib/weeklyLoadPresentation";
 
 const WINDOWS = [
   { label: "3 months", months: 3 },
@@ -51,14 +52,16 @@ export default function FitnessTrendCharts({ athleteId }) {
     return metrics.filter((m) => m.date && m.date >= c).sort((a, b) => a.date.localeCompare(b.date));
   }, [metrics, months]);
 
+  const loadPresentation = useMemo(() => weeklyLoadPresentation(windowed), [windowed]);
   const weekly = useMemo(() => {
+    if (loadPresentation.status !== "verified") return [];
     const map = {};
-    for (const m of windowed) {
+    for (const m of loadPresentation.points) {
       const wk = isoWeekLabel(m.date);
-      map[wk] = (map[wk] || 0) + (m.total_trimp || 0);
+      map[wk] = (map[wk] || 0) + m.total_trimp;
     }
     return Object.entries(map).map(([week, trimp]) => ({ week, trimp: Math.round(trimp) }));
-  }, [windowed]);
+  }, [loadPresentation]);
 
   if (loading) {
     return (
@@ -116,7 +119,8 @@ export default function FitnessTrendCharts({ athleteId }) {
         </div>
         <div>
           <p className="text-xs font-medium text-muted-foreground mb-2 flex items-center gap-1"><BarChart3 className="w-3.5 h-3.5" /> Weekly training load (TRIMP)</p>
-          <div className="h-44 w-full">
+          <p role="status" className="text-xs text-muted-foreground mb-3">{loadPresentation.message}</p>
+          {loadPresentation.status === "verified" && <div className="h-44 w-full">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={weekly} margin={{ top: 5, right: 10, left: -18, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" className="stroke-border" vertical={false} />
@@ -126,7 +130,7 @@ export default function FitnessTrendCharts({ athleteId }) {
                 <Bar dataKey="trimp" name="TRIMP" fill="hsl(var(--chart-2))" radius={[3, 3, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
-          </div>
+          </div>}
         </div>
       </CardContent>
     </Card>

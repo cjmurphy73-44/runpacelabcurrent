@@ -69,3 +69,11 @@ This file is the **single execution queue**, not a claim that beta readiness is 
 - **GitHub PR / merged SHA:** …
 - **Base44 deployment SHA / checkpoint / timestamp:** `NOT PUBLISHED` unless verified.
 - **Staging/live evidence and open blockers:** …
+
+
+## 2026-11-14: UX weekly load provenance gate (draft, unverified)
+- Source commits: `d9ab6948fafe087d541e079a2b2bfbf9135a0baf`, `b74c3acffdc8fb45cb26403ac32f35bfbcca5019`, `1e0890417f36932b7613ceff44ba5db226b15dc1` (plus date-regex edit `ba9eb13c453d0e666342e03d08bb9ec68429c43d`).
+- `FitnessTrendCharts` now gates weekly TRIMP bars on explicit unit/provenance contract, displays an explanatory unavailable state for legacy rows, and refuses mixed/partial windows rather than rendering a misleading weekly number.
+- Five synthetic regression cases authored in `src/lib/__tests__/weeklyLoadPresentation.test.js`; CI execution and Vercel preview **not verified**. No schema or production records changed.
+- Existing `DailyMetrics` schema has no `load_metric` or `load_contract_verified`; therefore weekly bars intentionally remain unavailable until backend writers establish trustworthy fields via separately approved schema/contract work. CTL/ATL lines remain legacy and require their own correctness gate.
+- Next milestone: integrate SCI-005 into server writers and independently verify historical load metric and stream evidence before adding contract fields; do not infer TRIMP from `total_trimp` or promote `load_source=stream` without validated telemetry.
