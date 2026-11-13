@@ -144,7 +144,12 @@ export function normalizedPacePower(workout) {
   }
 
   const paceMinPerKm = durationMin / workout.distance_km;
-  const min = Math.floor(paceMinPerKm);
-  const sec = Math.round((paceMinPerKm - min) * 60);
+  // Round total seconds first so 4:59.7 becomes 5:00, never "4:60".
+  // Do not display a plausible pace for invalid or non-positive values.
+  if (!Number.isFinite(paceMinPerKm) || paceMinPerKm <= 0) return "—";
+  const totalSeconds = Math.round(paceMinPerKm * 60);
+  if (totalSeconds <= 0) return "—";
+  const min = Math.floor(totalSeconds / 60);
+  const sec = totalSeconds % 60;
   return `${min}:${sec.toString().padStart(2, "0")} /km`;
 }
