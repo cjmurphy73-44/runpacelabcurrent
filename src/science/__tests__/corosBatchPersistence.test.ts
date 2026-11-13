@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { persistCorosBatches } from '../../../base44/shared/corosBatchPersistence';
 
-const rows = (n: number) => Array.from({ length: n }, (_, i) => ({ date: `2026-11-${String(i + 1).padStart(2, '0')}`, id: String(i) }));
+const rows = (n: number) => Array.from({ length: n }, (_, i) => ({ date: `2026-11-${String(i + 1).padStart(2, '0')}`, provider_activity_id: String(i), source_provider: 'coros', athlete_id: 'athlete-1' }));
 
 describe('COROS persisted sync counts', () => {
   it('counts only confirmed returned records', async () => {
@@ -39,6 +39,30 @@ describe('COROS persisted sync counts', () => {
     expect(res.imported).toBe(1);
     expect(res.uncertain).toBe(2);
     expect(res.persisted_dates).toEqual([input[0].date]);
+  });
+
+  it('does not count unrelated returned rows or repeated echoes', async () => {
+    const input = rows(2);
+    const unrelated = { ...input[1], provider_activity_id: 'unrelated' };
+    const res = await persistCorosBatches(input, async () => [input[0], input[0], unrelated]);
+    expect(res.imported).toBe(1);
+    expect(res.uncertain).toBe(1);
+    expect(res.persisted_dates).toEqual([input[0].date]);
+  });
+
+  it('rejects a date-only echo without provider identity', async () => {
+    const input = rows(1);
+    const res = await persistCorosBatches(input, async () => [{ date: input[0].date }]);
+    expect(res.imported).toBe(0);
+    expect(res.uncertain).toBe(1);
+    expect(res.persisted_dates).toEqual([]);
+  });
+
+  it('rejects a matching identity with a different saved date', async () => {
+    const input = rows(1);
+    const res = await persistCorosBatches(input, async () => [{ ...input[0], date: '2026-12-01' }]);
+    expect(res.imported).toBe(0);
+    expect(res.uncertain).toBe(1);
   });
 
   it('rejects invalid batch sizes', async () => {
