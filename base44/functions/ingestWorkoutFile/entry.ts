@@ -10,14 +10,7 @@ import { assertSafeFileUrl } from '../../shared/urlGuard.ts';
 import { assertOwnsAthlete } from '../../shared/ownership.ts';
 import { reportError } from '../../shared/errorReport.ts';
 import { checkImportAllowance } from '../../shared/importLimit.ts';
-
-const MAX_STREAM_SAMPLES = 3600; // cap stored streams (~1hr @1Hz) to avoid oversized records
-
-function storageStream(stream) {
-  return stream.map((p) => ({
-    time: p.time, heart_rate: p.heart_rate, altitude: p.altitude, distance: p.distance, cadence: p.cadence, speed: p.speed,
-  }));
-}
+import { MAX_STREAM_SAMPLES, storageStream } from '../../shared/streamValidity.ts';
 
 Deno.serve(async (req) => {
   try {
