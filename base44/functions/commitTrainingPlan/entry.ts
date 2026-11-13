@@ -1,5 +1,5 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.38';
-import { validatePlanStructure } from '../../shared/planValidation.ts';
+import { prepareDraftPlanCommit } from '../../shared/planCommitPreparation.ts';
 import { reportError } from '../../shared/errorReport.ts';
 
 Deno.serve(async (req) => {
@@ -17,50 +17,32 @@ Deno.serve(async (req) => {
 
     const athleteId = plan.athlete_id;
 
-    // Archive any currently active plans for this athlete
+    // Validate and prepare the replacement BEFORE archiving/deleting any
+    // currently scheduled training. A malformed draft must leave the active
+    // calendar unchanged.
+    const prepared = prepareDraftPlanCommit(plan);
+    if (!prepared.valid) {
+      return Response.json({
+        error: 'Plan structure is invalid. Please regenerate your plan.',
+        validation_errors: prepared.errors,
+      }, { status: 422 });
+    }
+
+    // Only after successful validation may existing plan/calendar records change.
     const oldActive = await base44.entities.TrainingPlan.filter({ athlete_id: athleteId, status: 'active' });
     if (oldActive.length > 0) {
       await base44.entities.TrainingPlan.bulkUpdate(oldActive.map((p) => ({ id: p.id, status: 'archived' })));
     }
 
-    // Clear old upcoming pending sessions to avoid duplicates/conflicts with the new plan
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     const todayStr = today.toISOString().slice(0, 10);
     const oldPending = await base44.entities.TrainingPlanSession.filter({ athlete_id: athleteId, status: 'pending' });
-    const toDelete = oldPending.filter((s) => s.date >= todayStr);
-    await Promise.all(toDelete.map((s) => base44.entities.TrainingPlanSession.delete(s.id)));
+    const toDelete = oldPending.filter((session) => session.date >= todayStr);
+    await Promise.all(toDelete.map((session) => base44.entities.TrainingPlanSession.delete(session.id)));
 
-    // Validate the stored plan's structure before materializing sessions.
-    // A plan corrupted by a bad generation must not silently produce bad sessions.
-    const validation = validatePlanStructure(plan, null);
-    if (!validation.valid) {
-      return Response.json({
-        error: 'Plan structure is invalid. Please regenerate your plan.',
-        validation_errors: validation.errors,
-      }, { status: 422 });
-    }
-    const safePlan = validation.sanitized;
-
-    // Materialize TrainingPlanSession records so the calendar reflects the new plan
-    const sessionsToCreate = [];
-    for (const week of safePlan.weekly_plans || []) {
-      for (const day of week.days || []) {
-        if (!day.date || day.session_type === 'rest') continue;
-        sessionsToCreate.push({
-          training_plan_id: plan.id,
-          athlete_id: athleteId,
-          date: day.date,
-          sport: day.sport || 'running',
-          prescribed_duration_minutes: day.prescribed_duration_minutes || 0,
-          prescribed_intensity_zone: day.prescribed_intensity_zone || '',
-          rationale_text: `${day.title || ''}${day.description ? ' — ' + day.description : ''}`,
-          status: 'pending',
-        });
-      }
-    }
-    if (sessionsToCreate.length > 0) {
-      await base44.entities.TrainingPlanSession.bulkCreate(sessionsToCreate);
+    if (prepared.sessions.length > 0) {
+      await base44.entities.TrainingPlanSession.bulkCreate(prepared.sessions);
     }
 
     const updatedPlan = await base44.entities.TrainingPlan.update(plan.id, { status: 'active' });
