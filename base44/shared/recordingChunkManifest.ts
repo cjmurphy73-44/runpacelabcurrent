@@ -2,6 +2,7 @@
 // Pure, no entity writes, OAuth, or access to athlete records.
 // Persistence is COMPLETE only when every row and the full stream digest verify.
 // SHA-256 covers exact persisted sample channels, not a mutable summary.
+// @ts-ignore Deno import extensions are necessary at runtime.
 import { validateRecordingChunks } from './recordingChunks.ts';
 
 const SAMPLE_KEYS = ['time', 'heart_rate', 'altitude', 'distance', 'cadence', 'speed', 'power'];
