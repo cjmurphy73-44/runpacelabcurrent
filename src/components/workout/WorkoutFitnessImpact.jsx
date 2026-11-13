@@ -1,9 +1,10 @@
 import React, { useEffect, useState } from "react";
 import { base44 } from "@/api/base44Client";
 import { TrendingUp, TrendingDown, Minus } from "lucide-react";
+import { findPreviousDayMetrics } from "@/lib/fitnessImpactComparison";
 
 // Session-level impact on the fitness curve, read straight from the stored EWMA
-// daily values: this training day's CTL/ATL/TSB versus the previous day with data.
+// daily values: this training day's CTL/ATL/TSB versus the immediately preceding calendar day.
 // No new maths, the numbers stay exactly what recalculateCTLATLTSB produced.
 function Delta({ value, suffix = "" }) {
   if (value === null || value === undefined || Number.isNaN(value)) return null;
@@ -50,7 +51,7 @@ export default function WorkoutFitnessImpact({ workout, athleteId }) {
         );
         const list = Array.isArray(rows) ? rows : rows?.items || [];
         const current = list.find((r) => r.date === workout.date) || null;
-        const previous = list.find((r) => r.date < workout.date) || null;
+        const previous = findPreviousDayMetrics(list, workout.date);
         if (!cancelled) setState({ loading: false, current, previous });
       } catch {
         if (!cancelled) setState({ loading: false, current: null, previous: null });
@@ -75,12 +76,13 @@ export default function WorkoutFitnessImpact({ workout, athleteId }) {
     <div className="space-y-2">
       <div className="flex items-center justify-between">
         <h4 className="text-xs font-semibold text-muted-foreground">Impact on your fitness curve</h4>
-        <span className="text-[10px] text-muted-foreground">this training day vs. previous</span>
+        <span className="text-[10px] text-muted-foreground">this day vs. yesterday</span>
       </div>
       <div className="grid grid-cols-3 gap-2">
         <Tile label="Fitness · CTL" value={current.calculated_ctl} delta={current.calculated_ctl != null && previous?.calculated_ctl != null ? current.calculated_ctl - previous.calculated_ctl : null} />
         <Tile label="Fatigue · ATL" value={current.calculated_atl} delta={current.calculated_atl != null && previous?.calculated_atl != null ? current.calculated_atl - previous.calculated_atl : null} />
         <Tile label="Form · TSB" value={current.calculated_tsb} delta={null} hint="CTL − ATL" />
+      {!previous && <p role="status" className="text-xs text-muted-foreground">No previous-day baseline is available. Daily changes are hidden rather than compared with an older record.</p>}
       </div>
     </div>
   );
