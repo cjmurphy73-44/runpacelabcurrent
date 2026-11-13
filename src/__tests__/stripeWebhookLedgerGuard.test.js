@@ -1,9 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 
 // Source-level safety regression for the Base44/Deno entrypoint, which cannot
 // be imported directly into Node because of its runtime-only module specifiers.
-const source = readFileSync(new URL('../../base44/functions/stripeWebhook/entry.ts', import.meta.url), 'utf8');
+const source = readFileSync(resolve(process.cwd(), 'base44/functions/stripeWebhook/entry.ts'), 'utf8');
 
 const ledgerLookup = source.match(/const eventId = `stripe:\$\{event\.id\}`;([\s\S]*?)const provision =/);
 
