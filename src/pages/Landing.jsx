@@ -9,6 +9,7 @@ import {
   ArrowRight, Check, LineChart, Quote, Calculator, HeartPulse, Ban,
 } from "lucide-react";
 import { PLAN_TIERS, PLAN_DETAILS } from "@/lib/subscriptionFeatures";
+import { publicPlanAction, planHighlightLabel } from "@/lib/publicPricing";
 import ProductPreview from "@/components/landing/ProductPreview";
 import DataSovereigntySection from "@/components/landing/DataSovereigntySection";
 import ScienceExplainedSection from "@/components/landing/ScienceExplainedSection";
@@ -346,7 +347,7 @@ export default function Landing() {
                   <CardContent className="p-6 flex flex-col h-full">
                     <div className="flex items-center justify-between">
                       <h3 className="font-heading font-semibold text-lg">{d.label}</h3>
-                      {d.highlighted && <span className="text-[10px] font-semibold bg-primary text-primary-foreground px-2 py-0.5 rounded-full">Popular</span>}
+                      {planHighlightLabel(d) && <span className="text-[10px] font-semibold bg-primary text-primary-foreground px-2 py-0.5 rounded-full">{planHighlightLabel(d)}</span>}
                     </div>
                     <p className="text-sm text-muted-foreground">{d.tagline}</p>
                     <div className="mt-3 flex items-baseline gap-1">
@@ -361,14 +362,26 @@ export default function Landing() {
                         </li>
                       ))}
                     </ul>
-                    <Button asChild variant={d.highlighted ? "default" : "outline"} className="w-full mt-6">
-                      <Link to={user ? "/app" : tier === "free" ? "/register" : "/subscribe"}>{user ? "Your account" : `Start with ${d.label}`}</Link>
-                    </Button>
+                    {publicPlanAction(tier, d, !!user).disabled ? (
+                      <Button disabled variant="outline" className="w-full mt-6">
+                        {publicPlanAction(tier, d, !!user).label}
+                      </Button>
+                    ) : (
+                      <Button asChild variant={d.highlighted ? "default" : "outline"} className="w-full mt-6">
+                        <Link to={publicPlanAction(tier, d, !!user).to}>{publicPlanAction(tier, d, !!user).label}</Link>
+                      </Button>
+                    )}
                   </CardContent>
                 </Card>
               );
             })}
           </div>
+          <p className="mt-6 text-sm text-muted-foreground max-w-3xl">
+            Prices shown in Australian dollars (AUD). Paid plans are billed monthly; you can cancel future renewals.
+            Review the <Link className="underline underline-offset-4 hover:text-foreground" to="/terms">terms</Link> and
+            {" "}<Link className="underline underline-offset-4 hover:text-foreground" to="/refund">refund policy</Link> before subscribing.
+            Wearable integrations depend on provider availability and your connection status.
+          </p>
         </div>
       </section>
 
