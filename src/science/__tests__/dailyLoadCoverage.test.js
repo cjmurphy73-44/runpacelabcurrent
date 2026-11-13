@@ -23,7 +23,7 @@ describe('daily load provenance for adaptation', () => {
     };
     expect(assessDailyLoadCoverage(input).days.map(d => d.status)).toEqual(['recorded', 'confirmed_rest', 'recorded']);
     expect(verifiedDailyLoadForAdaptation(input)).toMatchObject({
-      eligible: true, dailyLoads: [{ date: '2026-11-01', load: 40 }, { date: '2026-11-02', load: 0 }, { date: '2026-11-03', load: 0 }],
+      eligible: true, dailyLoads: [{ date: '2026-11-01', load: 40 }, { date: '2026-11-02', load: 0 }, { date: '2026-11-03', loadMetric: 'trimp', load: 0 }],
     });
   });
 
@@ -61,7 +61,7 @@ describe('verified load forecast', () => {
   });
 
   it('produces a reproducible EWMA scenario with explicit future load', () => {
-    const result = forecastVerifiedDailyLoad(input, { daysAhead: 2, futureDailyLoads: [{ date: '2026-11-04', load: 80 }] });
+    const result = forecastVerifiedDailyLoad(input, { daysAhead: 2, futureDailyLoads: [{ date: '2026-11-04', loadMetric: 'trimp', load: 80 }] });
     expect(result.eligible).toBe(true);
     expect(result.points.map(p => [p.date, p.dailyLoad, p.isProjected])).toEqual([
       ['2026-11-01', 40, false], ['2026-11-02', 0, false], ['2026-11-03', 60, false],
@@ -71,10 +71,11 @@ describe('verified load forecast', () => {
   });
 
   it('rejects invalid future load and horizon', () => {
-    expect(forecastVerifiedDailyLoad(input, { futureDailyLoads: [{ date: '2026-11-04', load: Infinity }] }).reason).toBe('invalid_planned_load');
+    expect(forecastVerifiedDailyLoad(input, { futureDailyLoads: [{ date: '2026-11-04', loadMetric: 'trimp', load: Infinity }] }).reason).toBe('invalid_planned_load');
     expect(forecastVerifiedDailyLoad(input, { daysAhead: 366 }).reason).toBe('invalid_horizon_or_history');
-    expect(forecastVerifiedDailyLoad(input, { daysAhead: 2, futureDailyLoads: [{ date: '2026-11-03', load: 5 }] }).reason).toBe('invalid_planned_load');
-    expect(forecastVerifiedDailyLoad(input, { daysAhead: 2, futureDailyLoads: [{ date: '2026-11-06', load: 5 }] }).reason).toBe('invalid_planned_load');
+    expect(forecastVerifiedDailyLoad(input, { futureDailyLoads: [{ date: '2026-11-04', loadMetric: 'tss', load: 10 }] }).reason).toBe('invalid_planned_load');
+    expect(forecastVerifiedDailyLoad(input, { daysAhead: 2, futureDailyLoads: [{ date: '2026-11-03', loadMetric: 'trimp', load: 5 }] }).reason).toBe('invalid_planned_load');
+    expect(forecastVerifiedDailyLoad(input, { daysAhead: 2, futureDailyLoads: [{ date: '2026-11-06', loadMetric: 'trimp', load: 5 }] }).reason).toBe('invalid_planned_load');
   });
 });
 
@@ -104,6 +105,10 @@ describe('load metric isolation', () => {
     expect(result.eligible).toBe(true);
     expect(result.loadMetric).toBe('tss');
     expect(result.points.map(p => p.dailyLoad)).toEqual([70, 45, 0]);
+  });
+
+  it('rejects excessive history ranges', () => {
+    expect(assessDailyLoadCoverage({ ...base, loadMetric: 'tss', endDate: '2040-01-01' }).reason).toBe('range_too_long');
   });
 
   it('rejects invalid provenance collections', () => {
