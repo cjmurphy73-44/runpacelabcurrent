@@ -145,7 +145,7 @@
     "active_calories": {
       "type": "number",
       "minimum": 0,
-      "description": "Active kilocalories for the session \u2014 the device-reported value when the provider sent one, otherwise a documented estimate (see calories_source / calories_basis)"
+      "description": "Active kilocalories for the session — the device-reported value when the provider sent one, otherwise a documented estimate (see calories_source / calories_basis)"
     },
     "calories_source": {
       "type": "string",
@@ -158,11 +158,11 @@
     },
     "calories_basis": {
       "type": "string",
-      "description": "Human-readable explanation of how active_calories was produced, e.g. 'Device-reported active calories' or 'Estimated \u00b7 Keytel heart-rate regression \u00b7 heat adjustment +6% (31\u00b0C, 78% humidity)'"
+      "description": "Human-readable explanation of how active_calories was produced, e.g. 'Device-reported active calories' or 'Estimated · Keytel heart-rate regression · heat adjustment +6% (31°C, 78% humidity)'"
     },
     "temperature_c": {
       "type": "number",
-      "description": "Ambient temperature in \u00b0C reported by the provider for this session, when available"
+      "description": "Ambient temperature in °C reported by the provider for this session, when available"
     },
     "humidity_pct": {
       "type": "number",
@@ -194,6 +194,11 @@
           "speed": {
             "type": "number",
             "description": "Speed in meters/second"
+          },
+          "power": {
+            "type": "number",
+            "minimum": 0,
+            "description": "Device-recorded power in watts; null when no sensor sample, zero permitted for coasting. Never modelled watts."
           }
         }
       }
@@ -241,7 +246,7 @@
     },
     "post_workout_feedback_id": {
       "type": "string",
-      "description": "References WorkoutFeedback.id \u2014 the latest AI post-workout insight generated for this session (relation to the WorkoutFeedback entity)"
+      "description": "References WorkoutFeedback.id — the latest AI post-workout insight generated for this session (relation to the WorkoutFeedback entity)"
     },
     "description": {
       "type": "string",
