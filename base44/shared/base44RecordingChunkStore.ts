@@ -1,29 +1,25 @@
-// Base44 service-role chunk store using documented cursor-based entity.filter.
-// SOURCE-ONLY ADAPTER: NOT called by any deployed function.
-// Caller must first authorize user against backend-fetched AthleteProfile and
-// WorkoutSession, and must supply a per-session concurrency lock / unique key
-// before any production write path is enabled. Service-role bypasses RLS.
-// Never accept client-provided filters or a user SDK entity handler.
-// @ts-ignore Deno runtime import extension.
+// Base44 service-role chunk store for the actual documented SDK interface:
+// entity.filter(query, sort?, limit?, skip?) => row array.
+// This adapter is SOURCE ONLY. No live backend invokes it.
+// Caller MUST enforce athlete ownership and supply a durable exclusive
+// per-session lock. Offset paging is unsafe under concurrent mutation without
+// that lock. We fail closed on duplicate indices, malformed rows or overflow.
+// @ts-ignore Deno runtime requires explicit .ts extension.
 import type { ChunkStore, ChunkRow, CompleteChunkRead } from './recordingChunkPersistence.ts';
 
-type CursorPage = {
-  items: unknown[];
-  has_more: boolean;
-  next_cursor: string | null;
-};
 type EntityHandler = {
   filter: (query: { athlete_id: string; session_id: string },
-    options: { sort?: string; limit: number; cursor?: string }) => Promise<unknown>;
+    sort: string, limit: number, skip: number) => Promise<unknown>;
   bulkCreate: (rows: ChunkRow[]) => Promise<unknown>;
 };
 
 export const BASE44_CHUNK_PAGE_SIZE = 20;
 export const BASE44_MAX_CHUNK_ROWS = 96;
 
-// Official Base44 SDK entity.filter(query, { sort, limit, cursor }) returns
-// { items, has_more, next_cursor }. The cursor includes the original query/sort.
-// Always check for duplicate returned IDs/indices and for changed page tokens.
+// The SDK's filter returns an ARRAY, not cursor metadata. A short/empty page
+// after an exact-full page is the terminal condition; under the caller's
+// required durable exclusive lock, a stable ascending sort is expected.
+// Reading a non-snapshot concurrent dataset cannot be declared complete.
 export function createBase44RecordingChunkStore(
   entity: EntityHandler,
   athleteId: string,
@@ -40,26 +36,18 @@ export function createBase44RecordingChunkStore(
     async listAll(): Promise<CompleteChunkRead> {
       const failed = (): CompleteChunkRead => ({ rows: [], complete: false });
       const rows: ChunkRow[] = [];
-      const cursors = new Set<string>();
       const indices = new Set<number>();
       const recordIds = new Set<string>();
-      let cursor: string | undefined;
-      for (let pageNumber = 0; pageNumber < 7; pageNumber++) {
+      // Hard maximum 96 rows, plus enough requests to detect 97th.
+      for (let offset = 0; offset <= BASE44_MAX_CHUNK_ROWS; offset += BASE44_CHUNK_PAGE_SIZE) {
         let result: unknown;
         try {
-          result = await entity.filter(scope, cursor
-            ? { limit: BASE44_CHUNK_PAGE_SIZE, cursor }
-            : { sort: 'chunk_index', limit: BASE44_CHUNK_PAGE_SIZE });
+          result = await entity.filter(scope, 'chunk_index', BASE44_CHUNK_PAGE_SIZE, offset);
         } catch {
           return failed();
         }
-        const page = result as CursorPage | null;
-        if (!page || !Array.isArray(page.items) ||
-          typeof page.has_more !== 'boolean' ||
-          page.items.length > BASE44_CHUNK_PAGE_SIZE ||
-          !(page.next_cursor === null || typeof page.next_cursor === 'string')) return failed();
-
-        for (const item of page.items) {
+        if (!Array.isArray(result) || result.length > BASE44_CHUNK_PAGE_SIZE) return failed();
+        for (const item of result) {
           const row = item as ChunkRow & { id?: string };
           if (!row || row.athlete_id !== athleteId || row.session_id !== sessionId ||
             !Number.isInteger(row.chunk_index) || row.chunk_index < 0 ||
@@ -71,17 +59,15 @@ export function createBase44RecordingChunkStore(
           rows.push(row);
         }
         if (rows.length > BASE44_MAX_CHUNK_ROWS) return failed();
-
-        if (!page.has_more) {
-          if (page.next_cursor !== null) return failed();
+        if (result.length < BASE44_CHUNK_PAGE_SIZE) {
+          // A stable, complete result must have contiguous chunk indices.
+          // Existing missing indices are valid for recovery; out-of-order
+          // rows imply an unstable sort or offset-paging race.
+          for (let i = 1; i < rows.length; i++) {
+            if (rows[i].chunk_index <= rows[i - 1].chunk_index) return failed();
+          }
           return { rows, complete: true };
         }
-        // No progress, repeated cursor, or final-page cursor absent means
-        // an incomplete read. Never present any partial samples.
-        if (page.items.length === 0 || !page.next_cursor ||
-          cursors.has(page.next_cursor)) return failed();
-        cursors.add(page.next_cursor);
-        cursor = page.next_cursor;
       }
       return failed();
     },
