@@ -1,0 +1,110 @@
+{
+  "name": "WorkoutStreamChunk",
+  "type": "object",
+  "description": "Bounded segments of original verified workout telemetry. Only server-side ingestion may write chunks; never replace the raw FIT recording or session summary. Release gated until authorization, storage and repair are validated.",
+  "properties": {
+    "athlete_id": {
+      "type": "string",
+      "description": "AthleteProfile.id owner for RLS"
+    },
+    "session_id": {
+      "type": "string",
+      "description": "WorkoutSession.id parent for scoped reads"
+    },
+    "chunk_index": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Zero-based contiguous segment index"
+    },
+    "sample_count": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 300,
+      "description": "Exact number of samples in this chunk"
+    },
+    "start_time_s": {
+      "type": "number",
+      "minimum": 0,
+      "description": "Start elapsed seconds"
+    },
+    "end_time_s": {
+      "type": "number",
+      "minimum": 0,
+      "description": "End elapsed seconds"
+    },
+    "samples": {
+      "type": "array",
+      "description": "Device-recorded elapsed samples, no interpolation or downsampling; never estimated power",
+      "items": {
+        "type": "object",
+        "properties": {
+          "time": {
+            "type": "number"
+          },
+          "heart_rate": {
+            "type": "number"
+          },
+          "altitude": {
+            "type": "number"
+          },
+          "distance": {
+            "type": "number"
+          },
+          "cadence": {
+            "type": "number"
+          },
+          "speed": {
+            "type": "number"
+          },
+          "power": {
+            "type": "number",
+            "minimum": 0
+          }
+        }
+      }
+    }
+  },
+  "required": [
+    "athlete_id",
+    "session_id",
+    "chunk_index",
+    "sample_count",
+    "start_time_s",
+    "end_time_s",
+    "samples"
+  ],
+  "rls": {
+    "create": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "read": {
+      "$or": [
+        {
+          "data.athlete_id": "{{user.data.athlete_profile_id}}"
+        },
+        {
+          "data.athlete_id": {
+            "$in": "{{user.data.coached_athletes}}"
+          }
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    },
+    "update": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "delete": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
+}
