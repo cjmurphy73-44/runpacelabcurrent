@@ -37,6 +37,10 @@ export async function recomputeCTLATLTSB(base44: any, athlete_id: string) {
     return { success: false, code: 'LOAD_HISTORY_UNVERIFIED', reason: coverage.reason,
       date: coverage.date, ctl: null, atl: null, tsb: null };
   }
+  if (coverage.unit !== 'trimp') {
+    return { success: false, code: 'INCOMPATIBLE_LOAD_UNIT', reason: 'CTL/ATL TRIMP history requires measured or estimated TRIMP, not TSS or rest-only history.',
+      date: null, ctl: null, atl: null, tsb: null };
+  }
   // No writes occur before this gate. Only explicitly confirmed rest days
   // can contribute zero impulses, and all nonzero loads must use one unit.
   const restDays = new Set(existing.filter((m: any) => m.confirmed_rest === true).map((m: any) => m.date));
