@@ -31,6 +31,14 @@ describe("billing portal popup boundary", () => {
     expect(f.invoke).not.toHaveBeenCalled();
     expect(f.notify).toHaveBeenCalled();
   });
+  it("does not invoke backend when opening a popup throws", async () => {
+    const f = fixture();
+    f.openTab.mockImplementation(() => { throw new Error("popup policy denied"); });
+    expect(await launchBillingPortal(f)).toBe(false);
+    expect(f.invoke).not.toHaveBeenCalled();
+    expect(f.navigate).not.toHaveBeenCalled();
+    expect(f.notify).toHaveBeenCalled();
+  });
   it("closes reserved tab on invalid destination", async () => {
     const f = fixture({ response: { data: { url: "https://evil.example/p/session/x" } } });
     expect(await launchBillingPortal(f)).toBe(false);
