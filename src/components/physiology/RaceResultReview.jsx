@@ -11,6 +11,7 @@ export default function RaceResultReview() {
   const [form, setForm] = useState(EMPTY);
   const [records, setRecords] = useState([]);
   const [editingId, setEditingId] = useState(null);
+  const [editingRevision, setEditingRevision] = useState(null);
   const [loading, setLoading] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
@@ -47,12 +48,13 @@ export default function RaceResultReview() {
     setBusy(true);
     try {
       const payload = { ...form, distance_m, elapsed_seconds,
-        ...(editingId ? { action: 'correct', id: editingId } : {}) };
+        ...(editingId ? { action: 'correct', id: editingId, expected_revision: editingRevision } : {}) };
       const response = await base44.functions.invoke('submitRaceResult', payload);
       const data = response?.data ?? response;
       if (data?.error) throw new Error(data.error);
       setNotice(editingId ? 'Race result corrected. Still athlete-reported.' : 'Saved as athlete-reported, not independently verified.');
       setEditingId(null);
+      setEditingRevision(null);
       setForm(EMPTY);
       await refresh();
     } catch (err) {
@@ -62,6 +64,7 @@ export default function RaceResultReview() {
 
   const startEdit = (r) => {
     setEditingId(r.id);
+    setEditingRevision(r.revision ?? null);
     setForm({ race_date: r.race_date, distance_m: String(r.distance_m),
       elapsed_seconds: String(r.elapsed_seconds), sport: 'running', event_name: r.event_name || '' });
     setNotice('');
@@ -90,7 +93,7 @@ export default function RaceResultReview() {
           {notice && <p role="status" className="text-sm text-muted-foreground">{notice}</p>}
           <div className="flex flex-wrap gap-2">
             <Button type="submit" disabled={busy}>{busy ? 'Saving…' : editingId ? 'Save correction' : 'Save race result'}</Button>
-            {editingId && <Button type="button" variant="secondary" onClick={() => { setEditingId(null); setForm(EMPTY); }}>Cancel edit</Button>}
+            {editingId && <Button type="button" variant="secondary" onClick={() => { setEditingId(null); setEditingRevision(null); setForm(EMPTY); }}>Cancel edit</Button>}
           </div>
         </form>
         <div className="space-y-2">
