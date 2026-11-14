@@ -76,3 +76,10 @@ This file is the **single execution queue**, not a claim that beta readiness is 
 - Change: pure presentation helper now shows TSS/TRIMP units accurately, rejects ambiguous dual values, invalid numbers and absent load, and labels recording-derived values as verification pending rather than independently verified.
 - Evidence: commits `88c6b1e9`, `1b0676b2`; six synthetic Vitest cases authored but not executed. Draft PR #94; no deployment or merge.
 - Integration: related full history PR #93 changes a different helper; reconcile shared presentation semantics before either merges. Next higher-priority milestone is SCI-005 verified server load provenance to dashboard/analytics.
+
+## 2026-11-14 UX Recent Workouts keyboard and mobile trigger (existing PR #94)
+
+- Audit: `WorkoutDetailModal` uses Radix `DialogTrigger asChild`; `RecentWorkouts` previously passed a non-focusable clickable `div` as its trigger. This blocked native keyboard activation. Existing PR #94 already owns the recent workout provenance component, so changes are added there rather than opening a duplicate PR.
+- Change: semantic `button type=button` trigger with per-workout accessible label, visible keyboard focus, mobile flex constraints, and safe default empty list. Two synthetic React server-render tests authored.
+- Evidence: commits `3b88ae2b`, `767d15ce`, `c3c3e6fe`. Test execution and browser keyboard/screen-reader acceptance pending. Draft PR #94, not merged or deployed.
+- Next: run Vitest and mobile keyboard accessibility smoke test in staging; verify dialog opens on Enter/Space and focus returns on close. No production records or Odysseus touched.
