@@ -11,7 +11,7 @@ export default async function (req: Request): Promise<Response> {
     const linkedId = user.data?.athlete_profile_id || user.athlete_profile_id || null;
     if (!linkedId) return Response.json({ error: 'An owned athlete profile is required' }, { status: 403 });
     const athlete = await base44.entities.AthleteProfile.get(linkedId).catch(() => null);
-    if (!athlete || (athlete.created_by_id !== user.id && linkedId !== athlete.id)) {
+    if (!athlete || athlete.created_by_id !== user.id) {
       return Response.json({ error: 'Forbidden' }, { status: 403 });
     }
     const body = await req.json().catch(() => null);
