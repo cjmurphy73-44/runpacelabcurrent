@@ -140,3 +140,9 @@ GitHub CI #691 passed at `69aa555fb7a425c5870e908439934998ea83e249`. In the sepa
 Persistent `tests/staging-sdk-routing-contract.test.mjs` now checks SDK source routing, absence of relative fallback, and nine rejection cases (missing/false attestation, missing/relative/insecure/unsafe API origin, missing app URL), plus a synthetic valid origin. Combined with the existing ten app-base/OAuth tests: **22/22 passed**, and staging `npm run build` passed. Pre-change Base44 checkpoint `6af8d3842656f279e80329dd` (`389f8b5b`), post-change checkpoint `6af8d3bd5f93d0b44d403a1b` (`4fd880a0`). No backend calls, credentials, Vercel variable changes or production edits.
 
 The Base44 support request above remains ready for manual submission. In addition to verifying the correct SDK `serverUrl` and auth `appBaseUrl` semantics, require explicit proof of app-ID-bound authentication and data/function isolation before enabling the new attestation gate.
+
+## SDK API and OAuth origin validation hardening
+
+CI #693 passed at `50cf63784a8780fe1f205f111adaff40b06c25e4`. Staging-only `resolveAttestedStagingApiOrigin` now also validates `appBaseUrl` as an absolute clean HTTPS origin, rejects relative/HTTP/credentialed/path/query OAuth origins, and rejects loopback API or app origins. Added seven offline regression cases: **29/29 persistent synthetic tests passed** and `npm run build` passed. Base44 pre-change checkpoint `6af8d53a2fc2fd0a77ae0430` (`4fd880a0`), post-change checkpoint `6af8d568ab0b5e8f0d72f204` (`040ac54a`).
+
+These tests exercise the pure guard in a Node VM and inspect the installed SDK source; they do not establish real OAuth callbacks, SSR compatibility or independently verified tenant isolation. The explicit attestation variable remains unset, preventing staging SDK initialization. The support request remains prepared but unsent. No live backend calls, Vercel changes, merges or production deployments.
