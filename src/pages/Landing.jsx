@@ -35,7 +35,7 @@ const PILLARS = [
   {
     icon: HeartPulse,
     title: "Grounded in your real data",
-    body: "Every insight is tied to your actual telemetry, heart rate, pace, recovery scores, and race history. Where AI adds value, it's parsing and synthesizing your real numbers. Where it doesn't, it stays out of the way. Every recommendation is generated from your own training history.",
+    body: "Every insight is tied to your actual telemetry, heart rate, pace, recovery scores, and race history. Where AI adds value, it's parsing and synthesizing your real numbers. Where it doesn't, it stays out of the way. Recommendations depend on the training history and signals actually available.",
   },
   {
     icon: Activity,
@@ -56,7 +56,7 @@ const FEATURES = [
 const STEPS = [
   { icon: Watch, title: "Bring in your data", body: "Check available connections, upload a supported workout file, or log a session manually. Check each provider's status before relying on automatic sync." },
   { icon: BrainCircuit, title: "We model your physiology", body: "Daily CTL/ATL/TSB, HR-based TRIMP, and VDOT calibration build a living picture of your fitness and fatigue, with the specificity to distinguish a threshold session from a recovery jog." },
-  { icon: Sparkles, title: "Get an adaptive plan that reads your body", body: "Your plan reshapes every session as you train. When recovery is low, tomorrow eases. When you're ready to absorb work, it pushes, grounded in your numbers, not a static checklist." },
+  { icon: Sparkles, title: "Get an adaptive plan that reads your body", body: "Review structured training sessions and request adjustments where supported. Recommendations depend on the data and features available to your account." },
 ];
 
 const FAQ = [
@@ -122,9 +122,7 @@ export default function Landing() {
                 Train to your physiology, <span className="text-primary">not a template.</span>
               </h1>
               <p className="mt-5 text-lg text-muted-foreground max-w-lg">
-                TrainPaceLab models your training load with the specificity the body actually responds to,
-                then reshapes your plan around your real recovery, so you arrive at your race fit, fresh,
-                and healthy.
+                Bring your sessions, recovery signals and training plan into one place. Explore what the data supports, see where it is incomplete, and make more informed endurance training decisions.
               </p>
               <div className="mt-8 flex flex-wrap items-center gap-3">
                 <Button asChild size="lg" className="gap-2 min-h-11">
@@ -133,9 +131,9 @@ export default function Landing() {
                 <a href="#how-it-works" className="inline-flex min-h-11 items-center rounded-md px-3 text-sm font-semibold text-foreground underline-offset-4 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary">See how it works</a>
               </div>
               <div className="mt-6 flex flex-wrap items-center gap-x-5 gap-y-2 text-xs font-medium text-muted-foreground">
-                <span className="flex items-center gap-1.5"><Ban className="w-3.5 h-3.5 text-primary" />No templated plans</span>
-                <span className="flex items-center gap-1.5"><Ban className="w-3.5 h-3.5 text-primary" />No black-box advice</span>
-                <span className="flex items-center gap-1.5"><Ban className="w-3.5 h-3.5 text-primary" />Your training data stays yours</span>
+                <span className="flex items-center gap-1.5"><Ban className="w-3.5 h-3.5 text-primary" />Structured training plans</span>
+                <span className="flex items-center gap-1.5"><Ban className="w-3.5 h-3.5 text-primary" />Transparent calculations</span>
+                <span className="flex items-center gap-1.5"><Ban className="w-3.5 h-3.5 text-primary" />Data quality made visible</span>
               </div>
             </div>
             <div className="relative">
@@ -151,8 +149,7 @@ export default function Landing() {
           <div className="mb-12 max-w-2xl">
             <h2 className="font-heading text-3xl sm:text-4xl font-bold">A different kind of training platform</h2>
             <p className="mt-3 text-muted-foreground">
-              Most apps log what happened. TrainPaceLab understands why your body responded the way it did,
-              and uses that to shape what comes next.
+              Training history is only useful when its context is clear. Explore workload, recovery and planning with explicit assumptions and visible limitations.
             </p>
           </div>
           <div className="grid gap-8 md:grid-cols-3">
@@ -182,9 +179,7 @@ export default function Landing() {
           </span>
           <h2 className="mt-4 font-heading text-3xl sm:text-4xl font-bold">A dashboard that reads your body</h2>
           <p className="mt-3 text-muted-foreground">
-            Fitness, fatigue, and form update daily from your real sessions and recovery. Readiness blends sleep,
-            HRV, resting heart rate, and training stress into one number, so you know whether to push or back off
-            before you lace up.
+            Review fitness, fatigue and form alongside available recovery signals. The dashboard distinguishes recorded inputs from estimates, and shows missing data rather than presenting unwarranted certainty.
           </p>
         </div>
         <div className="grid lg:grid-cols-2 gap-10 items-center">
