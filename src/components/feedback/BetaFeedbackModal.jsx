@@ -15,10 +15,11 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/components/ui/use-toast";
 import { Loader2 } from "lucide-react";
+import { feedbackReceipt } from "./feedbackReceipt";
 
 // Persistent beta feedback reporter. Stores each submission in the BetaFeedback
 // entity so the team can triage from the Admin page instead of relying on an
-// email inbox. Falls back to clipboard copy if the entity write fails.
+// email inbox. Failed requests preserve the draft for an explicit retry.
 export default function BetaFeedbackModal({ open, onClose }) {
   const { toast } = useToast();
   const { user } = useAuth();
@@ -38,24 +39,18 @@ export default function BetaFeedbackModal({ open, onClose }) {
         contact_email: email.trim() || undefined,
         route,
       });
-      const ok = res?.data?.success || res?.success;
+      const ok = feedbackReceipt(res);
       if (ok) {
         toast({ title: "Feedback sent", description: "Thanks, the team will review it." });
         setMessage("");
         setEmail("");
         onClose?.();
       } else {
-        toast({ title: res?.data?.error || "Could not send feedback", variant: "destructive" });
+        toast({ title: "Feedback not confirmed", description: "Your message is still here. Please retry.", variant: "destructive" });
       }
-    } catch (e) {
-      // Fallback: copy to clipboard so the tester always has a path.
-      try {
-        const fallback = `${message}\n\nFrom: ${email || "(anonymous)"}`;
-        await navigator.clipboard.writeText(fallback);
-        toast({ title: "Saved to clipboard instead", description: "Copy failed to reach the server, paste it into a message to the team.", variant: "destructive" });
-      } catch {
-        toast({ title: e?.message || "Could not send feedback", variant: "destructive" });
-      }
+    } catch {
+      // Do not silently copy private feedback or email addresses to the clipboard.
+      toast({ title: "Could not send feedback", description: "Your message is still here. Please retry.", variant: "destructive" });
     } finally {
       setSubmitting(false);
     }
@@ -67,7 +62,7 @@ export default function BetaFeedbackModal({ open, onClose }) {
         <DialogHeader>
           <DialogTitle>Send beta feedback</DialogTitle>
           <DialogDescription>
-            Spotted a bug or have an idea? Let the team know, it helps shape the beta.
+            Spotted a bug or have an idea? Let the team know, it helps shape the beta. Do not include passwords, access tokens or payment-card details.
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-4">
