@@ -43,6 +43,20 @@ describe("billing portal popup boundary", () => {
     expect(f.tab.close).toHaveBeenCalledOnce();
     expect(f.notify).toHaveBeenCalled();
   });
+  it("closes the reserved tab when navigation throws", async () => {
+    const f = fixture();
+    f.tab.location.replace.mockImplementation(() => { throw new Error("navigation blocked"); });
+    expect(await launchBillingPortal(f)).toBe(false);
+    expect(f.tab.close).toHaveBeenCalledOnce();
+    expect(f.notify).toHaveBeenCalled();
+  });
+  it("rejects a missing backend URL without navigating", async () => {
+    const f = fixture({ response: { data: {} } });
+    expect(await launchBillingPortal(f)).toBe(false);
+    expect(f.tab.close).toHaveBeenCalledOnce();
+    expect(f.navigate).not.toHaveBeenCalled();
+    expect(f.tab.location.replace).not.toHaveBeenCalled();
+  });
   it("navigates the current window when unframed", async () => {
     const f = fixture({ framed: false });
     expect(await launchBillingPortal(f)).toBe(true);
