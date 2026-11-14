@@ -60,7 +60,7 @@ const PUBLISHED_APP_ID = "6a504ebe6a5a6d1be058226c";
 
 // Opt-in preview guard: never infer staging from a hostname or a default app ID.
 // The build must explicitly opt in and provide its expected separate Base44 ID.
-export function resolvePreviewIdentity({ required = false, expectedAppId, configuredAppId, urlAppId, storedAppId, publishedAppId = PUBLISHED_APP_ID } = {}) {
+export function resolvePreviewIdentity({ required = false, expectedAppId, configuredAppId, pluginAppId, urlAppId, storedAppId, publishedAppId = PUBLISHED_APP_ID } = {}) {
   if (!required) return { enforced: false };
   const valid = (value) => typeof value === "string" && /^[a-f0-9]{24}$/i.test(value);
   if (!valid(expectedAppId) || expectedAppId.toLowerCase() === publishedAppId.toLowerCase()) {
@@ -69,7 +69,7 @@ export function resolvePreviewIdentity({ required = false, expectedAppId, config
   if (!valid(configuredAppId) || configuredAppId.toLowerCase() !== expectedAppId.toLowerCase()) {
     throw new Error("Preview identity blocked: build app ID differs from staging");
   }
-  if (urlAppId && urlAppId.toLowerCase() !== expectedAppId.toLowerCase()) {
+  if (pluginAppId && (!valid(pluginAppId) || pluginAppId.toLowerCase() !== expectedAppId.toLowerCase())) {\n    throw new Error("Preview identity blocked: Base44 Vite plugin app ID differs from staging");\n  }\n  if (urlAppId && urlAppId.toLowerCase() !== expectedAppId.toLowerCase()) {
     throw new Error("Preview identity blocked: URL app ID differs from staging");
   }
   // A stale production localStorage value must never override a preview build.
@@ -88,17 +88,17 @@ export function getAppParams() {
   const preview = resolvePreviewIdentity({
     required: previewRequired,
     expectedAppId: import.meta.env?.VITE_STAGING_APP_ID,
-    configuredAppId: import.meta.env?.VITE_APP_ID,
+    configuredAppId: import.meta.env?.VITE_APP_ID,\n    pluginAppId: import.meta.env?.VITE_BASE44_APP_ID,
     urlAppId: previewUrlId,
     storedAppId: previewStoredId,
   });
   if (preview.enforced) {
     const base = import.meta.env?.VITE_APP_BASE_URL;
-    const publishedBase = import.meta.env?.VITE_PRODUCTION_BASE44_BASE_URL;
+    const publishedBase = import.meta.env?.VITE_PRODUCTION_BASE44_BASE_URL;\n    const pluginBase = import.meta.env?.VITE_BASE44_APP_BASE_URL;
     if (!base || !publishedBase || !/^https:\/\/[^/?#@]+(?:\/)?$/.test(base) || !/^https:\/\/[^/?#@]+(?:\/)?$/.test(publishedBase) || new URL(base).origin.toLowerCase() === new URL(publishedBase).origin.toLowerCase()) {
       throw new Error("Preview identity blocked: explicit HTTPS staging base URL required");
     }
-    // No fallback to a published app or localStorage. URL mismatches fail before SDK initialization.
+    if (pluginBase && (!/^https:\\/\\/[^/?#@]+(?:\\/)?$/.test(pluginBase) || new URL(pluginBase).origin.toLowerCase() !== new URL(base).origin.toLowerCase())) {\n      throw new Error("Preview identity blocked: Base44 Vite plugin origin differs from staging");\n    }\n    // No fallback to a published app or localStorage. URL mismatches fail before SDK initialization.
     return {
       appId: preview.appId,
       token: getAppParamValue("access_token", { removeFromUrl: true }),
