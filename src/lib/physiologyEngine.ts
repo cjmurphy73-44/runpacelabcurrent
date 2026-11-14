@@ -29,13 +29,9 @@ export const calculateTrainingLoads = (workoutHistory: WorkoutSession[], maxHr: 
   return dailyLoads;
 };
 
+import { getTrainingPaces } from '../science/vdot';
+
 export const getVdotPaceZones = (vdotScore: number) => {
-  // Logic for Jack Daniels VDOT conversion
-  return {
-    easy: "5:00 - 5:30 min/km",
-    marathon: "4:30 - 4:45 min/km",
-    threshold: "4:00 - 4:15 min/km",
-    interval: "3:45 - 3:55 min/km",
-    repetition: "3:30 - 3:40 min/km"
-  };
+  if (!Number.isFinite(vdotScore) || vdotScore <= 0) return null;
+  return getTrainingPaces(vdotScore);
 };
