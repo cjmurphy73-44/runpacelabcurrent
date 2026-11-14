@@ -1,3 +1,4 @@
+import { resolveStripeWebhookMode } from "../../shared/stripeWebhookMode.ts";
 import { createClientFromRequest } from "npm:@base44/sdk@0.8.44";
 import { secrets } from "base44:runtime";
 import { constantTimeEqual } from "../../shared/crypto.ts";
@@ -66,8 +67,7 @@ export default async function(req) {
     }
 
     const event = JSON.parse(body);
-    const isTestMode = !event.livemode || verifyTest.ok;
-    const apiKey = isTestMode ? (secrets.get("STRIPE_TEST_SECRET_KEY") || secrets.get("STRIPE_SECRET_KEY")) : secrets.get("STRIPE_SECRET_KEY");
+    const mode = resolveStripeWebhookMode(\n      event, verifyLive.ok, verifyTest.ok,\n      secrets.get("STRIPE_SECRET_KEY"), secrets.get("STRIPE_TEST_SECRET_KEY"),\n    );\n    if (!mode.ok) return Response.json({ error: "Webhook mode verification failed" }, { status: 400 });\n    const isTestMode = mode.mode === "test";\n    const apiKey = mode.apiKey;
 
     const sr = base44.asServiceRole;
     // Only Pro is sold today. Unlimited / Coach Pro / legacy Team prices are optional and
