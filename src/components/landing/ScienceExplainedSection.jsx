@@ -13,7 +13,7 @@ const PILLARS = [
   {
     icon: Activity,
     title: "Designed by athletes who race",
-    body: "The algorithms are written, tested, and validated by runners who train at threshold and know what a hard week feels like. The model is calibrated against real race results, not theoretical midpoints.",
+    body: "Training models are useful when their inputs, assumptions and limitations are visible. Athlete-specific calibration and real-world validation remain essential before predictive claims.",
   },
   {
     icon: FlaskConical,
@@ -23,7 +23,7 @@ const PILLARS = [
   {
     icon: Users,
     title: "Multi-sport by design",
-    body: "Running, cycling, swimming, triathlon, and strength all feed the same physiology model, because your training load reflects everything you do, not just the miles you run.",
+    body: "Running, cycling, swimming, triathlon, and strength all feed the same physiology model, with sport-specific measurement methods. Different load units are not combined without a validated conversion.",
   },
 ];
 
@@ -36,8 +36,8 @@ export default function ScienceExplainedSection() {
         </span>
         <h2 className="mt-5 font-heading text-3xl sm:text-4xl font-bold">A taste of the science behind it</h2>
         <p className="mt-3 text-muted-foreground">
-          You don't need a sports science degree to use it, but it's reassuring to know the people
-          who built it have one. Here's the short version of what makes TrainPaceLab different.
+          You don't need to study the formulas to train. Here's what the calculations describe,
+          and where measured data differs from an estimate.
         </p>
       </div>
       <div className="grid gap-6 sm:grid-cols-2">
