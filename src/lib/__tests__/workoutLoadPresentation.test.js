@@ -1,27 +1,29 @@
 import { describe, expect, it } from "vitest";
 import { workoutLoadPresentation } from "../workoutLoadPresentation";
 
-describe("workout load provenance", () => {
-  it("labels per-second-derived load as measured", () => {
+describe("recent workout load provenance", () => {
+  it("shows recording-derived load without asserting independent verification", () => {
     expect(workoutLoadPresentation({ session_trimp: 43.6, load_source: "stream" })).toEqual({
-      label: "Measured recording", amount: "44 TRIMP", measured: true,
+      label: "Recording-derived, verification pending", amount: "44 TRIMP", measured: false,
     });
   });
-
-  it("labels average-based load as estimated, not measured", () => {
+  it("labels summary-derived load as estimated", () => {
     expect(workoutLoadPresentation({ session_trimp: 43.6, load_source: "summary" })).toEqual({
       label: "Estimated from summary", amount: "44 TRIMP", measured: false,
     });
   });
-
-  it("does not turn missing load into a misleading zero measurement", () => {
-    expect(workoutLoadPresentation({ load_source: "none" }).amount).toBe("Load unavailable");
-    expect(workoutLoadPresentation({ session_trimp: 0, load_source: "stream" }).amount).toBe("Load unavailable");
+  it("shows TSS in its own unit", () => {
+    expect(workoutLoadPresentation({ session_tss: 65, load_source: "summary" }).amount).toBe("65 TSS");
   });
-
-  it("does not invent provenance for legacy recordings", () => {
-    const result = workoutLoadPresentation({ session_trimp: 35 });
-    expect(result.label).toBe("Source unverified");
-    expect(result.measured).toBe(false);
+  it("rejects dual-unit records instead of choosing a convenient value", () => {
+    expect(workoutLoadPresentation({ session_trimp: 25, session_tss: 50 }).amount).toBe("Load unavailable");
+  });
+  it("does not manufacture zeros or accept invalid values", () => {
+    for (const workout of [{}, { session_trimp: 0 }, { session_trimp: Infinity }, { session_tss: -1 }, { session_trimp: "42" }]) {
+      expect(workoutLoadPresentation(workout).amount).toBe("Load unavailable");
+    }
+  });
+  it("does not infer provenance from an unlabelled legacy workout", () => {
+    expect(workoutLoadPresentation({ session_trimp: 35 }).label).toBe("Source unverified");
   });
 });
