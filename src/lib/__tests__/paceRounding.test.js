@@ -36,6 +36,12 @@ describe("workout pace display rounding", () => {
     expect(normalizedPacePower({ sport: "cycling", avg_power: -200 })).toBe("—");
     expect(normalizedPacePower({ sport: "cycling", avg_power: 220 })).toBe("220 W");
   });
+  it("handles missing workouts and avoids displaying zero watts for tiny positive readings", () => {
+    expect(normalizedPacePower(null)).toBe("—");
+    expect(normalizedPacePower(undefined)).toBe("—");
+    expect(normalizedPacePower({ sport: "cycling", avg_power: 0.1 })).toBe("—");
+    expect(normalizedPacePower({ sport: "cycling", avg_power: 0.5 })).toBe("1 W");
+  });
   it("leaves measured power and cycling speed output unchanged", () => {
     expect(normalizedPacePower({ sport: "cycling", avg_power: 220, duration_seconds: 1200, distance_km: 10 })).toBe("220 W");
     expect(normalizedPacePower({ sport: "cycling", duration_seconds: 1200, distance_km: 10 })).toBe("30.0 km/h");
