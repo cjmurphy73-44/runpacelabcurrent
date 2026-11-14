@@ -25,8 +25,20 @@ describe('Science 2.7: read-only test execution metadata', () => {
   });
   it('rejects unfinished execution and an untrusted origin', () => {
     expect(assessTestExecutionMetadata({ ...good, status: 'running' }, app, commit).completed).toBe(false);
-    expect(assessTestExecutionMetadata({ ...good, site_url: 'https://base44.app.evil.example/Physiology' }, app, commit).missing).toContain('trusted-test-url');
+    expect(assessTestExecutionMetadata({ ...good, site_url: 'https://base44.app.evil.example/Physiology' }, app, commit).missing).toContain('trusted-preview-url');
     expect(assessTestExecutionMetadata({ ...good, site_url: 'http://foo.base44.app/Physiology' }, app, commit).completed).toBe(false);
+  });
+  it('rejects published staging and unrelated Base44 hosts even on successful executions', () => {
+    for (const site_url of [
+      'https://train-pace-lab-copy-8591c758.base44.app/Physiology',
+      'https://preview-sandbox--6a504ebe6a5a6d1be058226c.base44.app/Physiology',
+      'https://other-app.base44.app/Physiology',
+      'https://preview-sandbox--6aefe9d09e2788fc8591c758.base44.app.evil.example/',
+      'https://user:pass@preview-sandbox--6aefe9d09e2788fc8591c758.base44.app/Physiology',
+    ]) {
+      expect(assessTestExecutionMetadata({ ...good, site_url }, app, commit).missing)
+        .toContain('trusted-preview-url');
+    }
   });
   it('never equates successful test execution with isolation proof', () => {
     expect(assessTestExecutionMetadata(good, app, commit)).toEqual({ completed: true, missing: [], isolationProven: false });
