@@ -3,7 +3,7 @@
  */
 
 export function calculateVDOT(timeSeconds: number, distanceMeters: number): number {
-  if (timeSeconds <= 0 || distanceMeters <= 0) {
+  if (!Number.isFinite(timeSeconds) || !Number.isFinite(distanceMeters) || timeSeconds <= 0 || distanceMeters <= 0) {
     throw new Error('Time and distance must be positive numbers');
   }
 
@@ -73,7 +73,7 @@ export interface TrainingPaces {
 }
 
 export function getTrainingPaces(vdot: number): TrainingPaces {
-  if (vdot <= 0) {
+  if (!Number.isFinite(vdot) || vdot <= 0) {
     throw new Error('VDOT must be a positive number');
   }
 

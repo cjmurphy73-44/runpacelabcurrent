@@ -13,7 +13,7 @@
 // Invalid for efforts < ~3 min / 1200 m (inflates VDOT for sprints); rejected.
 
 export function calculateVDOT(timeSeconds, distanceMeters) {
-  if (timeSeconds <= 0 || distanceMeters <= 0) throw new Error('Time and distance must be positive numbers');
+  if (!Number.isFinite(timeSeconds) || !Number.isFinite(distanceMeters) || timeSeconds <= 0 || distanceMeters <= 0) throw new Error('Time and distance must be positive numbers');
   if (timeSeconds < 180 || distanceMeters < 1200) throw new Error('VDOT requires >= 180 s and >= 1200 m');
   const timeMinutes = timeSeconds / 60;
   const v = distanceMeters / timeMinutes;
@@ -46,7 +46,7 @@ function formatDuration(totalSeconds) {
 
 /** Daniels training paces (E/M/T/I/R) for a given VDOT. */
 export function getTrainingPaces(vdot) {
-  if (vdot <= 0) throw new Error('VDOT must be a positive number');
+  if (!Number.isFinite(vdot) || vdot <= 0) throw new Error('VDOT must be a positive number');
   const easy = velocityToSecPerKm(velocityFromVO2(vdot * 0.7));
   const marathon = velocityToSecPerKm(velocityFromVO2(vdot * 0.84));
   const threshold = velocityToSecPerKm(velocityFromVO2(vdot * 0.88));
@@ -91,7 +91,7 @@ export function getEquivalentTimes(vdot) {
 
 /** Daniels running threshold pace (m/s) from VDOT. */
 export function danielsThresholdMs(vdot) {
-  if (!vdot || vdot <= 0) return null;
+  if (!Number.isFinite(vdot) || !vdot || vdot <= 0) return null;
   const secPerKm = getTrainingPaces(vdot).threshold.secPerKm;
   return secPerKm > 0 ? 1000 / secPerKm : null;
 }

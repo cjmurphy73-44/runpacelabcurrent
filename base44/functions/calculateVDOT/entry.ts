@@ -2,9 +2,10 @@
 // Secure backend endpoint for Jack Daniels VDOT calculations (S6 IP Protection)
 
 import { createClientFromRequest } from 'npm:@base44/runtime';
+import { validVdotInputs } from '../../shared/vdotEvidence.ts';
 
 function calculateVDOT(timeSeconds: number, distanceMeters: number): number {
-  if (timeSeconds <= 0 || distanceMeters <= 0) {
+  if (!Number.isFinite(timeSeconds) || !Number.isFinite(distanceMeters) || timeSeconds <= 0 || distanceMeters <= 0) {
     throw new Error('Time and distance must be positive numbers');
   }
   if (timeSeconds < 180 || distanceMeters < 1200) {
@@ -31,7 +32,7 @@ export default async function (req: Request) {
     const body = await req.json();
     const { timeSeconds, distanceMeters, action = 'calculate' } = body;
 
-    if (!timeSeconds || !distanceMeters) {
+    if (!validVdotInputs(timeSeconds, distanceMeters)) {
       return new Response(JSON.stringify({ error: 'Missing timeSeconds or distanceMeters' }), {
         status: 400,
         headers: { 'Content-Type': 'application/json' },
