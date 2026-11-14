@@ -14,16 +14,16 @@ test("complete exact-SHA evidence is reconciled", () => {
 });
 test("missing and malformed evidence fails closed", () => {
   expect(evaluateReleaseEvidence(null).ready).toBe(false);
-  assert.equal(evaluateReleaseEvidence({ ...complete, expectedSha: "short" }).ready, false);
+  expect(evaluateReleaseEvidence({ ...complete, expectedSha: "short" }).ready).toBe(false);
 });
 test("stale CI, preview, checkpoint and published source independently block readiness", () => {
   for (const key of ["mainSha", "validatedSha", "previewSha", "base44SourceSha", "liveSourceSha"]) {
-    assert.equal(evaluateReleaseEvidence({ ...complete, [key]: other }).ready, false, key);
+    expect(evaluateReleaseEvidence({ ...complete, [key]: other }).ready).toBe(false);
   }
 });
 test("failed or absent checks and missing human approvals block readiness", () => {
   for (const [key, value] of [
     ["ci", "pending"], ["preview", "failure"], ["reviewApproved", false],
     ["publishApproved", false], ["liveVerified", false], ["base44CheckpointId", ""],
-  ]) assert.equal(evaluateReleaseEvidence({ ...complete, [key]: value }).ready, false, key);
+  ]) expect(evaluateReleaseEvidence({ ...complete, [key]: value }).ready).toBe(false);
 });
