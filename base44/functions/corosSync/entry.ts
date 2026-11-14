@@ -634,9 +634,9 @@ async function syncHistoricalFor(athlete: any, accessToken: string, base44, look
       error_messages.push('Daily load recomputation failed; sessions remain saved.');
     }
   }
-  errors += write.failed + write.uncertain;
+  errors += write.failed + writeUncertain;
   return {
-    imported: write.imported, errors, records_found: records.length, duplicates,
+    imported: confirmedImported, errors, records_found: records.length, duplicates,
     summary_only, write_uncertain: writeUncertain, error_messages,
   };
 }
