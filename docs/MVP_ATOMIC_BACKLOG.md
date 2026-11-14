@@ -69,3 +69,11 @@ This file is the **single execution queue**, not a claim that beta readiness is 
 - **GitHub PR / merged SHA:** …
 - **Base44 deployment SHA / checkpoint / timestamp:** `NOT PUBLISHED` unless verified.
 - **Staging/live evidence and open blockers:** …
+
+## 2026-11-14 UX/SCI dashboard performance chart (PR #92)
+
+- Tangible athlete UI: `PerformanceChart` now withholds CTL/ATL/TSB graph when the selected daily metrics lack valid dates, finite model values or reconciled measured-only daily load; shows `/import` recovery action instead of invented zeros. Removes unsupported risk/race-ready status classifications and improves timeframe touch/pressed states.
+- Code: `src/components/dashboard/PerformanceChart.jsx`, `src/components/dashboard/performanceHistoryGate.js`; tests: `src/components/dashboard/__tests__/performanceHistoryGate.test.js` (five synthetic cases).
+- Commits `a954f96c`, `005a58f9`, `f67426d3`, `367c568e`; PR #92 draft, unmerged, undeployed; CI not yet evidenced.
+- Limits: this is a UI gate for the selected window, **not** certification of upstream CTL/ATL/TSB calculation history or stream verification. Prior windows and historical inputs still need SCI-005 integration. Do not label release verified live.
+- Next: connect server-validated load provenance through DailyMetrics into both dashboard and analytics, then isolated athlete mobile/browser acceptance at 390px.

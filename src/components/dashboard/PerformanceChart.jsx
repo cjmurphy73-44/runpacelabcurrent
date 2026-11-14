@@ -2,6 +2,8 @@ import React, { useMemo, useState } from "react";
 import { ComposedChart, Area, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, ReferenceLine } from "recharts";
 import { useFitness } from "@/context/FitnessContext";
 import { format } from "date-fns";
+import { Link } from "react-router-dom";
+import { inspectPerformanceHistory } from "./performanceHistoryGate";
 
 const TIMEFRAMES = [
   { label: "1M", days: 30 },
@@ -10,35 +12,26 @@ const TIMEFRAMES = [
   { label: "1Y", days: 365 },
 ];
 
-function getTrainingStatus(tsb) {
-  if (tsb <= -30) return { label: "High Overreaching Risk", color: "text-danger" };
-  if (tsb <= -10) return { label: "Optimal Training Zone", color: "text-success" };
-  if (tsb <= 5) return { label: "Neutral / Maintaining", color: "text-muted-foreground" };
-  if (tsb <= 25) return { label: "Fresh / Race Ready", color: "text-primary" };
-  return { label: "Detraining Risk", color: "text-warning" };
-}
-
 function CustomTooltip({ active, payload, label }) {
   if (!active || !payload || payload.length === 0) return null;
   const row = payload[0]?.payload || {};
-  const status = getTrainingStatus(row.calculated_tsb || 0);
 
   return (
     <div className="rounded-lg border border-border/50 bg-card/95 backdrop-blur p-3 shadow-xl text-xs space-y-1">
       <div className="font-medium text-foreground">{label ? format(new Date(label), "MMM d, yyyy") : ""}</div>
       <div className="flex justify-between gap-4">
         <span className="text-success">CTL (Fitness)</span>
-        <span className="text-foreground font-mono font-medium tabular-nums">{Math.round(row.calculated_ctl || 0)}</span>
+        <span className="text-foreground font-mono font-medium tabular-nums">{Math.round(row.calculated_ctl)}</span>
       </div>
       <div className="flex justify-between gap-4">
         <span className="text-danger">ATL (Fatigue)</span>
-        <span className="text-foreground font-mono font-medium tabular-nums">{Math.round(row.calculated_atl || 0)}</span>
+        <span className="text-foreground font-mono font-medium tabular-nums">{Math.round(row.calculated_atl)}</span>
       </div>
       <div className="flex justify-between gap-4">
         <span className="text-muted-foreground">TSB (Form)</span>
-        <span className="text-foreground font-mono font-medium tabular-nums">{Math.round(row.calculated_tsb || 0)}</span>
+        <span className="text-foreground font-mono font-medium tabular-nums">{Math.round(row.calculated_tsb)}</span>
       </div>
-      <div className={`pt-1 border-t border-border/50 font-semibold ${status.color}`}>{status.label}</div>
+      <div className="pt-1 border-t border-border/50 text-muted-foreground">Modelled training load, not a medical or race-readiness assessment.</div>
     </div>
   );
 }
@@ -52,13 +45,15 @@ export default function PerformanceChart() {
     return dailyMetrics.slice(-timeframeDays);
   }, [dailyMetrics, timeframeDays]);
 
+  const gate = useMemo(() => inspectPerformanceHistory(data), [data]);
+
   const { maxTsb, minTsb, zeroOffset } = useMemo(() => {
-    const values = data.map((d) => d.calculated_tsb || 0);
+    const values = gate.ok ? data.map((d) => d.calculated_tsb) : [];
     const max = Math.max(5, ...values);
     const min = Math.min(-5, ...values);
     const offset = max / (max - min || 1);
     return { maxTsb: max, minTsb: min, zeroOffset: Math.min(Math.max(offset, 0), 1) };
-  }, [data]);
+  }, [data, gate.ok]);
 
   if (loading) {
     return (
@@ -66,10 +61,12 @@ export default function PerformanceChart() {
     );
   }
 
-  if (data.length === 0) {
+  if (!gate.ok) {
     return (
-      <div className="bg-card/40 border border-border/50 backdrop-blur rounded-xl p-4 flex items-center justify-center h-[340px] text-sm text-muted-foreground">
-        Not enough data yet to chart CTL / ATL / TSB.
+      <div className="bg-card/40 border border-border/50 rounded-xl p-5 space-y-3" role="status">
+        <h3 className="font-heading font-semibold text-sm">Fitness, Fatigue &amp; Form</h3>
+        <p className="text-sm text-muted-foreground">{gate.reason} This chart is withheld until its inputs can be checked.</p>
+        <Link to="/import" className="inline-flex min-h-11 items-center text-sm font-medium text-primary underline underline-offset-4">Import a complete workout recording</Link>
       </div>
     );
   }
@@ -83,7 +80,8 @@ export default function PerformanceChart() {
             <button
               key={tf.label}
               onClick={() => setTimeframeDays(tf.days)}
-              className={`px-2.5 py-1 rounded-md text-xs font-medium transition-colors ${
+              aria-pressed={timeframeDays === tf.days}
+              className={`min-h-11 min-w-11 px-2.5 py-1 rounded-md text-xs font-medium transition-colors ${
                 timeframeDays === tf.days
                   ? "bg-primary text-primary-foreground"
                   : "text-muted-foreground hover:bg-accent"
@@ -95,6 +93,7 @@ export default function PerformanceChart() {
         </div>
       </div>
 
+      <p className="text-xs text-muted-foreground">Provisional modelled trend from recorded load. Historical calculation provenance is not yet independently certified.</p>
       <ResponsiveContainer width="100%" height={280}>
         <ComposedChart data={data} margin={{ top: 5, right: 8, left: -12, bottom: 0 }}>
           <defs>
