@@ -93,6 +93,30 @@ class CorrectionBatchTests(unittest.TestCase):
         self.assertEqual(db.execute("SELECT count(*) FROM race_audit WHERE action='corrected'").fetchone()[0], 1)
         db.close()
 
+    def test_replay_snapshot_survives_later_correction(self):
+        self.correct("request-first", identity="corrected-once")
+        db = self.connect()
+        before = db.execute("""SELECT response_json FROM race_correction_requests
+            WHERE owner_id=? AND request_key=?""", ("athlete-a", "request-first")).fetchone()[0]
+        db.close()
+        self.correct("request-second", expected=2, identity="corrected-twice")
+        db = self.connect()
+        after = db.execute("""SELECT response_json FROM race_correction_requests
+            WHERE owner_id=? AND request_key=?""", ("athlete-a", "request-first")).fetchone()[0]
+        self.assertEqual(before, after)
+        self.assertEqual(db.execute("SELECT revision FROM race_results").fetchone()[0], 3)
+        self.assertEqual(db.execute("SELECT count(*) FROM race_audit WHERE action='corrected'").fetchone()[0], 2)
+        db.close()
+
+    def test_audit_rows_are_immutable(self):
+        self.correct("request-first")
+        db = self.connect()
+        with self.assertRaises(sqlite3.IntegrityError):
+            db.execute("DELETE FROM race_audit WHERE action='corrected'")
+        with self.assertRaises(sqlite3.IntegrityError):
+            db.execute("UPDATE race_audit SET action='created' WHERE action='corrected'")
+        db.close()
+
     def test_foreign_owner_update_rejected_by_revision_assertion(self):
         db = self.connect()
         try:
