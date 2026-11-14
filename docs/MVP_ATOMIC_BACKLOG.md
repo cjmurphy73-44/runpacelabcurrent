@@ -69,3 +69,11 @@ This file is the **single execution queue**, not a claim that beta readiness is 
 - **GitHub PR / merged SHA:** …
 - **Base44 deployment SHA / checkpoint / timestamp:** `NOT PUBLISHED` unless verified.
 - **Staging/live evidence and open blockers:** …
+
+## 2026-11-14 commercial support trust follow-up (COM-001)
+
+- **Scope:** Support form receipt copy and accessible warning only. Successful `logBetaFeedback` invocation confirms submission, not a guaranteed reply, delivery SLA, or ticket assignment. With no reply address, explicitly state email response is impossible. Do not echo contact details in success text.
+- **Source:** `src/pages/Support.jsx`, `src/lib/supportReceiptCopy.js`, `src/lib/__tests__/supportReceiptCopy.test.js`.
+- **Acceptance:** synthetic cases cover missing/blank contact address, possible reply with address, no guaranteed deadline, and no email reflected in receipt. Do not include passwords, OAuth tokens, or full card details in support requests.
+- **Evidence:** source commits `2c63606f3cf1c0c29781e5b0d239df5dec4615fd`, `d83ca0d24ee2cdb52c48c9bbf55bd3b2fb63d717`, `dd29ec2d7efcea1b9676463d16eac7bf8a3cfd5c`, `d8bf25c0acff0794fc1ee687cf78d516c9cab63a`. Tests authored; CI, browser and deployed state unverified until independently checked.
+- **Next:** support feedback retention and privacy audit of `logBetaFeedback`, plus beta support queue ownership and response expectations. No changes to backend data, Stripe, or Odysseus.
