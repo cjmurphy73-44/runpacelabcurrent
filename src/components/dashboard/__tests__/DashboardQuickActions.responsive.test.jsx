@@ -4,6 +4,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { MemoryRouter } from "react-router-dom";
 import DashboardQuickActions from "../DashboardQuickActions";
 import DashboardGreeting from "../DashboardGreeting";
+import SectionHeading from "../../layout/SectionHeading";
 
 describe("responsive dashboard quick actions", () => {
   it("exposes the four primary destinations with readable links", () => {
@@ -26,5 +27,19 @@ describe("dashboard visual hierarchy", () => {
     expect(markup).toContain("Form");
     expect(markup).toContain("rounded-2xl");
     expect(markup).not.toContain("great day for a quality session");
+  });
+});
+
+describe("narrow-screen section actions", () => {
+  it("keeps the heading and its action accessible without forcing a single cramped row", () => {
+    const markup = renderToStaticMarkup(
+      <SectionHeading index="03" title="Recent activity" description="Your latest sessions" action={<a href="/import">All import options</a>} />
+    );
+    expect(markup).toContain("Recent activity");
+    expect(markup).toContain("All import options");
+    expect(markup).toContain('href="/import"');
+    expect(markup).toContain("flex-col");
+    expect(markup).toContain("sm:flex-row");
+    expect(markup).toContain("w-full min-w-0");
   });
 });
