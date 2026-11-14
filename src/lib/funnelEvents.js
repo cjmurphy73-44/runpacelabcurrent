@@ -7,6 +7,7 @@ const ALLOWED = Object.freeze({
   landing_viewed: { surface: ['landing', 'pricing'] },
   signup_started: { method: ['email', 'oauth', 'unknown'] },
   signup_completed: { method: ['email', 'oauth', 'unknown'] },
+  onboarding_completed: { outcome: ['created', 'relinked'] },
   device_connection_started: { provider: ['garmin', 'coros', 'other'] },
   device_connection_result: {
     provider: ['garmin', 'coros', 'other'],
