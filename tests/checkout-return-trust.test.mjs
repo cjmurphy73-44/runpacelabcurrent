@@ -1,9 +1,10 @@
 import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 import { describe, it, expect } from 'vitest';
 
 // Public checkout return is not a payment confirmation. A forged ?plan= URL
 // must never present confirmed payment or active entitlement copy.
-const source = readFileSync(new URL('../src/pages/CheckoutSuccess.jsx', import.meta.url), 'utf8');
+const source = readFileSync(resolve(process.cwd(), 'src/pages/CheckoutSuccess.jsx'), 'utf8');
 
 describe('public checkout return trust contract', () => {
   it('does not claim payment or subscription activation from a redirect', () => {
