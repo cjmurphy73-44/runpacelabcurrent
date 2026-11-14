@@ -28,7 +28,7 @@ export default function CalibrationMeter({ athlete, athleteId }) {
 
   const signals = [];
   // 1. VDOT / aerobic capacity anchored
-  const vdotOk = !!athlete?.vdot_estimate;
+  const vdotOk = Number.isFinite(athlete?.vdot_estimate) && athlete.vdot_estimate > 0;
   signals.push({
     key: "vdot",
     label: termLabel("vdot", lens),

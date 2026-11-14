@@ -36,3 +36,20 @@ export function bestAttestedRaceResult(results, now = Date.now()) {
   }
   return best;
 }
+
+export function raceResultIdentity(record) {
+  if (!record || typeof record !== 'object') return null;
+  const { race_date, distance_m, elapsed_seconds, sport } = record;
+  if (typeof race_date !== 'string' || sport !== 'running' ||
+      !Number.isFinite(distance_m) || !Number.isFinite(elapsed_seconds)) return null;
+  return [race_date, distance_m, elapsed_seconds, sport].join('|');
+}
+
+export function findDuplicateRaceResult(existing, proposed, excludeId = null) {
+  const key = raceResultIdentity(proposed);
+  if (!key) return null;
+  return (existing || []).find(item => item.id !== excludeId &&
+    item.evidence_source === 'athlete_attested' &&
+    item.evidence_status === 'self_reported' &&
+    raceResultIdentity(item) === key) ?? null;
+}
