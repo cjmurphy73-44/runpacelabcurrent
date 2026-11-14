@@ -18,6 +18,16 @@ describe("single-file import confirmation", () => {
   });
   it("surfaces backend error and never asserts saved samples", () => {
     expect(singleImportOutcome({ data: { error: "Parse failed" } })).toMatchObject({ ok: false, message: "Parse failed" });
-    expect(singleImportOutcome({ success: true, workout_session_id: "synthetic" }).message).toContain("check saved sample coverage");
+    expect(singleImportOutcome({ success: true, workout_session_id: "synthetic" }).message).toContain("usable recording timeline");
+  });
+  it("discloses saved summary without recording timeline for long TCX imports", () => {
+    const outcome = singleImportOutcome({ data: { success: true, workout_session: { id: "synthetic", streams: undefined } } });
+    expect(outcome).toMatchObject({ ok: true, recordingConfirmed: false });
+    expect(outcome.message).toContain("saved-stream limit");
+  });
+  it("does not claim full recording retention from returned samples", () => {
+    const outcome = singleImportOutcome({ data: { success: true, workout_session: { id: "synthetic", streams: Array.from({ length: 90 }, (_, time) => ({ time, heart_rate: 145 })) } } });
+    expect(outcome).toMatchObject({ ok: true, recordingConfirmed: false });
+    expect(outcome.message).toContain("not confirmed");
   });
 });
