@@ -94,7 +94,7 @@ export default function TrainingCalendar({ athleteId, currentTsb }) {
                               {runningHold && <span className="text-[10px] uppercase bg-danger/10 text-danger rounded px-1 py-0.5 leading-none">Coach hold</span>}
                             </p>
                             {runningHold && <p className="text-xs text-danger font-medium">Running paused. Review a safe alternative with your coach.</p>}
-                            <p className="text-muted-foreground">{session.prescribed_duration_minutes ?? "Duration not set"} min · {session.prescribed_intensity_zone || "Intensity not set"}</p>
+                            <p className="text-muted-foreground">{session.prescribed_duration_minutes != null ? `${session.prescribed_duration_minutes} min` : "Duration not set"} · {session.prescribed_intensity_zone || "Intensity not set"}</p>
                             {session.rationale_text && <p className="text-xs text-muted-foreground">{session.rationale_text}</p>}
                             <p className="text-xs uppercase tracking-wide text-muted-foreground">{session.status || "Scheduled"}</p>
                             {!runningHold && (
