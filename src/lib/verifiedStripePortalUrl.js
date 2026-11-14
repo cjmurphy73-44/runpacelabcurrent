@@ -11,7 +11,7 @@ export function verifiedStripePortalUrl(value) {
     if (url.href !== value) return null;
     if (url.protocol !== "https:" || url.hostname !== "billing.stripe.com") return null;
     if (url.username || url.password || url.port || url.hash) return null;
-    if (!url.pathname.startsWith("/p/session/") || url.pathname.length <= "/p/session/".length) return null;
+    // Portal session links must name one opaque path segment. Do not accept\n    // appended routes or encoded separators as part of a redirect target.\n    if (!/^\\/p\\/session\\/[^/%]+$/.test(url.pathname)) return null;
     return url.href;
   } catch {
     return null;
