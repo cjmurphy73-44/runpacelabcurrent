@@ -20,7 +20,7 @@ describe('Science 2.3: deployed worker provenance', () => {
     }
   });
   it('rejects whitespace-only revisions even when both strings match', () => {
-    for (const revision of [' ', '\\t', '\\n']) {
+    for (const revision of [' ', String.fromCharCode(9), String.fromCharCode(10)]) {
       expect(assessFunctionDeployment({ ...valid, sourceRevision: revision, deployedRevision: revision }).missing)
         .toContain('exact-deployment-revision');
     }
