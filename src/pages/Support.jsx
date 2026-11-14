@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label";
 import { base44 } from "@/api/base44Client";
 import { useToast } from "@/components/ui/use-toast";
 import PublicFooter from "@/components/layout/PublicFooter";
+import { supportReceiptCopy } from "@/lib/supportReceiptCopy";
 
 const CATEGORIES = [
   { key: "bug", label: "Bug report" },
@@ -44,7 +45,7 @@ export default function Support() {
         route: "/support",
       });
       setSent(true);
-      toast({ title: "Message sent", description: "We'll get back to you soon." });
+      toast({ title: "Message submitted", description: supportReceiptCopy(email).toast });
     } catch (err) {
       toast({ title: "Could not send", description: err?.message || "Please try again.", variant: "destructive" });
     } finally {
@@ -95,7 +96,7 @@ export default function Support() {
               <CheckCircle2 className="w-12 h-12 text-success mx-auto mb-4" />
               <h2 className="font-heading text-xl font-semibold">Thanks, message received</h2>
               <p className="mt-2 text-sm text-muted-foreground">
-                We'll review your message and get back to you{email ? ` at ${email}` : ""} if needed. For billing issues, you can also manage your subscription directly from the billing portal.
+                {supportReceiptCopy(email).confirmation}
               </p>
               <div className="flex flex-col sm:flex-row gap-2 justify-center mt-6">
                 <Button asChild variant="outline">
@@ -146,12 +147,14 @@ export default function Support() {
                   <Label htmlFor="message">Message <span className="text-destructive">*</span></Label>
                   <Textarea
                     id="message"
+                    aria-describedby="support-message-privacy"
                     placeholder="Tell us what happened or what you need help with..."
                     value={message}
                     onChange={(e) => setMessage(e.target.value)}
                     rows={5}
                     required
                   />
+                  <p id="support-message-privacy" className="text-xs text-muted-foreground">Do not include passwords, access tokens, or full payment card details. For billing changes, use the billing portal.</p>
                 </div>
 
                 <Button type="submit" className="w-full" disabled={busy || !message.trim()}>
