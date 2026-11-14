@@ -60,3 +60,28 @@ CREATE TRIGGER IF NOT EXISTS race_audit_reject_delete BEFORE DELETE ON race_audi
 BEGIN
   SELECT RAISE(ABORT,'race_audit_immutable');
 END;
+
+-- Correction retries are durable and owner-scoped, independent of create keys.
+CREATE TABLE IF NOT EXISTS race_correction_requests (
+  owner_id TEXT NOT NULL,
+  request_key TEXT NOT NULL,
+  request_fingerprint TEXT NOT NULL,
+  race_id TEXT NOT NULL,
+  response_json TEXT NOT NULL,
+  created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY(owner_id, request_key)
+);
+CREATE TRIGGER IF NOT EXISTS race_correction_request_reject_update BEFORE UPDATE ON race_correction_requests
+BEGIN SELECT RAISE(ABORT,'correction_request_immutable'); END;
+CREATE TRIGGER IF NOT EXISTS race_correction_request_reject_delete BEFORE DELETE ON race_correction_requests
+BEGIN SELECT RAISE(ABORT,'correction_request_immutable'); END;
+
+-- A signed token's nonce can be consumed once per issuer/environment.
+-- Production deployment requires retention/cleanup and clock-skew policy.
+CREATE TABLE IF NOT EXISTS race_auth_nonces (
+  issuer TEXT NOT NULL,
+  environment TEXT NOT NULL,
+  nonce TEXT NOT NULL,
+  expires_at INTEGER NOT NULL,
+  PRIMARY KEY(issuer, environment, nonce)
+);
