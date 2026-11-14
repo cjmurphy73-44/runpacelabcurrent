@@ -67,7 +67,8 @@ Deno.serve(async (req) => {
       return Response.json({ success: false, code: 'DUPLICATE_DAILY_METRICS',
         error: 'Multiple DailyMetrics records exist; no change was made.' }, { status: 409 });
     }
-    const payload = { confirmed_rest: true };
+    const payload = { confirmed_rest: true, confirmed_rest_source: 'athlete_declaration',
+      confirmed_rest_at: new Date().toISOString() };
     if (metrics.length === 1) {
       await base44.entities.DailyMetrics.update(metrics[0].id, payload);
     } else {
