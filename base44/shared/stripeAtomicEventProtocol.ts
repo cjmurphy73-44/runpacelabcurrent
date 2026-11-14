@@ -30,12 +30,12 @@ export async function processStripeEventOnce<T>(
   }
   return lock.runExclusive(eventId, async () => {
     // Check only INSIDE the distributed exclusive scope. A prior check is racy.
-    if (await ledger.isCommitted(eventId)) return { state: 'duplicate' };
+    if (await ledger.isCommitted(eventId)) return { state: 'duplicate' as const };
     const value = await work();
     // Never acknowledge success until durable event completion is confirmed.
     // If this fails after work, retry may reapply work. Mutations must be
     // idempotent/reconciled against Stripe authoritative state before release.
     await ledger.commit(eventId);
-    return { state: 'processed', value };
+    return { state: 'processed' as const, value };
   });
 }
