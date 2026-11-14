@@ -63,19 +63,19 @@ export default function PlannedActualReconciliation({ athleteId }) {
     <div className="space-y-4">
       <SectionHeading
         title="Planned vs. Actual"
-        description="Ingested sessions fuzzy-matched to scheduled plan items (±1 day, ±20% duration). Unmarked sessions older than a week are hidden. Confirm a match to mark the plan session complete / partial / excess and link the activity."
+        description="Review suggested same-day, same-sport workout matches based on duration. Suggestions are not verified completions. Linking is temporarily unavailable while secure confirmation is completed."
         icon={CalendarCheck}
       />
 
       <FeatureGate feature="adaptive_replan" plan={plan} />
 
-      {/* Auto-linked, verify or unlink */}
+      {/* Legacy auto-link review only; new loads never auto-link */}
       {autoLinked.length > 0 && (
         <Card>
           <CardContent className="pt-6 space-y-3">
             <div className="flex items-center gap-2 text-sm font-medium text-foreground">
               <Check className="w-4 h-4 text-success" />
-              {autoLinked.length} session{autoLinked.length === 1 ? "" : "s"} auto-linked at ≥90%, verify this is what you did, or unlink.
+              {autoLinked.length} session{autoLinked.length === 1 ? "" : "s"} previously auto-linked. Review these existing links carefully.
             </div>
             <ul className="divide-y divide-border">
               {autoLinked.map((m) => {
@@ -84,7 +84,7 @@ export default function PlannedActualReconciliation({ athleteId }) {
                 const isRejecting = rejectingId === m.sessionId;
                 const onPlan = m.matchStatus === "EXACT";
                 return (
-                  <li key={m.sessionId} className="py-3 flex flex-wrap items-center gap-3">
+                  <li key={`${m.sessionId}-${m.scheduledWorkoutId}`} className="py-3 flex flex-wrap items-center gap-3">
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-2 flex-wrap">
                         <span className="font-medium text-foreground">{titleCase(m.scheduled?.sport)}</span>
@@ -233,7 +233,7 @@ export default function PlannedActualReconciliation({ athleteId }) {
             <ul className="divide-y divide-border">
               {matches.map((m) => {
                 const st = STATUS_STYLES[m.matchStatus] || STATUS_STYLES.EXACT;
-                const dv = m.varianceDetails.durationVariancePercent;
+                const dv = m.varianceDetails?.durationVariancePercent ?? 0;
                 const VIcon = dv > 5 ? TrendingUp : dv < -5 ? TrendingDown : Equal;
                 const confirmed = lastConfirmed === m.sessionId;
                 const isConfirming = confirmingId === m.sessionId;
@@ -243,7 +243,7 @@ export default function PlannedActualReconciliation({ athleteId }) {
                       <div className="flex items-center gap-2 flex-wrap">
                         <span className="font-medium text-foreground">{titleCase(m.scheduled?.sport)}</span>
                         <Badge variant="outline" className={st.chip}>{st.label}</Badge>
-                        <span className="text-xs text-muted-foreground font-mono tabular-nums">confidence {(m.confidenceScore * 100).toFixed(0)}%</span>
+                        <span className="text-xs text-muted-foreground">Suggested, not verified</span>
                       </div>
                       <div className="mt-1 flex items-center gap-3 text-xs text-muted-foreground font-mono tabular-nums flex-wrap">
                         <span>plan {m.scheduled?.date || "—"}</span>
@@ -261,14 +261,14 @@ export default function PlannedActualReconciliation({ athleteId }) {
                       size="sm"
                       variant={confirmed ? "secondary" : "outline"}
                       onClick={() => confirmMatch(m)}
-                      disabled={isConfirming || confirmed}
+                      disabled
                       className="gap-1.5"
                     >
                       <Link2 className="w-3.5 h-3.5" />
-                      {confirmed ? "Linked" : isConfirming ? "Linking…" : m.matchStatus === "PLAUSIBLE" ? "That was it" : "Confirm match"}
+                      Linking unavailable
                     </Button>
                     {m.matchStatus === "PLAUSIBLE" && !confirmed && (
-                      <span className="w-full text-[11px] text-primary">Outside ±20%, looks close enough to confirm?</span>
+                      <span className="w-full text-[11px] text-primary">Suggested match requires review; linking is not yet available.</span>
                     )}
                   </li>
                 );

@@ -1,8 +1,8 @@
 // src/hooks/usePlannedActualReconciliation.ts
 // Loads an athlete's unlinked ingested sessions and pending scheduled plan sessions,
-// runs the WorkoutMatchingEngine, auto-links high-confidence matches, and exposes:
+// runs the WorkoutMatchingEngine without writing, and exposes:
 //  - reviewable matches (lower confidence) for manual confirm
-//  - auto-linked matches pending user verification (confirm / reject-unlink)
+//  - legacy auto-link state (empty for new loads; no background writes)
 //  - overdue planned sessions (pending + date passed + no linked workout) for skip
 // confirmMatch / rejectAutoLink / markSkipped mutate the plan session status and the
 // workout link. Completion outcome is split into completed / partial / excess from the
@@ -11,9 +11,8 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useServices } from '@/services/providers/ServiceContext';
 import { workoutMatchingEngine } from '@/services/workoutMatchingEngine';
+import { canConfirmUniqueMatch } from '@/lib/uniqueWorkoutMatch';
 import { useSubscription } from '@/hooks/useSubscription';
-
-const AUTO_CONFIDENCE = 0.9;
 
 function todayKey() {
   return new Date().toISOString().split('T')[0];
@@ -63,9 +62,11 @@ export function usePlannedActualReconciliation(athleteId) {
     setAdjustingId(sessionId);
     try {
       const res = await functionGateway.invoke('autoReplanOnDeviation', { session_id: sessionId });
-      setLastAdjustment({ sessionId, summary: res?.summary || 'Your coach is adjusting the rest of your week.', ok: !res?.error });
+      const receipt = res?.data ?? res;
+      const confirmed = receipt?.success === true && !receipt?.error;
+      setLastAdjustment({ sessionId, summary: confirmed ? (receipt.summary || 'Plan adjustment confirmed.') : 'Plan adjustment was not confirmed. Review your upcoming sessions.', ok: confirmed });
     } catch (e) {
-      setLastAdjustment({ sessionId, summary: 'Coach adjustment is running in the background.', ok: false });
+      setLastAdjustment({ sessionId, summary: 'Plan adjustment failed or could not be verified. Review your upcoming sessions.', ok: false });
     } finally {
       setAdjustingId(null);
     }
@@ -109,21 +110,12 @@ export function usePlannedActualReconciliation(athleteId) {
 
       const all = workoutMatchingEngine.matchAll(ingested, candidates).filter((m) => m.matchStatus !== 'UNMATCHED');
 
+      // A read-only load must never mutate workout history or training plans.
+      // Even an EXACT algorithmic match requires athlete confirmation, and
+      // ambiguous many-to-one candidates must remain visible for review.
       const linkedScheduled = new Set();
       const autoLinkedRows = [];
-      const reviewable = [];
-      for (const m of all) {
-        const canAuto = m.matchStatus === 'EXACT' && m.confidenceScore >= AUTO_CONFIDENCE && !linkedScheduled.has(m.scheduledWorkoutId);
-        if (!canAuto) { reviewable.push(m); continue; }
-        try {
-          await trainingPlanSessionRepo.update(m.scheduledWorkoutId, { status: 'completed' });
-          await workoutSessionRepo.update(m.sessionId, { training_plan_session_id: m.scheduledWorkoutId });
-          linkedScheduled.add(m.scheduledWorkoutId);
-          autoLinkedRows.push(m);
-        } catch {
-          reviewable.push(m);
-        }
-      }
+      const reviewable = all;
 
       // Overdue = pending (not matched this pass, strict or plausible, and not previously
       // completed) with date < today. A plausible match (e.g. 21% over-duration) must NOT
@@ -171,26 +163,17 @@ export function usePlannedActualReconciliation(athleteId) {
 
   useEffect(() => { load(); }, [load]);
 
+  // Linking requires a server-side atomic commit. A preflight or two sequential
+  // Base44 entity updates cannot guarantee one-to-one integrity under retries
+  // or concurrent confirmation. Keep this action unavailable until verified.
   const confirmMatch = useCallback(async (match) => {
-    if (!match || !match.scheduledWorkoutId || confirmingId) return false;
-    setConfirmingId(match.sessionId);
-    const newStatus = statusForMatch(match);
-    try {
-      await trainingPlanSessionRepo.update(match.scheduledWorkoutId, { status: newStatus });
-      await workoutSessionRepo.update(match.sessionId, {
-        training_plan_session_id: match.scheduledWorkoutId,
-      });
-      setLastConfirmed(match.sessionId);
-      if (newStatus === 'partial' || newStatus === 'excess') void triggerReplan(match.scheduledWorkoutId);
-      await load();
-      return true;
-    } catch (e) {
-      setError(e?.message || 'Failed to confirm match');
+    if (!canConfirmUniqueMatch(match, matches)) {
+      setError('This workout has multiple possible matches. Review the session before linking.');
       return false;
-    } finally {
-      setConfirmingId(null);
     }
-  }, [confirmingId, load, triggerReplan, trainingPlanSessionRepo, workoutSessionRepo]);
+    setError('Workout linking is temporarily unavailable while the secure confirmation workflow is being completed. No records were changed.');
+    return false;
+  }, [matches]);
 
   // Acknowledge an auto-link, no DB write (already linked); just dismiss from the verify queue.
   const confirmAutoLink = useCallback((match) => {
