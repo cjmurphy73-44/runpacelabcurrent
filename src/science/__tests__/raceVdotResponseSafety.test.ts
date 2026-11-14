@@ -34,6 +34,27 @@ describe('VDOT server response safety', () => {
     expect(() => validateVdotPresentationResponse({ ...value, prescription: {
       ...value.prescription, recoverySeconds: Infinity } }, req)).toThrow('invalid_response');
   });
+  it('rejects noncanonical timestamps, rollover dates and timezone ambiguity', () => {
+    for (const calculatedAt of [
+      '2026-02-30T00:00:00Z',
+      '2026-11-15T00:00:00+10:00',
+      '2026-11-15T00:00:00',
+      '2026-11-15T25:00:00Z',
+      '2026-11-15T00:00:00.1234Z',
+      '2026-11-15T00:00:00Z<script>',
+    ]) {
+      expect(() => validateVdotPresentationResponse({ ...response, calculatedAt }, request))
+        .toThrow('invalid_response');
+    }
+  });
+  it('rejects malformed pace strings and unexpected nested fields', () => {
+    expect(() => validateVdotPresentationResponse({ ...response, paces: {
+      ...paces, easy: { secPerKm: 300, formatted: '5:00/km', ownerId: 'leak' },
+    } }, request)).toThrow('invalid_response');
+    expect(() => validateVdotPresentationResponse({ ...response, paces: {
+      ...paces, easy: { secPerKm: 300, formatted: '5:99/km' },
+    } }, request)).toThrow('invalid_response');
+  });
   it('never invokes auth or compute while disabled', async () => {
     const authenticate = vi.fn().mockRejectedValue(new Error('secret'));
     const calculate = vi.fn();
