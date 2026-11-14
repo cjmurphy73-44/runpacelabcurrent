@@ -12,14 +12,14 @@ describe("preview-only runtime Base44 identity", () => {
   it("selects only the explicitly configured staging app despite stale production storage", () => {
     expect(resolvePreviewIdentity({ ...valid, storedAppId: published })).toEqual({ enforced: true, appId: staging });
   });
-  it("permits a matching OAuth redirect app ID", () => {
+  it("permits a matching Base44 plugin identity", () => {\n    expect(resolvePreviewIdentity({ ...valid, pluginAppId: staging })).toEqual({ enforced: true, appId: staging });\n  });\n  it("permits a matching OAuth redirect app ID", () => {
     expect(resolvePreviewIdentity({ ...valid, urlAppId: staging })).toEqual({ enforced: true, appId: staging });
   });
   it.each([
     [{ ...valid, expectedAppId: undefined }],
     [{ ...valid, expectedAppId: published, configuredAppId: published }],
     [{ ...valid, configuredAppId: published }],
-    [{ ...valid, configuredAppId: undefined }],
+    [{ ...valid, configuredAppId: undefined }],\n    [{ ...valid, pluginAppId: published }],\n    [{ ...valid, pluginAppId: "not-an-id" }],
     [{ ...valid, urlAppId: published }],
     [{ ...valid, urlAppId: "bbbbbbbbbbbbbbbbbbbbbbbb" }],
     [{ ...valid, expectedAppId: "invalid" }],
