@@ -28,11 +28,11 @@ describe('Stripe entitlement lifecycle policy', () => {
 
 describe('synthetic Stripe event ordering and replay', () => {
   // This models policy outcomes only, not Base44 persistence or webhook delivery.
-  function replay(events: Array<{ kind: string; payment?: string; status?: string; subscription?: string }>) {
+  function replay(events: Array<{ id?: string; kind: string; payment?: string; status?: string; subscription?: string }>) {
     let entitlement = 'free';
     const seen = new Set<string>();
     for (const [index, event] of events.entries()) {
-      const eventId = event.kind + ':' + index;
+      const eventId = event.id || event.kind + ':' + index;
       if (seen.has(eventId)) continue;
       seen.add(eventId);
       if (event.kind === 'created') continue; // never proof of first payment
@@ -58,7 +58,7 @@ describe('synthetic Stripe event ordering and replay', () => {
     expect(replay([{ kind: 'checkout', payment: 'paid', status: 'active', subscription: 'sub_synthetic' }, { kind: 'updated', status: 'past_due' }])).toBe('past_due');
     expect(replay([{ kind: 'checkout', payment: 'paid', status: 'active', subscription: 'sub_synthetic' }, { kind: 'updated', status: 'past_due' }, { kind: 'updated', status: 'active' }])).toBe('active');
   });
-  it('cancellation revokes access even after successful checkout', () => {
+  it('ignores duplicate event ids in a synthetic replay', () => {\n    expect(replay([{ ...{ id: 'evt_paid', kind: 'checkout', payment: 'paid', status: 'active', subscription: 'sub_synthetic' } }, { id: 'evt_cancel', kind: 'deleted' }, { id: 'evt_paid', kind: 'checkout', payment: 'paid', status: 'active', subscription: 'sub_synthetic' }])).toBe('canceled');\n  });\n  it('cancellation revokes access even after successful checkout', () => {
     expect(replay([{ kind: 'checkout', payment: 'paid', status: 'active', subscription: 'sub_synthetic' }, { kind: 'deleted' }])).toBe('canceled');
   });
 });
