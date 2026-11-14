@@ -133,14 +133,14 @@ export function formatZoneMethod(method) {
 
 export function normalizedPacePower(workout) {
   const power = Number(workout?.avg_power);
-  if (Number.isFinite(power) && power > 0) return `${Math.round(power)} W`;
+  if (Number.isFinite(power) && Math.round(power) > 0) return `${Math.round(power)} W`;
 
   const distanceKm = Number(workout?.distance_km);
   const durationMin = Number(workout?.duration_minutes) || Number(workout?.duration_seconds) / 60;
   if (!Number.isFinite(distanceKm) || distanceKm <= 0 || !Number.isFinite(durationMin) || durationMin <= 0) return "—";
 
   // Cycling has no meaningful running "pace", show speed (km/h) instead, never min/km.
-  if (workout.sport === "cycling") {
+  if (workout?.sport === "cycling") {
     const kmh = distanceKm / (durationMin / 60);
     return Number.isFinite(kmh) && kmh > 0 ? `${kmh.toFixed(1)} km/h` : "—";
   }
