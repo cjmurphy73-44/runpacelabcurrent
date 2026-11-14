@@ -240,10 +240,12 @@ export default function Home() {
         <section className="space-y-4">
           <SectionHeading index="01" title="Today's snapshot" description="Your form, readiness and prescribed session for today." icon={Sun} />
           <WidgetBoundary name="Today's focus"><TodayFocusLine athlete={athlete} /></WidgetBoundary>
-          <WidgetBoundary name="Wearable sync"><WearableSyncBar onSynced={() => loadAthleteData(athlete.id)} /></WidgetBoundary>
-          <WidgetBoundary name="Physiology strip"><PhysiologyStrip athlete={athlete} /></WidgetBoundary>
-          <WidgetBoundary name="Calibration meter"><CalibrationMeter athlete={athlete} athleteId={athlete.id} /></WidgetBoundary>
           <WidgetBoundary name="Today's session"><TodaySessionCard athleteId={athlete.id} /></WidgetBoundary>
+          <WidgetBoundary name="Wearable sync"><WearableSyncBar onSynced={() => loadAthleteData(athlete.id)} /></WidgetBoundary>
+          <div className="grid min-w-0 grid-cols-1 gap-4 xl:grid-cols-2">
+            <div className="min-w-0"><WidgetBoundary name="Physiology strip"><PhysiologyStrip athlete={athlete} /></WidgetBoundary></div>
+            <div className="min-w-0"><WidgetBoundary name="Calibration meter"><CalibrationMeter athlete={athlete} athleteId={athlete.id} /></WidgetBoundary></div>
+          </div>
           <WidgetBoundary name="Weekly volume"><WeeklyVolumeLine athleteId={athlete.id} /></WidgetBoundary>
         </section>
 
