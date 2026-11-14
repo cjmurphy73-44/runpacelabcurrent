@@ -8,7 +8,7 @@ export default defineConfig({
     globals: true,
     environment: 'happy-dom',
     setupFiles: ['./src/__tests__/setup.ts'],
-    exclude: ['**/node_modules/**', '**/dist/**', '**/odysseus/tests/**'],
+    exclude: ['**/node_modules/**', '**/dist/**', '**/odysseus/tests/**', '**/tests/*.test.mjs'],
   },
   resolve: {
     alias: {
