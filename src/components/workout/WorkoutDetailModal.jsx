@@ -1,4 +1,5 @@
 import React, { useMemo, useState } from "react";
+import { Link } from "react-router-dom";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import {
   AlertDialog,
@@ -21,7 +22,7 @@ import WorkoutFitnessImpact from "@/components/workout/WorkoutFitnessImpact";
 import WorkoutSplitsTable from "@/components/workout/WorkoutSplitsTable";
 import CyclingPowerScenario from "@/components/workout/CyclingPowerScenario";
 import RecordingIntervals from "@/components/workout/RecordingIntervals";
-import { recordingCoverage } from "@/lib/recordingCoverage";
+import { workoutRecordingStatus } from "@/lib/workoutRecordingStatus";
 import { efficiencyFactorInterpretation, aerobicDecouplingInterpretation } from "@/lib/workoutInterpretation";
 import EditWorkoutModal from "@/components/workout/EditWorkoutModal";
 import { sessionCalories, normalizedPacePower } from "@/lib/workoutAnalytics";
@@ -37,7 +38,7 @@ export default function WorkoutDetailModal({ workout, athlete, children, onChang
   const pacePower = normalizedPacePower(workout);
   const durationMin = Math.round(workout.duration_minutes || (workout.duration_seconds || 0) / 60);
   const load = workout.session_trimp || workout.session_tss || 0;
-  const savedRecording = useMemo(() => recordingCoverage(workout), [workout]);
+  const recordingStatus = useMemo(() => workoutRecordingStatus(workout), [workout]);
 
   // Plain-language physiological read of the numbers we actually have. No invented
   // "aerobic/anaerobic training effect" percentages.
@@ -127,13 +128,15 @@ export default function WorkoutDetailModal({ workout, athlete, children, onChang
         )}
 
         <div className="pt-3 border-t border-border/50">
-          {savedRecording?.partial && (
-            <div role="status" className="mb-3 rounded-md border border-warning/40 bg-warning/10 p-3 text-xs space-y-1">
-              <p className="font-semibold">Partial recording available for detailed analysis</p>
-              <p>Only approximately {savedRecording.percent}% of this workout's elapsed time is represented by stored, consecutive samples ({savedRecording.sampleCount} points). Interval metrics below describe the saved segment, not the full ride.</p>
-              <p>Whole-session summaries may have been calculated from the original file at import. This notice does not establish whether the full original recording is still accessible.</p>
-            </div>
-          )}
+          <div role="status" className="mb-3 rounded-md border border-border bg-secondary/20 p-3 text-xs space-y-2">
+            <p className="font-semibold">{recordingStatus.title}</p>
+            <p className="text-muted-foreground">{recordingStatus.detail}</p>
+            {recordingStatus.action && (
+              <Link to={recordingStatus.action} className="inline-flex min-h-10 items-center rounded-md text-primary underline underline-offset-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+                Import original FIT or TCX recording
+              </Link>
+            )}
+          </div>
           <RecordingIntervals workout={workout} />
         </div>
 
