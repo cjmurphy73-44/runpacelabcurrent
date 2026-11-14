@@ -25,6 +25,7 @@ export function createD1RaceAdapter(db, uuid = () => crypto.randomUUID()) {
     async insertUniqueIdempotent(c) {
       const fp = fingerprint(c);
       const id = uuid();
+      const snapshot = { id, ownerId: c.ownerId, identity: c.identity, revision: 1, race: c.race };
       try {
         // D1 batch executes these statements as one atomic transaction.
         // If either unique constraint fails, all statements roll back.
@@ -33,27 +34,29 @@ export function createD1RaceAdapter(db, uuid = () => crypto.randomUUID()) {
             .bind(c.ownerId, c.requestKey, fp),
           db.prepare('INSERT INTO race_results(id,owner_id,race_identity,race_date,sport,distance_m,elapsed_seconds) VALUES (?,?,?,?,?,?,?)')
             .bind(id, c.ownerId, c.identity, c.race.race_date, c.race.sport, c.race.distance_m, c.race.elapsed_seconds),
-          db.prepare('UPDATE race_requests SET race_id=? WHERE owner_id=? AND request_key=?')
-            .bind(id, c.ownerId, c.requestKey),
+          db.prepare('UPDATE race_requests SET race_id=?,response_json=? WHERE owner_id=? AND request_key=?')
+            .bind(id, JSON.stringify(snapshot), c.ownerId, c.requestKey),
         ]);
         if (results.length !== 3 || results.some(result => result.success !== true)) {
           throw new RacePersistenceError('transaction_not_confirmed');
         }
-        return { id, ownerId: c.ownerId, identity: c.identity, revision: 1, race: c.race, replay: false };
+        return { ...snapshot, replay: false };
       } catch (error) {
         // An existing idempotency key may be replayed, but a duplicate race
         // under a different request key is a conflict. Never retry the batch.
         const request = await db.prepare(
-          'SELECT request_fingerprint,race_id FROM race_requests WHERE owner_id=? AND request_key=?'
+          'SELECT request_fingerprint,race_id,response_json FROM race_requests WHERE owner_id=? AND request_key=?'
         ).bind(c.ownerId, c.requestKey).first();
         if (request) {
           if (request.request_fingerprint !== fp) throw new RacePersistenceError('idempotency_key_reused');
-          if (!request.race_id) throw new RacePersistenceError('incomplete_idempotency_record');
-          const row = await db.prepare(
-            'SELECT * FROM race_results WHERE id=? AND owner_id=?'
-          ).bind(request.race_id, c.ownerId).first();
-          if (!row) throw new RacePersistenceError('incomplete_idempotency_record');
-          return { ...rowToResult(row), replay: true };
+          if (!request.race_id || !request.response_json) throw new RacePersistenceError('incomplete_idempotency_record');
+          let snapshot;
+          try { snapshot = JSON.parse(request.response_json); }
+          catch { throw new RacePersistenceError('invalid_idempotency_snapshot'); }
+          if (snapshot.id !== request.race_id || snapshot.ownerId !== c.ownerId || snapshot.identity !== c.identity) {
+            throw new RacePersistenceError('invalid_idempotency_snapshot');
+          }
+          return { ...snapshot, replay: true };
         }
         const collision = await db.prepare(
           'SELECT id FROM race_results WHERE owner_id=? AND race_identity=?'

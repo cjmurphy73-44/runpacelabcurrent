@@ -17,6 +17,7 @@ CREATE TABLE IF NOT EXISTS race_requests (
   owner_id TEXT NOT NULL,
   request_key TEXT NOT NULL,
   request_fingerprint TEXT NOT NULL,
+  response_json TEXT,
   race_id TEXT REFERENCES race_results(id),
   PRIMARY KEY(owner_id, request_key)
 );
