@@ -16,7 +16,7 @@ import PublicFooter from "@/components/layout/PublicFooter";
 import Reveal from "@/components/landing/Reveal";
 import ThemeToggle from "@/components/layout/ThemeToggle";
 
-// Real photography from Unsplash, no AI-generated imagery.
+// External Unsplash image references. Verify individual subject, rights and attribution before production approval.
 const HERO_IMG = "https://images.unsplash.com/photo-1452626038306-27d8e0dbf6e4?w=1400&auto=format&fit=crop&q=80";
 const STEP_IMGS = [
   "https://images.unsplash.com/photo-1556909114-44e3e9399a2e?w=1000&auto=format&fit=crop&q=80",
