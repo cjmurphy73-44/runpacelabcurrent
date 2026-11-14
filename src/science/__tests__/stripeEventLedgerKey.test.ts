@@ -6,8 +6,7 @@ describe('Stripe webhook event identity', () => {
     expect(stripeEventLedgerKey({ id: 'evt_456Def', type: 'customer.subscription.deleted', livemode: true })).toBe('stripe:evt_456Def');
   });
   it('rejects missing or malformed IDs before deduplication', () => {
-    for (const id of [undefined, null, '', 'undefined', 'evt_', 'evt_123:other', 'evt_123
-', 123]) {
+    for (const id of [undefined, null, '', 'undefined', 'evt_', 'evt_123:other', 'evt_123\n', 123]) {
       expect(stripeEventLedgerKey({ id, type: 'invoice.paid', livemode: false })).toBeNull();
     }
   });
