@@ -3,7 +3,7 @@
 _A risk-first, pass/fail verification plan for the staged external beta._
 _Status legend: ✅ pass · ❌ fail · 🟡 unverified · ⛔ blocked. An item stays 🟡 until fresh runtime evidence is recorded._
 
-The app is published at `https://trainpacelab.base44.app` and accepts real Stripe payments. This roadmap is the **verification** layer that sits on top of `PRODUCTION_ROADMAP.md`: it does not re-implement anything — it proves each area works for an external tester, or marks it unverified. Phases are ordered by launch risk; no phase may be marked done while a 🔴 item inside it is ❌ or 🟡.
+**Historical statement, not current release evidence:** this checklist previously described `https://trainpacelab.base44.app` as published and accepting real Stripe payments. Do not infer current deployment, billing enablement, successful checkout, or authorization to charge customers from that assertion. Treat all four as **unverified** until independently checked against the intended environment, exact deployed source SHA, Stripe mode and test-only entitlement lifecycle. Never initiate a real charge as part of acceptance testing. This roadmap is the **verification** layer that sits on top of `PRODUCTION_ROADMAP.md`: it does not re-implement anything — it proves each area works for an external tester, or marks it unverified. Phases are ordered by launch risk; no phase may be marked done while a 🔴 item inside it is ❌ or 🟡.
 
 Evidence goes in the **Evidence** column of each checklist (route, date, tester, device, and a one-line observed outcome). Source inspection alone is never a pass. Preview/browser limitations are recorded as 🟡 unverified, not as ✅.
 
