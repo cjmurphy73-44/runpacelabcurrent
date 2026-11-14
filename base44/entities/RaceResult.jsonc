@@ -27,15 +27,13 @@
     "evidence_source": {
       "type": "string",
       "enum": [
-        "athlete_attested",
-        "provider_verified"
+        "athlete_attested"
       ]
     },
     "evidence_status": {
       "type": "string",
       "enum": [
-        "self_reported",
-        "verified"
+        "self_reported"
       ]
     },
     "source_session_id": {
