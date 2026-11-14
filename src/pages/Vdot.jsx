@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Gauge } from "lucide-react";
 import CollapsibleSection from "@/components/ui/CollapsibleSection";
+import RaceResultReview from "@/components/physiology/RaceResultReview";
 import { calculateVDOT, getTrainingPaces, getEquivalentTimes } from "@/math/vdot";
 
 const DISTANCE_PRESETS = [
@@ -60,7 +61,7 @@ export default function Vdot() {
   const equivEntries = result ? Object.entries(result.equiv) : [];
 
   return (
-    <div className="max-w-4xl mx-auto">
+    <div className="max-w-4xl mx-auto space-y-5">
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
@@ -175,6 +176,7 @@ export default function Vdot() {
           )}
         </CardContent>
       </Card>
+      <RaceResultReview />
     </div>
   );
 }

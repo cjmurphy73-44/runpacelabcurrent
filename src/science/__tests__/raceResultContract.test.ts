@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { bestAttestedRaceResult, validateAttestedRaceResult } from '../../../base44/shared/raceResultContract';
+import { bestAttestedRaceResult, validateAttestedRaceResult, findDuplicateRaceResult, raceResultIdentity } from '../../../base44/shared/raceResultContract';
 const now = Date.parse('2026-11-14T12:00:00Z');
 const base = { race_date: '2026-11-01', distance_m: 5000, elapsed_seconds: 1200, sport: 'running' };
 const saved = { ...base, evidence_source: 'athlete_attested', evidence_status: 'self_reported' };
@@ -38,5 +38,20 @@ describe('self-attested race result ingestion contract', () => {
   });
   it('bounds user-provided descriptions', () => {
     expect(() => validateAttestedRaceResult({ ...base, notes: 'x'.repeat(501) }, now)).toThrow();
+  });
+  it('detects exact same-athlete race duplicates', () => {
+    const existing = { ...saved, id: 'one' };
+    expect(findDuplicateRaceResult([existing], saved)?.id).toBe('one');
+  });
+  it('allows a correction to retain its own race identity', () => {
+    const existing = { ...saved, id: 'one' };
+    expect(findDuplicateRaceResult([existing], saved, 'one')).toBeNull();
+  });
+  it('does not conflate two different finish times', () => {
+    expect(findDuplicateRaceResult([{ ...saved, id: 'one' }], { ...saved, elapsed_seconds: 1201 })).toBeNull();
+  });
+  it('rejects malformed duplicate keys and unverified records', () => {
+    expect(raceResultIdentity({ ...saved, distance_m: NaN })).toBeNull();
+    expect(findDuplicateRaceResult([{ ...saved, id: 'one', evidence_status: 'verified' }], saved)).toBeNull();
   });
 });
