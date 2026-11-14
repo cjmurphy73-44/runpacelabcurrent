@@ -182,6 +182,10 @@ export function parseTcx(text) {
       if (tMs === null || isNaN(tMs)) continue;
       if (firstTimeMs === null) firstTimeMs = tMs;
       const time = (tMs - firstTimeMs) / 1000;
+      // A repeated or backward timestamp makes downstream duration, zone and
+      // interval calculations unreliable. Reject rather than silently sorting
+      // or inventing a replacement timestamp.
+      if (stream.length && time <= stream[stream.length - 1].time) return null;
       const hrRaw = (tp.match(/<HeartRateBpm>\s*<Value>(\d+)<\/Value>/) || [])[1];
       const cadenceRaw = (tp.match(/<Cadence>(\d+)<\/Cadence>/) || [])[1];
       const distRaw = (tp.match(/<DistanceMeters>([0-9.]+)<\/DistanceMeters>/) || [])[1];
