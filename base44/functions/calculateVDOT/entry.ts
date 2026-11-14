@@ -1,7 +1,7 @@
 // base44/functions/calculateVDOT/entry.ts
 // Secure backend endpoint for Jack Daniels VDOT calculations (S6 IP Protection)
 
-import { createClientFromRequest } from 'npm:@base44/runtime';
+import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
 
 function calculateVDOT(timeSeconds: number, distanceMeters: number): number {
   if (timeSeconds <= 0 || distanceMeters <= 0) {
@@ -17,7 +17,7 @@ function calculateVDOT(timeSeconds: number, distanceMeters: number): number {
   return Number((vo2Cost / pct).toFixed(2));
 }
 
-export default async function (req: Request) {
+Deno.serve(async (req: Request) => {
   const base44 = createClientFromRequest(req);
   
   if (req.method !== 'POST') {
@@ -28,6 +28,8 @@ export default async function (req: Request) {
   }
 
   try {
+    const user = await base44.auth.me();
+    if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
     const body = await req.json();
     const { timeSeconds, distanceMeters, action = 'calculate' } = body;
 
@@ -50,4 +52,4 @@ export default async function (req: Request) {
       headers: { 'Content-Type': 'application/json' },
     });
   }
-}
+});
