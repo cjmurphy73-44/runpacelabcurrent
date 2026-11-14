@@ -22,6 +22,20 @@ describe('persisted recording coverage guard', () => {
     expect(classify({ totalSamples: 600, storedStream: [], durationSeconds: 600 }).status).toBe('missing');
     expect(classify({ totalSamples: 1, storedStream: stream(2), durationSeconds: 2 }).status).toBe('unknown');
   });
+  it('rejects a full-count recording containing an unmeasured timestamp gap', () => {
+    const points = stream(600);
+    for (let i = 300; i < 600; i++) points[i].time += 20;
+    const coverage = classify({ totalSamples: 600, storedStream: points, durationSeconds: 620 });
+    expect(coverage.status).toBe('partial');
+    expect(coverage.reason).toBe('timestamp_gap');
+    expect(canUse(coverage)).toBe(false);
+  });
+  it('rejects coerced timestamp strings and negative recording offsets', () => {
+    const strings = stream(600).map(p => ({ ...p, time: String(p.time) }));
+    expect(classify({ totalSamples: 600, storedStream: strings, durationSeconds: 600 }).status).toBe('unknown');
+    const negative = stream(600).map(p => ({ ...p, time: p.time - 10 }));
+    expect(classify({ totalSamples: 600, storedStream: negative, durationSeconds: 600 }).status).toBe('unknown');
+  });
   it('rejects out-of-order timestamps', () => {
     expect(classify({ totalSamples: 3, storedStream: [{time:0},{time:2},{time:1}], durationSeconds:3 }).status).toBe('unknown');
   });
