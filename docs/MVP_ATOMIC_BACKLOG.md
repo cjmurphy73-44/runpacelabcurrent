@@ -75,3 +75,9 @@ This file is the **single execution queue**, not a claim that beta readiness is 
 - Audit found `usePlannedActualReconciliation.load()` automatically mutated `TrainingPlanSession.status` and `WorkoutSession.training_plan_session_id` on high-confidence algorithmic matches. Read-only screen load must not commit inferred completion.
 - Changed load to produce reviewable candidates without any automatic link writes; added one-to-one candidate guard to explicit confirmation, plus five synthetic tests. Draft PR #123; no deployment or executed CI.
 - High-priority follow-up: replace client-side two-write confirmation with a server-authorized, idempotent, race-safe operation. Recheck athlete ownership, session status and existing links on the server, and address partial writes. Preserve manual mark-complete as explicitly user initiated and distinguish it from a verified device workout.
+
+### 2026-11-14 fail-closed confirmation follow-up (PR #123)
+
+- Disabled the existing two-write client confirmation path until an atomic server-side operation is verified. This is an intentional temporary functionality gate; the UI must explain that linking is unavailable rather than claim a successful completion.
+- Corrected adaptive replan toast logic to require explicit backend `success: true` before claiming confirmation. Exceptions now report unverified failure, not a background success.
+- Coordinate with draft PR #126, which provides read-only preflight only. Neither PR establishes a transactional link. Before release, implement a verified conditional/transactional server commit and test concurrent confirmation, retries, partial writes, and RLS ownership.
