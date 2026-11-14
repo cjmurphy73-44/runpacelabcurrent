@@ -69,3 +69,10 @@ This file is the **single execution queue**, not a claim that beta readiness is 
 - **GitHub PR / merged SHA:** …
 - **Base44 deployment SHA / checkpoint / timestamp:** `NOT PUBLISHED` unless verified.
 - **Staging/live evidence and open blockers:** …
+
+## 2026-11-14 ING full-duration manifest store adapter (PR #116)
+
+- Existing on main: 300-sample recording chunk planner, SHA-256 manifest/readback, chunk persistence and scoped Base44 chunk store, source-only `commitFullRecording`. None is connected to live ingestion. Current `ingestWorkoutFile` saves `WorkoutSession.streams` only for <=3600 samples and creates an original-file `WorkoutAsset` without verifying durable full stream reconstruction.
+- Added source-only `base44RecordingManifestStore` adapter with athlete+session scoped filter, 3-row overflow detection, malformed/duplicate/cross-scope fail-closed reads and create-only validated writes. Four synthetic tests authored. No live endpoint or entity schema changed.
+- Blockers: verified manifest entity schema, durable distributed exclusive lease with fencing/uniqueness, athlete ownership, scoped exhaustive paginated reads, transactional partial-write evidence, then isolated staging >3600-sample TCX/FIT tests and full sample readback before enabling ingestion. Do not treat this PR as full-duration retention complete.
+- PR #116 remains draft and unmerged; tests not executed and Vercel limit may block preview.
