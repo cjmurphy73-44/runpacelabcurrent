@@ -6,13 +6,16 @@ import { verifiedStripePortalUrl } from "./verifiedStripePortalUrl.js";
  * before the first await. No API call occurs when the popup is blocked.
  */
 export async function launchBillingPortal({ framed, openTab, invoke, navigate, notify }) {
-  const tab = framed ? openTab("", "_blank") : null;
-  if (framed && !tab) {
-    notify("Allow popups to open billing.");
-    return false;
-  }
-  if (tab) tab.opener = null;
+  let tab = null;
   try {
+    // Popup APIs can throw (for example under a restrictive browser policy).
+    // Keep those failures in the same safe error path as blocked popups.
+    tab = framed ? openTab("", "_blank") : null;
+    if (framed && !tab) {
+      notify("Allow popups to open billing.");
+      return false;
+    }
+    if (tab) tab.opener = null;
     const response = await invoke("stripeBillingPortal", {});
     const url = verifiedStripePortalUrl(response?.data?.url);
     if (!url) throw new Error("Billing portal returned an invalid destination");
