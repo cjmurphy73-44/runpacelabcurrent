@@ -33,3 +33,11 @@ For a **separate preview deployment only**, set these explicit Vite build-time v
 The guard runs before the Base44 SDK client is created. A missing/mismatched app ID, a conflicting `app_id` URL parameter, an absent base URL or identical staging/production origin throws instead of falling back to the published app. Stale localStorage app IDs are ignored in preview mode; a matching OAuth redirect continues to work. Production remains on the existing bootstrap path when `VITE_STAGING_PREVIEW_REQUIRED` is unset. Do not turn the flag on in production until independently reviewed.
 
 **Limitations:** A deployment with the opt-in flag absent does not enforce this guard. When supplied, the runtime guard also rejects conflicting `VITE_BASE44_APP_ID` and `VITE_BASE44_APP_BASE_URL` values. Missing plugin values are not proof of isolation: verify the plugin's effective configuration independently. An HTTPS origin being different is not proof of tenancy isolation. Never promote or run authenticated QA without verifying effective deployment values and staging tenant ownership.
+
+## Vercel preview build enforcement and provenance
+
+The Vite configuration now calls `assertPreviewBuildConfig(process.env)` during configuration loading. On `VERCEL_ENV=preview`, a missing `VITE_STAGING_PREVIEW_REQUIRED=true`, missing `PRODUCTION_BASE44_APP_ID`, missing explicit staging identity, invalid/identical IDs or origins, or conflicting plugin identity causes a **build failure**. This prevents an unguarded Vercel preview build from silently falling back to the published Base44 app. Production and local builds are unchanged.
+
+No preview can be accepted without a Vercel deployment record whose `meta.githubCommitSha` exactly matches the tested PR head. A READY deployment of a different branch is not acceptance evidence. Confirm that the Vercel preview build variables were actually set in the deployment and that the separate Base44 staging tenant is verified before any authenticated browser QA. The check does not inspect secrets or access athlete records.
+
+Note: this policy intentionally blocks future Vercel previews until staging environment variables are configured. It is not yet merged or deployed; avoid enabling it on production.
