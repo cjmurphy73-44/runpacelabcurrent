@@ -1,4 +1,4 @@
-import React, { useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -6,6 +6,8 @@ import { Badge } from "@/components/ui/badge";
 import { Check, Sparkles, ArrowRight, Activity, CalendarClock, Watch } from "lucide-react";
 import { PLAN_DETAILS } from "@/lib/subscriptionFeatures";
 import { useSubscription } from "@/hooks/useSubscription";
+import { useAuth } from "@/lib/AuthContext";
+import { checkoutConfirmationState } from "@/lib/checkoutConfirmationState";
 import PublicFooter from "@/components/layout/PublicFooter";
 import ThemeToggle from "@/components/layout/ThemeToggle";
 
@@ -15,8 +17,8 @@ import ThemeToggle from "@/components/layout/ThemeToggle";
 // them back onto the login wall with only a toast).
 const NEXT_STEPS = [
   { icon: Watch, title: "Connect your wearables", body: "Sync COROS, or upload FIT/TCX/CSV from any watch. Paid plans unlock unlimited sync history." },
-  { icon: CalendarClock, title: "Open your adaptive plan", body: "Your plan now reshapes around your real recovery. Review today's session on the dashboard." },
-  { icon: Activity, title: "Explore the Physiology Lab", body: "CTL/ATL/TSB, ODE fitness modelling, and race prediction are now fully unlocked." },
+  { icon: CalendarClock, title: "Open your adaptive plan", body: "Review your training plan after your subscription is confirmed." },
+  { icon: Activity, title: "Explore the Physiology Lab", body: "Explore physiology tools after your account confirms access." },
 ];
 
 export default function CheckoutSuccess() {
@@ -24,11 +26,25 @@ export default function CheckoutSuccess() {
   const planKey = params.get("plan");
   const plan = (planKey && PLAN_DETAILS[planKey]) ? planKey : "pro";
   const d = PLAN_DETAILS[plan];
-  const { refresh } = useSubscription();
+  const { refresh, plan: entitledPlan, status, loading } = useSubscription();
+  const { user, authChecked } = useAuth();
+  const [refreshPending, setRefreshPending] = useState(true);
+  const [refreshFailed, setRefreshFailed] = useState(false);
+  const authenticated = !!user?.id;
+  const confirmation = checkoutConfirmationState({ authenticated, loading: !authChecked || loading || refreshPending, refreshFailed, plan: entitledPlan, status, requestedPlan: plan });
+  const confirmed = confirmation === "active";
 
   // If the payer is still authenticated, refresh entitlement state so the rest
   // of the app reflects the new plan the moment they click into the dashboard.
-  useEffect(() => { refresh().catch(() => {}); }, [refresh]);
+  useEffect(() => {
+    if (!authChecked) return;
+    if (!authenticated) { setRefreshPending(false); return; }
+    let live = true;
+    setRefreshPending(true);
+    setRefreshFailed(false);
+    refresh().catch(() => { if (live) setRefreshFailed(true); }).finally(() => { if (live) setRefreshPending(false); });
+    return () => { live = false; };
+  }, [refresh, authChecked, authenticated]);
 
   return (
     <div className="min-h-screen bg-background text-foreground flex flex-col">
@@ -47,13 +63,13 @@ export default function CheckoutSuccess() {
           <div className="absolute inset-0 bg-grid-dots opacity-20 pointer-events-none" />
           <div className="max-w-3xl mx-auto px-4 py-16 sm:py-20 relative text-center">
             <span className="inline-flex items-center gap-1.5 rounded-full border border-success/40 bg-success/10 px-3 py-1 text-xs font-medium text-success">
-              <Check className="w-3.5 h-3.5" /> Payment confirmed
+              <Check className="w-3.5 h-3.5" /> {confirmed ? "Subscription verified" : "Checkout return"}
             </span>
             <h1 className="mt-6 font-heading text-4xl sm:text-5xl font-bold tracking-tight leading-[1.05]">
-              Welcome to {d.label}. Thank you.
+              {confirmed ? `Welcome to ${d.label}` : "Thanks for visiting TrainPaceLab"}
             </h1>
             <p className="mt-5 text-lg text-muted-foreground max-w-xl mx-auto">
-              Your subscription is active. Here's everything you just unlocked.
+              {confirmed ? "Your account shows an active subscription." : confirmation === "sign_in" ? "Sign in to check your subscription. Visiting this page does not confirm payment." : confirmation === "not_active" ? "Your account does not currently show an active subscription. Check billing or contact support if you were charged." : "We have not verified an active subscription yet. Payment and entitlement confirmation can take time."}
             </p>
             <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
               <Button asChild size="lg" className="gap-2">
@@ -71,7 +87,7 @@ export default function CheckoutSuccess() {
             <CardContent className="p-6 sm:p-8">
               <div className="flex items-center gap-2 mb-5">
                 <Sparkles className="w-5 h-5 text-primary" />
-                <h2 className="font-heading text-xl font-semibold">What you're paying for</h2>
+                <h2 className="font-heading text-xl font-semibold">{confirmed ? "Your plan features" : "Plan features, available after activation"}</h2>
                 <Badge variant="default" className="ml-auto">{d.label} · {d.price}/{d.cadence}</Badge>
               </div>
               <ul className="grid sm:grid-cols-2 gap-3">
@@ -108,7 +124,7 @@ export default function CheckoutSuccess() {
         <section className="bg-primary">
           <div className="max-w-3xl mx-auto px-4 py-12 text-center text-primary-foreground">
             <h2 className="font-heading text-2xl font-bold">Ready to train smarter?</h2>
-            <p className="mt-2 text-primary-foreground/85">Your plan is unlocked. Let's get to work.</p>
+            <p className="mt-2 text-primary-foreground/85">{confirmed ? "Your account shows an active plan." : "Explore the app while subscription verification completes."}</p>
             <Button asChild size="lg" variant="secondary" className="mt-6 gap-2">
               <Link to="/app">Open my dashboard<ArrowRight className="w-4 h-4" /></Link>
             </Button>
