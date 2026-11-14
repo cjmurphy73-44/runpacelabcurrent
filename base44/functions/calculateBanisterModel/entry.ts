@@ -1,4 +1,6 @@
-import { Base44, Base44FunctionContext } from "@base44/cloud";
+// The legacy @base44/cloud runtime is unsupported in Deno functions.
+type Base44 = unknown;
+type Base44FunctionContext = unknown;
 
 interface BanisterLoadInput {
   date: string;
