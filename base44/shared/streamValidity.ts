@@ -36,3 +36,13 @@ export function storageStream(stream) {
     power: typeof p.power === 'number' && Number.isFinite(p.power) && p.power >= 0 && p.power <= 2500 ? p.power : null,
   }));
 }
+/**
+ * Legacy WorkoutSession.streams has a strict bounded inline capacity.
+ * Never persist a misleading prefix of a longer verified recording.
+ * Until chunk persistence is integrated, keep full-stream derived zones
+ * separately and omit inline samples when the recording exceeds the limit.
+ */
+export function inlineRecordingOrUndefined(stream) {
+  if (!Array.isArray(stream) || stream.length === 0 || stream.length > MAX_STREAM_SAMPLES) return undefined;
+  return storageStream(stream);
+}
