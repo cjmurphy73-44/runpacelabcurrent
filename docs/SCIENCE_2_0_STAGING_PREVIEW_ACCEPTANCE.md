@@ -2,7 +2,7 @@
 
 ## Scope and preservation
 
-Base44 staging app `6aefe9d09e2788fc8591c758`. Pre-investigation checkpoint `6af83c59a23233e22ea343ae` (sandbox revision `18cf83fa85d84c228d99ac38ecc3ea0159f80204`). This draft branch is stacked on #160, #158, #152, #148, #146, #145 and #142. No merge or production deployment is authorized.
+Base44 staging app `6aefe9d09e2788fc8591c758`. Pre-investigation checkpoint `6af83c59a23233e22ea343ae`; post-diagnostics checkpoint `6af83cf5cf7ba0f26b2e8e2b` (same sandbox revision `18cf83fa85d84c228d99ac38ecc3ea0159f80204`). This draft branch is stacked on #160, #158, #152, #148, #146, #145 and #142. No merge or production deployment is authorized.
 
 ## Evidence
 
@@ -14,7 +14,7 @@ Base44 staging app `6aefe9d09e2788fc8591c758`. Pre-investigation checkpoint `6af
 - Rest-review anonymous POST returns 401, GET returns 405. These responses verify only the unauthenticated boundary, **not** foreign-athlete 403, pagination or complete history in an authenticated session.
 - PR #160 GitHub CI passed run `43586825384` before this branch. Added fail-closed diagnostic pagination regression cases: backend failure after a full page, reordering without duplicate IDs, and oversized page. These tests do not simulate transactional snapshots or prove provider completeness.
 
-## Acceptance gates not yet met
+## Critical staging count drift\n\nStaging main entity counts at the end of Science 1.9 were AthleteProfile **7**, WorkoutSession **0**, DailyMetrics **6**. Two independent count checks during this Science 2.0 investigation returned AthleteProfile **4**, WorkoutSession **3**, DailyMetrics **3**. **This is not a zero-write verification.** This investigation performed no entity create/update/delete calls, but the counts changed and their provenance, environment and possible concurrent actors are unverified. Do not assume the counts are comparable snapshots or that this run caused the drift. Treat staging-main data isolation and any E2E write-delta claim as blocked until the count discrepancy is explained using authorized non-sensitive metadata. No athlete records were opened.\n\n## Acceptance gates not yet met
 
 1. Obtain a browser test session that actually reaches Physiology Lab with a temporary test user and independently verified dev-data isolation.
 2. Check owned-athlete preview, foreign-athlete 403, unknown-day provenance, confirmed-rest conflicts, bounded pagination, and no write deltas in **the same isolated test data environment**.
