@@ -12,14 +12,15 @@ export function hasVerifiedStreams(session) {
   let withPower = 0;
 
   for (const point of stream) {
-    const time = Number(point?.time);
+    const time = point?.time;
+    if (typeof time !== 'number') return false;
     if (!Number.isFinite(time) || time <= previous) return false;
     previous = time;
     if (typeof point?.heart_rate === 'number' && Number.isFinite(point.heart_rate) && point.heart_rate > 0) withHr += 1;
     if (typeof point?.power === 'number' && Number.isFinite(point.power) && point.power > 0) withPower += 1;
   }
 
-  const span = Number(stream[stream.length - 1].time) - Number(stream[0].time);
+  const span = stream[stream.length - 1].time - stream[0].time;
   if (span < 60 || !Number.isFinite(span)) return false;
   // Reject sparse points spread across an activity. They are not a dense stream.
   if (span / (stream.length - 1) > 5) return false;
