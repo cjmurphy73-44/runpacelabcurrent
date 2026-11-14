@@ -147,12 +147,14 @@ export default function Support() {
                   <Label htmlFor="message">Message <span className="text-destructive">*</span></Label>
                   <Textarea
                     id="message"
+                    aria-describedby="support-message-privacy"
                     placeholder="Tell us what happened or what you need help with..."
                     value={message}
                     onChange={(e) => setMessage(e.target.value)}
                     rows={5}
                     required
                   />
+                  <p id="support-message-privacy" className="text-xs text-muted-foreground">Do not include passwords, access tokens, or full payment card details. For billing changes, use the billing portal.</p>
                 </div>
 
                 <Button type="submit" className="w-full" disabled={busy || !message.trim()}>
