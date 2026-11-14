@@ -69,3 +69,10 @@ This file is the **single execution queue**, not a claim that beta readiness is 
 - **GitHub PR / merged SHA:** …
 - **Base44 deployment SHA / checkpoint / timestamp:** `NOT PUBLISHED` unless verified.
 - **Staging/live evidence and open blockers:** …
+
+## 2026-11-14 ING TCX timestamp integrity (PR #113)
+
+- Audit: `base44/shared/workoutParsers.ts::parseTcx` previously appended trackpoints even when timestamp was repeated or moved backward. This could produce misleading elapsed-time and interval streams. PR #111 handles TCX import UX; this distinct backend guard prevents corrupt TCX timelines.
+- Change: reject non-monotonic TCX timestamps at parse time. Four synthetic Vitest tests cover valid 90-second 1Hz recording, duplicate timestamps, reversed timestamps, and missing trackpoints. No production writes or schema changes.
+- Evidence: commits `f4c4b3a8`, `5aeab697`; tests authored but execution unavailable from connector-only environment. Draft PR #113, not merged or deployed. GitHub Actions/Vercel status checked separately.
+- Next: CI execution and isolated staging valid/invalid TCX ingestion; confirm persisted WorkoutSession + WorkoutAsset and sample coverage, including attachment/dedup. Then verify original Garmin/COROS FIT download, durable file retention and failure surfacing using read-only evidence before claiming full sync.
