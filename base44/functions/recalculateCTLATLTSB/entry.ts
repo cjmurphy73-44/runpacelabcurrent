@@ -22,7 +22,7 @@ export default async function (req: Request) {
     }
 
     const result = await recomputeCTLATLTSB(base44, athlete_id);
-    return Response.json(result);
+    return Response.json(result, { status: result.success === false ? 409 : 200 });
   } catch (error) {
     return Response.json({ error: error.message }, { status: 500 });
   }
