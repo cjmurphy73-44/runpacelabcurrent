@@ -39,7 +39,7 @@ export default function RestHistoryReview({ athleteId }) {
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div>
           <h3 className="font-semibold">Training history coverage</h3>
-          <p className="text-xs text-muted-foreground">Review the last 14 completed days. A missing recording is not proof of rest.</p>
+          <p className="text-xs text-muted-foreground">Review the last 14 completed UTC dates. Athlete-local date matching is not yet verified. A missing recording is not proof of rest.</p>
         </div>
         <Button size="sm" variant="outline" onClick={refresh} disabled={busy}>
           {busy ? 'Checking…' : 'Refresh history'}
