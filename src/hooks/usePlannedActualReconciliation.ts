@@ -11,6 +11,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useServices } from '@/services/providers/ServiceContext';
 import { workoutMatchingEngine } from '@/services/workoutMatchingEngine';
+import { canConfirmUniqueMatch } from '@/lib/uniqueWorkoutMatch';
 import { useSubscription } from '@/hooks/useSubscription';
 
 function todayKey() {
@@ -161,7 +162,10 @@ export function usePlannedActualReconciliation(athleteId) {
   useEffect(() => { load(); }, [load]);
 
   const confirmMatch = useCallback(async (match) => {
-    if (!match || !match.scheduledWorkoutId || confirmingId) return false;
+    if (!canConfirmUniqueMatch(match, matches) || confirmingId) {
+      setError('This workout has multiple possible matches. Review the session before linking.');
+      return false;
+    }
     setConfirmingId(match.sessionId);
     const newStatus = statusForMatch(match);
     try {
@@ -179,7 +183,7 @@ export function usePlannedActualReconciliation(athleteId) {
     } finally {
       setConfirmingId(null);
     }
-  }, [confirmingId, load, triggerReplan, trainingPlanSessionRepo, workoutSessionRepo]);
+  }, [confirmingId, matches, load, triggerReplan, trainingPlanSessionRepo, workoutSessionRepo]);
 
   // Acknowledge an auto-link, no DB write (already linked); just dismiss from the verify queue.
   const confirmAutoLink = useCallback((match) => {
