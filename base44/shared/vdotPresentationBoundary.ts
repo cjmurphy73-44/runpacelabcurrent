@@ -17,6 +17,42 @@ export function validateVdotPresentationRequest(input) {
   return Object.freeze({ kind: input.kind, vdot: input.vdot,
     ...(input.kind === 'norwegian' ? { format: input.format } : {}) });
 }
+// Validate only presentation data. Reject arbitrary object graphs, NaN, stale
+// provenance and unbounded free text. No private athlete identifiers in output.
+export function validateVdotPresentationResponse(value, request) {
+  if (!value || typeof value !== 'object' || Array.isArray(value) ||
+      Object.keys(value).some(k => !['kind', 'vdot', 'source', 'modelVersion', 'calculatedAt', 'paces', 'prescription'].includes(k)) ||
+      value.kind !== request.kind || value.vdot !== request.vdot ||
+      typeof value.source !== 'string' || !['athlete_attested', 'manual_input'].includes(value.source) ||
+      typeof value.modelVersion !== 'string' || !/^[A-Za-z0-9._-]{1,48}$/.test(value.modelVersion) ||
+      typeof value.calculatedAt !== 'string' || !/^\\d{4}-\\d{2}-\\d{2}T/.test(value.calculatedAt) ||
+      !Number.isFinite(Date.parse(value.calculatedAt))) throw new Error('invalid_response');
+  if (request.kind === 'paces') {
+    if (value.prescription !== undefined || !value.paces || typeof value.paces !== 'object' ||
+        Array.isArray(value.paces) ||
+        Object.keys(value.paces).sort().join(',') !== 'easy,interval,marathon,repetition,threshold') {
+      throw new Error('invalid_response');
+    }
+    for (const pace of Object.values(value.paces)) {
+      if (!pace || typeof pace !== 'object' || Array.isArray(pace) ||
+          Object.keys(pace).sort().join(',') !== 'formatted,secPerKm' ||
+          !Number.isFinite(pace.secPerKm) || pace.secPerKm <= 0 || pace.secPerKm > 3600 ||
+          typeof pace.formatted !== 'string' || !/^\\d{1,2}:\\d{2}\\/km$/.test(pace.formatted)) {
+        throw new Error('invalid_response');
+      }
+    }
+  } else {
+    const p = value.prescription;
+    if (value.paces !== undefined || !p || typeof p !== 'object' || Array.isArray(p) ||
+        Object.keys(p).sort().join(',') !== 'format,formattedPace,recoverySeconds,totalWorkMeters' ||
+        p.format !== request.format || !/^\\d{1,2}:\\d{2}\\/km$/.test(p.formattedPace) ||
+        !Number.isSafeInteger(p.recoverySeconds) || p.recoverySeconds < 0 || p.recoverySeconds > 3600 ||
+        !Number.isSafeInteger(p.totalWorkMeters) || p.totalWorkMeters <= 0 || p.totalWorkMeters > 100000) {
+      throw new Error('invalid_response');
+    }
+  }
+  return Object.freeze(value);
+}
 export function createVdotPresentationBoundary({ authenticate, calculate }) {
   if (typeof authenticate !== 'function' || typeof calculate !== 'function') {
     throw new Error('server_dependencies_required');
@@ -24,11 +60,20 @@ export function createVdotPresentationBoundary({ authenticate, calculate }) {
   return async function handle(input, requestContext) {
     if (!VDOT_PRESENTATION_ENABLED) return { status: 503, body: { error: 'unavailable' } };
     // Disabled branch is intentional until separate staging isolation and auth proof.
-    const identity = await authenticate(requestContext);
-    if (!identity?.id) return { status: 401, body: { error: 'unauthorized' } };
-    let validated;
-    try { validated = validateVdotPresentationRequest(input); }
-    catch { return { status: 400, body: { error: 'invalid_request' } }; }
-    return { status: 200, body: await calculate(validated, identity) };
+    try {
+      const identity = await authenticate(requestContext);
+      if (!identity || typeof identity.id !== 'string' || !identity.id ||
+          identity.ownedAthleteVerified !== true) {
+        return { status: 401, body: { error: 'unauthorized' } };
+      }
+      let validated;
+      try { validated = validateVdotPresentationRequest(input); }
+      catch { return { status: 400, body: { error: 'invalid_request' } }; }
+      const output = await calculate(validated, identity);
+      return { status: 200, body: validateVdotPresentationResponse(output, validated) };
+    } catch {
+      // No exception text, stack, provider details or science data escapes.
+      return { status: 503, body: { error: 'unavailable' } };
+    }
   };
 }
