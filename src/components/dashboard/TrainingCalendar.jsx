@@ -9,6 +9,7 @@ import { useCoachInjurySignal } from "@/hooks/useCoachInjurySignal";
 import CoachHoldCard from "@/components/dashboard/CoachHoldCard";
 import { useSubscription } from "@/hooks/useSubscription";
 import FeatureGate from "@/components/billing/FeatureGate";
+import { sessionsOnDay } from "@/lib/calendarDaySessions";
 
 const ZONE_TRIMP_FACTOR = { Z1: 0.5, Z2: 0.7, Z3: 0.9, Z4: 1.1, Z5: 1.3 };
 
@@ -77,7 +78,7 @@ export default function TrainingCalendar({ athleteId, currentTsb }) {
       ) : loadError ? null : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           {days.map((day) => {
-            const daySessions = sessions.filter((s) => s.date === day);
+            const daySessions = sessionsOnDay(sessions, day);
             const session = daySessions[0];
             const factor = session ? (ZONE_TRIMP_FACTOR[session.prescribed_intensity_zone] || 0.8) : 0;
             const estTrimp = session ? Math.round((session.prescribed_duration_minutes || 0) * factor) : 0;
