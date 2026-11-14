@@ -89,7 +89,7 @@ export function computeBanisterTimeline(inputs: BanisterLoadInput[], initialCtl:
   });
 }
 
-export default async function (
+async function legacyCalculate(
   base44: Base44,
   context: Base44FunctionContext,
   args: CalculateBanisterModelArgs
@@ -122,3 +122,11 @@ export default async function (
 
   return { error: "Invalid arguments provided for Banister model calculation." };
 }
+
+// Legacy calculation exports above are retained for review but are not
+// exposed until load-unit, date, and input provenance are validated.
+Deno.serve(async (req: Request) => {
+  if (req.method !== 'POST') return Response.json({ error: 'Method not allowed' }, { status: 405 });
+  return Response.json({ success: false, code: 'LEGACY_CALCULATION_NOT_VALIDATED',
+    error: 'Use the verified science preview. Legacy load calculations are temporarily unavailable.' }, { status: 503 });
+});
