@@ -61,11 +61,12 @@ Deno.serve(async (req) => {
         ]);
         sessions.push(...saved);
         metrics.push(...daily);
-      } catch (error) {
+      } catch {
+        // Do not return SDK errors, query details, or internal identifiers.
         return Response.json({ success: false, code: 'INCOMPLETE_HISTORY_READ',
           error: 'Unable to establish complete diagnostic history for ' + day +
             '. No rest status was changed.',
-          detail: error instanceof Error ? error.message : 'read_failed' }, { status: 409 });
+          }, { status: 409 });
       }
     }
 
@@ -77,6 +78,7 @@ Deno.serve(async (req) => {
     return Response.json({ success: false, code: 'ATOMIC_REST_CONFIRMATION_UNAVAILABLE',
       error: 'Rest confirmation is unavailable; no data was changed.' }, { status: 409 });
   } catch (error) {
-    return Response.json({ error: error instanceof Error ? error.message : 'Rest review failed' }, { status: 500 });
+    // SDK and backend errors may contain internal identifiers. Fail closed.
+    return Response.json({ error: 'History review unavailable', code: 'REST_REVIEW_UNAVAILABLE' }, { status: 500 });
   }
 });
