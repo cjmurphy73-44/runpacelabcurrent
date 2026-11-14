@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { eligibleRacePerformance, usableStoredVdot, validVdotInputs } from '../../../base44/shared/vdotEvidence';
 import { calculateVDOT as frontend } from '../vdot';
-import { calculateVDOT as math } from '../../math/vdot';
+import { calculateVDOT as math, getTrainingPaces as browserPaces } from '../../math/vdot';
+import { getTrainingPaces as sciencePaces } from '../vdot';
 import { getVdotPaceZones } from '../../lib/physiologyEngine';
 
 const now = Date.parse('2026-11-14T12:00:00Z');
@@ -41,6 +42,12 @@ describe('VDOT evidence and placeholder safety', () => {
   it('does not return fixed training paces without VDOT', () => {
     expect(getVdotPaceZones(NaN)).toBeNull();
     expect(getVdotPaceZones(0)).toBeNull();
+  });
+  it('preserves calculated pace parity using the existing browser math boundary', () => {
+    for (const vdot of [35, 45, 60, 75]) {
+      expect(getVdotPaceZones(vdot)).toEqual(browserPaces(vdot));
+      expect(getVdotPaceZones(vdot)).toEqual(sciencePaces(vdot));
+    }
   });
   it('returns calculated, VDOT-dependent training paces', () => {
     expect(getVdotPaceZones(40)?.threshold.secPerKm).not.toBe(getVdotPaceZones(60)?.threshold.secPerKm);
