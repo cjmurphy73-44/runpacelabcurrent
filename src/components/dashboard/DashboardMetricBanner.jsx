@@ -2,6 +2,7 @@ import React, { useMemo } from "react";
 import { Activity, Zap, Gauge, Target, TrendingUp } from "lucide-react";
 import { calculateHistoricalAndProjectedLoad } from "@/lib/loadForecasting";
 import { useFitness } from "@/context/FitnessContext";
+import { dashboardLoadGate } from "@/lib/dashboardLoadGate";
 
 // Pro-athlete metric banner. Uses the SAME computed CTL/ATL/TSB model as the hero
 // PMC chart (calculateHistoricalAndProjectedLoad from workouts) rather than the
@@ -10,6 +11,7 @@ import { useFitness } from "@/context/FitnessContext";
 // uppercase tracked labels, and a thin goal bar.
 export default function DashboardMetricBanner({ athlete, workouts = [] }) {
   const { readinessForecast } = useFitness();
+  const loadGate = useMemo(() => dashboardLoadGate(workouts), [workouts]);
 
   const { ctl, atl, tsb } = useMemo(() => {
     const timeline = calculateHistoricalAndProjectedLoad(workouts, [], 0);
@@ -28,10 +30,10 @@ export default function DashboardMetricBanner({ athlete, workouts = [] }) {
   const goalPct = weeklyGoal > 0 ? Math.max(0, Math.min(100, Math.round((weeklyTss / weeklyGoal) * 100))) : 0;
 
   const cards = [
-    { label: "CTL · Fitness", value: Math.round(ctl), icon: Activity },
-    { label: "ATL · Fatigue", value: Math.round(atl), icon: Zap },
-    { label: "TSB · Form", value: Math.round(tsb), icon: Gauge, tone: tsb >= 0 ? "pos" : "neg" },
-    { label: "Wk TSS · Goal", value: `${Math.round(weeklyTss)} / ${weeklyGoal}`, icon: Target, bar: goalPct },
+    { label: "CTL · Fitness", value: loadGate.ready ? Math.round(ctl) : "—", icon: Activity },
+    { label: "ATL · Fatigue", value: loadGate.ready ? Math.round(atl) : "—", icon: Zap },
+    { label: "TSB · Form", value: loadGate.ready ? Math.round(tsb) : "—", icon: Gauge, tone: loadGate.ready ? (tsb >= 0 ? "pos" : "neg") : undefined },
+    { label: "Weekly load · Goal", value: loadGate.ready ? `${Math.round(weeklyTss)} / ${weeklyGoal} ${loadGate.unit}` : "—", icon: Target, bar: loadGate.ready ? goalPct : undefined },
     ...(readinessForecast ? [{
       label: "Readiness Forecast",
       value: `${Math.round(readinessForecast.projectedReadiness)}%`,
@@ -43,6 +45,7 @@ export default function DashboardMetricBanner({ athlete, workouts = [] }) {
 
   return (
     <div className={`grid grid-cols-2 ${readinessForecast ? 'lg:grid-cols-5' : 'lg:grid-cols-4'} gap-3`}>
+      {!loadGate.ready && <p role="status" className="col-span-full text-sm text-muted-foreground">Training-load metrics unavailable: {loadGate.reason}. Add a verified recording to build a comparable history.</p>}
       {cards.map((c) => (
         <div key={c.label} className="rounded-md border border-border bg-card p-4 shadow-sm">
           <div className="flex items-center gap-1.5 text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
