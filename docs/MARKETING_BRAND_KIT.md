@@ -29,3 +29,30 @@
 
 ## Existing photography
 The landing page currently references external Unsplash URLs. They are not included in this PR as owned assets, and their individual license/subject suitability is not verified here. Do not treat them as a completed licensed asset library.
+
+## Separation of responsibilities (approved working structure)
+**Brand assets (this package):** canonical logo source and lockups, favicon exports, brand colours, typography guidance, photography usage rights, social artwork, and reusable copy. Never depict backend PR status or engineering backlog in advertising artwork.
+
+**Public website frontend (separate delivery):** landing layout, responsive image crops, navigation, CTA routes, accessibility, pricing presentation, and SEO rendering. It consumes brand assets but is not itself an asset library.
+
+**Authenticated product frontend (separate delivery):** athlete dashboard, charts, calendar, device-state UI, empty/error states, and real anonymized screenshots for marketing. Do not substitute generated dashboard mockups.
+
+**Backend and science (separate delivery):** ingestion, authentication, training calculations, recovery models, planning, and release infrastructure. Marketing may describe these only after verifying live functionality.
+
+## Canonical visual rules
+- Existing repository favicon artwork `public/assets/trainpacelab-icon.svg` is the current canonical icon reference. Do not silently substitute a mountain-shaped or generic pulse icon from a concept board.
+- Palette: graphite `#0B0D0E`, slate `#53646B`, lime `#D4F36B`, off-white `#F3F6F3`. Apply lime sparingly to actions and focal details.
+- Typography: use the project's existing heading/body font configuration first; Inter is a *concept reference*, not a new bundled font or required license.
+- Visuals: real, rights-cleared tracks, roads, trails, cycling and pools. Prefer scenery over posed athletes. Do not call generated references real photography.
+- Never fabricate a dashboard screenshot, metric, testimonial, athlete endorsement, device partnership or scientific outcome.
+- A brand concept board is for visual approval only. It must not be added to the live website or treated as an approved logo or licensed asset.
+
+## Deliverable ownership and acceptance
+| Stream | Acceptance evidence | Status |
+| --- | --- | --- |
+| Brand identity | Master logo ownership, tested variants, consistent palette | In progress |
+| Social assets | 1200×630 raster, accessible at production URL, social preview verified | SVG concept only |
+| Photography | Rights register with image source, license and permitted use | Pending |
+| Public website | 390px + desktop screenshots, CTA/SEO/accessibility checks | Pending |
+| Product screenshots | Actual app capture, permission, anonymization and sample-data labels | Pending |
+| Backend/science | Separate feature tests and release review, not marketing deliverables | Outside scope |
