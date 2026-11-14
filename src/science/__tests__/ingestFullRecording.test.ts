@@ -40,6 +40,20 @@ describe('release-gated complete recording ingest coordinator', () => {
     expect((await ingestFullRecording(input(601), db, cryptoApi)).status).toBe('incomplete');
     expect(db.manifests).toHaveLength(0);
   });
+  it('rejects sparse reconstructed telemetry despite matching first/last timestamps', async () => {
+    const db = fakeStores();
+    const sparse = input(61, 5040);
+    sparse.samples = Array.from({ length: 61 }, (_, i) => ({ time: i * 84, heart_rate: 130 }));
+    expect(await ingestFullRecording(sparse, db, cryptoApi)).toMatchObject({ status: 'blocked', reason: 'unusable_telemetry_density_or_channels' });
+    expect(db.chunkStore.createBatch).not.toHaveBeenCalled();
+  });
+  it('rejects channel-less time-only telemetry before writing', async () => {
+    const db = fakeStores();
+    const withoutChannels = input(601);
+    withoutChannels.samples = withoutChannels.samples.map(({ time }) => ({ time }));
+    expect(await ingestFullRecording(withoutChannels, db, cryptoApi)).toMatchObject({ status: 'blocked', reason: 'unusable_telemetry_density_or_channels' });
+    expect(db.manifestStore.create).not.toHaveBeenCalled();
+  });
   it('rejects unsupported oversized recordings without any writes', async () => {
     const db = fakeStores();
     expect(await ingestFullRecording(input(28801), db, cryptoApi))
