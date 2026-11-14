@@ -11,6 +11,8 @@ import { commitFullRecording, type ManifestStore, type ExclusiveRecordingLease }
 import type { ChunkStore } from './recordingChunkPersistence.ts';
 // @ts-ignore Deno runtime import extension
 import { readFullSessionRecording } from './fullSessionRecording.ts';
+// @ts-ignore Deno runtime import extension
+import { isUsableTelemetry } from './streamValidity.ts';
 
 export type IngestFullRecordingResult =
   | { status: 'complete'; sample_count: number; source: 'verified_chunks' }
@@ -28,6 +30,11 @@ export async function ingestFullRecording(
       !Array.isArray(input.samples) || !dependencies?.lease ||
       !dependencies?.chunkStore || !dependencies?.manifestStore) {
     return failed('blocked', 'invalid_ingest_request');
+  }
+  // A plausible start/end span alone does not establish a dense physiological
+  // recording: reject sparse samples and summary-only reconstructions.
+  if (!isUsableTelemetry(input.samples, input.duration_seconds)) {
+    return failed('blocked', 'unusable_telemetry_density_or_channels');
   }
   const plan = planRecordingChunks(input.samples);
   if (!plan.ok) return failed('blocked', plan.reason);
