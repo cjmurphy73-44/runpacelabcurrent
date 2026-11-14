@@ -2,14 +2,14 @@
 
 ## Isolation and checkpoints
 
-Base44 staging app `6aefe9d09e2788fc8591c758` only. Pre-work checkpoint `6af83a8ecaaea8bb6b1a692c`. Production untouched. The integration branch stacks on draft #158, #152, #148, #146, #145 and #142; do not merge or deploy.
+Base44 staging app `6aefe9d09e2788fc8591c758` only. Pre-work checkpoint `6af83a8ecaaea8bb6b1a692c`. Post-work checkpoint `6af83bb9b97111a6dc6403de`. Production untouched. The integration branch stacks on draft #158, #152, #148, #146, #145 and #142; do not merge or deploy.
 
 ## Browser test: what actually happened
 
 - First read-only temporary-user run `6af8301b8d0c754720041f93`: **failed**, `failure_reason=platform`, `goal_accomplished=false`, `credits_charged=0`. The Base44 preview remained on “Preview is starting up” through a reload, wait and direct /Physiology navigation. No app screen, authenticated review request or test-athlete records were reached.
 - Called the platform's sandbox preview URL operation; it returned a preview URL with `cold_start=false` and a preview token. **Do not commit or disclose the token.**
 - Retried the same read-only flow as `6af83aaf0371c3162a581d4b`. Inspect its final status and report before claiming any browser acceptance.
-- No real athlete data or credentials were used. The test-agent API states its temporary user operates against dev/test data, not live data.
+- Staging main entity counts checked after the work: AthleteProfile 7, WorkoutSession 0, DailyMetrics 6 (unchanged from Science 1.8 baseline). These counts do not establish dev test-data before/after state. No real athlete data or credentials were used. The test-agent API states its temporary user operates against dev/test data, not live data.
 
 ## HTTP and function deployment diagnostics
 
