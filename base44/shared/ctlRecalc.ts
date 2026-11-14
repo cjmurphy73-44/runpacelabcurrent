@@ -29,8 +29,24 @@ export async function recomputeCTLATLTSB(base44: any, athlete_id: string) {
   const ctlAlpha = 2 / (timeConstantCTL + 1);
   const atlAlpha = 2 / (timeConstantATL + 1);
 
-  const sessions = await base44.asServiceRole.entities.WorkoutSession.filter({ athlete_id });
-  const existing = await base44.asServiceRole.entities.DailyMetrics.filter({ athlete_id });
+  // The unpaginated entity filter may silently truncate. An exact boundary
+  // is not evidence of completeness, so fail closed without changing metrics.
+  const READ_LIMIT = 5000;
+  const [sessions, existing] = await Promise.all([
+    base44.asServiceRole.entities.WorkoutSession.filter({ athlete_id }, 'date', READ_LIMIT),
+    base44.asServiceRole.entities.DailyMetrics.filter({ athlete_id }, 'date', READ_LIMIT),
+  ]);
+  if (!Array.isArray(sessions) || !Array.isArray(existing) ||
+      sessions.length >= READ_LIMIT || existing.length >= READ_LIMIT) {
+    return { success: false, code: 'INCOMPLETE_HISTORY_READ', reason: 'Training history may be truncated; no load metrics were changed.',
+      date: null, ctl: null, atl: null, tsb: null };
+  }
+  // A UTC calendar day is not an athlete-local day. Until date provenance
+  // is normalized, refuse to mutate historical CTL/ATL/ODE snapshots.
+  return { success: false, code: 'ATHLETE_TIMEZONE_UNVERIFIED',
+    reason: 'Athlete-local workout dates and complete history must be verified before recalculating training load.',
+    date: null, ctl: null, atl: null, tsb: null };
+  /*
   const today = new Date().toISOString().slice(0, 10);
   const coverage = auditDailyHistory(sessions, existing, today);
   if (!coverage.eligible) {
@@ -162,4 +178,5 @@ export async function recomputeCTLATLTSB(base44: any, athlete_id: string) {
   }).catch((e: any) => console.warn('recalc: failed to sync profile snapshot', e?.message));
 
   return { success: true, ctl: finalCtl, atl: finalAtl, tsb: finalTsb };
+  */
 }
