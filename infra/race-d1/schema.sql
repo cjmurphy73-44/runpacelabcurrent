@@ -49,3 +49,13 @@ CREATE TRIGGER IF NOT EXISTS race_reject_delete BEFORE DELETE ON race_results
 BEGIN
   SELECT RAISE(ABORT,'race_delete_forbidden');
 END;
+
+-- Audit is immutable through ordinary SQL updates/deletes.
+CREATE TRIGGER IF NOT EXISTS race_audit_reject_update BEFORE UPDATE ON race_audit
+BEGIN
+  SELECT RAISE(ABORT,'race_audit_immutable');
+END;
+CREATE TRIGGER IF NOT EXISTS race_audit_reject_delete BEFORE DELETE ON race_audit
+BEGIN
+  SELECT RAISE(ABORT,'race_audit_immutable');
+END;
