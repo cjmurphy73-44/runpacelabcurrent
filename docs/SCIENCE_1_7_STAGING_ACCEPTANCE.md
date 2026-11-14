@@ -11,7 +11,7 @@
 3. `calculateVDOT` imported unsupported `npm:@base44/runtime`. Switched to supported `npm:@base44/sdk@0.8.31`, used `Deno.serve` and added authentication check.
 4. The staging Physiology Lab now renders the read-only `RestHistoryReview` for authenticated athlete profiles while preserving its onboarding and loading states.
 
-The staging source edits returned `applied: true` and the staging app status was `ready`. This demonstrates Base44 accepted the source changes, **not** that every function worker is healthy. The two legacy calculation routes still fail at runtime.
+The staging source edits returned `applied: true` and the staging app status was `ready`. This demonstrates Base44 accepted the source changes, **not** that every function worker is healthy. The two legacy calculation routes still fail at runtime. An attempt to read function logs via the Base44 CLI in the staging sandbox returned `Not logged in`; no access token was supplied or exposed. The runtime exception cause remains unverified.
 
 ## Executed evidence
 
