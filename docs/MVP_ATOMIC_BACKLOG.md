@@ -69,3 +69,8 @@ This file is the **single execution queue**, not a claim that beta readiness is 
 - **GitHub PR / merged SHA:** …
 - **Base44 deployment SHA / checkpoint / timestamp:** `NOT PUBLISHED` unless verified.
 - **Staging/live evidence and open blockers:** …
+
+## 2026-11-14 Planned/actual matcher no-op removed (PR #127)
+
+- Functional audit found `src/services/workoutMatchingEngine.ts` `matchAll` always returned an empty array. Replaced with deterministic read-only same-date/sport candidate suggestions ranked by duration proximity, preserving ambiguity and rejecting invalid or extreme ratios. Five synthetic tests authored, not executed.
+- **Release dependency:** this matcher must not be deployed against the old auto-link-on-load hook on `main`. Require PR #123 read-only reconciliation changes first or in the same reviewed merge. PR #126 is read-only preflight, not an atomic commit. Asset-level `match` remains unimplemented.
