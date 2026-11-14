@@ -1,10 +1,11 @@
 // Provider-neutral atomic RaceResult persistence port.
 // The provider MUST enforce unique identities, durable idempotency and CAS in its
 // own transactional storage. No Base44 entity CRUD adapter is safe by default.
-import { canonicalRaceIdentity } from './raceAtomicContract.ts';
+import { canonicalRaceIdentity } from './raceAtomicContract';
 
 export class RacePersistenceError extends Error {
-  constructor(code) { super(code); this.name = 'RacePersistenceError'; this.code = code; }
+  code: string;
+  constructor(code: string) { super(code); this.name = 'RacePersistenceError'; this.code = code; }
 }
 
 export function validateRaceWriteCommand(command) {
