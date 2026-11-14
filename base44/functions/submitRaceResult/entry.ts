@@ -31,8 +31,9 @@ export default async function (req: Request): Promise<Response> {
 
     // Query under the authenticated user's entity permissions, not service role.
     // An exact-match query avoids silently accepting a truncated historical list.
-    const candidates = await base44.entities.RaceResult.filter({
+    const candidates = await base44.asServiceRole.entities.RaceResult.filter({
       athlete_id: athlete.id,
+      created_by_id: user.id,
       race_date: record.race_date,
       distance_m: record.distance_m,
       elapsed_seconds: record.elapsed_seconds,
@@ -45,18 +46,32 @@ export default async function (req: Request): Promise<Response> {
     }
 
     if (body?.action === 'correct') {
-      const existing = await base44.entities.RaceResult.get(correctionId).catch(() => null);
+      const existing = await base44.asServiceRole.entities.RaceResult.get(correctionId).catch(() => null);
       if (!existing || existing.created_by_id !== user.id || existing.athlete_id !== athlete.id ||
           existing.evidence_source !== 'athlete_attested' || existing.evidence_status !== 'self_reported') {
         return Response.json({ error: 'Race result not found or not editable' }, { status: 404 });
       }
-      const updated = await base44.entities.RaceResult.update(correctionId, record);
-      return Response.json({ id: updated.id, evidence_status: 'self_reported', message: 'Athlete-reported race corrected' });
+      if (!Number.isSafeInteger(body?.expected_revision) || body.expected_revision < 1 ||
+          existing.revision !== body.expected_revision) {
+        return Response.json({ error: 'Race result changed; reload before correcting', current_revision: existing.revision ?? null }, { status: 409 });
+      }
+      // Read-compare-update is NOT atomic. No concurrent edit guarantee until Base44 CAS is verified.
+      const updated = await base44.asServiceRole.entities.RaceResult.update(correctionId, {
+        ...record, revision: existing.revision + 1,
+      });
+      return Response.json({ id: updated.id, revision: updated.revision, evidence_status: 'self_reported', message: 'Athlete-reported race corrected' });
     }
 
-    const created = await base44.entities.RaceResult.create({ ...record, athlete_id: athlete.id });
+    const created = await base44.asServiceRole.entities.RaceResult.create({
+      ...record, athlete_id: athlete.id, created_by_id: user.id, revision: 1,
+    });
+    // Fail closed if service-role creation did not preserve explicit ownership metadata.
+    if (!created?.id || created.athlete_id !== athlete.id || created.created_by_id !== user.id) {
+      throw new Error('Race result ownership persistence not verified');
+    }
     return Response.json({
       id: created.id,
+      revision: created.revision,
       evidence_status: 'self_reported',
       message: 'Race result saved as athlete-reported; not independently verified',
     }, { status: 201 });
