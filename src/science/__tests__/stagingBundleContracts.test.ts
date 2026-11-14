@@ -23,6 +23,20 @@ describe('Science 1.7: staging Deno function bundle contracts', () => {
       expect(source(name)).toContain('LEGACY_CALCULATION_NOT_VALIDATED');
     }
   });
+  it('legacy calculator endpoints remain fail-closed and do not mutate athlete records', () => {
+    for (const name of ['calculateBanisterModel', 'calculateTrainingLoad']) {
+      const text = source(name);
+      expect(text).toContain('LEGACY_CALCULATION_NOT_VALIDATED');
+      expect(text).toContain('status: 503');
+      expect(text).toContain("req.method !== 'POST'");
+      expect(text).toContain('status: 405');
+      expect(text).not.toMatch(/(?:WorkoutSession|DailyMetrics|AthleteProfile)\\.(?:create|update|bulkUpdate|delete)\\s*\\(/);
+      expect(text).not.toMatch(/(?:success:\\s*true|status:\\s*200)/);
+    }
+    const load = source('calculateTrainingLoad');
+    expect(load).toContain('client.auth.me()');
+    expect(load).toContain('status: 401');
+  });
   it('VDOT endpoint uses a supported SDK and checks authentication', () => {
     const text = source('calculateVDOT');
     expect(text).toContain("npm:@base44/sdk@0.8.31");
