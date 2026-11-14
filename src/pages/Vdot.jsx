@@ -91,7 +91,7 @@ export default function Vdot() {
                   type="button"
                   variant={isCustom ? "default" : "secondary"}
                   size="sm"
-                  onClick={() => setIsCustom(true)}
+                  onClick={() => { setIsCustom(true); setResult(null); }}
                 >
                   Custom
                 </Button>
@@ -126,7 +126,7 @@ export default function Vdot() {
                       min="0"
                       max={f.max}
                       value={f.value}
-                      onChange={(e) => f.set(Math.max(0, parseInt(e.target.value) || 0))}
+                      onChange={(e) => { f.set(Math.max(0, parseInt(e.target.value) || 0)); setResult(null); setError(null); }}
                     />
                   </div>
                 ))}
