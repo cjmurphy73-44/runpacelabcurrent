@@ -14,7 +14,7 @@ export function validateFeedbackPayload(body) {
   if (body.contact_email != null && body.contact_email !== '') {
     if (typeof body.contact_email !== 'string') return { ok: false, error: 'Invalid email address' };
     contact_email = body.contact_email.trim();
-    if (contact_email.length > MAX_EMAIL || !/^[^\s@]+@[^\s@]+\\.[^\s@]+$/.test(contact_email)) {
+    if (contact_email.length > MAX_EMAIL || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(contact_email)) {
       return { ok: false, error: 'Invalid email address' };
     }
   }
