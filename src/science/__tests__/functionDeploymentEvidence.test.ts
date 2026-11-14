@@ -19,6 +19,12 @@ describe('Science 2.3: deployed worker provenance', () => {
       expect(assessFunctionDeployment({ ...valid, deployedRevision }).missing).toContain('exact-deployment-revision');
     }
   });
+  it('rejects whitespace-only revisions even when both strings match', () => {
+    for (const revision of [' ', '\\t', '\\n']) {
+      expect(assessFunctionDeployment({ ...valid, sourceRevision: revision, deployedRevision: revision }).missing)
+        .toContain('exact-deployment-revision');
+    }
+  });
   it('rejects production app fallback and unverified runtime identity', () => {
     expect(assessFunctionDeployment({ ...valid, effectiveAppId: '6a504ebe6a5a6d1be058226c' }).ready).toBe(false);
     expect(assessFunctionDeployment({ ...valid, effectiveAppId: undefined }).ready).toBe(false);
