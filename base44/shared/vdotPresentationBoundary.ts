@@ -38,7 +38,7 @@ export function validateVdotPresentationResponse(value, request) {
       if (!pace || typeof pace !== 'object' || Array.isArray(pace) ||
           Object.keys(pace).sort().join(',') !== 'formatted,secPerKm' ||
           !Number.isFinite(pace.secPerKm) || pace.secPerKm <= 0 || pace.secPerKm > 3600 ||
-          typeof pace.formatted !== 'string' || !/^\d{1,2}:\d{2}\/km$/.test(pace.formatted)) {
+          typeof pace.formatted !== 'string' || !/^\d{1,2}:[0-5]\d\/km$/.test(pace.formatted)) {
         throw new Error('invalid_response');
       }
     }
@@ -46,7 +46,7 @@ export function validateVdotPresentationResponse(value, request) {
     const p = value.prescription;
     if (value.paces !== undefined || !p || typeof p !== 'object' || Array.isArray(p) ||
         Object.keys(p).sort().join(',') !== 'format,formattedPace,recoverySeconds,totalWorkMeters' ||
-        p.format !== request.format || !/^\d{1,2}:\d{2}\/km$/.test(p.formattedPace) ||
+        p.format !== request.format || !/^\d{1,2}:[0-5]\d\/km$/.test(p.formattedPace) ||
         !Number.isSafeInteger(p.recoverySeconds) || p.recoverySeconds < 0 || p.recoverySeconds > 3600 ||
         !Number.isSafeInteger(p.totalWorkMeters) || p.totalWorkMeters <= 0 || p.totalWorkMeters > 100000) {
       throw new Error('invalid_response');
