@@ -13,14 +13,14 @@ function localDate() {
 // TCX goes through ingestWorkoutFile, not bulkIngestWorkouts (FIT/CSV only).
 export default function TcxWorkoutImport({ athleteId }) {
   const [file, setFile] = useState(null);
-  const [date, setDate] = useState(localDate);
+  const [date, setDate] = useState("");
   const [sport, setSport] = useState("running");
   const [busy, setBusy] = useState(false);
   const [result, setResult] = useState(null);
 
   async function submit(event) {
     event.preventDefault();
-    if (busy || !athleteId || !file || !/\.tcx$/i.test(file.name) || !date) return;
+    if (busy || !athleteId || !file || !/\.tcx$/i.test(file.name) || !date || date > localDate()) return;
     setBusy(true);
     setResult(null);
     try {
@@ -46,6 +46,7 @@ export default function TcxWorkoutImport({ athleteId }) {
       <label className="block text-xs font-medium" htmlFor="tcx-file">TCX file</label>
       <Input id="tcx-file" type="file" accept=".tcx,application/vnd.garmin.tcx+xml,application/xml,text/xml"
         onChange={e => { setFile(e.target.files?.[0] || null); setResult(null); }} disabled={busy} required />
+      <p className="text-xs text-muted-foreground">Choose the actual workout date, not the upload date. This determines matching with existing sessions and daily training load.</p>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <label className="text-xs font-medium" htmlFor="tcx-date">Workout date
           <Input id="tcx-date" type="date" value={date} max={localDate()} onChange={e => setDate(e.target.value)} disabled={busy} required />
@@ -59,7 +60,7 @@ export default function TcxWorkoutImport({ athleteId }) {
           </select>
         </label>
       </div>
-      <Button type="submit" disabled={busy || !athleteId || !file || !/\.tcx$/i.test(file.name)} className="min-h-11">
+      <Button type="submit" disabled={busy || !athleteId || !file || !date || date > localDate() || !/\.tcx$/i.test(file.name)} className="min-h-11">
         {busy ? "Uploading and processing…" : "Import TCX recording"}
       </Button>
       {result && <div role="status" aria-live="polite" className="text-sm space-y-1">
