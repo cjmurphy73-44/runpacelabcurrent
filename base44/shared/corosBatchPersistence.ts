@@ -101,8 +101,9 @@ export async function reconcileCorosWrites<T extends {
     return blocked('read_after_write_failed');
   }
   // The callback must return the full, non-truncated read result as an array.
-  if (!Array.isArray(response)) return blocked('read_after_write_unverified');
-  const savedKeys = new Set(response.map((row) => identity(row as T)).filter(Boolean));
+  if (!response || typeof response !== 'object' || (response as any).complete !== true ||
+      !Array.isArray((response as any).rows)) return blocked('read_after_write_unverified');
+  const savedKeys = new Set((response as any).rows.map((row: T) => identity(row)).filter(Boolean));
   const verified = attempted.filter((row) => savedKeys.has(identity(row)));
   const missing = attempted.filter((row) => !savedKeys.has(identity(row)));
   return {
