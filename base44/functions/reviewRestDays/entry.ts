@@ -23,9 +23,9 @@ Deno.serve(async (req) => {
     const today = new Date().toISOString().slice(0, 10);
     const start = action === 'confirm_rest' ? date : start_date;
     const end = action === 'confirm_rest' ? date : end_date;
-    if (!validDate(start) || !validDate(end) || start > end || end > today ||
+    if (!validDate(start) || !validDate(end) || start > end || end >= today ||
         Date.parse(end + 'T00:00:00Z') - Date.parse(start + 'T00:00:00Z') > 30 * 86400000) {
-      return Response.json({ error: 'Choose a valid past or present window of at most 31 days.' }, { status: 400 });
+      return Response.json({ error: 'Choose completed days only, in a window of at most 31 days.' }, { status: 400 });
     }
     if (action !== 'preview' && action !== 'confirm_rest') {
       return Response.json({ error: 'Unsupported action' }, { status: 400 });
