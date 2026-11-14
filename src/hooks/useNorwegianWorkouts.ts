@@ -1,7 +1,7 @@
 import { useState } from 'react';
 
 export function useNorwegianWorkouts(options?: { initialVdot?: number }) {
-  const [vdot, setVdot] = useState(options?.initialVdot ?? 55);
+  const [vdot, setVdot] = useState(options?.initialVdot ?? null);
   const [format, setFormat] = useState('1000m');
   const [prescription, setPrescription] = useState<any>(null);
   const [decouplingResult, setDecouplingResult] = useState<any>(null);
