@@ -26,7 +26,8 @@ export function validateVdotPresentationResponse(value, request) {
       typeof value.source !== 'string' || !['athlete_attested', 'manual_input'].includes(value.source) ||
       typeof value.modelVersion !== 'string' || !/^[A-Za-z0-9._-]{1,48}$/.test(value.modelVersion) ||
       typeof value.calculatedAt !== 'string' || !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{3})?Z$/.test(value.calculatedAt) ||
-      !Number.isFinite(Date.parse(value.calculatedAt)) ||\n      new Date(value.calculatedAt).toISOString() !== value.calculatedAt.replace(/\\.000Z$/, 'Z')) throw new Error('invalid_response');
+      !Number.isFinite(Date.parse(value.calculatedAt)) ||
+      new Date(value.calculatedAt).toISOString() !== (value.calculatedAt.endsWith('.000Z') ? value.calculatedAt : value.calculatedAt.replace(/Z$/, '.000Z'))) throw new Error('invalid_response');
   if (request.kind === 'paces') {
     if (value.prescription !== undefined || !value.paces || typeof value.paces !== 'object' ||
         Array.isArray(value.paces) ||
