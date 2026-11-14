@@ -15,6 +15,7 @@ import {
 } from "@/components/ui/select";
 import WorkoutDetailModal from "@/components/workout/WorkoutDetailModal";
 import WorkoutLogWizard from "@/components/workout/WorkoutLogWizard";
+import { historyLoadLabel } from "@/lib/historyLoadLabel";
 import { Loader2, Plus, Activity, ArrowRight, Upload } from "lucide-react";
 
 const SPORTS = [
@@ -198,9 +199,10 @@ export default function Workouts() {
                       {w.avg_hr ? ` · ${w.avg_hr} bpm avg` : ""}
                     </p>
                   </div>
-                  <p className="text-sm font-heading font-semibold shrink-0 ml-3">
-                    {Math.round(w.session_trimp || w.session_tss || 0)} TRIMP
-                  </p>
+                  <div className="shrink-0 ml-3 text-right max-w-[135px]">
+                    <p className="text-sm font-heading font-semibold">{historyLoadLabel(w).amount}</p>
+                    <p className="text-[11px] text-muted-foreground leading-tight">{historyLoadLabel(w).detail}</p>
+                  </div>
                 </div>
               </WorkoutDetailModal>
             ))}
