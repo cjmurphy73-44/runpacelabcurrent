@@ -29,8 +29,9 @@ export default function CheckoutSuccess() {
   const { refresh, plan: entitledPlan, status, loading } = useSubscription();
   const { user, authChecked } = useAuth();
   const [refreshPending, setRefreshPending] = useState(true);
+  const [refreshFailed, setRefreshFailed] = useState(false);
   const authenticated = !!user?.id;
-  const confirmation = checkoutConfirmationState({ authenticated, loading: !authChecked || loading || refreshPending, refreshFailed: false, plan: entitledPlan, status, requestedPlan: plan });
+  const confirmation = checkoutConfirmationState({ authenticated, loading: !authChecked || loading || refreshPending, refreshFailed, plan: entitledPlan, status, requestedPlan: plan });
   const confirmed = confirmation === "active";
 
   // If the payer is still authenticated, refresh entitlement state so the rest
@@ -40,7 +41,8 @@ export default function CheckoutSuccess() {
     if (!authenticated) { setRefreshPending(false); return; }
     let live = true;
     setRefreshPending(true);
-    refresh().catch(() => {}).finally(() => { if (live) setRefreshPending(false); });
+    setRefreshFailed(false);
+    refresh().catch(() => { if (live) setRefreshFailed(true); }).finally(() => { if (live) setRefreshPending(false); });
     return () => { live = false; };
   }, [refresh, authChecked, authenticated]);
 
