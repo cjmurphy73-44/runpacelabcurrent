@@ -12,6 +12,7 @@ import { Check, Sparkles, ArrowLeft, Ticket, Loader2, ReceiptText } from "lucide
 import PageShell from "@/components/layout/PageShell";
 import { PLAN_DETAILS, PLAN_TIERS } from "@/lib/subscriptionFeatures";
 import { billingReturnNotice, freePlanAction } from "@/lib/billingReturnNotice";
+import { verifiedStripeCheckoutUrl } from "@/lib/verifiedStripeCheckoutUrl";
 
 export default function Subscribe() {
   const { user } = useAuth();
@@ -69,8 +70,8 @@ export default function Subscribe() {
     try {
       base44.analytics.track({ eventName: "checkout_started", properties: { plan: tier } });
       const res = await base44.functions.invoke("stripeCheckout", { plan: tier, user_id: user?.id });
-      const url = res?.data?.url;
-      if (!url) throw new Error("No checkout URL returned");
+      const url = verifiedStripeCheckoutUrl(res?.data?.url);
+      if (!url) throw new Error("Checkout returned an invalid destination");
       if (checkoutTab) checkoutTab.location.replace(url);
       else window.location.assign(url);
     } catch (e) {
