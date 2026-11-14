@@ -30,7 +30,7 @@ jobs:
           cache: npm
       - run: npm ci
       - name: Execute committed RaceResult tests
-        run: npx vitest run src/science/__tests__/raceWorkerAuth.test.ts src/science/__tests__/raceNonceStore.test.ts src/science/__tests__/raceCorrectionReplay.test.ts src/science/__tests__/racePersistencePort.test.ts src/science/__tests__/raceFrontendIpGate.test.ts src/science/__tests__/raceVdotPresentationBoundary.test.ts
+        run: npx vitest run src/science/__tests__/raceWorkerAuth.test.ts src/science/__tests__/raceNonceStore.test.ts src/science/__tests__/raceCorrectionReplay.test.ts src/science/__tests__/racePersistencePort.test.ts src/science/__tests__/raceFrontendIpGate.test.ts src/science/__tests__/raceVdotPresentationBoundary.test.ts src/science/__tests__/raceVdotResponseSafety.test.ts
       - name: Typecheck
         run: npm run typecheck
       - name: Frontend science IP import review gate
