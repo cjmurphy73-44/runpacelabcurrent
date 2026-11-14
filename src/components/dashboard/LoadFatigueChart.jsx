@@ -22,6 +22,11 @@ const POLAR = {
   tsbNeg: "hsl(var(--danger))",
 };
 
+// Short axis labels keep dates legible on narrow phones; tooltip retains full ISO date.
+function compactDateLabel(date) {
+  return /^\\d{4}-\\d{2}-\\d{2}$/.test(date || "") ? `${Number(date.slice(5, 7))}/${Number(date.slice(8, 10))}` : date;
+}
+
 function MetricCard({ icon: Icon, label, value, suffix, badge }) {
   return (
     <div className="rounded-md border border-border bg-card p-4 shadow-sm">
@@ -111,7 +116,7 @@ export default function LoadFatigueChart({ completedSessions = [], plannedWorkou
           />
         </div>
 
-        <div className="h-72 w-full">
+        <div className="h-64 min-w-0 w-full sm:h-72">
           <ResponsiveContainer width="100%" height="100%">
             <ComposedChart data={chartData} syncId="polar-pmc" margin={{ top: 10, right: 10, left: -10, bottom: 0 }}>
               <defs>
@@ -133,7 +138,7 @@ export default function LoadFatigueChart({ completedSessions = [], plannedWorkou
                 </linearGradient>
               </defs>
               <CartesianGrid stroke={POLAR.grid} strokeDasharray="3 3" opacity={0.8} />
-              <XAxis dataKey="date" tick={{ fontSize: 11, fill: POLAR.axis }} stroke={POLAR.grid} />
+              <XAxis dataKey="date" tickFormatter={compactDateLabel} minTickGap={24} tick={{ fontSize: 11, fill: POLAR.axis }} stroke={POLAR.grid} />
               <YAxis tick={{ fontSize: 11, fill: POLAR.axis }} stroke={POLAR.grid} />
               <Tooltip
                 cursor={{ stroke: POLAR.axis, strokeDasharray: "3 3" }}
