@@ -63,3 +63,27 @@ The landing page currently references external Unsplash URLs. They are not inclu
 - Added `scripts/export_brand_assets.py` for six reproducible raster exports: 32px favicon, 180px Apple icon, 192px app icon, 512px app icon, 512px maskable icon, 1200×630 social card. Requires `cairosvg` and `pillow`; validates PNG format and dimensions. The exporter does not overwrite `logo-300x300.png`.
 - **Local export verification:** all six PNGs rendered and passed image format/dimension checks in the isolated workspace. The generated binary files are packaged separately for review, **not yet committed to this GitHub branch** because the available GitHub contents connector accepts UTF-8 text files, not binary PNG uploads. Run the exporter and add the resulting PNGs through a normal Git workflow before pointing the manifest or social tags to them.
 - **Do not mark production complete:** visually inspect the 32px icon, test maskable cropping and compare the original logo PNG with the canonical SVG; check social card on iOS/Android, inspect actual social unfurls, verify photo rights and deployment identity. Until the raster assets are committed, `og:image` and `twitter:image` deliberately continue referencing the existing PNG logo.
+
+## Safe binary upload procedure (pending)
+The six PNGs have been generated and validated in an isolated workspace, but this GitHub integration's `create_file`/`update_file` operations accept **UTF-8 text only**. The network-isolated container cannot push to GitHub. **Do not upload base64 text under a .png filename or silently switch public URLs to missing binaries.**
+
+To commit the exact deterministic outputs from a checked-out `marketing/brand-landing-social-assets-20261114` branch on a machine with Git access:
+
+```bash
+git status --short
+python3 -m pip install cairosvg pillow
+python3 scripts/export_brand_assets.py
+git add public/assets/trainpacelab-icon-192.png public/assets/trainpacelab-icon-512.png \
+  public/assets/trainpacelab-apple-touch-180.png public/assets/trainpacelab-favicon-32.png \
+  public/assets/trainpacelab-maskable-512.png public/assets/trainpacelab-social-1200x630.png
+git diff --cached --stat
+git commit -m "assets(brand): add verified raster exports"
+git push origin marketing/brand-landing-social-assets-20261114
+```
+
+Only after the PNG files are committed and independently verified, update `index.html` to use the 1200×630 social PNG with `twitter:card=summary_large_image`, 180px Apple touch icon and optional PNG favicon fallback; update the manifest to reference the 192px and 512px raster icons and the 512px maskable icon. Test URLs in a preview before release. Do not deploy as part of this procedure.
+
+### Current reference verification
+- Manifest `/assets/trainpacelab-icon.svg`, `/assets/trainpacelab-maskable.svg`, and legacy `/assets/logo-300x300.png` refer to files known in the GitHub tree.
+- `index.html` continues to use the existing PNG for OG and Twitter previews, rather than a missing raster.
+- Added `tests/brand-assets.test.mjs` to guard these references. Test execution and preview/social-unfurl verification are distinct gates.
