@@ -8,17 +8,15 @@ export function hasVerifiedStreams(session) {
   const durationSeconds =
     Number(session?.duration_seconds) || (Number(session?.duration_minutes) || 0) * 60;
   let previous = -Infinity;
-  let measured = 0;
+  let withHr = 0;
+  let withPower = 0;
 
   for (const point of stream) {
     const time = Number(point?.time);
     if (!Number.isFinite(time) || time <= previous) return false;
     previous = time;
-    const hr = Number(point?.heart_rate);
-    const power = Number(point?.power);
-    if ((Number.isFinite(hr) && hr > 0) || (Number.isFinite(power) && power > 0)) {
-      measured += 1;
-    }
+    if (typeof point?.heart_rate === 'number' && Number.isFinite(point.heart_rate) && point.heart_rate > 0) withHr += 1;
+    if (typeof point?.power === 'number' && Number.isFinite(point.power) && point.power > 0) withPower += 1;
   }
 
   const span = Number(stream[stream.length - 1].time) - Number(stream[0].time);
@@ -27,7 +25,8 @@ export function hasVerifiedStreams(session) {
   if (span / (stream.length - 1) > 5) return false;
   if (durationSeconds > 0 && (span < durationSeconds * 0.6 || span > durationSeconds * 1.5 + 300)) return false;
 
-  return measured >= stream.length * 0.5;
+  // A mixture of sparse HR and power does not constitute one usable channel.
+  return withHr >= stream.length * 0.5 || withPower >= stream.length * 0.5;
 }
 
 // Workouts without verified streams remain visible but cannot claim
