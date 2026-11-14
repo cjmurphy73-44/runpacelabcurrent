@@ -1,0 +1,35 @@
+name: VDOT D1 SQLite acceptance
+on:
+  pull_request:
+    paths:
+      - 'infra/race-d1/**'
+      - 'src/science/__tests__/race*.test.ts'
+      - '.github/workflows/vdot-d1-acceptance.yml'
+  workflow_dispatch:
+jobs:
+  sqlite:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Execute committed SQLite tests
+        run: python3 -m unittest discover -s infra/race-d1 -p 'test_*.py' -v
+  vitest:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci
+      - name: Execute committed RaceResult tests
+        run: npx vitest run src/science/__tests__/raceWorkerAuth.test.ts src/science/__tests__/raceNonceStore.test.ts src/science/__tests__/raceCorrectionReplay.test.ts src/science/__tests__/racePersistencePort.test.ts
+      - name: Typecheck
+        run: npm run typecheck
