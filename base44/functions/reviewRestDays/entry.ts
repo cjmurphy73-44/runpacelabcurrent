@@ -2,16 +2,10 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
 import { assertOwnsAthlete } from '../../shared/ownership.ts';
 import { buildRestReview } from '../../shared/restDayReview.ts';
 import { readDiagnosticPages } from '../../shared/diagnosticPagination.ts';
+import { classifyRestReviewRequest } from '../../shared/restReviewPolicy.ts';
 
 const PAGE_SIZE = 100;
 const MAX_ROWS_PER_DATE = 1000;
-const ISO = /^\d{4}-\d{2}-\d{2}$/;
-function validDate(date: unknown): date is string {
-  if (typeof date !== 'string' || !ISO.test(date)) return false;
-  const time = Date.parse(date + 'T00:00:00Z');
-  return Number.isFinite(time) && new Date(time).toISOString().slice(0, 10) === date;
-}
-
 Deno.serve(async (req) => {
   try {
     if (req.method !== 'POST') return Response.json({ error: 'Method not allowed' }, { status: 405 });
@@ -22,27 +16,16 @@ Deno.serve(async (req) => {
     if (!athlete_id || !(await assertOwnsAthlete(base44, user, athlete_id))) {
       return Response.json({ error: 'Forbidden' }, { status: 403 });
     }
-    const today = new Date().toISOString().slice(0, 10);
-    const start = action === 'confirm_rest' ? date : start_date;
-    const end = action === 'confirm_rest' ? date : end_date;
-    if (!validDate(start) || !validDate(end) || start > end || end >= today ||
-        Date.parse(end + 'T00:00:00Z') - Date.parse(start + 'T00:00:00Z') > 30 * 86400000) {
-      return Response.json({ error: 'Choose completed days only, in a window of at most 31 days.' }, { status: 400 });
+    const policy = classifyRestReviewRequest({ athlete_id, action, start_date, end_date, date, confirm_rest }, new Date().toISOString().slice(0, 10));
+    if (!policy.ok) {
+      if (policy.code === 'ATOMIC_REST_CONFIRMATION_UNAVAILABLE') {
+        return Response.json({ success: false, code: policy.code,
+          error: 'Rest confirmation is unavailable until concurrent workout imports can be handled safely. No data was changed.' }, { status: 409 });
+      }
+      return Response.json({ success: false, code: policy.code,
+        error: 'Invalid historical review request.' }, { status: policy.status });
     }
-    if (action !== 'preview' && action !== 'confirm_rest') {
-      return Response.json({ error: 'Unsupported action' }, { status: 400 });
-    }
-    if (action === 'confirm_rest' && confirm_rest !== true) {
-      return Response.json({ error: 'Explicit rest confirmation is required.' }, { status: 400 });
-    }
-
-    // No atomic compare-and-create or cross-entity uniqueness guarantee has
-    // been established for Base44 WorkoutSession + DailyMetrics. A second
-    // read cannot close the concurrent-import window. Refuse ALL writes.
-    if (action === 'confirm_rest') {
-      return Response.json({ success: false, code: 'ATOMIC_REST_CONFIRMATION_UNAVAILABLE',
-        error: 'Rest confirmation is temporarily unavailable until workout and rest writes can be made race-safe. No data was changed.' }, { status: 409 });
-    }
+    const { start, end } = policy;
 
     const sessions: any[] = [];
     const metrics: any[] = [];
