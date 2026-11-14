@@ -69,3 +69,9 @@ This file is the **single execution queue**, not a claim that beta readiness is 
 - **GitHub PR / merged SHA:** …
 - **Base44 deployment SHA / checkpoint / timestamp:** `NOT PUBLISHED` unless verified.
 - **Staging/live evidence and open blockers:** …
+
+## 2026-11-14 Planned/actual explicit matching (PR #123)
+
+- Audit found `usePlannedActualReconciliation.load()` automatically mutated `TrainingPlanSession.status` and `WorkoutSession.training_plan_session_id` on high-confidence algorithmic matches. Read-only screen load must not commit inferred completion.
+- Changed load to produce reviewable candidates without any automatic link writes; added one-to-one candidate guard to explicit confirmation, plus five synthetic tests. Draft PR #123; no deployment or executed CI.
+- High-priority follow-up: replace client-side two-write confirmation with a server-authorized, idempotent, race-safe operation. Recheck athlete ownership, session status and existing links on the server, and address partial writes. Preserve manual mark-complete as explicitly user initiated and distinguish it from a verified device workout.
