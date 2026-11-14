@@ -12,6 +12,13 @@ describe('public checkout return trust contract', () => {
     expect(source).toContain('A checkout redirect alone does not confirm payment');
   });
 
+  it('never substitutes Pro for a missing or forged plan query', () => {
+    expect(source).not.toMatch(/:\s*["']pro["']\s*;/);
+    expect(source).toContain('Object.prototype.hasOwnProperty.call(PLAN_DETAILS, planKey)');
+    expect(source).toContain('{d && <section');
+    expect(source).toContain(': null;');
+  });
+
   it('labels plan details as information rather than entitlement', () => {
     expect(source).toContain('Selected plan information');
     expect(source).toContain('verified subscription');
