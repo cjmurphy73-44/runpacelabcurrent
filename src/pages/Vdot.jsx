@@ -19,28 +19,31 @@ export default function Vdot() {
   const [customKm, setCustomKm] = useState("5.0");
   const [isCustom, setIsCustom] = useState(false);
   const [hours, setHours] = useState(0);
-  const [minutes, setMinutes] = useState(22);
-  const [seconds, setSeconds] = useState(30);
+  const [minutes, setMinutes] = useState(0);
+  const [seconds, setSeconds] = useState(0);
   const [error, setError] = useState(null);
   const [result, setResult] = useState(null);
 
   const handlePreset = (m) => {
     setIsCustom(false);
+    setResult(null);
     setDistanceMeters(m);
   };
 
   const handleCustomKm = (val) => {
     setCustomKm(val);
-    const km = parseFloat(val);
-    if (!isNaN(km) && km > 0) setDistanceMeters(km * 1000);
+    setResult(null);
+    const km = Number(val);
+    setDistanceMeters(Number.isFinite(km) && km > 0 ? km * 1000 : null);
   };
 
   const handleCalculate = (e) => {
     e.preventDefault();
     setError(null);
     const total = hours * 3600 + minutes * 60 + seconds;
-    if (total <= 0) return setError("Please enter a valid race duration.");
-    if (!distanceMeters || distanceMeters <= 0) return setError("Please enter a valid race distance.");
+    setResult(null);
+    if (![hours, minutes, seconds].every(Number.isFinite) || total <= 0) return setError("Please enter a valid race duration.");
+    if (!Number.isFinite(distanceMeters) || !distanceMeters || distanceMeters <= 0) return setError("Please enter a valid race distance.");
     try {
       const vdot = calculateVDOT(total, distanceMeters);
       setResult({
@@ -64,7 +67,7 @@ export default function Vdot() {
             <Gauge className="w-5 h-5 text-primary" /> Jack Daniels VDOT Calculator
           </CardTitle>
           <CardDescription>
-            Enter a recent race performance to derive your current VDOT fitness index and optimal training pace zones.
+            Enter a real race performance to estimate VDOT and projected training paces. No result is calculated until you supply a time.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
