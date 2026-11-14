@@ -98,6 +98,7 @@ export default function OnboardingFlow({ onCreated }) {
     if (step < LAST_STEP) { goNext(); return; }
     if (!derived) { setError(baselineHint); return; }
     if (!form.first_name || !form.last_name) { setError("First and last name are required."); return; }
+    if (!user?.id) { setError("Sign in again before creating your profile."); return; }
     setSaving(true); setError("");
     try {
       // Duplicate guard: if a profile already exists for this user (e.g. a prior onboarding
