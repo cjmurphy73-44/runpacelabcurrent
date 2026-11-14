@@ -69,3 +69,11 @@ This file is the **single execution queue**, not a claim that beta readiness is 
 - **GitHub PR / merged SHA:** …
 - **Base44 deployment SHA / checkpoint / timestamp:** `NOT PUBLISHED` unless verified.
 - **Staging/live evidence and open blockers:** …
+
+## 2026-11-14 SCI daily completeness evidence contract (PR #102)
+
+- Audit: PR #100 reconciles stream TRIMP, PR #101 computes 42/7 EWMA only from explicitly complete days; no authenticated provider day-completeness record exists in the inspected source.
+- Change: pure `reconcileCompleteDailyLoad` rejects missing/partial reconciliation, nonzero pending/failed activities, expected/persisted mismatches, unconfirmed rest days, invalid units/dates and calendar gaps. Returns EWMA-ready `complete:true` only from matching evidence-shaped input.
+- **Security caveat:** `source:server_reconciliation` is an input string, not proof of server origin. Do not connect browser data or deploy this as verification until backend creates authenticated, provider-scoped completeness after pagination/download/persistence reconciliation and known date coverage.
+- Evidence: commits `f302fb9a`, `dcf6506a`. Five synthetic Vitest cases authored; execution pending. Draft PR #102, unmerged and undeployed.
+- Next: implement server-side completeness issuance with explicit sync-window coverage and idempotent reconciliation, then integrate PRs #100/#101/#102 behind verified runtime fixtures.
