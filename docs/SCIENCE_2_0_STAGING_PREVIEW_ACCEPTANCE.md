@@ -1,0 +1,25 @@
+# Science 2.0: staging preview and function-route acceptance
+
+## Scope and preservation
+
+Base44 staging app `6aefe9d09e2788fc8591c758`. Pre-investigation checkpoint `6af83c59a23233e22ea343ae` (sandbox revision `18cf83fa85d84c228d99ac38ecc3ea0159f80204`). This draft branch is stacked on #160, #158, #152, #148, #146, #145 and #142. No merge or production deployment is authorized.
+
+## Evidence
+
+- Base44 `get_app_status` returned `ready`, and the official sandbox preview-url operation reported `cold_start=false`. The preview endpoint is protected: a direct HTTP GET without a preview token returned **401** for both `/` and `/Physiology`. The official operation returned a preview token; it was **not copied into repository files or diagnostic logs**. Readiness does not establish that the browser testing agent has a working preview session.
+- The separate published **staging** host `train-pace-lab-copy-8591c758.base44.app` returned **200** and TrainPaceLab-Staging HTML for `/` and `/Physiology`. A successful HTML response does not establish that JavaScript boot, user authentication, data routing or Physiology Lab works.
+- Two prior Base44 test-agent executions `6af8301b8d0c754720041f93` and `6af83aaf0371c3162a581d4b` both failed at the preview startup screen with `failure_reason=platform` and no athlete data changes.
+- Started a third **read-only** temporary-user test `6af83c91a23233e22ea34416` using the published **staging-only** /Physiology URL. This is a diagnostic alternative to the preview-sandbox URL, not proof of isolated dev-data routing. Inspect the final test status before claiming any authenticated E2E result. Do not create a real athlete or write staging-main records through the published URL.
+- Legacy function-route evidence from Science 1.9: a newly deployed minimal Deno worker responded 200, and the existing fail-closed Banister source deployed under a temporary new function name responded GET 405 / POST 503. The original `calculateBanisterModel` route returned 500 with the same source; `calculateTrainingLoad` also returned 500. Both probes were removed. These observations narrow the fault to legacy route/deployment state, but do **not** prove an exact cause. The Base44 list-backend-functions API response was too large for the available connector output and was returned truncated; no authoritative per-function deployment metadata comparison was available. Do not delete or recreate legacy functions until their automations and references are inventoried.
+- Rest-review anonymous POST returns 401, GET returns 405. These responses verify only the unauthenticated boundary, **not** foreign-athlete 403, pagination or complete history in an authenticated session.
+- PR #160 GitHub CI passed run `43586825384` before this branch. Added fail-closed diagnostic pagination regression cases: backend failure after a full page, reordering without duplicate IDs, and oversized page. These tests do not simulate transactional snapshots or prove provider completeness.
+
+## Acceptance gates not yet met
+
+1. Obtain a browser test session that actually reaches Physiology Lab with a temporary test user and independently verified dev-data isolation.
+2. Check owned-athlete preview, foreign-athlete 403, unknown-day provenance, confirmed-rest conflicts, bounded pagination, and no write deltas in **the same isolated test data environment**.
+3. Inspect supported Base44 function deployment metadata and workflow references for the two legacy routes; obtain platform support/runtime request IDs if metadata and logs remain unavailable.
+4. Reconcile UTC diagnostic dates with athlete-local date semantics before enabling CTL/ATL history or rest writes.
+5. Keep rest confirmation disabled (409), all legacy calculations fail-closed, and all PRs draft. Do not publish or merge to production.
+
+This document distinguishes direct HTTP evidence, test-agent reports and unverified assumptions. No real athlete records were accessed.
