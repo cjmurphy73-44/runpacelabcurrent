@@ -7,6 +7,8 @@ export function verifyPreviewProvenance({ expectedSha, expectedBranch, expectedR
   if (deployment.state !== "READY") return { ok: false, reason: "deployment-not-ready" };
   const actual = deployment.meta?.githubCommitSha;
   if (typeof actual !== "string" || actual.toLowerCase() !== sha.toLowerCase()) return { ok: false, reason: "commit-sha-mismatch" };
-  if (!expectedBranch || deployment.meta?.githubCommitRef !== expectedBranch) return { ok: false, reason: "branch-provenance-mismatch" };\n  const repo = `${deployment.meta?.githubOrg || ""}/${deployment.meta?.githubRepo || ""}`;\n  if (repo.toLowerCase() !== expectedRepository.toLowerCase()) return { ok: false, reason: "repository-provenance-mismatch" };
+  if (!expectedBranch || deployment.meta?.githubCommitRef !== expectedBranch) return { ok: false, reason: "branch-provenance-mismatch" };
+  const repo = `${deployment.meta?.githubOrg || ""}/${deployment.meta?.githubRepo || ""}`;
+  if (repo.toLowerCase() !== expectedRepository.toLowerCase()) return { ok: false, reason: "repository-provenance-mismatch" };
   return { ok: true, reason: "exact-ready-preview-sha" };
 }
