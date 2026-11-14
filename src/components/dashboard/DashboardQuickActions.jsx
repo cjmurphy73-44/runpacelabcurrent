@@ -14,12 +14,12 @@ const ACTIONS = [
 
 export default function DashboardQuickActions() {
   return (
-    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+    <div className="grid grid-cols-1 min-[360px]:grid-cols-2 lg:grid-cols-4 gap-3">
       {ACTIONS.map(({ to, label, hint, icon: Icon }) => (
         <Link
           key={to}
           to={to}
-          className="group flex items-center gap-3 rounded-md border border-border bg-card px-3 py-3 min-h-[56px] transition-colors hover:border-primary/60 hover:bg-primary/5"
+          className="group flex min-w-0 items-center gap-3 rounded-md border border-border bg-card px-3 py-3 min-h-[56px] transition-colors hover:border-primary/60 hover:bg-primary/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
         >
           <Icon className="w-4 h-4 text-primary shrink-0" />
           <span className="min-w-0">
