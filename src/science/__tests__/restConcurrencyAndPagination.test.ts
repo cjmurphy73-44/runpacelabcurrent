@@ -30,6 +30,23 @@ describe('Science 1.5: diagnostic pagination', () => {
     await expect(readDiagnosticPages(paged(records(5)), { pageSize: 2, maxRows: 4 }))
       .rejects.toThrow('HISTORY_READ_LIMIT');
   });
+  it('rejects a provider/backend failure after a successful first page', async () => {
+    const rows = records(3);
+    await expect(readDiagnosticPages(async (limit, skip) => {
+      if (skip > 0) throw new Error('TRANSIENT_BACKEND_FAILURE');
+      return rows.slice(0, limit);
+    }, { pageSize: 2, maxRows: 10 })).rejects.toThrow('TRANSIENT_BACKEND_FAILURE');
+  });
+  it('rejects a descending or reordered page even without duplicate IDs', async () => {
+    const rows = records(4);
+    await expect(readDiagnosticPages(async (limit, skip) =>
+      skip === 0 ? rows.slice(0, limit) : [rows[3], rows[2]],
+      { pageSize: 2, maxRows: 10 })).rejects.toThrow('UNSTABLE_PAGINATION_ORDER');
+  });
+  it('rejects an oversized response rather than treating it as complete', async () => {
+    await expect(readDiagnosticPages(async () => records(3), { pageSize: 2, maxRows: 10 }))
+      .rejects.toThrow('INCOMPLETE_HISTORY_READ');
+  });
   it('rejects missing IDs and malformed backend responses', async () => {
     await expect(readDiagnosticPages(async () => [{ created_date: '2026-01-01' }], { pageSize: 2 }))
       .rejects.toThrow('UNSTABLE_PAGINATION_ORDER');
