@@ -36,10 +36,6 @@
         "self_reported"
       ]
     },
-    "source_session_id": {
-      "type": "string",
-      "description": "Optional athlete-owned WorkoutSession id; never proves race status alone"
-    },
     "event_name": {
       "type": "string",
       "maxLength": 120
@@ -63,16 +59,7 @@
       "created_by_id": "{{user.id}}"
     },
     "read": {
-      "$or": [
-        {
-          "data.athlete_id": "{{user.data.athlete_profile_id}}"
-        },
-        {
-          "user_condition": {
-            "role": "admin"
-          }
-        }
-      ]
+      "created_by_id": "{{user.id}}"
     },
     "update": {
       "created_by_id": "{{user.id}}"
