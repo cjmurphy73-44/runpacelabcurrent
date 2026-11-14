@@ -161,29 +161,17 @@ export function usePlannedActualReconciliation(athleteId) {
 
   useEffect(() => { load(); }, [load]);
 
+  // Linking requires a server-side atomic commit. A preflight or two sequential
+  // Base44 entity updates cannot guarantee one-to-one integrity under retries
+  // or concurrent confirmation. Keep this action unavailable until verified.
   const confirmMatch = useCallback(async (match) => {
-    if (!canConfirmUniqueMatch(match, matches) || confirmingId) {
+    if (!canConfirmUniqueMatch(match, matches)) {
       setError('This workout has multiple possible matches. Review the session before linking.');
       return false;
     }
-    setConfirmingId(match.sessionId);
-    const newStatus = statusForMatch(match);
-    try {
-      await trainingPlanSessionRepo.update(match.scheduledWorkoutId, { status: newStatus });
-      await workoutSessionRepo.update(match.sessionId, {
-        training_plan_session_id: match.scheduledWorkoutId,
-      });
-      setLastConfirmed(match.sessionId);
-      if (newStatus === 'partial' || newStatus === 'excess') void triggerReplan(match.scheduledWorkoutId);
-      await load();
-      return true;
-    } catch (e) {
-      setError(e?.message || 'Failed to confirm match');
-      return false;
-    } finally {
-      setConfirmingId(null);
-    }
-  }, [confirmingId, matches, load, triggerReplan, trainingPlanSessionRepo, workoutSessionRepo]);
+    setError('Workout linking is temporarily unavailable while the secure confirmation workflow is being completed. No records were changed.');
+    return false;
+  }, [matches]);
 
   // Acknowledge an auto-link, no DB write (already linked); just dismiss from the verify queue.
   const confirmAutoLink = useCallback((match) => {
