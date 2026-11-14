@@ -10,7 +10,7 @@ Deno.serve(async (req) => {
   try {
     if (req.method !== 'POST') return Response.json({ error: 'Method not allowed' }, { status: 405 });
     const base44 = createClientFromRequest(req);
-    const user = await base44.auth.me();
+    const user = await base44.auth.me().catch(() => null);
     if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
     const { athlete_id, action, start_date, end_date, date, confirm_rest } = await req.json().catch(() => ({}));
     if (!athlete_id || !(await assertOwnsAthlete(base44, user, athlete_id))) {
