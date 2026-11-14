@@ -9,6 +9,9 @@ export function verifiedStripeCheckoutUrl(value) {
   if (value.trim() !== value || /[\u0000-\u001f\u007f]/.test(value)) return null;
   try {
     const url = new URL(value);
+    // URL() can normalize dot segments and hostname case. Never navigate to
+    // a canonicalized destination different from the backend response.
+    if (url.href !== value) return null;
     if (url.protocol !== "https:" || url.hostname !== "checkout.stripe.com") return null;
     if (url.username || url.password || url.port || url.hash) return null;
     if (!url.pathname.startsWith("/c/") && !url.pathname.startsWith("/pay/")) return null;
