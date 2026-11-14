@@ -12,7 +12,8 @@ export interface PlannedActualCandidate {
   scheduledWorkoutId: string;
   matchStatus: 'EXACT' | 'COMPLETED_SHORT' | 'COMPLETED_EXCEEDED';
   confidenceScore: number;
-  varianceDetails: { completionRatio: number };
+  scheduled: { sport: string; date: string; targetDurationMinutes: number };
+  varianceDetails: { completionRatio: number; durationVariancePercent: number; dayOffset: number };
 }
 const dateKey = (value: unknown): value is string =>
   typeof value === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(value);
@@ -31,7 +32,9 @@ function candidate(actual: any, planned: any): PlannedActualCandidate | null {
   // The confidence is a deterministic ranking heuristic, NOT proof of identity.
   const confidenceScore = Number(Math.max(0, 1 - Math.abs(1 - ratio)).toFixed(3));
   return { sessionId: actual.sessionId, scheduledWorkoutId: planned.id,
-    matchStatus, confidenceScore, varianceDetails: { completionRatio: ratio } };
+    matchStatus, confidenceScore,
+    scheduled: { sport: planned.sport, date: planned.date, targetDurationMinutes: planned.targetDurationMinutes },
+    varianceDetails: { completionRatio: ratio, durationVariancePercent: Math.round((ratio - 1) * 100), dayOffset: 0 } };
 }
 export const workoutMatchingEngine = {
   // Asset-level matching is not implemented; never fabricate candidates.
