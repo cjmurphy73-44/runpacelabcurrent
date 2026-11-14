@@ -6,6 +6,7 @@
 const DAY_MS = 86400000;
 
 import { calculateFitnessFatigueOde } from './fitnessFatigueOde.ts';
+import { dailyLoadValue, nextDailyEwma } from './ewmaDaily.ts';
 
 export async function recomputeCTLATLTSB(base44: any, athlete_id: string) {
   const athlete = await base44.asServiceRole.entities.AthleteProfile.get(athlete_id).catch(() => null);
@@ -25,9 +26,6 @@ export async function recomputeCTLATLTSB(base44: any, athlete_id: string) {
     }
   }
 
-  const ctlAlpha = 2 / (timeConstantCTL + 1);
-  const atlAlpha = 2 / (timeConstantATL + 1);
-
   const sessions = await base44.asServiceRole.entities.WorkoutSession.filter({ athlete_id });
   const trimpByDate: Record<string, number> = {};
   // Load is counted once per day, but kept split by provenance so the verified (measured
@@ -37,7 +35,8 @@ export async function recomputeCTLATLTSB(base44: any, athlete_id: string) {
   const summaryByDate: Record<string, number> = {};
   for (const s of sessions) {
     if (!s.date) continue;
-    const load = s.session_trimp || s.session_tss || 0;
+    // Missing load is not a rest day. Abort before writing partial recompute state.
+    const load = dailyLoadValue(s);
     trimpByDate[s.date] = (trimpByDate[s.date] || 0) + load;
     if (s.load_source === 'stream') verifiedByDate[s.date] = (verifiedByDate[s.date] || 0) + load;
     else summaryByDate[s.date] = (summaryByDate[s.date] || 0) + load;
@@ -86,8 +85,7 @@ export async function recomputeCTLATLTSB(base44: any, athlete_id: string) {
   for (const s of odeStates) odeByDate[s.date] = { fitness: s.fitness, fatigue: s.fatigue, form: s.form };
 
   // Second pass: EWMA CTL/ATL/TSB with ODE values merged inline.
-  let ctl: number | null = null;
-  let currentATL: number | null = null;
+  let state = { ctl: 0, atl: 0, tsb: 0 };
   const cursor2 = new Date(start);
   const updates: any[] = [];
   const creates: any[] = [];
@@ -96,21 +94,14 @@ export async function recomputeCTLATLTSB(base44: any, athlete_id: string) {
     const iso = cursor2.toISOString().slice(0, 10);
     const load = trimpByDate[iso] || 0;
 
-    if (ctl === null || currentATL === null) {
-      ctl = load;
-      currentATL = load;
-    } else {
-      ctl = ctl + ctlAlpha * (load - ctl);
-      currentATL = currentATL + atlAlpha * (load - currentATL);
-    }
+    state = nextDailyEwma(state, load, timeConstantCTL, timeConstantATL);
 
     if (persistDates.has(iso)) {
-      const tsb = ctl - currentATL;
       const ode = odeByDate[iso];
       const payload: any = {
-        calculated_ctl: Math.round(ctl * 10) / 10,
-        calculated_atl: Math.round(currentATL * 10) / 10,
-        calculated_tsb: Math.round(tsb * 10) / 10,
+        calculated_ctl: Math.round(state.ctl * 10) / 10,
+        calculated_atl: Math.round(state.atl * 10) / 10,
+        calculated_tsb: Math.round(state.tsb * 10) / 10,
         ode_fitness: ode?.fitness ?? 0,
         ode_fatigue: ode?.fatigue ?? 0,
         ode_form: ode?.form ?? 0,
@@ -133,9 +124,9 @@ export async function recomputeCTLATLTSB(base44: any, athlete_id: string) {
     await base44.asServiceRole.entities.DailyMetrics.bulkCreate(creates.slice(i, i + 500));
   }
 
-  const finalCtl = Math.round(ctl * 10) / 10;
-  const finalAtl = Math.round(currentATL * 10) / 10;
-  const finalTsb = Math.round((ctl - currentATL) * 10) / 10;
+  const finalCtl = Math.round(state.ctl * 10) / 10;
+  const finalAtl = Math.round(state.atl * 10) / 10;
+  const finalTsb = Math.round(state.tsb * 10) / 10;
 
   await base44.asServiceRole.entities.AthleteProfile.update(athlete_id, {
     current_ctl: finalCtl,
