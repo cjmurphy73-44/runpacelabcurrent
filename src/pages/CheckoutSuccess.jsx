@@ -10,20 +10,21 @@ import PublicFooter from "@/components/layout/PublicFooter";
 import ThemeToggle from "@/components/layout/ThemeToggle";
 
 // Public post-checkout welcome page. Lives OUTSIDE the auth gate so a returning
-// payer always sees a thank-you + explanation of what they unlocked, even if
+// visitor sees a checkout-return notice without an entitlement claim, even if
 // their session dropped during the Stripe redirect (which previously dumped
 // them back onto the login wall with only a toast).
 const NEXT_STEPS = [
-  { icon: Watch, title: "Connect your wearables", body: "Sync COROS, or upload FIT/TCX/CSV from any watch. Paid plans unlock unlimited sync history." },
-  { icon: CalendarClock, title: "Open your adaptive plan", body: "Your plan now reshapes around your real recovery. Review today's session on the dashboard." },
-  { icon: Activity, title: "Explore the Physiology Lab", body: "CTL/ATL/TSB, ODE fitness modelling, and race prediction are now fully unlocked." },
+  { icon: Watch, title: "Connect your wearables", body: "Sync COROS, or upload FIT/TCX/CSV from any watch. Available features depend on your verified subscription." },
+  { icon: CalendarClock, title: "Open your adaptive plan", body: "Review your plan and available coaching tools from the dashboard." },
+  { icon: Activity, title: "Explore the Physiology Lab", body: "Explore training insights available to your account after subscription verification." },
 ];
 
 export default function CheckoutSuccess() {
   const [params] = useSearchParams();
   const planKey = params.get("plan");
-  const plan = (planKey && PLAN_DETAILS[planKey]) ? planKey : "pro";
-  const d = PLAN_DETAILS[plan];
+  const d = planKey && Object.prototype.hasOwnProperty.call(PLAN_DETAILS, planKey)
+    ? PLAN_DETAILS[planKey]
+    : null;
   const { refresh } = useSubscription();
 
   // If the payer is still authenticated, refresh entitlement state so the rest
@@ -47,13 +48,13 @@ export default function CheckoutSuccess() {
           <div className="absolute inset-0 bg-grid-dots opacity-20 pointer-events-none" />
           <div className="max-w-3xl mx-auto px-4 py-16 sm:py-20 relative text-center">
             <span className="inline-flex items-center gap-1.5 rounded-full border border-success/40 bg-success/10 px-3 py-1 text-xs font-medium text-success">
-              <Check className="w-3.5 h-3.5" /> Payment confirmed
+              <Check className="w-3.5 h-3.5" /> Checkout return received
             </span>
             <h1 className="mt-6 font-heading text-4xl sm:text-5xl font-bold tracking-tight leading-[1.05]">
-              Welcome to {d.label}. Thank you.
+              Thanks for choosing TrainPaceLab.
             </h1>
             <p className="mt-5 text-lg text-muted-foreground max-w-xl mx-auto">
-              Your subscription is active. Here's everything you just unlocked.
+              We are checking your subscription status. A checkout redirect alone does not confirm payment or activate features. Sign in to review your account.
             </p>
             <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
               <Button asChild size="lg" className="gap-2">
@@ -66,12 +67,12 @@ export default function CheckoutSuccess() {
           </div>
         </section>
 
-        <section className="max-w-3xl mx-auto px-4 pb-12">
+        {d && <section className="max-w-3xl mx-auto px-4 pb-12">
           <Card className="border-primary/40 shadow-md shadow-primary/10">
             <CardContent className="p-6 sm:p-8">
               <div className="flex items-center gap-2 mb-5">
                 <Sparkles className="w-5 h-5 text-primary" />
-                <h2 className="font-heading text-xl font-semibold">What you're paying for</h2>
+                <h2 className="font-heading text-xl font-semibold">Selected plan information</h2>
                 <Badge variant="default" className="ml-auto">{d.label} · {d.price}/{d.cadence}</Badge>
               </div>
               <ul className="grid sm:grid-cols-2 gap-3">
@@ -86,7 +87,7 @@ export default function CheckoutSuccess() {
               </ul>
             </CardContent>
           </Card>
-        </section>
+        </section>}
 
         <section className="border-t border-border bg-muted/40">
           <div className="max-w-3xl mx-auto px-4 py-14">
@@ -108,7 +109,7 @@ export default function CheckoutSuccess() {
         <section className="bg-primary">
           <div className="max-w-3xl mx-auto px-4 py-12 text-center text-primary-foreground">
             <h2 className="font-heading text-2xl font-bold">Ready to train smarter?</h2>
-            <p className="mt-2 text-primary-foreground/85">Your plan is unlocked. Let's get to work.</p>
+            <p className="mt-2 text-primary-foreground/85">Open your dashboard to check your current access and next session.</p>
             <Button asChild size="lg" variant="secondary" className="mt-6 gap-2">
               <Link to="/app">Open my dashboard<ArrowRight className="w-4 h-4" /></Link>
             </Button>
