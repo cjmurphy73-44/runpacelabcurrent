@@ -69,3 +69,10 @@ This file is the **single execution queue**, not a claim that beta readiness is 
 - **GitHub PR / merged SHA:** …
 - **Base44 deployment SHA / checkpoint / timestamp:** `NOT PUBLISHED` unless verified.
 - **Staging/live evidence and open blockers:** …
+
+## 2026-11-14 UX/SCI Recent Workouts provenance (PR #94)
+
+- Existing dashboard `RecentWorkouts.jsx` consumes `workoutLoadPresentation`. Baseline helper claimed measured on `load_source=stream` alone, and omitted TSS-only values.
+- Change: pure presentation helper now shows TSS/TRIMP units accurately, rejects ambiguous dual values, invalid numbers and absent load, and labels recording-derived values as verification pending rather than independently verified.
+- Evidence: commits `88c6b1e9`, `1b0676b2`; six synthetic Vitest cases authored but not executed. Draft PR #94; no deployment or merge.
+- Integration: related full history PR #93 changes a different helper; reconcile shared presentation semantics before either merges. Next higher-priority milestone is SCI-005 verified server load provenance to dashboard/analytics.
