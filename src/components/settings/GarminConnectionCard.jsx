@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useState } from "react";
 import { base44 } from "@/api/base44Client";
+import { recordProviderConnectionStatus } from "@/lib/providerFunnelOutcomes";
 import { Button } from "@/components/ui/button";
 import {
   Watch, Loader2, Link2, CheckCircle2, RefreshCw, Unlink, AlertTriangle,
@@ -17,7 +18,7 @@ function whenLabel(iso) {
   return d.toLocaleString(undefined, { day: "numeric", month: "short", hour: "numeric", minute: "2-digit" });
 }
 
-export default function GarminConnectionCard({ athleteId }) {
+export default function GarminConnectionCard({ athleteId, analyticsConsent = false }) {
   const [status, setStatus] = useState(null);
   const [loading, setLoading] = useState(true);
   const [connecting, setConnecting] = useState(false);
@@ -26,18 +27,21 @@ export default function GarminConnectionCard({ athleteId }) {
   const [error, setError] = useState(null);
   const [info, setInfo] = useState(null);
 
-  const loadStatus = useCallback(async () => {
+  const loadStatus = useCallback(async (recordAttempt = false) => {
     try {
       const res = await base44.functions.invoke("garminSync", { action: "status" });
-      setStatus(res?.data || res || null);
+      const next = res?.data || res || null;
+      setStatus(next);
+      if (recordAttempt) recordProviderConnectionStatus({ consent: analyticsConsent, analytics: base44.analytics, provider: "garmin", status: next });
     } catch (e) {
       // A failed check must not read as "not connected", that would send someone
       // through a reconnect they don't need. The state is explicitly unknown.
       setStatus({ unknown: true });
+      if (recordAttempt) recordProviderConnectionStatus({ consent: analyticsConsent, analytics: base44.analytics, provider: "garmin", status: { unknown: true } });
       setError(e?.response?.data?.error || "Couldn't check your Garmin connection just now.");
     }
     setLoading(false);
-  }, []);
+  }, [analyticsConsent]);
 
   useEffect(() => { loadStatus(); }, [loadStatus]);
 
@@ -57,12 +61,13 @@ export default function GarminConnectionCard({ athleteId }) {
           setConnecting(false);
           return;
         }
-        window.addEventListener("focus", () => { loadStatus(); setConnecting(false); }, { once: true });
+        window.addEventListener("focus", () => { loadStatus(true); setConnecting(false); }, { once: true });
       } else {
         window.location.href = url;
       }
     } catch (e) {
       setError(e?.response?.data?.error || e?.data?.error || e?.message || "Could not start the Garmin connection.");
+      recordProviderConnectionStatus({ consent: analyticsConsent, analytics: base44.analytics, provider: "garmin", status: { connected: false } });
       setConnecting(false);
     }
   };
