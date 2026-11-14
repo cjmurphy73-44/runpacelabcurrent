@@ -1,3 +1,4 @@
+// @ts-expect-error Base44 Deno bundler requires an explicit .ts extension; frontend tsc disallows it.
 import { assessDailyLoad, type LoadSession } from './dailyLoadEvidence.ts';
 
 export type RestReviewDay = {
