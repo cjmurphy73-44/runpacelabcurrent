@@ -8,6 +8,7 @@ export function assertPreviewBuildConfig(env = {}) {
   }
   const required = [
     "VITE_STAGING_APP_ID",
+    "PRODUCTION_BASE44_APP_ID",
     "VITE_APP_ID",
     "VITE_APP_BASE_URL",
     "VITE_PRODUCTION_BASE44_BASE_URL",
