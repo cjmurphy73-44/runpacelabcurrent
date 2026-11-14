@@ -25,7 +25,7 @@ export default function RecentWorkouts({ workouts = [], athlete, onChanged }) {
                   <p className="text-sm font-heading font-semibold">{workoutLoadPresentation(w).amount}</p>
                   <p className="text-[11px] text-muted-foreground">{workoutLoadPresentation(w).label}</p>
                 </div>
-              </div>
+              </button>
             </WorkoutDetailModal>
           ))
         )}
