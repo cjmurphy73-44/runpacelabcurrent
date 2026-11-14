@@ -16,6 +16,9 @@ describe("responsive dashboard quick actions", () => {
     }
     expect(markup).toContain("min-[360px]:grid-cols-2");
     expect(markup).toContain("focus-visible:ring-2");
+    expect(markup).toContain("motion-reduce:transform-none");
+    expect(markup).toContain("min-h-[64px]");
+    expect((markup.match(/<a /g) || []).length).toBe(4);
   });
 });
 
@@ -26,6 +29,8 @@ describe("dashboard visual hierarchy", () => {
     expect(markup).toContain("Fitness");
     expect(markup).toContain("Form");
     expect(markup).toContain("rounded-2xl");
+    expect(markup).toContain("text-muted-foreground");
+    expect(markup).toContain("tabular-nums");
     expect(markup).not.toContain("great day for a quality session");
   });
 });
