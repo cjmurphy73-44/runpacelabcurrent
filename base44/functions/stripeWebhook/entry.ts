@@ -1,3 +1,4 @@
+import { checkoutEntitlementDecision, lifecycleEntitlementStatus } from "../../shared/stripeEntitlementPolicy.ts";
 import { createClientFromRequest } from "npm:@base44/sdk@0.8.44";
 import { secrets } from "base44:runtime";
 import { constantTimeEqual } from "../../shared/crypto.ts";
@@ -119,14 +120,12 @@ export default async function(req) {
         return Response.json({ received: true, error: "No client_reference_id on session" });
       }
 
-      // Never grant on an unpaid session — wait for the confirmed payment event.
-      const paid = s.payment_status === "paid" || s.payment_status === "no_payment_required";
-      if (!paid) {
+      // An event or free/zero-payment session is not proof of a settled paid invoice.
+      const sub = typeof s.subscription === "string" ? await getSubscription(apiKey, s.subscription) : null;
+      if (checkoutEntitlementDecision(s, sub) !== "grant") {
         await logEvent("ack_only");
         return Response.json({ received: true, pending: s.payment_status || "unknown" });
       }
-
-      const sub = await getSubscription(apiKey, s.subscription);
       const plan = sub ? planFromPrice(sub, priceIds) : null;
       // Do NOT default to "pro" — if we can't identify the price, reject so the
       // issue is visible instead of silently granting the wrong plan.
@@ -165,17 +164,10 @@ export default async function(req) {
         await logEvent("ack_only");
         return Response.json({ received: true, error: "Missing user_id or plan in subscription metadata" });
       }
-      // A subscription can exist before payment settles (incomplete / unpaid / past_due).
-      // This path only mirrors a live subscription; the paid checkout event is what grants
-      // access for delayed payment methods, so nothing is provisioned here until it's live.
-      if (sub.status !== "active" && sub.status !== "trialing") {
-        await logEvent("ack_only");
-        return Response.json({ received: true, pending: sub.status });
-      }
-      const status = sub.status === "active" || sub.status === "trialing" ? "active" : sub.status === "past_due" ? "past_due" : "canceled";
-      const periodEnd = periodEndIso(sub);
-      await provision(userId, plan, status, sub.customer, sub.id, periodEnd);
-      await logEvent("created");
+      // Subscription creation can precede first invoice settlement, even if
+      // Stripe reports active/trialing. Never grant from this event alone.
+      await logEvent("ack_only");
+      return Response.json({ received: true, pending: sub.status || "unknown" });
     } else if (event.type === "customer.subscription.updated") {
       const sub = event.data.object;
       const plan = planFromPrice(sub, priceIds);
@@ -185,7 +177,7 @@ export default async function(req) {
         await logEvent("ack_only");
         return Response.json({ received: true });
       }
-      const status = sub.status === "active" || sub.status === "trialing" ? "active" : sub.status === "past_due" ? "past_due" : "canceled";
+      const status = lifecycleEntitlementStatus(sub.status);
       const periodEnd = periodEndIso(sub);
       const existing = await sr.entities.Subscription.filter({ stripe_subscription_id: sub.id }, "-created_date", 5);
       if (existing[0]) await sr.entities.Subscription.update(existing[0].id, { plan, status, current_period_end: periodEnd, stripe_customer_id: sub.customer });
