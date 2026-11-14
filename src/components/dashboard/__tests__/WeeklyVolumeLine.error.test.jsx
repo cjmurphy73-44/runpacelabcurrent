@@ -25,6 +25,8 @@ describe("weekly volume dashboard trust", () => {
   it("retries after failure and renders confirmed values", async () => {
     filter.mockRejectedValueOnce(new Error("offline"));
     filter.mockRejectedValueOnce(new Error("offline"));
+    filter.mockResolvedValueOnce([{ prescribed_duration_minutes: 90 }]);
+    filter.mockResolvedValueOnce([{ duration_minutes: 45 }]);
     render(<WeeklyVolumeLine athleteId="synthetic-athlete" />);
     fireEvent.click(await screen.findByRole("button", { name: "Retry" }));
     await waitFor(() => expect(screen.getByText(/This week:/)).toBeTruthy());
