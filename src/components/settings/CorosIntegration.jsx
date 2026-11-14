@@ -1,9 +1,10 @@
 import React, { useEffect, useState, useCallback } from "react";
 import { base44 } from "@/api/base44Client";
+import { recordProviderConnectionStatus } from "@/lib/providerFunnelOutcomes";
 import { Button } from "@/components/ui/button";
 import { Loader2, Link2, CheckCircle2, RefreshCw, Unlink } from "lucide-react";
 
-export default function CorosIntegration({ athleteId }) {
+export default function CorosIntegration({ athleteId, analyticsConsent = false }) {
   const [status, setStatus] = useState(null);
   const [loading, setLoading] = useState(true);
   const [connecting, setConnecting] = useState(false);
@@ -13,15 +14,19 @@ export default function CorosIntegration({ athleteId }) {
   const [error, setError] = useState(null);
   const [info, setInfo] = useState(null);
 
-  const loadStatus = useCallback(async () => {
+  const loadStatus = useCallback(async (recordAttempt = false) => {
     try {
       const res = await base44.functions.invoke("corosSync", { action: "status" });
-      setStatus(res.data || res);
+      const next = res?.data || res || null;
+      setStatus(next);
+      if (recordAttempt) recordProviderConnectionStatus({ consent: analyticsConsent, analytics: base44.analytics, provider: "coros", status: next });
     } catch (e) {
+      setStatus({ unknown: true });
+      if (recordAttempt) recordProviderConnectionStatus({ consent: analyticsConsent, analytics: base44.analytics, provider: "coros", status: { unknown: true } });
       setError(e?.response?.data?.error || "Could not check COROS connection.");
     }
     setLoading(false);
-  }, []);
+  }, [analyticsConsent]);
 
   useEffect(() => { loadStatus(); }, [loadStatus]);
 
@@ -44,13 +49,14 @@ export default function CorosIntegration({ athleteId }) {
           setConnecting(false);
           return;
         }
-        const onFocus = () => { loadStatus(); setConnecting(false); };
+        const onFocus = () => { loadStatus(true); setConnecting(false); };
         window.addEventListener("focus", onFocus, { once: true });
       } else {
         window.location.href = url;
       }
     } catch (e) {
       setError(e?.response?.data?.error || e?.data?.error || e?.message || "Could not start COROS connection.");
+      recordProviderConnectionStatus({ consent: analyticsConsent, analytics: base44.analytics, provider: "coros", status: { connected: false } });
       setConnecting(false);
     }
   };
