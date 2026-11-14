@@ -23,6 +23,16 @@ export function assessTestExecutionMetadata(
   if (e.status !== 'completed' && e.status !== 'success') missing.push('successful-execution');
   if (e.goal_accomplished !== true) missing.push('goal-not-accomplished');
   if (e.failure_reason) missing.push('execution-failure');
-  if (!e.site_url || !/^https:\/\/[^/?#]+\.base44\.app(?:[/?#]|$)/i.test(e.site_url)) missing.push('trusted-test-url');
+  // A published staging URL is not the isolated builder-preview target.
+  // Validate the entire hostname, not just a shared base44.app suffix.
+  let trustedPreview = false;
+  try {
+    const url = new URL(e.site_url || '');
+    trustedPreview = url.protocol === 'https:'
+      && url.hostname === `preview-sandbox--${expectedAppId}.base44.app`
+      && url.username === '' && url.password === ''
+      && url.port === '';
+  } catch { /* missing or malformed URL fails closed */ }
+  if (!trustedPreview) missing.push('trusted-preview-url');
   return { completed: missing.length === 0, missing, isolationProven: false };
 }
