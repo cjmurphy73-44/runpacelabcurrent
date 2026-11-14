@@ -19,7 +19,7 @@ export default function DashboardQuickActions() {
         <Link
           key={to}
           to={to}
-          className="group flex min-w-0 items-center gap-3 rounded-md border border-border bg-card px-3 py-3 min-h-[56px] transition-colors hover:border-primary/60 hover:bg-primary/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
+          className="group flex min-w-0 items-center gap-3 rounded-xl border border-border/70 bg-card px-4 py-4 min-h-[64px] shadow-sm transition-[border-color,background-color,transform] duration-200 hover:-translate-y-0.5 hover:border-primary/40 hover:bg-accent/40 motion-reduce:transform-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
         >
           <Icon className="w-4 h-4 text-primary shrink-0" />
           <span className="min-w-0">
