@@ -87,3 +87,9 @@ This file is the **single execution queue**, not a claim that beta readiness is 
 - Consolidates #123 read-only and fail-closed reconciliation, #126 scoped backend preflight, and #127 deterministic match candidate generation into one reviewable branch. GitHub compare showed nine changed files, branch ahead 13 commits and behind zero at inspection.
 - Test files authored but no executed CI results; no Base44 Builder sync or Vercel release verified. Do not merge #127 alone against the old auto-link-on-load hook. PR #132 is the preferred integrated review candidate.
 - Matching suggestions and preflight remain read-only. Manual workout link is intentionally unavailable pending verified atomic/idempotent server commit. Validate UX messaging and all test/build gates before production release.
+
+### 2026-11-14 reconciliation UI contract repair (PR #132)
+
+- Reconciliation UI expected `scheduled`, `durationVariancePercent` and `dayOffset` fields, which the new candidate matcher originally omitted. Matched the engine output to the component contract and updated its synthetic exact-match test.
+- UI now states suggestions are unverified and explicitly disables linking pending an atomic commit. Removed misleading ±1-day/±20% claim (current matcher is same-day/same-sport with 50–150% duration window), and removed pseudo-verified confidence percentage presentation.
+- Still pending: actual Vitest, lint, build, browser/mobile review, transactional confirmation and release review.
