@@ -34,6 +34,33 @@ describe("verified telemetry gate", () => {
     expect(hasVerifiedStreams({ duration_seconds: 3600, streams: stream() })).toBe(false);
   });
 
+  it("rejects complementary sparse channels even when combined coverage exceeds half", () => {
+    const mixed = Array.from({ length: 121 }, (_, i) => ({
+      time: i,
+      heart_rate: i < 45 ? 140 : null,
+      power: i >= 45 && i < 90 ? 200 : null,
+    }));
+    expect(hasVerifiedStreams({ duration_seconds: 120, streams: mixed })).toBe(false);
+  });
+
+  it("rejects numeric-string and non-finite physiological measurements", () => {
+    const strings = stream().map(p => ({ ...p, heart_rate: "140" }));
+    const infinite = stream().map(p => ({ ...p, heart_rate: Infinity }));
+    expect(hasVerifiedStreams({ duration_seconds: 120, streams: strings })).toBe(false);
+    expect(hasVerifiedStreams({ duration_seconds: 120, streams: infinite })).toBe(false);
+  });
+
+  it("accepts a measured single channel at the exact half-coverage threshold", () => {
+    const power = Array.from({ length: 120 }, (_, i) => ({ time: i + 1, power: i < 60 ? 210 : null }));
+    expect(hasVerifiedStreams({ duration_seconds: 120, streams: power })).toBe(true);
+  });
+
+  it("rejects numeric-string timestamps on both recorded and analytics paths", () => {
+    const stringTimes = stream().map(p => ({ ...p, time: String(p.time) }));
+    expect(hasVerifiedStreams({ duration_seconds: 120, streams: stringTimes })).toBe(false);
+    expect(analyticsEligible({ duration_seconds: 120, streams: stringTimes })).toBe(false);
+  });
+
   it("rejects invalid timestamps rather than claiming measured time in zone", () => {
     const bad = stream();
     bad[7].time = "invalid";
