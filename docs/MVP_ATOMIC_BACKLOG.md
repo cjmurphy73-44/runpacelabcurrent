@@ -69,3 +69,10 @@ This file is the **single execution queue**, not a claim that beta readiness is 
 - **GitHub PR / merged SHA:** …
 - **Base44 deployment SHA / checkpoint / timestamp:** `NOT PUBLISHED` unless verified.
 - **Staging/live evidence and open blockers:** …
+
+## 2026-11-14 SCI/UX dashboard metric banner fail-closed (PR #95)
+
+- Audit: `DashboardMetricBanner.jsx` directly blended `session_trimp || session_tss || 0` and showed CTL/ATL/TSB even when provenance unverified.
+- Change: `dashboardLoadGate.js` requires comparable finite single-unit positive loads and explicit `stream_verified===true` on each session; dashboard cards now show unavailable plus accessible reason instead of invented load numbers. Readiness forecast remains a separate card and is not claimed verified by this gate.
+- Evidence: commits `aeab78b0`, `ecbdff86`, `d9dd2c87`. Three synthetic Vitest test cases authored, not executed. Draft PR #95, not merged or deployed.
+- Blocker: independently confirm `stream_verified` exists and is populated by backend; otherwise banner intentionally remains unavailable. Reconcile with PRs #86 and #92 before merge. Next: server-side verification contract and controlled fixtures, then mobile acceptance.
