@@ -10,7 +10,7 @@ import PublicFooter from "@/components/layout/PublicFooter";
 import ThemeToggle from "@/components/layout/ThemeToggle";
 
 // Public post-checkout welcome page. Lives OUTSIDE the auth gate so a returning
-// payer always sees a thank-you + explanation of what they unlocked, even if
+// visitor sees a checkout-return notice without an entitlement claim, even if
 // their session dropped during the Stripe redirect (which previously dumped
 // them back onto the login wall with only a toast).
 const NEXT_STEPS = [
@@ -22,8 +22,9 @@ const NEXT_STEPS = [
 export default function CheckoutSuccess() {
   const [params] = useSearchParams();
   const planKey = params.get("plan");
-  const plan = (planKey && PLAN_DETAILS[planKey]) ? planKey : "pro";
-  const d = PLAN_DETAILS[plan];
+  const d = planKey && Object.prototype.hasOwnProperty.call(PLAN_DETAILS, planKey)
+    ? PLAN_DETAILS[planKey]
+    : null;
   const { refresh } = useSubscription();
 
   // If the payer is still authenticated, refresh entitlement state so the rest
@@ -66,7 +67,7 @@ export default function CheckoutSuccess() {
           </div>
         </section>
 
-        <section className="max-w-3xl mx-auto px-4 pb-12">
+        {d && <section className="max-w-3xl mx-auto px-4 pb-12">
           <Card className="border-primary/40 shadow-md shadow-primary/10">
             <CardContent className="p-6 sm:p-8">
               <div className="flex items-center gap-2 mb-5">
@@ -86,7 +87,7 @@ export default function CheckoutSuccess() {
               </ul>
             </CardContent>
           </Card>
-        </section>
+        </section>}
 
         <section className="border-t border-border bg-muted/40">
           <div className="max-w-3xl mx-auto px-4 py-14">
