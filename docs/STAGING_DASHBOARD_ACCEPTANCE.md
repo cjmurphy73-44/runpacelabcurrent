@@ -1,6 +1,6 @@
 # Staging dashboard acceptance identity gate
 
-**Status:** source-only safeguard, not proof of backend isolation.
+**Status:** source-only safeguard and opt-in preview runtime guard, not proof of backend isolation.
 
 Before any authenticated preview browser QA, run `node scripts/check-staging-identity.mjs` with these **explicit, non-secret** environment variables:
 
@@ -19,3 +19,17 @@ The gate fails closed on missing/malformed values, equal app IDs, equal backend 
 5. Only then run authenticated 320/390/768/1024/1440px light/dark, keyboard, screen-reader and weekly-volume error/retry checks.
 
 This gate is deliberately not wired into production build/deploy: production builds must not require staging environment values. No environment, schema or deployment is changed by this PR.
+
+## Opt-in preview runtime guard (PR #149)
+
+For a **separate preview deployment only**, set these explicit Vite build-time variables:
+
+- `VITE_STAGING_PREVIEW_REQUIRED=true`
+- `VITE_STAGING_APP_ID`: separate staging Base44 app ID
+- `VITE_APP_ID`: same staging Base44 app ID
+- `VITE_APP_BASE_URL`: staging HTTPS backend origin
+- `VITE_PRODUCTION_BASE44_BASE_URL`: production HTTPS backend origin (for inequality comparison)
+
+The guard runs before the Base44 SDK client is created. A missing/mismatched app ID, a conflicting `app_id` URL parameter, an absent base URL or identical staging/production origin throws instead of falling back to the published app. Stale localStorage app IDs are ignored in preview mode; a matching OAuth redirect continues to work. Production remains on the existing bootstrap path when `VITE_STAGING_PREVIEW_REQUIRED` is unset. Do not turn the flag on in production until independently reviewed.
+
+**Limitations:** A deployment with the opt-in flag absent does not enforce this guard. The Base44 Vite plugin may use separate `VITE_BASE44_APP_ID` and `VITE_BASE44_APP_BASE_URL`; verify those independently. An HTTPS origin being different is not proof of tenancy isolation. Never promote or run authenticated QA without verifying effective deployment values and staging tenant ownership.
