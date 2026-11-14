@@ -22,7 +22,8 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.52';
 import { computeHolisticReadiness, computeBaseline } from '../../shared/readiness.ts';
 import { calculateVDOT, getTrainingPaces, getEquivalentTimes, danielsThresholdMs, formatPaceFromMs } from '../../shared/vdot.ts';
 import { deriveRunningThresholdPace } from '../../shared/thresholdPace.ts';
-import { eligibleRacePerformance, usableStoredVdot } from '../../shared/vdotEvidence.ts';
+import { usableStoredVdot } from '../../shared/vdotEvidence.ts';
+import { bestAttestedRaceResult } from '../../shared/raceResultContract.ts';
 
 const RACE_DISTANCES_M = {
   fiveKm: 5000,
@@ -53,7 +54,18 @@ export default async function(req: Request): Promise<Response> {
       .filter({ athlete_id: athlete.id }, '-date', 200)
       .catch(() => []);
 
-    const vdotResult = computeVdotFromSessions(sessions, athlete);
+    // Only creator-owned, explicitly athlete-attested race records are eligible.
+    // Imported WorkoutSession flags cannot silently assert race provenance.
+    const raceResults = await base44.asServiceRole.entities.RaceResult
+      .filter({ athlete_id: athlete.id, created_by_id: user.id }, '-race_date', 200);
+    const bestRace = bestAttestedRaceResult(raceResults);
+    const vdotResult = bestRace ? {
+      vdot: bestRace.vdot,
+      source: 'Athlete-reported race result (not independently verified)',
+      source_session_id: null,
+      source_date: bestRace.record.race_date,
+      source_sport: 'running',
+    } : { vdot: null, source: 'No qualifying athlete-reported race result', source_session_id: null, source_date: null, source_sport: null };
     const thresholdPace = deriveRunningThresholdPace(
       sessions,
       vdotResult.vdot ?? usableStoredVdot(athlete.vdot_estimate),
@@ -76,6 +88,7 @@ export default async function(req: Request): Promise<Response> {
       vdot_source_session_id: vdotResult.source_session_id ?? null,
       vdot_source_date: vdotResult.source_date ?? null,
       vdot_source_sport: vdotResult.source_sport ?? null,
+      vdot_evidence_status: bestRace ? 'self_reported' : (vdot != null ? 'unverified_legacy' : 'missing'),
       training_paces: trainingPaces,
       equivalent_times: equivalentTimes,
       threshold_pace: thresholdPace.paceMs ? {
@@ -157,47 +170,3 @@ function computeReadiness(today, history) {
   return { score, status, baseline, signal_count: signalCount, has_baseline: hasBaseline };
 }
 
-// Find the strongest recent qualifying race effort and compute VDOT from it.
-// Falls back to the stored vdot_estimate if no qualifying session exists.
-function computeVdotFromSessions(sessions, athlete) {
-  const recent = (sessions || []).filter((s) => {
-    return eligibleRacePerformance(s);
-  });
-
-  let bestVdot = null;
-  let sourceSession = null;
-
-  for (const s of recent) {
-    // VDOT is a running-performance model — only running sessions qualify.
-    // Non-running efforts (cycling, swimming, strength, triathlon, other)
-    // must never influence the running estimate.
-    if (!eligibleRacePerformance(s)) continue;
-    const durS = s.duration_seconds ?? (s.duration_minutes ? s.duration_minutes * 60 : 0);
-    const distM = s.distance_km ? s.distance_km * 1000 : 0;
-    if (!durS || durS < 180 || distM < 1200) continue; // Daniels requires >= 3 min, >= 1200 m
-    try {
-      const vdot = calculateVDOT(durS, distM);
-      if (vdot > 0 && (bestVdot == null || vdot > bestVdot)) {
-        bestVdot = vdot;
-        sourceSession = s;
-      }
-    } catch { /* session doesn't qualify */ }
-  }
-
-  if (bestVdot != null) {
-    return {
-      vdot: bestVdot,
-      source: `From run on ${sourceSession?.date || 'recent date'}`,
-      source_session_id: sourceSession?.id ?? null,
-      source_date: sourceSession?.date ?? null,
-      source_sport: 'running',
-    };
-  }
-  return {
-    vdot: null,
-    source: 'No qualifying race performance',
-    source_session_id: null,
-    source_date: null,
-    source_sport: null,
-  };
-}

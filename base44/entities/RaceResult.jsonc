@@ -1,0 +1,71 @@
+{
+  "name": "RaceResult",
+  "type": "object",
+  "properties": {
+    "athlete_id": {
+      "type": "string",
+      "description": "Owning AthleteProfile id; always set server-side"
+    },
+    "race_date": {
+      "type": "string",
+      "format": "date"
+    },
+    "distance_m": {
+      "type": "number",
+      "minimum": 1200
+    },
+    "elapsed_seconds": {
+      "type": "number",
+      "minimum": 180
+    },
+    "sport": {
+      "type": "string",
+      "enum": [
+        "running"
+      ]
+    },
+    "evidence_source": {
+      "type": "string",
+      "enum": [
+        "athlete_attested"
+      ]
+    },
+    "evidence_status": {
+      "type": "string",
+      "enum": [
+        "self_reported"
+      ]
+    },
+    "event_name": {
+      "type": "string",
+      "maxLength": 120
+    },
+    "notes": {
+      "type": "string",
+      "maxLength": 500
+    }
+  },
+  "required": [
+    "athlete_id",
+    "race_date",
+    "distance_m",
+    "elapsed_seconds",
+    "sport",
+    "evidence_source",
+    "evidence_status"
+  ],
+  "rls": {
+    "create": {
+      "created_by_id": "{{user.id}}"
+    },
+    "read": {
+      "created_by_id": "{{user.id}}"
+    },
+    "update": {
+      "created_by_id": "{{user.id}}"
+    },
+    "delete": {
+      "created_by_id": "{{user.id}}"
+    }
+  }
+}
