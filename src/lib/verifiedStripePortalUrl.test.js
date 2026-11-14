@@ -20,6 +20,9 @@ describe("Stripe billing portal redirect", () => {
     " https://billing.stripe.com/p/session/x",
     "https://billing.stripe.com/p/\nsession/x",
     "https://billing.stripe.com/p/session/x\u007f",
+    "https://billing.stripe.com/p/session/old/../new",
+    "https://billing.stripe.com/p/session/x/./y",
+    "https://BILLING.stripe.com/p/session/x",
   ])("rejects untrusted portal destination: %s", value => {
     expect(verifiedStripePortalUrl(value)).toBeNull();
   });
