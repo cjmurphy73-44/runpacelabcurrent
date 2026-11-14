@@ -69,3 +69,10 @@ This file is the **single execution queue**, not a claim that beta readiness is 
 - **GitHub PR / merged SHA:** …
 - **Base44 deployment SHA / checkpoint / timestamp:** `NOT PUBLISHED` unless verified.
 - **Staging/live evidence and open blockers:** …
+
+## 2026-11-14 OPS release-evidence gate (draft PR pending)
+
+- **Scope:** `scripts/release-evidence-gate.mjs` and four synthetic Vitest cases. Pure evaluation only: no GitHub API writes, no publishing, no Stripe actions, no secrets or production access.
+- **Acceptance:** all eight required release proofs must agree on the same 40-character GitHub SHA: protected main, successful CI, successful preview, human review, explicit publish approval, Base44 checkpoint/source, and verified published source/live smoke. Missing/invalid/stale evidence fails closed. This gate evaluates *completed release evidence*, not permission to publish; approval alone cannot make it ready.
+- **Evidence:** commits `4e3e6bb3`, `8e53f8f`, `c98ecb26`, `3bda828d`; tests authored but not executed yet. No GitHub Actions workflow scheduled/enabled; existing `ci.yml` remains the authoritative validator. Source merge, Base44 publish and live acceptance remain separate gates.
+- **Next:** wire a read-only, manually approved 30-minute GitHub review workflow that gathers real evidence and never self-merges or publishes; resolve REL-001 checkpoint mismatch and Vercel rate limits before deployment.
