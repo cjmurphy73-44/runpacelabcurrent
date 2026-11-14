@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import { VDOT_PRESENTATION_ENABLED, validateVdotPresentationRequest,
-  createVdotPresentationBoundary } from '../../../base44/shared/vdotPresentationBoundary';
+  createVdotPresentationBoundary, hasVerifiedVdotOwner } from '../../../base44/shared/vdotPresentationBoundary';
 describe('disabled server-owned VDOT presentation boundary', () => {
   it('is disabled by default', () => expect(VDOT_PRESENTATION_ENABLED).toBe(false));
   it('validates finite bounded VDOT and known formats', () => {
@@ -25,6 +25,18 @@ describe('disabled server-owned VDOT presentation boundary', () => {
       .toEqual({ status: 503, body: { error: 'unavailable' } });
     expect(authenticate).not.toHaveBeenCalled();
     expect(calculate).not.toHaveBeenCalled();
+  });
+  it('rejects missing or unverified owned athlete identity', () => {
+    for (const identity of [null, undefined, {}, [], { id: 'user' },
+      { id: 'user', athleteId: 'athlete' },
+      { id: 'user', athleteId: 'athlete', ownedAthleteVerified: 'true' },
+      { id: '', athleteId: 'athlete', ownedAthleteVerified: true },
+      { id: 'user', athleteId: ' ', ownedAthleteVerified: true },
+    ]) {
+      expect(hasVerifiedVdotOwner(identity)).toBe(false);
+    }
+    expect(hasVerifiedVdotOwner({ id: 'user', athleteId: 'athlete',
+      ownedAthleteVerified: true })).toBe(true);
   });
   it('rejects missing dependencies', () => {
     expect(() => createVdotPresentationBoundary({} as never)).toThrow('server_dependencies_required');
