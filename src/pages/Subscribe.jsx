@@ -13,6 +13,7 @@ import PageShell from "@/components/layout/PageShell";
 import { PLAN_DETAILS, PLAN_TIERS } from "@/lib/subscriptionFeatures";
 import { billingReturnNotice, freePlanAction } from "@/lib/billingReturnNotice";
 import { verifiedStripeCheckoutUrl } from "@/lib/verifiedStripeCheckoutUrl";
+import { launchBillingPortal } from "@/lib/launchBillingPortal";
 
 export default function Subscribe() {
   const { user } = useAuth();
@@ -37,18 +38,13 @@ export default function Subscribe() {
   const openBillingPortal = async () => {
     setPortalBusy(true);
     try {
-      const res = await base44.functions.invoke("stripeBillingPortal", {});
-      const url = res?.data?.url;
-      if (!url) throw new Error("No portal URL returned");
-      const isFramed = window.self !== window.top;
-      if (isFramed) {
-        const tab = window.open(url, "_blank");
-        if (!tab) toast({ title: "Allow popups to open billing.", variant: "destructive" });
-      } else {
-        window.location.assign(url);
-      }
-    } catch (e) {
-      toast({ title: "Could not open billing portal", description: e.message, variant: "destructive" });
+      await launchBillingPortal({
+        framed: window.self !== window.top,
+        openTab: (url, target) => window.open(url, target),
+        invoke: (name, args) => base44.functions.invoke(name, args),
+        navigate: (url) => window.location.assign(url),
+        notify: (title, description) => toast({ title, description, variant: "destructive" }),
+      });
     } finally {
       setPortalBusy(false);
     }
