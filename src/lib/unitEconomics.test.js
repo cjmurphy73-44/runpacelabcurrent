@@ -25,6 +25,11 @@ describe('commercial scenario calculator (assumptions, not actuals)', () => {
   it.each([{ monthlyPriceAud: -1 }, { monthlyChurnRate: 1.01 }, { paymentFeeRate: 1 }, { acquisitionCostAud: NaN }, { variableCostAud: Infinity }, { paymentFeeFixedAud: -0.01 }])('rejects invalid assumptions %j', (patch) => {
     expect(() => evaluateUnitEconomics({ ...assumptions, ...patch })).toThrow(RangeError);
   });
+  it('fails closed when individually finite assumptions overflow derived metrics', () => {
+    expect(() => evaluateUnitEconomics({ ...assumptions, monthlyPriceAud: 1e308, paymentFeeRate: 0.99, paymentFeeFixedAud: 1e308 })).toThrow(/Non-finite derived scenario result/);
+    expect(() => evaluateUnitEconomics({ ...assumptions, monthlyChurnRate: Number.MIN_VALUE })).toThrow(/Non-finite derived scenario result/);
+    expect(() => evaluateUnitEconomics({ ...assumptions, acquisitionCostAud: 1e308, variableCostAud: 18.999999999 })).toThrow(/Non-finite derived scenario result/);
+  });
   it('avoids dividing by zero when acquisition is free', () => {
     expect(evaluateUnitEconomics({ ...assumptions, acquisitionCostAud: 0 }).ltvToCac).toBeNull();
   });
