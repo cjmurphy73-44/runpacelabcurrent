@@ -89,7 +89,7 @@ export default function LoadFatigueChart({ completedSessions = [], plannedWorkou
   const worstPoint = projectedPoints.reduce((min, p) => (!min || p.tsb < min.tsb ? p : min), null);
   const spikeDay = projectedPoints.reduce((max, p) => (!max || p.dailyTss > max.dailyTss ? p : max), null);
   const spikeWorkout = spikeDay ? plannedWorkouts.find((w) => w?.date && toDateKey(w.date) === spikeDay.date) : null;
-  const overtrainingRisk = worstPoint && worstPoint.tsb < -25;
+  const highProjectedFatigue = worstPoint && worstPoint.tsb < -25;
 
   return (
     <Card className="min-w-0 overflow-hidden rounded-2xl border-border/70 shadow-sm">
@@ -158,18 +158,18 @@ export default function LoadFatigueChart({ completedSessions = [], plannedWorkou
           </ResponsiveContainer>
         </div>
 
-        {overtrainingRisk && (
+        {highProjectedFatigue && (
           <div className="rounded-md border border-danger/30 bg-danger/10 p-3 flex gap-3">
             <AlertTriangle className="w-5 h-5 text-danger shrink-0 mt-0.5" />
             <div className="text-sm text-muted-foreground">
-              <p className="font-medium text-danger">Overtraining risk in the next 7 days</p>
+              <p className="font-medium text-danger">Projected high training fatigue</p>
               <p>
-                Form (TSB) is projected to drop to {worstPoint.tsb} by {worstPoint.date}
+                Modelled form (TSB) may reach {worstPoint.tsb} by {worstPoint.date}
                 {spikeDay && spikeDay.dailyTss > 0 && (
                   <>
                     , driven largely by {spikeWorkout?.rationale_text || spikeWorkout?.prescribed_intensity_zone || "a scheduled session"} on {spikeDay.date} (~{spikeDay.dailyTss} load).
                   </>
-                )}
+                )}. This load projection is not a medical diagnosis or a standalone measure of overtraining.
               </p>
             </div>
           </div>
