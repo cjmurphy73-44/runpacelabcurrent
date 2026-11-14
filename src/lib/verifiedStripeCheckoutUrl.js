@@ -1,0 +1,16 @@
+/** Validate a server-returned Stripe Checkout destination before top-level navigation.
+ * This is a client-side defense in depth, not a substitute for server authorization.
+ * A custom Stripe Checkout domain requires a separately reviewed allowlist change.
+ */
+export function verifiedStripeCheckoutUrl(value) {
+  if (typeof value !== "string") return null;
+  try {
+    const url = new URL(value);
+    if (url.protocol !== "https:" || url.hostname !== "checkout.stripe.com") return null;
+    if (url.username || url.password || url.port || url.hash) return null;
+    if (!url.pathname.startsWith("/c/") && !url.pathname.startsWith("/pay/")) return null;
+    return url.href;
+  } catch {
+    return null;
+  }
+}
