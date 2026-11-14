@@ -59,11 +59,11 @@ export function auditDailyHistory(
   days: DailyLoadEvidence[],
   today: string,
 ): { eligible: boolean; reason: string | null; date: string | null; unit: 'trimp' | 'tss' | null } {
-  if (!Array.isArray(sessions) || !Array.isArray(days) || !/^\\d{4}-\\d{2}-\\d{2}$/.test(today)) {
+  if (!Array.isArray(sessions) || !Array.isArray(days) || !/^\d{4}-\d{2}-\d{2}$/.test(today)) {
     return { eligible: false, reason: 'invalid_history', date: null, unit: null };
   }
   const dates = [...sessions.map((s) => s.date), ...days.filter((d) => d.confirmed_rest === true).map((d) => d.date)]
-    .filter((d): d is string => typeof d === 'string' && /^\\d{4}-\\d{2}-\\d{2}$/.test(d))
+    .filter((d): d is string => typeof d === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(d))
     .sort();
   if (!dates.length) return { eligible: false, reason: 'no_verified_history', date: null, unit: null };
   const start = Date.parse(dates[0] + 'T00:00:00Z');
