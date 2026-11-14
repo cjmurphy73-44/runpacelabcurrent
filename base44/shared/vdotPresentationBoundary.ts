@@ -35,7 +35,7 @@ export function validateVdotPresentationResponse(value, request) {
       throw new Error('invalid_response');
     }
     for (const candidate of Object.values(value.paces)) {
-      const pace = /** @type {{secPerKm?: unknown, formatted?: unknown}} */ (candidate);
+      const pace = /** @type {{secPerKm?: number, formatted?: string}} */ (candidate);
       if (!pace || typeof pace !== 'object' || Array.isArray(pace) ||
           Object.keys(pace).sort().join(',') !== 'formatted,secPerKm' ||
           !Number.isFinite(pace.secPerKm) || pace.secPerKm <= 0 || pace.secPerKm > 3600 ||
