@@ -55,6 +55,12 @@ describe("verified telemetry gate", () => {
     expect(hasVerifiedStreams({ duration_seconds: 120, streams: power })).toBe(true);
   });
 
+  it("rejects numeric-string timestamps on both recorded and analytics paths", () => {
+    const stringTimes = stream().map(p => ({ ...p, time: String(p.time) }));
+    expect(hasVerifiedStreams({ duration_seconds: 120, streams: stringTimes })).toBe(false);
+    expect(analyticsEligible({ duration_seconds: 120, streams: stringTimes })).toBe(false);
+  });
+
   it("rejects invalid timestamps rather than claiming measured time in zone", () => {
     const bad = stream();
     bad[7].time = "invalid";
