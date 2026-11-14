@@ -1,0 +1,9 @@
+# Science 2.5: isolation evidence checkpoint
+
+- PR #179 exact SHA `c975ff9f4bbe4b1b1f93de9eb3a73b6d82d0d95b` passed CI run `43644133124`.
+- Dependency review: draft PR #149 advanced to `db5d81b77757307588c8cd7c3c1ba701de298335` with exact-head successful run `43644117787`. Draft PRs #172 (`533a5f42`), #175 (`f5212159`), #177 (`0d939e6a`) and #179 (`c975ff9f`) all had successful exact-head runs. They remain separate draft PRs against main; stacked changes require careful integration and are **not merged**.
+- Pre-work Base44 staging checkpoint `6af8d6467b4f710d081a0884`, revision `040ac54a7f19fa298c12b39d7394b634b2d0a073`. A second read-only status check returned the **same** revision, showing no revision drift during this investigation. Earlier checkpoints documented other revisions; the underlying concurrent change history remains unverified. No staging files were written.
+- Read-only backend-function list still returned `{truncated:true}`; no authoritative per-route deployment revision was obtained. Available Base44 API catalog does not expose a support-ticket submission operation, so the prepared support request at `docs/SCIENCE_2_3_BASE44_SUPPORT_REQUEST.md` remains for manual submission. No ticket was sent.
+- Exact independent database, authentication, testing-agent and function routing boundaries remain **unproven**. Staging sandbox `ready` and a stable Git revision do not prove any of these boundaries. No authenticated athlete tests were run.
+- Targeted regression improvement: `assessFunctionDeployment` now rejects whitespace-only source/deployed revision strings, even if equal. Previously these could incorrectly satisfy the exact-revision field. The new unit test exercises spaces, tabs and newlines.
+- No athlete data, secrets, Odysseus files, production configuration, merges or deployments were touched. Keep rest confirmation and unvalidated calculations disabled.
