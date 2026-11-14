@@ -41,3 +41,9 @@ The Vite configuration now calls `assertPreviewBuildConfig(process.env)` during 
 No preview can be accepted without a Vercel deployment record whose `meta.githubCommitSha` exactly matches the tested PR head. A READY deployment of a different branch is not acceptance evidence. Confirm that the Vercel preview build variables were actually set in the deployment and that the separate Base44 staging tenant is verified before any authenticated browser QA. The check does not inspect secrets or access athlete records.
 
 Note: this policy intentionally blocks future Vercel previews until staging environment variables are configured. It is not yet merged or deployed; avoid enabling it on production.
+
+## Verified account inventory, 14 November 2026
+
+Connected Base44 read-only application inventory confirms **TrainPaceLab-Staging** (`6aefe9d09e2788fc8591c758`) and **TrainPaceLab** (`6a504ebe6a5a6d1be058226c`) are distinct applications; both report ready. This proves existence of a separate staging app, **not** its data isolation or any Vercel preview connection. No entity records were queried.
+
+PR #149 at `e38b5e95e9bcdccaba69721f9d1aa7dd10682f1d` passed CI #651. GitHub's Vercel status still reports build-rate-limit. The Vercel project `runpacelabcurrent` is present, but no exact-SHA READY preview has been verified. Use `verifyPreviewProvenance` with a fetched Vercel deployment record and the full GitHub head SHA. Synthetic tests demonstrate rejection of stale, non-ready, production and missing-SHA deployments. The provenance helper does not itself query Vercel or attest tenant isolation.
