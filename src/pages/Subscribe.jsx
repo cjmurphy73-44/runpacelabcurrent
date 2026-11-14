@@ -13,7 +13,7 @@ import PageShell from "@/components/layout/PageShell";
 import { PLAN_DETAILS, PLAN_TIERS } from "@/lib/subscriptionFeatures";
 import { billingReturnNotice, freePlanAction } from "@/lib/billingReturnNotice";
 import { verifiedStripeCheckoutUrl } from "@/lib/verifiedStripeCheckoutUrl";
-import { verifiedStripePortalUrl } from "@/lib/verifiedStripePortalUrl";
+import { launchBillingPortal } from "@/lib/launchBillingPortal";
 
 export default function Subscribe() {
   const { user } = useAuth();
@@ -36,25 +36,15 @@ export default function Subscribe() {
   }, [params, refresh]);
 
   const openBillingPortal = async () => {
-    // Open a blank tab during the click gesture in framed previews, before
-    // awaiting the server. Otherwise browsers may block the async popup.
-    const isFramed = window.self !== window.top;
-    const portalTab = isFramed ? window.open("", "_blank") : null;
-    if (isFramed && !portalTab) {
-      toast({ title: "Allow popups to open billing.", variant: "destructive" });
-      return;
-    }
-    if (portalTab) portalTab.opener = null;
     setPortalBusy(true);
     try {
-      const res = await base44.functions.invoke("stripeBillingPortal", {});
-      const url = verifiedStripePortalUrl(res?.data?.url);
-      if (!url) throw new Error("Billing portal returned an invalid destination");
-      if (portalTab) portalTab.location.replace(url);
-      else window.location.assign(url);
-    } catch (e) {
-      portalTab?.close();
-      toast({ title: "Could not open billing portal", description: e.message, variant: "destructive" });
+      await launchBillingPortal({
+        framed: window.self !== window.top,
+        openTab: (url, target) => window.open(url, target),
+        invoke: (name, args) => base44.functions.invoke(name, args),
+        navigate: (url) => window.location.assign(url),
+        notify: (title, description) => toast({ title, description, variant: "destructive" }),
+      });
     } finally {
       setPortalBusy(false);
     }
