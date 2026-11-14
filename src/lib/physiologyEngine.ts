@@ -29,7 +29,7 @@ export const calculateTrainingLoads = (workoutHistory: WorkoutSession[], maxHr: 
   return dailyLoads;
 };
 
-import { getTrainingPaces } from '../science/vdot';
+import { getTrainingPaces } from '../math/vdot';
 
 export const getVdotPaceZones = (vdotScore: number) => {
   if (!Number.isFinite(vdotScore) || vdotScore <= 0) return null;
