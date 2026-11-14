@@ -94,7 +94,8 @@ export function getAppParams() {
   });
   if (preview.enforced) {
     const base = import.meta.env?.VITE_APP_BASE_URL;
-    if (!base || !/^https:\/\/[^/?#@]+(?:\/)?$/.test(base)) {
+    const publishedBase = import.meta.env?.VITE_PRODUCTION_BASE44_BASE_URL;
+    if (!base || !publishedBase || !/^https:\/\/[^/?#@]+(?:\/)?$/.test(base) || !/^https:\/\/[^/?#@]+(?:\/)?$/.test(publishedBase) || new URL(base).origin.toLowerCase() === new URL(publishedBase).origin.toLowerCase()) {
       throw new Error("Preview identity blocked: explicit HTTPS staging base URL required");
     }
     // No fallback to a published app or localStorage. URL mismatches fail before SDK initialization.
