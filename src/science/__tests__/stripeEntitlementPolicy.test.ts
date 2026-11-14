@@ -24,3 +24,41 @@ describe('Stripe entitlement lifecycle policy', () => {
     for (const status of ['canceled', 'incomplete_expired', 'paused', undefined]) expect(lifecycleEntitlementStatus(status)).toBe('canceled');
   });
 });
+
+
+describe('synthetic Stripe event ordering and replay', () => {
+  // This models policy outcomes only, not Base44 persistence or webhook delivery.
+  function replay(events: Array<{ kind: string; payment?: string; status?: string; subscription?: string }>) {
+    let entitlement = 'free';
+    const seen = new Set<string>();
+    for (const [index, event] of events.entries()) {
+      const eventId = event.kind + ':' + index;
+      if (seen.has(eventId)) continue;
+      seen.add(eventId);
+      if (event.kind === 'created') continue; // never proof of first payment
+      if (event.kind === 'checkout') {
+        if (checkoutEntitlementDecision(
+          { payment_status: event.payment, subscription: event.subscription },
+          { id: 'sub_synthetic', status: event.status },
+        ) === 'grant') entitlement = 'active';
+      } else if (event.kind === 'updated' && entitlement !== 'free') {
+        entitlement = lifecycleEntitlementStatus(event.status);
+      } else if (event.kind === 'deleted') {
+        entitlement = 'canceled';
+      }
+    }
+    return entitlement;
+  }
+
+  it('creation before settlement never grants, confirmed checkout does', () => {
+    expect(replay([{ kind: 'created', status: 'active' }, { kind: 'checkout', payment: 'unpaid', status: 'active', subscription: 'sub_synthetic' }])).toBe('free');
+    expect(replay([{ kind: 'created', status: 'active' }, { kind: 'checkout', payment: 'paid', status: 'active', subscription: 'sub_synthetic' }])).toBe('active');
+  });
+  it('failed renewal removes active entitlement and later paid update restores it', () => {
+    expect(replay([{ kind: 'checkout', payment: 'paid', status: 'active', subscription: 'sub_synthetic' }, { kind: 'updated', status: 'past_due' }])).toBe('past_due');
+    expect(replay([{ kind: 'checkout', payment: 'paid', status: 'active', subscription: 'sub_synthetic' }, { kind: 'updated', status: 'past_due' }, { kind: 'updated', status: 'active' }])).toBe('active');
+  });
+  it('cancellation revokes access even after successful checkout', () => {
+    expect(replay([{ kind: 'checkout', payment: 'paid', status: 'active', subscription: 'sub_synthetic' }, { kind: 'deleted' }])).toBe('canceled');
+  });
+});
