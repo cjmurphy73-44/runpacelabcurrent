@@ -154,9 +154,8 @@ export default async function(req) {
       await provision(userId, plan, "active", s.customer, s.subscription, periodEnd);
       await logEvent("created");
     } else if (event.type === "customer.subscription.created") {
-      // Fallback provisioning path: when checkout.session.completed is not
-      // delivered (or arrives out of order), customer.subscription.created
-      // still fires and carries the same metadata[plan] + metadata[user_id].
+      // Creation events are recorded but never provision access: subscription
+      // existence and metadata alone do not prove the first payment settled.
       const sub = event.data.object;
       const userId = sub.metadata?.user_id;
       const plan = planFromPrice(sub, priceIds);
