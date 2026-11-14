@@ -11,7 +11,7 @@ import { constantTimeEqual } from '../../shared/crypto.ts';
 import { getSyncLookbackDays } from '../../shared/syncLookback.ts';
 import { parseFitWithLaps, summarizeStream } from '../../shared/workoutParsers.ts';
 import { isUsableTelemetry, storageStream, MAX_STREAM_SAMPLES } from '../../shared/streamValidity.ts';
-import { persistCorosBatches } from '../../shared/corosBatchPersistence.ts';
+import { persistCorosBatches, reconcileCorosWrites } from '../../shared/corosBatchPersistence.ts';
 import { corosActivityId, isDuplicateCorosSession } from '../../shared/corosActivityIdentity.ts';
 import {
   corosAccessToken, fetchWithTimeout, mcpPost, mcpToolCall,
@@ -598,8 +598,37 @@ async function syncHistoricalFor(athlete: any, accessToken: string, base44, look
     (batch) => base44.asServiceRole.entities.WorkoutSession.bulkCreate(batch),
   );
   error_messages.push(...write.errors);
-  // Recompute load only for sessions the persistence API actually confirmed.
-  for (const d of write.persisted_dates) {
+  // If the bulk response was ambiguous, re-read provider IDs before reporting
+  // confirmed writes. Never automatically retry on this request: another sync
+  // may be concurrent, and Base44 has no atomic provider-ID uniqueness here.
+  let reconciledDates = write.persisted_dates;
+  let confirmedImported = write.imported;
+  let writeUncertain = write.uncertain;
+  if (write.uncertain > 0) {
+    const reconciliation = await reconcileCorosWrites(toCreate, async (dates) => {
+      const rows: any[] = [];
+      for (const date of dates) {
+        const page = await base44.asServiceRole.entities.WorkoutSession.filter(
+          { athlete_id: athlete.id, date }, 'date', 500,
+        );
+        const items = Array.isArray(page) ? page : page?.items;
+        if (!Array.isArray(items) || items.length >= 500) return { complete: false, rows: [] };
+        rows.push(...items);
+      }
+      return { complete: true, rows };
+    });
+    if (reconciliation.retrySafe) {
+      confirmedImported = reconciliation.verified.length;
+      reconciledDates = reconciliation.persisted_dates;
+      writeUncertain = reconciliation.missing.length;
+      if (writeUncertain) error_messages.push(`${writeUncertain} COROS activities were not found after read-back. Re-sync after confirming no other import is running.`);
+    } else {
+      // A failed read is NOT proof of absence; retain the original uncertainty.
+      error_messages.push(`COROS write reconciliation unavailable: ${reconciliation.reason}. Do not assume the activities are missing.`);
+    }
+  }
+  // Recompute load only for dates whose saved sessions were confirmed.
+  for (const d of reconciledDates) {
     try { await base44.asServiceRole.functions.invoke('calculateDailyTRIMP', { athlete_id: athlete.id, date: d }); }
     catch {
       error_messages.push('Daily load recomputation failed; sessions remain saved.');
@@ -608,7 +637,7 @@ async function syncHistoricalFor(athlete: any, accessToken: string, base44, look
   errors += write.failed + write.uncertain;
   return {
     imported: write.imported, errors, records_found: records.length, duplicates,
-    summary_only, write_uncertain: write.uncertain, error_messages,
+    summary_only, write_uncertain: writeUncertain, error_messages,
   };
 }
 
