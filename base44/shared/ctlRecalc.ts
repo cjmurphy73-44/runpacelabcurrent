@@ -124,8 +124,8 @@ export async function recomputeCTLATLTSB(base44: any, athlete_id: string) {
     await base44.asServiceRole.entities.DailyMetrics.bulkCreate(creates.slice(i, i + 500));
   }
 
-  const finalCtl = Math.round(ctl * 10) / 10;
-  const finalAtl = Math.round(currentATL * 10) / 10;
+  const finalCtl = Math.round(state.ctl * 10) / 10;
+  const finalAtl = Math.round(state.atl * 10) / 10;
   const finalTsb = Math.round(state.tsb * 10) / 10;
 
   await base44.asServiceRole.entities.AthleteProfile.update(athlete_id, {
