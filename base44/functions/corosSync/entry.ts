@@ -557,7 +557,13 @@ async function syncHistoricalFor(athlete: any, accessToken: string, base44, look
       'date',
       500,
     );
-    for (const s of (Array.isArray(rows) ? rows : rows?.items || [])) {
+    const existingRows = Array.isArray(rows) ? rows : rows?.items;
+    // A truncated duplicate check could cause a second import of an existing
+    // activity. Fail the sync rather than treating unseen rows as absent.
+    if (!Array.isArray(existingRows) || existingRows.length >= 500) {
+      throw new Error('COROS duplicate check incomplete; no new activities written. Retry after resolving pagination.');
+    }
+    for (const s of existingRows) {
       const bucket = existingByDate.get(s.date) || [];
       bucket.push(s);
       existingByDate.set(s.date, bucket);
