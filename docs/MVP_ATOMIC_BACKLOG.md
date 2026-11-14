@@ -69,3 +69,17 @@ This file is the **single execution queue**, not a claim that beta readiness is 
 - **GitHub PR / merged SHA:** …
 - **Base44 deployment SHA / checkpoint / timestamp:** `NOT PUBLISHED` unless verified.
 - **Staging/live evidence and open blockers:** …
+
+## 2026-11-14 UX TCX original recording recovery (PR #111)
+
+- Audit: `WorkoutZonePanel` and PR #109 prompt FIT/TCX recovery at `/import`; `BulkWorkoutImport` and `bulkIngestWorkouts` support FIT/CSV only. `ingestWorkoutFile` explicitly parses TCX and returns persisted session identity on new or attached import. This is a real broken user journey, not a new parser requirement.
+- Change: dedicated `TcxWorkoutImport` on Imports & Sync uses existing single-file backend with date/sport and status/Review workout log CTA. `singleImportOutcome` requires backend success and session ID, never equates upload success with persisted stream coverage. Manual-entry CTL/ATL/TSB instant-refresh claim corrected.
+- Evidence: commits `c7e28ce1`, `31687795`, `a9a9c978`, `045cc24a`; four synthetic Vitest cases authored, execution pending. Draft PR #111, not merged or deployed.
+- Acceptance pending: run CI, browser upload synthetic valid/invalid TCX on isolated staging, verify new and attached sessions, saved stream coverage and duplicate retry, verify original-file retention from backend storage. No production athlete data or schema touched.
+
+### 2026-11-14 PR #111 follow-up: prevent misdated and misleading TCX imports
+
+- Backend source audit: `ingestWorkoutFile` filters existing sessions by user-supplied `date`, then persists new `WorkoutSession.date`; it stores `streams` only when `stream.length <= MAX_STREAM_SAMPLES` (3600). A successful import can therefore save a summary without its detailed sample timeline.
+- Frontend fix: require explicit actual workout date rather than silently defaulting to upload day; block future dates in the UI. Inspect returned session streams and distinguish saved summary without timeline from saved samples; attachment response alone cannot confirm coverage. Never claim full original-file retention.
+- Evidence: commits `a444e85a`, `b990bec5`, `8dfa884f`; two additional synthetic tests authored, execution pending. Existing draft PR #111 updated, not merged or deployed.
+- Follow-up: backend source-date validation against TCX/FIT recording start; durable chunked storage or explicit recoverable asset status for >3600 samples; staging fixtures for short and >3600s TCX, dedup/attachment, and real Garmin/COROS file retention. Do not mark sync or zone completeness verified until runtime evidence exists.
