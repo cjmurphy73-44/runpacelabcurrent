@@ -66,3 +66,47 @@ export async function persistCorosBatches<T extends { date: string }>(
   result.persisted_dates = [...persistedDates];
   return result;
 }
+
+
+/**
+ * Read-after-write reconciliation. A retry may only be attempted after a
+ * complete, successful read of the relevant saved sessions. Missing provider
+ * IDs, truncated reads, or failed reads must not be interpreted as absence.
+ */
+export async function reconcileCorosWrites<T extends {
+  date: string; athlete_id?: string; source_provider?: string; provider_activity_id?: string;
+}>(
+  attempted: T[],
+  readPersisted: (dates: string[]) => Promise<unknown>,
+): Promise<{
+  verified: T[]; missing: T[]; retrySafe: boolean; reason: string | null;
+  persisted_dates: string[];
+}> {
+  const blocked = (reason: string) => ({
+    verified: [] as T[], missing: [] as T[], retrySafe: false,
+    reason, persisted_dates: [] as string[],
+  });
+  const identity = (row: T) => {
+    if (!row || typeof row.date !== 'string' || !row.athlete_id ||
+        row.source_provider !== 'coros' || !row.provider_activity_id) return null;
+    return JSON.stringify([row.athlete_id, row.source_provider, row.provider_activity_id, row.date]);
+  };
+  const keys = attempted.map(identity);
+  if (keys.some((key) => !key) || new Set(keys).size !== keys.length) return blocked('invalid_or_duplicate_activity_identity');
+  if (attempted.length === 0) return { verified: [], missing: [], retrySafe: true, reason: null, persisted_dates: [] };
+  let response: unknown;
+  try {
+    response = await readPersisted([...new Set(attempted.map((row) => row.date))]);
+  } catch {
+    return blocked('read_after_write_failed');
+  }
+  // The callback must return the full, non-truncated read result as an array.
+  if (!Array.isArray(response)) return blocked('read_after_write_unverified');
+  const savedKeys = new Set(response.map((row) => identity(row as T)).filter(Boolean));
+  const verified = attempted.filter((row) => savedKeys.has(identity(row)));
+  const missing = attempted.filter((row) => !savedKeys.has(identity(row)));
+  return {
+    verified, missing, retrySafe: true, reason: null,
+    persisted_dates: [...new Set(verified.map((row) => row.date))],
+  };
+}
