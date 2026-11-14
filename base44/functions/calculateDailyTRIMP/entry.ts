@@ -1,5 +1,6 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
 import { assertOwnsAthlete } from '../../shared/ownership.ts';
+import { assessDailyLoad } from '../../shared/dailyLoadEvidence.ts';
 
 Deno.serve(async (req) => {
   try {
@@ -19,11 +20,19 @@ Deno.serve(async (req) => {
     }
 
     const sessions = await base44.entities.WorkoutSession.filter({ athlete_id, date });
-    // Use HR-based TRIMP as the primary stress metric; fall back to rTSS when HR was unavailable.
-    const totalTrimp = sessions.reduce((sum, s) => sum + (s.session_trimp || s.session_tss || 0), 0);
-    const rounded = Math.round(totalTrimp * 100) / 100;
-
     const existing = await base44.entities.DailyMetrics.filter({ athlete_id, date });
+    const assessment = assessDailyLoad(sessions, existing.some((m) => m.confirmed_rest === true));
+    if (!assessment.eligible) {
+      return Response.json({ success: false, code: 'DAILY_LOAD_UNVERIFIED',
+        reason: assessment.reason, athlete_id, date, total_trimp: null }, { status: 409 });
+    }
+    // The legacy field is named total_trimp. Do not put TSS into it.
+    if (assessment.unit === 'tss') {
+      return Response.json({ success: false, code: 'INCOMPATIBLE_LOAD_UNIT',
+        reason: 'TSS cannot be stored as TRIMP without a validated conversion.',
+        athlete_id, date, total_trimp: null }, { status: 409 });
+    }
+    const rounded = assessment.load!;
     if (existing.length > 0) {
       await base44.entities.DailyMetrics.update(existing[0].id, { total_trimp: rounded });
     } else {
