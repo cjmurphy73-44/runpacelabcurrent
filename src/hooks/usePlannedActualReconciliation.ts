@@ -62,9 +62,11 @@ export function usePlannedActualReconciliation(athleteId) {
     setAdjustingId(sessionId);
     try {
       const res = await functionGateway.invoke('autoReplanOnDeviation', { session_id: sessionId });
-      setLastAdjustment({ sessionId, summary: res?.summary || 'Your coach is adjusting the rest of your week.', ok: !res?.error });
+      const receipt = res?.data ?? res;
+      const confirmed = receipt?.success === true && !receipt?.error;
+      setLastAdjustment({ sessionId, summary: confirmed ? (receipt.summary || 'Plan adjustment confirmed.') : 'Plan adjustment was not confirmed. Review your upcoming sessions.', ok: confirmed });
     } catch (e) {
-      setLastAdjustment({ sessionId, summary: 'Coach adjustment is running in the background.', ok: false });
+      setLastAdjustment({ sessionId, summary: 'Plan adjustment failed or could not be verified. Review your upcoming sessions.', ok: false });
     } finally {
       setAdjustingId(null);
     }
