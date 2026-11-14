@@ -8,7 +8,7 @@ Base44 staging app `6aefe9d09e2788fc8591c758` only. Pre-work checkpoint `6af83a8
 
 - First read-only temporary-user run `6af8301b8d0c754720041f93`: **failed**, `failure_reason=platform`, `goal_accomplished=false`, `credits_charged=0`. The Base44 preview remained on “Preview is starting up” through a reload, wait and direct /Physiology navigation. No app screen, authenticated review request or test-athlete records were reached.
 - Called the platform's sandbox preview URL operation; it returned a preview URL with `cold_start=false` and a preview token. **Do not commit or disclose the token.**
-- Retried the same read-only flow as `6af83aaf0371c3162a581d4b`. Inspect its final status and report before claiming any browser acceptance.
+- Retried the same read-only flow as `6af83aaf0371c3162a581d4b`: **also failed**, `failure_reason=platform`, `goal_accomplished=false`, `credits_charged=0`. The preview stayed on “Preview is starting up” for approximately 2.5 minutes across two reloads. The testing agent reported zero data changes. **No authenticated Physiology Lab acceptance was achieved.**
 - Staging main entity counts checked after the work: AthleteProfile 7, WorkoutSession 0, DailyMetrics 6 (unchanged from Science 1.8 baseline). These counts do not establish dev test-data before/after state. No real athlete data or credentials were used. The test-agent API states its temporary user operates against dev/test data, not live data.
 
 ## HTTP and function deployment diagnostics
@@ -23,7 +23,7 @@ Base44 staging app `6aefe9d09e2788fc8591c758` only. Pre-work checkpoint `6af83a8
 
 - Regression assertion now requires the rest review to catch rejected `auth.me()` and return HTTP 401.
 - Existing unit tests cover the pure rest policy, invalid/oversized/future UTC dates, action rejection, no rest writes, pagination overlaps and bounded reads, and ownership-check ordering. **These are not a substitute for authenticated HTTP E2E.**
-- Staging sandbox `npm run typecheck` and `npm run build` passed. The staging sandbox's `npm test` ran 199 passing tests but had one additional suite-load failure in `tests/staging-backend-origin.test.mjs` (`new URL(..., import.meta.url)` was not a file URL in this sandbox). This is distinct from an assertion failure in the science code. GitHub CI must be used to verify the actual branch tests.
+- Staging sandbox `npm run typecheck` and `npm run build` passed. The staging sandbox's `npm test` ran 199 passing tests but had one additional suite-load failure in `tests/staging-backend-origin.test.mjs` (`new URL(..., import.meta.url)` was not a file URL in this sandbox). This is distinct from an assertion failure in the science code. GitHub CI must be used to verify the actual branch tests. The first PR #160 workflow run was cancelled when a newer commit superseded it; the latest run is tracked separately.
 - Still required: authenticated temporary-user Physiology Lab browser acceptance; owned vs foreign athlete 403, unknown-day provenance, pagination, and before/after test-data write counts; athlete-local date mapping; safe handling of legacy function deployments.
 
 No scientific outputs or CTL/ATL history were fabricated or recalculated.
