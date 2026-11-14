@@ -1,4 +1,4 @@
-import { assessDailyLoad, type LoadSession } from './dailyLoadEvidence';
+import { assessDailyLoad, type LoadSession } from './dailyLoadEvidence.ts';
 
 export type RestReviewDay = {
   date: string;
