@@ -16,7 +16,7 @@ export function assessFunctionDeployment(e: FunctionDeploymentEvidence) {
   if (!id(e.requestedAppId) || !id(e.expectedAppId) || e.requestedAppId !== e.expectedAppId) missing.push('requested-app-identity');
   if (!id(e.effectiveAppId) || e.effectiveAppId !== e.expectedAppId) missing.push('effective-app-identity');
   if (!e.functionName || !/^[A-Za-z][A-Za-z0-9]*$/.test(e.functionName)) missing.push('function-name');
-  if (!e.sourceRevision || !e.deployedRevision || e.sourceRevision !== e.deployedRevision) missing.push('exact-deployment-revision');
+  if (typeof e.sourceRevision !== 'string' || !e.sourceRevision.trim() || typeof e.deployedRevision !== 'string' || !e.deployedRevision.trim() || e.sourceRevision !== e.deployedRevision) missing.push('exact-deployment-revision');
   if (e.environment !== 'preview' && e.environment !== 'published') missing.push('environment');
   if (e.independentlyAttested !== true) missing.push('platform-attestation');
   return { ready: missing.length === 0, missing };
