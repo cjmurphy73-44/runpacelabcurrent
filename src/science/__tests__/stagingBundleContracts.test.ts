@@ -19,6 +19,8 @@ describe('Science 1.7: staging Deno function bundle contracts', () => {
   it('legacy calculation endpoints do not import unsupported @base44/cloud', () => {
     for (const name of ['calculateBanisterModel', 'calculateTrainingLoad']) {
       expect(source(name)).not.toContain('from "@base44/cloud"');
+      expect(source(name)).toContain('Deno.serve(');
+      expect(source(name)).toContain('LEGACY_CALCULATION_NOT_VALIDATED');
     }
   });
   it('VDOT endpoint uses a supported SDK and checks authentication', () => {
