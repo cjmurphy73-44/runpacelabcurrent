@@ -4,7 +4,7 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.52';
 import { validateAttestedRaceResult, findDuplicateRaceResult } from '../../shared/raceResultContract.ts';
 
 export default async function (req: Request): Promise<Response> {
-  if (req.method !== 'POST' && req.method !== 'PATCH') {
+  if (req.method !== 'POST') {
     return Response.json({ error: 'Method not allowed' }, { status: 405 });
   }
   try {
@@ -24,8 +24,8 @@ export default async function (req: Request): Promise<Response> {
     try { record = validateAttestedRaceResult(body); }
     catch (error) { return Response.json({ error: error.message }, { status: 400 }); }
 
-    const correctionId = req.method === 'PATCH' ? body?.id : null;
-    if (req.method === 'PATCH' && (typeof correctionId !== 'string' || !correctionId)) {
+    const correctionId = body?.action === 'correct' ? body?.id : null;
+    if (body?.action === 'correct' && (typeof correctionId !== 'string' || !correctionId)) {
       return Response.json({ error: 'Race result id is required for correction' }, { status: 400 });
     }
 
@@ -44,7 +44,7 @@ export default async function (req: Request): Promise<Response> {
       return Response.json({ error: 'This race result already exists', existing_id: duplicate.id }, { status: 409 });
     }
 
-    if (req.method === 'PATCH') {
+    if (body?.action === 'correct') {
       const existing = await base44.entities.RaceResult.get(correctionId).catch(() => null);
       if (!existing || existing.created_by_id !== user.id || existing.athlete_id !== athlete.id ||
           existing.evidence_source !== 'athlete_attested' || existing.evidence_status !== 'self_reported') {
