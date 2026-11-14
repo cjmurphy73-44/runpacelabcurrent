@@ -2,7 +2,7 @@
 
 ## Boundaries and checkpoints
 
-Staging Base44 app: `6aefe9d09e2788fc8591c758`; production app `6a504ebe6a5a6d1be058226c` untouched. Pre-change checkpoint: `6af830113beefb2e7d062bbc`.
+Staging Base44 app: `6aefe9d09e2788fc8591c758`; production app `6a504ebe6a5a6d1be058226c` untouched. Pre-change checkpoint: `6af830113beefb2e7d062bbc`. Post-change checkpoint: `6af830d9765151fd1354c5e1`.
 
 The integration branch stacks on #152, which stacks on #148, #146, #145 and #142. Do not merge or deploy production without an explicit review of the combined diff.
 
@@ -16,7 +16,7 @@ The integration branch stacks on #152, which stacks on #148, #146, #145 and #142
 ## Runtime investigation (no invented root cause)
 
 - Base44 `GET /api/apps/{app_id}/functions-mgmt/{function_name}/logs` was queried for `calculateTrainingLoad`, `calculateBanisterModel`, and `reviewRestDays`. Both error-filtered preview and unfiltered calculation queries returned **empty arrays**. Empty logs do not prove that a worker is healthy or reveal the exception.
-- A direct staging-only `coding/redeploy-function/calculateTrainingLoad` succeeded. A second redeploy with a supported SDK import and authenticated Deno handler also succeeded, yet GET and POST on both preview-sandbox and the published staging host still returned **500 user-exception**.
+- A direct staging-only `coding/redeploy-function/calculateTrainingLoad` succeeded. A second redeploy with a supported SDK import and authenticated Deno handler also succeeded, yet GET and POST on the preview-sandbox host still returned **500 user-exception**. Earlier checks of both preview-sandbox and published staging hosts also returned 500. This rules out a simple assumption that the error exists only on the published staging URL.
 - `calculateBanisterModel` also still returns **500 user-exception**. There is no confirmed root cause. These are unresolved runtime or deployment-route problems, not successful fixes.
 - `reviewRestDays` and `calculateVDOT` GET returned 405, demonstrating those handlers are reachable and method-guarded.
 - The staging app's published host and the test-agent preview use distinct URLs. Do not treat published-host requests as proof of the preview's current function code.
