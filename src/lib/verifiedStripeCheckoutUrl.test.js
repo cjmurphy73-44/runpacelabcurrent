@@ -12,7 +12,10 @@ describe("Stripe Checkout redirect destination", () => {
     "http://checkout.stripe.com/c/pay/x", "https://checkout.stripe.com.evil.test/c/pay/x",
     "https://evil.test/checkout.stripe.com/c/pay/x", "https://checkout.stripe.com@evil.test/c/pay/x",
     "https://user:pass@checkout.stripe.com/c/pay/x", "https://checkout.stripe.com:444/c/pay/x",
-    "https://checkout.stripe.com/other", "https://checkout.stripe.com/c/pay/x#fragment",
+    "https://checkout.stripe.com/other",
+    " https://checkout.stripe.com/c/pay/x", "https://checkout.stripe.com/c/pay/x ",
+    "\thttps://checkout.stripe.com/c/pay/x", "https://checkout.stripe.com/c/\npay/x",
+    "https://checkout.stripe.com/c/pay/x\r", "https://checkout.stripe.com/c/pay/x\u007f", "https://checkout.stripe.com/c/pay/x#fragment",
   ])("rejects unsafe or non-Checkout destinations: %s", (value) => {
     expect(verifiedStripeCheckoutUrl(value)).toBeNull();
   });
