@@ -42,11 +42,14 @@ describe('Science 1.5: rest confirmation concurrency safety', () => {
   const backend = readFileSync(resolve(process.cwd(), 'base44/functions/reviewRestDays/entry.ts'), 'utf8');
   const frontend = readFileSync(resolve(process.cwd(), 'src/components/physiology/RestHistoryReview.jsx'), 'utf8');
   it('blocks confirmation before any history read and without writes', () => {
-    const gate = backend.indexOf("if (action === 'confirm_rest') {");
+    const gate = backend.indexOf("classifyRestReviewRequest(");
     const reads = backend.indexOf('const sessions: any[] = [];');
     expect(gate).toBeGreaterThan(0);
     expect(reads).toBeGreaterThan(gate);
     expect(backend).toContain('ATOMIC_REST_CONFIRMATION_UNAVAILABLE');
+    const policy = readFileSync(resolve(process.cwd(), 'base44/shared/restReviewPolicy.ts'), 'utf8');
+    expect(policy).toContain("if (body.action === 'confirm_rest') {");
+    expect(policy).toContain("code: 'ATOMIC_REST_CONFIRMATION_UNAVAILABLE'");
     expect(backend).not.toMatch(/DailyMetrics\.(?:create|update|bulkCreate|bulkUpdate)\s*\(/);
     expect(backend).not.toMatch(/recomputeCTLATLTSB\s*\(/);
   });
