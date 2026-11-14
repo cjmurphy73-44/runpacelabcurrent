@@ -8,31 +8,23 @@ function greeting() {
   return "Good evening";
 }
 
-function formContext(tsb) {
-  if (tsb == null || isNaN(tsb)) return null;
-  if (tsb >= 5) return "You're fresh, a great day for a quality session.";
-  if (tsb <= -10) return "You're carrying fatigue, consider an easy day or rest.";
-  return "You're in a balanced range, train to plan.";
-}
-
 export default function DashboardGreeting({ athlete }) {
   const name = athlete?.first_name;
   const tsb = athlete?.current_tsb;
   const ctl = athlete?.current_ctl;
   const today = new Date().toLocaleDateString(undefined, { weekday: "long", day: "numeric", month: "long" });
-  const ctx = formContext(tsb);
 
   return (
-    <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3">
-      <div>
-        <p className="text-xs text-muted-foreground">{today}</p>
+    <div className="relative flex min-w-0 flex-col gap-5 overflow-hidden rounded-2xl border border-border/70 bg-card px-5 py-6 shadow-sm sm:flex-row sm:items-end sm:justify-between sm:px-7 sm:py-7">
+      <div className="relative z-10 min-w-0">
+        <p className="text-xs font-medium uppercase tracking-[0.14em] text-muted-foreground">{today}</p>
         <h1 className="text-2xl sm:text-3xl font-heading font-bold tracking-tight">
           {greeting()}{name ? `, ${name}` : ""}
         </h1>
-        {ctx && <p className="text-sm text-muted-foreground mt-1">{ctx}</p>}
+        <p className="mt-2 text-sm text-muted-foreground">Your training, in focus.</p>
       </div>
       {(ctl != null || tsb != null) && (
-        <div className="flex items-center gap-5 text-sm">
+        <div className="relative z-10 flex flex-wrap items-center gap-x-5 gap-y-3 border-t border-border/70 pt-4 text-sm sm:border-t-0 sm:pt-0">
           {ctl != null && !isNaN(ctl) && (
             <div className="flex items-center gap-1.5">
               <Activity className="w-4 h-4 text-primary" />
@@ -51,6 +43,7 @@ export default function DashboardGreeting({ athlete }) {
           )}
         </div>
       )}
+      <div aria-hidden="true" className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-primary/45 to-transparent" />
     </div>
   );
 }
