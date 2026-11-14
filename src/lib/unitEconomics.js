@@ -12,5 +12,8 @@ export function evaluateUnitEconomics({ monthlyPriceAud, paymentFeeRate, payment
   const lifetimeContributionAud = lifetimeMonths === null || contributionAud <= 0 ? null : contributionAud * lifetimeMonths;
   const paybackMonths = contributionAud <= 0 ? null : acquisitionCostAud / contributionAud;
   const ltvToCac = acquisitionCostAud === 0 || lifetimeContributionAud === null ? null : lifetimeContributionAud / acquisitionCostAud;
+  for (const [key, value] of Object.entries({ feeAud, contributionAud, contributionMargin, lifetimeMonths, lifetimeContributionAud, paybackMonths, ltvToCac })) {
+    if (value !== null && !Number.isFinite(value)) throw new RangeError(`Non-finite derived scenario result: ${key}`);
+  }
   return { feeAud, contributionAud, contributionMargin, lifetimeMonths, lifetimeContributionAud, paybackMonths, ltvToCac, source: 'assumption-only' };
 }
