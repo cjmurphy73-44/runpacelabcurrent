@@ -1,5 +1,4 @@
-import { test } from "node:test";
-import assert from "node:assert/strict";
+import { test, expect } from "vitest";
 import { evaluateReleaseEvidence } from "../release-evidence-gate.mjs";
 
 const sha = "a".repeat(40);
@@ -11,10 +10,10 @@ const complete = {
   liveVerified: true, liveSourceSha: sha,
 };
 test("complete exact-SHA evidence is reconciled", () => {
-  assert.deepEqual(evaluateReleaseEvidence(complete), { ready: true, blockers: [], expectedSha: sha });
+  expect(evaluateReleaseEvidence(complete)).toEqual({ ready: true, blockers: [], expectedSha: sha });
 });
 test("missing and malformed evidence fails closed", () => {
-  assert.equal(evaluateReleaseEvidence(null).ready, false);
+  expect(evaluateReleaseEvidence(null).ready).toBe(false);
   assert.equal(evaluateReleaseEvidence({ ...complete, expectedSha: "short" }).ready, false);
 });
 test("stale CI, preview, checkpoint and published source independently block readiness", () => {
