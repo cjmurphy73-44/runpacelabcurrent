@@ -55,6 +55,14 @@ export function validateVdotPresentationResponse(value, request) {
   }
   return Object.freeze(value);
 }
+// Only a server-authenticated identity with an independently verified owned
+// athlete may reach a future compute implementation. Never trust client flags.
+export function hasVerifiedVdotOwner(identity) {
+  return !!identity && typeof identity === 'object' && !Array.isArray(identity) &&
+    typeof identity.id === 'string' && identity.id.trim().length > 0 &&
+    typeof identity.athleteId === 'string' && identity.athleteId.trim().length > 0 &&
+    identity.ownedAthleteVerified === true;
+}
 export function createVdotPresentationBoundary({ authenticate, calculate }) {
   if (typeof authenticate !== 'function' || typeof calculate !== 'function') {
     throw new Error('server_dependencies_required');
@@ -64,8 +72,7 @@ export function createVdotPresentationBoundary({ authenticate, calculate }) {
     // Disabled branch is intentional until separate staging isolation and auth proof.
     try {
       const identity = await authenticate(requestContext);
-      if (!identity || typeof identity.id !== 'string' || !identity.id ||
-          identity.ownedAthleteVerified !== true) {
+      if (!hasVerifiedVdotOwner(identity)) {
         return { status: 401, body: { error: 'unauthorized' } };
       }
       let validated;
