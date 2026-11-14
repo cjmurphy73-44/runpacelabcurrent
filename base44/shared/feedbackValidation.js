@@ -14,14 +14,14 @@ export function validateFeedbackPayload(body) {
   if (body.contact_email != null && body.contact_email !== '') {
     if (typeof body.contact_email !== 'string') return { ok: false, error: 'Invalid email address' };
     contact_email = body.contact_email.trim();
-    if (contact_email.length > MAX_EMAIL || !/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(contact_email)) {
+    if (contact_email.length > MAX_EMAIL || !/^[^\s@]+@[^\s@]+\\.[^\s@]+$/.test(contact_email)) {
       return { ok: false, error: 'Invalid email address' };
     }
   }
   let route;
   if (body.route != null && body.route !== '') {
     if (typeof body.route !== 'string' || body.route.length > MAX_ROUTE ||
-        !/^\\/[a-zA-Z0-9/_-]*$/.test(body.route) || body.route.startsWith('//')) {
+        !/^\/[a-zA-Z0-9/_-]*$/.test(body.route) || body.route.startsWith('//')) {
       return { ok: false, error: 'Invalid route' };
     }
     route = body.route;
