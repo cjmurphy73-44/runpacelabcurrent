@@ -1,21 +1,31 @@
 import { describe, expect, it } from "vitest";
 import { dashboardLoadGate } from "../dashboardLoadGate";
 
-const valid = { date: "2026-11-12", session_trimp: 43, load_source: "stream", stream_verified: true };
-describe("dashboard banner load gate", () => {
-  it("accepts an explicitly verified comparable stream series", () => {
+const valid = { date: "2026-11-12", session_trimp: 43, session_tss: 0, load_source: "stream", load_coverage_pct: 82 };
+describe("dashboard banner persisted load contract", () => {
+  it("accepts backend-integrated TRIMP with default-zero unused TSS", () => {
     expect(dashboardLoadGate([valid, { ...valid, date: "2026-11-13", session_trimp: 30 }])).toEqual({ ready: true, unit: "TRIMP" });
   });
-  it("does not infer verification from source alone", () => {
-    expect(dashboardLoadGate([{ ...valid, stream_verified: undefined }]).ready).toBe(false);
+  it("accepts legacy missing unused TSS but never positive TSS", () => {
+    expect(dashboardLoadGate([{ ...valid, session_tss: undefined }]).ready).toBe(true);
+    expect(dashboardLoadGate([{ ...valid, session_tss: 50 }]).ready).toBe(false);
   });
-  it("rejects summary, missing, mixed and invalid loads", () => {
-    const bad = [
-      [], [{ ...valid, load_source: "summary" }], [{ ...valid, session_tss: 55 }],
-      [{ ...valid, session_trimp: 0 }], [{ ...valid, session_trimp: "43" }],
-      [valid, { ...valid, session_trimp: undefined, session_tss: 40 }],
-      [{ ...valid, date: "not-a-date" }],
-    ];
-    for (const workouts of bad) expect(dashboardLoadGate(workouts).ready).toBe(false);
+  it("rejects summary load, absent coverage, and insufficient coverage", () => {
+    for (const w of [
+      { ...valid, load_source: "summary" },
+      { ...valid, load_coverage_pct: undefined },
+      { ...valid, load_coverage_pct: 29 },
+      { ...valid, load_coverage_pct: 101 },
+    ]) expect(dashboardLoadGate([w]).ready).toBe(false);
+  });
+  it("rejects missing, invalid, zero or mixed units", () => {
+    for (const w of [
+      { ...valid, session_trimp: 0 },
+      { ...valid, session_trimp: Infinity },
+      { ...valid, session_trimp: "43" },
+      { ...valid, session_tss: -1 },
+      { ...valid, date: "invalid" },
+    ]) expect(dashboardLoadGate([w]).ready).toBe(false);
+    expect(dashboardLoadGate([]).ready).toBe(false);
   });
 });
