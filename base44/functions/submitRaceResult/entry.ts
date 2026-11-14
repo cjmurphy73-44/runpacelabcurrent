@@ -2,10 +2,16 @@
 // Duplicate checks are best-effort, NOT atomic across concurrent requests.
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.52';
 import { validateAttestedRaceResult, findDuplicateRaceResult } from '../../shared/raceResultContract.ts';
+import { RACE_RESULT_MUTATIONS_ENABLED } from '../../shared/raceResultCapabilityGate.ts';
 
 export default async function (req: Request): Promise<Response> {
   if (req.method !== 'POST') {
     return Response.json({ error: 'Method not allowed' }, { status: 405 });
+  }
+  // Do not execute even an authenticated write while platform uniqueness,
+  // owner stamping and atomic correction semantics remain unverified.
+  if (!RACE_RESULT_MUTATIONS_ENABLED) {
+    return Response.json({ error: 'Race-result saving is temporarily unavailable pending safety verification' }, { status: 503 });
   }
   try {
     const base44 = createClientFromRequest(req);
