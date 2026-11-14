@@ -8,8 +8,7 @@ export function inspectPerformanceHistory(rows) {
   const seen = new Set();
   let previous = '';
   for (const row of rows) {
-    if (!row || typeof row.date !== 'string' || !datePattern.test(row.date) ||
-        new Date(row.date + 'T00:00:00Z').toISOString?.() === undefined) {
+    if (!row || typeof row.date !== 'string' || !datePattern.test(row.date)) {
       return { ok: false, reason: 'Training-load history has an invalid date.' };
     }
     const date = new Date(row.date + 'T00:00:00Z');
