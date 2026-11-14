@@ -85,7 +85,8 @@ export function resolveSessionLoad({
   sex?: string;
 }) {
   // Do not silently manufacture resting HR or accept impossible HR ranges.
-  // Invalid calibration means unavailable load, not a physiological zero.
+  // The legacy entity requires a numeric field. Zero with load_source='none'
+  // is a storage sentinel for unavailable load, NOT evidence of zero exertion.
   const rest = restHr;
   const max = maxHr;
   const duration = durationSeconds;
@@ -93,7 +94,7 @@ export function resolveSessionLoad({
       typeof duration !== 'number' || !Number.isFinite(rest) ||
       !Number.isFinite(max) || !Number.isFinite(duration) ||
       rest <= 0 || max <= rest || duration <= 0) {
-    return { session_trimp: null, load_source: 'none' as const, load_coverage_pct: 0 };
+    return { session_trimp: 0, load_source: 'none' as const, load_coverage_pct: 0 };
   }
 
   if (Array.isArray(stream) && stream.length >= 2 && isUsableTelemetry(stream, duration)) {
@@ -109,11 +110,11 @@ export function resolveSessionLoad({
   }
 
   if (typeof avgHr !== 'number' || !Number.isFinite(avgHr) || avgHr < rest || avgHr > max) {
-    return { session_trimp: null, load_source: 'none' as const, load_coverage_pct: 0 };
+    return { session_trimp: 0, load_source: 'none' as const, load_coverage_pct: 0 };
   }
   const estimate = calcTrimp(duration / 60, avgHr, rest, max, sex);
   if (Number.isFinite(estimate) && estimate > 0) {
     return { session_trimp: estimate, load_source: 'summary' as const, load_coverage_pct: 0 };
   }
-  return { session_trimp: null, load_source: 'none' as const, load_coverage_pct: 0 };
+  return { session_trimp: 0, load_source: 'none' as const, load_coverage_pct: 0 };
 }
