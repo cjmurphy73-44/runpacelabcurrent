@@ -58,9 +58,54 @@ function getAppParamValue(name, { defaultValue = null, removeFromUrl = false, pe
 // ("Invalid id value -> Object not found"). This id is fixed for this app.
 const PUBLISHED_APP_ID = "6a504ebe6a5a6d1be058226c";
 
+// Opt-in preview guard: never infer staging from a hostname or a default app ID.
+// The build must explicitly opt in and provide its expected separate Base44 ID.
+export function resolvePreviewIdentity({ required = false, expectedAppId, configuredAppId, urlAppId, storedAppId, publishedAppId = PUBLISHED_APP_ID } = {}) {
+  if (!required) return { enforced: false };
+  const valid = (value) => typeof value === "string" && /^[a-f0-9]{24}$/i.test(value);
+  if (!valid(expectedAppId) || expectedAppId.toLowerCase() === publishedAppId.toLowerCase()) {
+    throw new Error("Preview identity blocked: distinct expected staging app ID required");
+  }
+  if (!valid(configuredAppId) || configuredAppId.toLowerCase() !== expectedAppId.toLowerCase()) {
+    throw new Error("Preview identity blocked: build app ID differs from staging");
+  }
+  if (urlAppId && urlAppId.toLowerCase() !== expectedAppId.toLowerCase()) {
+    throw new Error("Preview identity blocked: URL app ID differs from staging");
+  }
+  // A stale production localStorage value must never override a preview build.
+  return { enforced: true, appId: expectedAppId };
+}
+
 export function getAppParams() {
   const windowObj = typeof window !== 'undefined' ? window : {};
   const envAppId = typeof import.meta !== 'undefined' ? (import.meta.env?.VITE_APP_ID || PUBLISHED_APP_ID) : PUBLISHED_APP_ID;
+
+  const previewRequired = import.meta.env?.VITE_STAGING_PREVIEW_REQUIRED === "true";
+  const previewUrlId = windowObj?.location ? new URLSearchParams(windowObj.location.search).get("app_id") : null;
+  const previewStoredId = (() => {
+    try { return windowObj?.localStorage?.getItem("app_id") || null; } catch { return null; }
+  })();
+  const preview = resolvePreviewIdentity({
+    required: previewRequired,
+    expectedAppId: import.meta.env?.VITE_STAGING_APP_ID,
+    configuredAppId: import.meta.env?.VITE_APP_ID,
+    urlAppId: previewUrlId,
+    storedAppId: previewStoredId,
+  });
+  if (preview.enforced) {
+    const base = import.meta.env?.VITE_APP_BASE_URL;
+    if (!base || !/^https:\/\/[^/?#@]+(?:\/)?$/.test(base)) {
+      throw new Error("Preview identity blocked: explicit HTTPS staging base URL required");
+    }
+    // No fallback to a published app or localStorage. URL mismatches fail before SDK initialization.
+    return {
+      appId: preview.appId,
+      token: getAppParamValue("access_token", { removeFromUrl: true }),
+      fromUrl: getAppParamValue("from_url", { defaultValue: windowObj.location?.href || '/' }),
+      functionsVersion: getAppParamValue("functions_version", { defaultValue: "" }),
+      appBaseUrl: base,
+    };
+  }
 
   // Resolve app_id with stale-storage guard: the URL value (present on normal
   // page loads) is authoritative; if absent (post-OAuth redirect), fall back to
