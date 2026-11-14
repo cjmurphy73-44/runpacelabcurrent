@@ -81,3 +81,9 @@ This file is the **single execution queue**, not a claim that beta readiness is 
 - Disabled the existing two-write client confirmation path until an atomic server-side operation is verified. This is an intentional temporary functionality gate; the UI must explain that linking is unavailable rather than claim a successful completion.
 - Corrected adaptive replan toast logic to require explicit backend `success: true` before claiming confirmation. Exceptions now report unverified failure, not a background success.
 - Coordinate with draft PR #126, which provides read-only preflight only. Neither PR establishes a transactional link. Before release, implement a verified conditional/transactional server commit and test concurrent confirmation, retries, partial writes, and RLS ownership.
+
+### 2026-11-14 integrated release candidate (draft PR #132)
+
+- Consolidates #123 read-only and fail-closed reconciliation, #126 scoped backend preflight, and #127 deterministic match candidate generation into one reviewable branch. GitHub compare showed nine changed files, branch ahead 13 commits and behind zero at inspection.
+- Test files authored but no executed CI results; no Base44 Builder sync or Vercel release verified. Do not merge #127 alone against the old auto-link-on-load hook. PR #132 is the preferred integrated review candidate.
+- Matching suggestions and preflight remain read-only. Manual workout link is intentionally unavailable pending verified atomic/idempotent server commit. Validate UX messaging and all test/build gates before production release.
