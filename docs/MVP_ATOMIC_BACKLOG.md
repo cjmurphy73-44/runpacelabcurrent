@@ -69,3 +69,9 @@ This file is the **single execution queue**, not a claim that beta readiness is 
 - **GitHub PR / merged SHA:** …
 - **Base44 deployment SHA / checkpoint / timestamp:** `NOT PUBLISHED` unless verified.
 - **Staging/live evidence and open blockers:** …
+
+## 2026-11-14 UX core athlete calendar reliability (PR #121)
+
+- Functional audit of `TrainingCalendar`: unhandled session fetch failures, false `Rest day` copy for an unscheduled date, first-session-only presentation on multi-workout days, unhandled microadjustment failures and coach hold allowing an adjustment request.
+- Changes: explicit retryable calendar load errors; `No session scheduled` label; multi-session count disclosure; coach-hold guard; microadjustment failure status; pure day grouping helper and four synthetic tests. Draft PR #121; no production deploy.
+- Next: render all sessions per date as individually actionable workouts, reconcile planned/completed session matching, verify microadjustment backend success contract, and run browser acceptance on mobile. Tests authored but not executed.
