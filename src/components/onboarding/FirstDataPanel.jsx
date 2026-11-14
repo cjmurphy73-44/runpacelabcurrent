@@ -94,7 +94,7 @@ export default function FirstDataPanel({ athlete, onAddManual, onRefresh }) {
               </span>
             </div>
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-              <Metric icon={Gauge} label="VDOT" value={athlete?.vdot_estimate ? Number(athlete.vdot_estimate).toFixed(1) : null} />
+              <Metric icon={Gauge} label="VDOT" value={Number.isFinite(athlete?.vdot_estimate) && athlete.vdot_estimate > 0 ? athlete.vdot_estimate.toFixed(1) : null} />
               <Metric icon={Activity} label="Threshold pace" value={formatPace(athlete?.functional_threshold_pace_ms)} />
               <Metric icon={HeartPulse} label="Max HR" value={athlete?.max_heart_rate ? `${athlete.max_heart_rate} bpm` : null} />
               <Metric icon={HeartPulse} label="Resting HR" value={athlete?.resting_hr ? `${athlete.resting_hr} bpm` : null} />
