@@ -72,6 +72,13 @@ describe("billing portal popup boundary", () => {
     expect(f.openTab).not.toHaveBeenCalled();
     expect(f.notify).toHaveBeenCalled();
   });
+  it("never navigates a top-level page to an invalid portal destination", async () => {
+    const f = fixture({ framed: false, response: { data: { url: "https://billing.stripe.com.evil.test/p/session/x" } } });
+    expect(await launchBillingPortal(f)).toBe(false);
+    expect(f.openTab).not.toHaveBeenCalled();
+    expect(f.navigate).not.toHaveBeenCalled();
+    expect(f.notify).toHaveBeenCalled();
+  });
   it("navigates the current window when unframed", async () => {
     const f = fixture({ framed: false });
     expect(await launchBillingPortal(f)).toBe(true);
