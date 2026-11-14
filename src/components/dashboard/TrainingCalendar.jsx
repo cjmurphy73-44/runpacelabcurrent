@@ -11,8 +11,6 @@ import { useSubscription } from "@/hooks/useSubscription";
 import FeatureGate from "@/components/billing/FeatureGate";
 import { sessionsOnDay } from "@/lib/calendarDaySessions";
 
-const ZONE_TRIMP_FACTOR = { Z1: 0.5, Z2: 0.7, Z3: 0.9, Z4: 1.1, Z5: 1.3 };
-
 export default function TrainingCalendar({ athleteId, currentTsb }) {
   const [sessions, setSessions] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -79,36 +77,36 @@ export default function TrainingCalendar({ athleteId, currentTsb }) {
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           {days.map((day) => {
             const daySessions = sessionsOnDay(sessions, day);
-            const session = daySessions[0];
-            const factor = session ? (ZONE_TRIMP_FACTOR[session.prescribed_intensity_zone] || 0.8) : 0;
-            const estTrimp = session ? Math.round((session.prescribed_duration_minutes || 0) * factor) : 0;
             return (
               <Card key={day}>
                 <CardHeader className="pb-2">
                   <CardTitle className="text-sm">{moment(day).format("ddd, MMM D")}</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  {session ? (
-                    <div className={injury.level === "hold" && session.sport?.toLowerCase().startsWith("run") ? "space-y-1 text-sm opacity-70" : "space-y-1 text-sm"}>
-                      <p className="font-medium capitalize flex items-center gap-1">
-                        {session.sport}
-                        {injury.level === "hold" && session.sport?.toLowerCase().startsWith("run") && (
-                          <span className="text-[10px] uppercase bg-danger/10 text-danger rounded px-1 py-0.5 leading-none">Coach hold</span>
-                        )}
-                      </p>
-                      {injury.level === "hold" && session.sport?.toLowerCase().startsWith("run") && (
-                        <p className="text-xs text-danger font-medium">→ Swap to rest / recovery</p>
-                      )}
-                      <p className="text-muted-foreground">{session.prescribed_duration_minutes} min · {session.prescribed_intensity_zone || "-"}</p>
-                      <p className="text-muted-foreground">Target TRIMP ~{estTrimp}</p>
-                      {session.rationale_text && <p className="text-xs text-muted-foreground">{session.rationale_text}</p>}
-                      <p className="text-xs uppercase tracking-wide text-muted-foreground">{session.status || "Scheduled"}</p>
-                      {daySessions.length > 1 && <p className="text-xs font-medium">{daySessions.length - 1} additional scheduled session(s) today. Open your training plan to review all sessions.</p>}
-                      <FeatureGate feature="structured_export" plan={plan} compact>
-                        <Button size="sm" variant="outline" onClick={() => downloadWorkoutFile(session)} className="gap-1.5 mt-2 w-full">
-                          <Download className="w-3.5 h-3.5" /> Export Workout
-                        </Button>
-                      </FeatureGate>
+                  {daySessions.length ? (
+                    <div className="space-y-4">
+                      {daySessions.map((session, index) => {
+                        const runningHold = injury.level === "hold" && session.sport?.toLowerCase().startsWith("run");
+                        return (
+                          <div key={session.id || `${day}-${index}`} className={`space-y-2 text-sm ${index ? "border-t border-border pt-3" : ""}`}>
+                            <p className="font-medium capitalize flex items-center gap-1 flex-wrap">
+                              {session.sport || "Workout"}
+                              {runningHold && <span className="text-[10px] uppercase bg-danger/10 text-danger rounded px-1 py-0.5 leading-none">Coach hold</span>}
+                            </p>
+                            {runningHold && <p className="text-xs text-danger font-medium">Running paused. Review a safe alternative with your coach.</p>}
+                            <p className="text-muted-foreground">{session.prescribed_duration_minutes ?? "Duration not set"} min · {session.prescribed_intensity_zone || "Intensity not set"}</p>
+                            {session.rationale_text && <p className="text-xs text-muted-foreground">{session.rationale_text}</p>}
+                            <p className="text-xs uppercase tracking-wide text-muted-foreground">{session.status || "Scheduled"}</p>
+                            {!runningHold && (
+                              <FeatureGate feature="structured_export" plan={plan} compact>
+                                <Button size="sm" variant="outline" onClick={() => downloadWorkoutFile(session)} className="gap-1.5 w-full">
+                                  <Download className="w-3.5 h-3.5" /> Export Workout
+                                </Button>
+                              </FeatureGate>
+                            )}
+                          </div>
+                        );
+                      })}
                     </div>
                   ) : (
                     <p className="text-sm text-muted-foreground">No session scheduled</p>
