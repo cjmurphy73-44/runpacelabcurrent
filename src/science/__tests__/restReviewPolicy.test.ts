@@ -37,6 +37,8 @@ describe('Science 1.8: authenticated rest review policy boundary', () => {
   it('keeps ownership checks and hides backend diagnostic exceptions', () => {
     const source = readFileSync('base44/functions/reviewRestDays/entry.ts', 'utf8');
     expect(source.indexOf('assertOwnsAthlete(')).toBeLessThan(source.indexOf('classifyRestReviewRequest('));
+    expect(source).toContain('base44.auth.me().catch(() => null)');
+    expect(source).toContain("{ error: 'Unauthorized' }, { status: 401 }");
     expect(source).toContain("code: 'INCOMPLETE_HISTORY_READ'");
     expect(source).not.toContain('detail: error');
     expect(source).not.toMatch(/DailyMetrics\.(?:create|update|bulkUpdate)\s*\(/);
