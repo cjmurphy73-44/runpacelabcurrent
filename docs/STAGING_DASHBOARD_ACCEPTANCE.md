@@ -51,3 +51,11 @@ PR #149 at `e38b5e95e9bcdccaba69721f9d1aa7dd10682f1d` passed CI #651. GitHub's V
 ## Preview acceptance verification checkpoint
 
 At `df18225c71c9061454a251606c2872c380daf516`, CI #652 passed. A read-only Vercel listing found a READY deployment at `f0905fdd9f3304c2cf86301b8456574a0445a602` from this PR branch, **not** the tested head; it is therefore rejected for acceptance. No exact-head deployment was found in the latest 50 deployment records, and GitHub Vercel status continues to report build-rate-limit. The provenance validator now requires matching full SHA, branch and GitHub repository identity. Preview-only environment variable scopes still need independent verification; the existence of a separate Base44 staging app is not sufficient. No authenticated staging QA was performed.
+
+## CI #656 and Vercel environment scope evidence
+
+CI #656 failed because `scripts/verify-preview-provenance.mjs` contained literal escaped newline characters; commit `a1b7b4100e1fd8d136539678623fc1abcc6e1892` repairs this parser error. CI at that commit must be checked separately.
+
+Read-only Vercel project environment metadata, with `decrypt=false`, returned exactly two **general Preview** variables: `VITE_APP_ID` and `VITE_APP_BASE_URL`. Filtering for `codex/rel-staging-identity-gate-20261114` returned **zero branch-specific variables**. Required `VITE_STAGING_PREVIEW_REQUIRED`, `VITE_STAGING_APP_ID`, `PRODUCTION_BASE44_APP_ID` and `VITE_PRODUCTION_BASE44_BASE_URL` were absent from the returned metadata. No values were requested or disclosed. Do not assume the two general Preview variables point to staging; no effective build-time staging identity has been verified. A new PR #149 preview should intentionally fail its build gate until scoped configuration is completed.
+
+The confirmed Base44 staging app ID is `6aefe9d09e2788fc8591c758`; published production app ID is `6a504ebe6a5a6d1be058226c`. Configure **branch-specific Preview** variables only after confirming the staging backend HTTPS origin and deployment ownership. Do not overwrite general Preview or Production variables. Rebuild after configuration changes; old deployments retain prior environment values. Do not run synthetic connectivity or authenticated dashboard acceptance until exact-SHA READY preview and effective staging backend identity are verified.
