@@ -88,6 +88,12 @@ describe('COROS read-after-write reconciliation', () => {
     expect(truncated).toMatchObject({ retrySafe: false, missing: [], reason: 'read_after_write_unverified' });
   });
 
+  it('blocks reconciliation when persisted rows duplicate a provider activity ID', async () => {
+    const input = rows(2);
+    const result = await reconcileCorosWrites(input, async () => ({ complete: true, rows: [input[0], { ...input[0] }] }));
+    expect(result).toMatchObject({ retrySafe: false, reason: 'duplicate_persisted_activity_identity', missing: [], verified: [] });
+  });
+
   it('refuses ambiguous provider IDs rather than risking duplicates', async () => {
     const input = rows(2);
     const duplicate = [{ ...input[0] }, { ...input[0] }];
