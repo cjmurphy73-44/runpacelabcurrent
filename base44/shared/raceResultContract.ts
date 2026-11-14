@@ -1,5 +1,5 @@
-import { calculateVDOT } from './vdot.ts';
-import { validVdotInputs } from './vdotEvidence.ts';
+import { calculateVDOT } from './vdot';
+import { validVdotInputs } from './vdotEvidence';
 
 // Athlete-supplied performances are useful estimates, not independently verified results.
 export function validateAttestedRaceResult(input, now = Date.now()) {

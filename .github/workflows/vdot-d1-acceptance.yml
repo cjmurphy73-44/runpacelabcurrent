@@ -33,3 +33,5 @@ jobs:
         run: npx vitest run src/science/__tests__/raceWorkerAuth.test.ts src/science/__tests__/raceNonceStore.test.ts src/science/__tests__/raceCorrectionReplay.test.ts src/science/__tests__/racePersistencePort.test.ts
       - name: Typecheck
         run: npm run typecheck
+      - name: Frontend science IP import review gate
+        run: node scripts/check-client-science-imports.mjs
