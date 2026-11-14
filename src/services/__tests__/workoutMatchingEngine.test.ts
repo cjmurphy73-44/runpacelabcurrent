@@ -7,7 +7,8 @@ describe('read-only planned/actual candidate matching', () => {
   it('returns an exact-duration review suggestion', () => {
     expect(workoutMatchingEngine.matchAll([actual], [planned])).toEqual([
       { sessionId: 'w1', scheduledWorkoutId: 'p1', matchStatus: 'EXACT',
-        confidenceScore: 1, varianceDetails: { completionRatio: 1 } },
+        confidenceScore: 1, scheduled: { sport: 'running', date: '2026-11-14', targetDurationMinutes: 60 },
+        varianceDetails: { completionRatio: 1, durationVariancePercent: 0, dayOffset: 0 } },
     ]);
   });
   it('classifies shorter and longer workouts without changing any records', () => {
