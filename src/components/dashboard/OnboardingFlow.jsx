@@ -11,7 +11,7 @@ import OnboardingProgress from "@/components/onboarding/OnboardingProgress";
 import StepIdentity from "@/components/onboarding/StepIdentity";
 import StepBaseline from "@/components/onboarding/StepBaseline";
 import StepHardware from "@/components/onboarding/StepHardware";
-import { findOwnedOnboardingProfile } from "@/lib/ownedOnboardingProfile";
+import { completeOwnedOnboarding } from "@/lib/completeOwnedOnboarding";
 
 function ageFromDob(dob) {
   if (!dob) return null;
@@ -101,21 +101,9 @@ export default function OnboardingFlow({ onCreated }) {
     if (!user?.id) { setError("Sign in again before creating your profile."); return; }
     setSaving(true); setError("");
     try {
-      // Duplicate guard: if a profile already exists for this user (e.g. a prior onboarding
-      // succeeded but the dashboard errored and re-showed this form), re-link to it instead
-      // of creating a second profile. This is the exact path that previously produced
-      // half a dozen duplicate stubs for one athlete.
-      const existing = user?.id ? await base44.entities.AthleteProfile.filter({ created_by_id: user.id }, "-updated_date", 50) : [];
-      const owned = findOwnedOnboardingProfile(existing, user?.id);
-      if (owned) {
-        await base44.auth.updateMe({ athlete_profile_id: owned.id });
-        try { base44.analytics.track({ eventName: "onboarding_complete", properties: { mode: "relink" } }); } catch {}
-        onCreated(owned);
-        return;
-      }
       const consts = TIER_CONSTS[form.tier];
       const age = form.age ? Number(form.age) : ageFromDob(form.dob);
-      const profile = await base44.entities.AthleteProfile.create({
+      const payload = {
         first_name: form.first_name, last_name: form.last_name,
         sex: form.sex || undefined, age: age || undefined,
         training_tier_preference: form.tier,
@@ -126,13 +114,17 @@ export default function OnboardingFlow({ onCreated }) {
         current_ctl: Number(eff("seedCtl")) || 0, current_atl: Number(eff("seedAtl")) || 0, current_tsb: Number(eff("seedTsb")) || 0,
         ctl_time_constant_days: consts.ctl, atl_time_constant_days: consts.atl,
         primary_wearables: form.wearables.length ? form.wearables : undefined,
+      };
+      const result = await completeOwnedOnboarding({
+        userId: user.id,
+        listProfiles: (id) => base44.entities.AthleteProfile.filter({ created_by_id: id }, "-updated_date", 50),
+        createProfile: (data) => base44.entities.AthleteProfile.create(data),
+        linkProfile: (id) => base44.auth.updateMe({ athlete_profile_id: id }),
+        payload,
       });
-      // S5: stamp this profile's id onto the owning user so health-data RLS can scope reads.
-      // Must happen immediately after profile creation so the dashboard never renders blank.
-      await base44.auth.updateMe({ athlete_profile_id: profile.id });
-      try { base44.analytics.track({ eventName: "onboarding_complete", properties: { mode: "new", tier: form.tier } }); } catch {}
-      onCreated(profile);
-    } catch (e) { setError(e?.response?.data?.error || "Could not create profile."); }
+      try { base44.analytics.track({ eventName: "onboarding_complete", properties: { mode: result.mode, tier: form.tier } }); } catch {}
+      onCreated(result.profile);
+    } catch (e) { setError(e?.response?.data?.error || e?.message || "Could not complete onboarding. Please retry."); }
     finally { setSaving(false); }
   };
 
