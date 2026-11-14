@@ -85,3 +85,10 @@ CREATE TABLE IF NOT EXISTS race_auth_nonces (
   expires_at INTEGER NOT NULL,
   PRIMARY KEY(issuer, environment, nonce)
 );
+
+-- Atomic assertion: batch must roll back if a conditional correction updated zero rows.
+-- changes() counts the immediately preceding UPDATE (excluding trigger side effects).
+CREATE TABLE IF NOT EXISTS race_correction_assertions (
+  assertion_id TEXT PRIMARY KEY,
+  affected INTEGER NOT NULL CHECK(affected=1)
+);
