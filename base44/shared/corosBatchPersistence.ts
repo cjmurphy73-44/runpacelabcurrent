@@ -103,7 +103,13 @@ export async function reconcileCorosWrites<T extends {
   // The callback must return the full, non-truncated read result as an array.
   if (!response || typeof response !== 'object' || (response as any).complete !== true ||
       !Array.isArray((response as any).rows)) return blocked('read_after_write_unverified');
-  const savedKeys = new Set((response as any).rows.map((row: T) => identity(row)).filter(Boolean));
+  const savedIdentities = (response as any).rows.map((row: T) => identity(row)).filter(Boolean) as string[];
+  const counts = new Map<string, number>();
+  for (const key of savedIdentities) counts.set(key, (counts.get(key) ?? 0) + 1);
+  // Duplicate persisted identities mean the database is already inconsistent.
+  // Never mark a subsequent retry safe in that state.
+  if (keys.some((key) => (counts.get(key!) ?? 0) > 1)) return blocked('duplicate_persisted_activity_identity');
+  const savedKeys = new Set(savedIdentities);
   const verified = attempted.filter((row) => savedKeys.has(identity(row)));
   const missing = attempted.filter((row) => !savedKeys.has(identity(row)));
   return {
