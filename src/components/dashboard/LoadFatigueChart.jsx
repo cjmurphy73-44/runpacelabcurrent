@@ -24,12 +24,12 @@ const POLAR = {
 
 function MetricCard({ icon: Icon, label, value, suffix, badge }) {
   return (
-    <div className="rounded-md border border-border bg-card p-4 shadow-sm">
+    <div className="min-w-0 rounded-xl border border-border/70 bg-card p-4 shadow-sm">
       <div className="flex items-center gap-2 text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
         <Icon className="w-3.5 h-3.5 text-primary" /> {label}
       </div>
-      <div className="mt-2 flex items-baseline gap-2">
-        <span className="text-2xl font-mono font-semibold tabular-nums text-foreground">{value}</span>
+      <div className="mt-2 flex flex-wrap items-baseline gap-2">
+        <span className="text-2xl font-mono font-semibold tabular-nums tracking-tight text-foreground">{value}</span>
         {suffix && <span className="text-xs text-muted-foreground">{suffix}</span>}
       </div>
       {badge && (
@@ -92,9 +92,9 @@ export default function LoadFatigueChart({ completedSessions = [], plannedWorkou
   const overtrainingRisk = worstPoint && worstPoint.tsb < -25;
 
   return (
-    <Card>
-      <CardHeader><CardTitle className="text-sm font-heading">Load & Fatigue Forecast</CardTitle></CardHeader>
-      <CardContent className="space-y-4">
+    <Card className="min-w-0 overflow-hidden rounded-2xl border-border/70 shadow-sm">
+      <CardHeader className="pb-3"><CardTitle className="text-sm font-heading font-semibold tracking-tight">Load & Fatigue Forecast</CardTitle></CardHeader>
+      <CardContent className="min-w-0 space-y-4">
         <div className="flex flex-wrap items-center gap-x-5 gap-y-2 text-xs text-muted-foreground" aria-label="Chart legend">
           <span className="flex items-center gap-1.5"><span className="w-3 h-0.5 bg-chart-1" /> CTL (Fitness)</span>
           <span className="flex items-center gap-1.5"><span className="w-3 h-0.5 bg-chart-2" /> ATL (Fatigue)</span>
@@ -111,7 +111,7 @@ export default function LoadFatigueChart({ completedSessions = [], plannedWorkou
           />
         </div>
 
-        <div className="h-72 w-full">
+        <div role="img" aria-label="Historical and projected training load: solid lines show recorded CTL and ATL estimates, dashed lines show projections. Form is shaded above and below zero." className="h-56 w-full min-w-0 sm:h-72">
           <ResponsiveContainer width="100%" height="100%">
             <ComposedChart data={chartData} syncId="polar-pmc" margin={{ top: 10, right: 10, left: -10, bottom: 0 }}>
               <defs>
@@ -132,12 +132,12 @@ export default function LoadFatigueChart({ completedSessions = [], plannedWorkou
                   <stop offset="95%" stopColor={POLAR.atl} stopOpacity={0} />
                 </linearGradient>
               </defs>
-              <CartesianGrid stroke={POLAR.grid} strokeDasharray="3 3" opacity={0.8} />
+              <CartesianGrid stroke={POLAR.grid} strokeDasharray="3 3" opacity={0.35} vertical={false} />
               <XAxis dataKey="date" tick={{ fontSize: 11, fill: POLAR.axis }} stroke={POLAR.grid} />
               <YAxis tick={{ fontSize: 11, fill: POLAR.axis }} stroke={POLAR.grid} />
               <Tooltip
                 cursor={{ stroke: POLAR.axis, strokeDasharray: "3 3" }}
-                contentStyle={{ background: POLAR.card, border: `1px solid ${POLAR.border}`, borderRadius: 8, color: POLAR.text, fontSize: 12 }}
+                contentStyle={{ background: POLAR.card, border: `1px solid ${POLAR.border}`, borderRadius: 12, color: POLAR.text, fontSize: 12 }}
                 labelStyle={{ color: POLAR.muted }}
                 itemStyle={{ color: POLAR.text }}
               />
@@ -150,8 +150,8 @@ export default function LoadFatigueChart({ completedSessions = [], plannedWorkou
               <Area type="monotone" dataKey="ctlHistorical" stroke="none" fill="url(#ctlAreaGradient)" isAnimationActive={false} connectNulls={false} />
               <Area type="monotone" dataKey="atlHistorical" stroke="none" fill="url(#atlAreaGradient)" isAnimationActive={false} connectNulls={false} />
 
-              <Line type="monotone" dataKey="ctlHistorical" stroke={POLAR.ctl} strokeWidth={2} dot={false} name="CTL" connectNulls={false} />
-              <Line type="monotone" dataKey="ctlProjected" stroke={POLAR.ctl} strokeWidth={2} strokeDasharray="5 5" dot={false} name="CTL (projected)" connectNulls={false} />
+              <Line type="monotone" dataKey="ctlHistorical" stroke={POLAR.ctl} strokeWidth={2.25} dot={false} isAnimationActive={false} name="CTL" connectNulls={false} />
+              <Line type="monotone" dataKey="ctlProjected" stroke={POLAR.ctl} strokeWidth={2} strokeDasharray="5 5" dot={false} isAnimationActive={false} name="CTL (projected)" connectNulls={false} />
               <Line type="monotone" dataKey="atlHistorical" stroke={POLAR.atl} strokeWidth={2} dot={false} name="ATL" connectNulls={false} />
               <Line type="monotone" dataKey="atlProjected" stroke={POLAR.atl} strokeWidth={2} strokeDasharray="5 5" dot={false} name="ATL (projected)" connectNulls={false} />
             </ComposedChart>
