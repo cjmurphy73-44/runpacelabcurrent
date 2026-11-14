@@ -108,7 +108,7 @@ export default function OnboardingFlow({ onCreated, analyticsConsent = false }) 
       const owned = existing.find((p) => p.created_by_id === user?.id) || existing[0];
       if (owned) {
         try { await base44.auth.updateMe({ athlete_profile_id: owned.id }); } catch (e) { console.warn("updateMe athlete_profile_id failed:", e); }
-        trackConsentedFunnelEvent({ consent: analyticsConsent, analytics: base44.analytics, name: "signup_completed", properties: { method: "unknown" } });
+        trackConsentedFunnelEvent({ consent: analyticsConsent, analytics: base44.analytics, name: "onboarding_completed", properties: { outcome: "relinked" } });
         onCreated(owned);
         return;
       }
@@ -129,7 +129,7 @@ export default function OnboardingFlow({ onCreated, analyticsConsent = false }) 
       // S5: stamp this profile's id onto the owning user so health-data RLS can scope reads.
       // Must happen immediately after profile creation so the dashboard never renders blank.
       try { await base44.auth.updateMe({ athlete_profile_id: profile.id }); } catch (e) { console.warn("updateMe athlete_profile_id failed:", e); }
-      trackConsentedFunnelEvent({ consent: analyticsConsent, analytics: base44.analytics, name: "signup_completed", properties: { method: "unknown" } });
+      trackConsentedFunnelEvent({ consent: analyticsConsent, analytics: base44.analytics, name: "onboarding_completed", properties: { outcome: "created" } });
       onCreated(profile);
     } catch (e) { setError(e?.response?.data?.error || "Could not create profile."); }
     finally { setSaving(false); }
