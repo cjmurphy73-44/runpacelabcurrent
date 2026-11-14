@@ -7,6 +7,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Loader2, Plus, ArrowRight, Watch, Upload, FlaskConical, Webhook, Settings, HeartPulse } from "lucide-react";
 import HelpLink from "@/components/guide/HelpLink";
 import BulkWorkoutImport from "@/components/dashboard/BulkWorkoutImport";
+import TcxWorkoutImport from "@/components/imports/TcxWorkoutImport";
 import RecoveryImportSection from "@/components/imports/RecoveryImportSection";
 import WebhookSyncPanel from "@/components/imports/WebhookSyncPanel";
 import LabResultsImport from "@/components/imports/LabResultsImport";
@@ -80,7 +81,7 @@ export default function Imports() {
           <div>
             <p className="font-heading font-semibold">No device handy? Log one manually.</p>
             <p className="text-sm text-muted-foreground">
-              Add a quick session and your CTL / ATL / TSB refresh instantly, no file needed.
+              Add a quick session without a device. Fitness and fatigue metrics require verified, complete training-load history.
             </p>
           </div>
           <Button onClick={() => setManualOpen(true)}>
@@ -112,8 +113,9 @@ export default function Imports() {
 
       {/* 2, Import workout files */}
       <section className="space-y-3">
-        <SectionHeading index="02" title="Import workout files" description="Bulk-upload .fit or .csv exports from your watch or training platform." icon={Upload} />
+        <SectionHeading index="02" title="Import workout files" description="Bulk-upload FIT or CSV exports, or import a single TCX recording." icon={Upload} />
         <BulkWorkoutImport athleteId={athlete.id} onUploaded={() => {}} />
+        <TcxWorkoutImport athleteId={athlete.id} />
         <p className="text-xs text-muted-foreground">
           Supports <span className="font-medium">.fit</span> and <span className="font-medium">.csv</span> from Strava, COROS, Garmin and others.
           {" "}<span className="font-medium">.gpx</span> isn't supported yet, convert it to FIT/CSV or use a device connection above.
