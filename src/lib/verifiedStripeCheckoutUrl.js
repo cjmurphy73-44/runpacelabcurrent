@@ -4,6 +4,9 @@
  */
 export function verifiedStripeCheckoutUrl(value) {
   if (typeof value !== "string") return null;
+  // URL() silently trims whitespace and strips ASCII tabs/newlines. Reject those
+  // non-canonical inputs rather than accepting a destination the server did not send verbatim.
+  if (value.trim() !== value || /[\u0000-\u001f\u007f]/.test(value)) return null;
   try {
     const url = new URL(value);
     if (url.protocol !== "https:" || url.hostname !== "checkout.stripe.com") return null;
