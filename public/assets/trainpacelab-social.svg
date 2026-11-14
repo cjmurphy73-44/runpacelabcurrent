@@ -6,8 +6,11 @@
 <path d="M710 85h250c145 0 210 90 210 230s-65 230-210 230H710c-145 0-210-90-210-230S565 85 710 85Z" fill="none" stroke="#2B383B" stroke-width="3"/>
 <path d="M710 137h250c108 0 158 65 158 178s-50 178-158 178H710c-108 0-158-65-158-178s50-178 158-178Z" fill="none" stroke="#273437" stroke-width="3"/>
 <path d="M560 370l78-26 52 20 63-96 55 52 60-90 58 36 72-110 77 38" fill="none" stroke="url(#line)" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/>
-<rect x="64" y="68" width="52" height="52" rx="12" fill="#D4F36B"/>
-<path d="M76 94h9l7-12 8 23 7-11h5" fill="none" stroke="#101516" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+<g transform="translate(64 68) scale(.1015625)">
+<rect width="512" height="512" rx="112" fill="#0B0D0E"/>
+<path d="M150 112h212c72 0 112 46 112 113v62c0 69-44 113-112 113H150C82 400 38 354 38 287v-62c0-67 44-113 112-113Z" fill="none" stroke="#53646B" stroke-width="24"/>
+<path d="M145 256h74l31-61 47 123 35-62h47" fill="none" stroke="#D4F36B" stroke-width="30" stroke-linecap="round" stroke-linejoin="round"/>
+</g>
 <text x="133" y="103" fill="#F3F6F3" font-size="30" font-family="Arial,Helvetica,sans-serif" font-weight="700">TrainPaceLab</text>
 <text x="64" y="257" fill="#F3F6F3" font-size="56" font-family="Arial,Helvetica,sans-serif" font-weight="700">Train with context.</text>
 <text x="64" y="324" fill="#F3F6F3" font-size="56" font-family="Arial,Helvetica,sans-serif" font-weight="700">Not guesswork.</text>
