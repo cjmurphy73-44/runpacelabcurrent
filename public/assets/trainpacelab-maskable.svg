@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-labelledby="title desc">
+<title id="title">TrainPaceLab maskable app icon</title>
+<desc id="desc">Track loop and training signal, inset within a safe area for adaptive app icons</desc>
+<rect width="512" height="512" fill="#0B0D0E"/>
+<g transform="translate(86 86) scale(.6640625)">
+<path d="M150 112h212c72 0 112 46 112 113v62c0 69-44 113-112 113H150C82 400 38 354 38 287v-62c0-67 44-113 112-113Z" fill="none" stroke="#53646B" stroke-width="24"/>
+<path d="M145 256h74l31-61 47 123 35-62h47" fill="none" stroke="#D4F36B" stroke-width="30" stroke-linecap="round" stroke-linejoin="round"/>
+</g>
+</svg>
