@@ -69,3 +69,10 @@ This file is the **single execution queue**, not a claim that beta readiness is 
 - **GitHub PR / merged SHA:** …
 - **Base44 deployment SHA / checkpoint / timestamp:** `NOT PUBLISHED` unless verified.
 - **Staging/live evidence and open blockers:** …
+
+## 2026-11-14 SCI verified 42/7 EWMA contract (PR #101)
+
+- Audit: `src/lib/loadForecasting.js` currently blends TRIMP and TSS, assumes all absent calendar days are zero and seeds EWMA at first-day load. PR #100 separately reconciles measured TRIMP totals but intentionally does not prove rest-day completeness.
+- Change: pure `src/lib/verifiedDailyEwma.js` requires caller-supplied `complete===true` for each consecutive day, TRIMP-only finite nonnegative daily totals, and fails closed on gaps, duplicates or missing evidence. Uses 42/7 exponential coefficients and documents first-day-load initialization. Does not alter existing dashboard or ingest.
+- Evidence: commits `9019653f`, `9a16a88b`; five synthetic Vitest cases authored, not executed. Draft PR #101, unmerged/undeployed.
+- Next: independently derive per-day ingestion completeness and explicit rest-day confirmation, then integrate PR #100 and #101 into dashboard/chart with verified acceptance fixtures. First-day initialization is not a fully warmed-up 42-day model; avoid readiness or injury claims from short histories.
