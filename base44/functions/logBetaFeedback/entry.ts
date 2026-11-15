@@ -9,18 +9,18 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.44';
 import { claimRateLimit } from '../../shared/rateLimit.ts';
 import { validatePublicFeedback } from '../../shared/publicFeedbackValidation.js';
+import { readBoundedJsonRequest } from '../../shared/boundedJsonRequest.js';
 
 export default async function (req: Request): Promise<Response> {
   try {
     const base44 = createClientFromRequest(req);
-    // Fast reject declared oversize requests before JSON parsing. Actual field
-    // lengths are checked again because content-length may be missing/forged.
-    const declaredSize = Number(req.headers.get('content-length'));
-    if (Number.isFinite(declaredSize) && declaredSize > 16000) {
-      return Response.json({ error: 'Feedback submission too large' }, { status: 413 });
+    // Enforce a byte limit while streaming, including requests with absent
+    // or forged Content-Length. Never buffer an unlimited public payload.
+    const parsed = await readBoundedJsonRequest(req, 16000);
+    if (!parsed.ok) {
+      return Response.json({ error: parsed.error }, { status: parsed.status });
     }
-    const body = await req.json().catch(() => null);
-    const validation = validatePublicFeedback(body);
+    const validation = validatePublicFeedback(parsed.data);
     if (!validation.ok) {
       return Response.json({ error: validation.error }, { status: validation.status });
     }
