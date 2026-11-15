@@ -101,3 +101,41 @@ describe("athlete ownership scoped account deletion", () => {
     expect(linkedAthleteCleanup({}, ids)).toEqual([]);
   });
 });
+
+describe("profile retention across partial cleanup", () => {
+  it("does not delete the profile or user if an athlete-scoped step fails", async () => {
+    const events = [];
+    const deleteUser = vi.fn(async () => events.push("user"));
+    const deleteProfile = vi.fn(async () => events.push("profile"));
+    const result = await finalizeAccountDeletion([
+      ["AthleteProfile", deleteProfile],
+      ["WorkoutAssetByAthlete", async () => { events.push("asset"); throw new Error("fail"); }],
+      ["WebhookEventByAthlete", async () => events.push("webhook")],
+    ], deleteUser);
+    expect(result).toEqual({ success: false, failedEntities: ["WorkoutAssetByAthlete"] });
+    expect(events).toEqual(["asset", "webhook"]);
+    expect(deleteProfile).not.toHaveBeenCalled();
+    expect(deleteUser).not.toHaveBeenCalled();
+  });
+
+  it("runs dependent cleanup before profile and user deletion regardless of original ordering", async () => {
+    const events = [];
+    const result = await finalizeAccountDeletion([
+      ["AthleteProfile", async () => events.push("profile")],
+      ["WorkoutAssetByAthlete", async () => events.push("asset")],
+      ["WebhookEventByAthlete", async () => events.push("webhook")],
+    ], async () => events.push("user"));
+    expect(result).toEqual({ success: true, failedEntities: [] });
+    expect(events).toEqual(["asset", "webhook", "profile", "user"]);
+  });
+
+  it("keeps user identity on profile deletion failure", async () => {
+    const deleteUser = vi.fn();
+    const result = await finalizeAccountDeletion([
+      ["WorkoutAssetByAthlete", vi.fn().mockResolvedValue(undefined)],
+      ["AthleteProfile", vi.fn().mockRejectedValue(new Error("fail"))],
+    ], deleteUser);
+    expect(result).toEqual({ success: false, failedEntities: ["AthleteProfile"] });
+    expect(deleteUser).not.toHaveBeenCalled();
+  });
+});
