@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { runAccountEntityCleanup, finalizeAccountDeletion, linkedAthleteCleanup, resolveOwnedAthleteIds, loadOrCreateDeletionRecovery, verifyDeletionRecoveryScope } from "../../../base44/shared/accountDeletionCleanup.js";
+import { runAccountEntityCleanup, finalizeAccountDeletion, linkedAthleteCleanup, resolveOwnedAthleteIds, loadOrCreateDeletionRecovery, verifyDeletionRecoveryScope, classifyDeletionRecoveryForReview } from "../../../base44/shared/accountDeletionCleanup.js";
 
 describe("account deletion cleanup executor", () => {
   it("reports no failures when every entity deletion succeeds", async () => {
@@ -281,6 +281,42 @@ describe("journal scope reconciliation on retry", () => {
       const e = entitiesWith(profiles);
       await expect(loadOrCreateDeletionRecovery(e, { id: "owner" }))
         .rejects.toThrow(/manual review/);
+    }
+  });
+});
+
+describe("privacy-minimized operator deletion journal triage", () => {
+  const valid = { id: "record-123", user_id: "sensitive-user-id", athlete_ids: ["sensitive-athlete-id"], state: "prepared" };
+
+  it("distinguishes an active account from an orphan without authorizing any purge", () => {
+    expect(classifyDeletionRecoveryForReview(valid, true)).toEqual({
+      status: "account_exists_retry_or_investigate", safe_to_purge: false,
+    });
+    expect(classifyDeletionRecoveryForReview(valid, false)).toEqual({
+      status: "orphaned_journal_investigate", safe_to_purge: false,
+    });
+  });
+
+  it("fails closed when user existence is unknown or record is malformed", () => {
+    for (const [record, existence] of [
+      [valid, null],
+      [valid, undefined],
+      [{ ...valid, athlete_ids: ["duplicate", "duplicate"] }, false],
+      [{ ...valid, state: "unknown" }, false],
+      [{ ...valid, athlete_ids: null }, false],
+      [null, false],
+    ]) {
+      expect(classifyDeletionRecoveryForReview(record, existence)).toEqual({
+        status: "manual_review", safe_to_purge: false,
+      });
+    }
+  });
+
+  it("never returns identity, athlete IDs or journal fields to the reviewer", () => {
+    for (const exists of [true, false, null]) {
+      const report = classifyDeletionRecoveryForReview(valid, exists);
+      expect(Object.keys(report).sort()).toEqual(["safe_to_purge", "status"]);
+      expect(JSON.stringify(report)).not.toContain("sensitive-");
     }
   });
 });
