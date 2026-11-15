@@ -5,12 +5,14 @@
 // own registered developer app + CLIENT_ID/CLIENT_SECRET app secrets (see set_secrets).
 //
 // Endpoints below are best-effort from public provider docs; if a provider changes a
-// host path, correct it here. OAuth flow (HMAC-signed state, PKCE optional) reuses
-// shared/oauth.ts; recovery ingest reuses shared/recoveryIngest.ts.
+// host path, correct it here. OAuth uses an opaque, short-lived server-side
+// attempt; recovery ingest reuses shared/recoveryIngest.ts.
 
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
 import { getOwnedAthlete } from '../../shared/workoutIngest.ts';
-import { env, hmacBase64Url } from '../../shared/oauth.ts';
+import { env } from '../../shared/oauth.ts';
+import { issueOAuthAttempt, consumeOAuthAttempt } from '../../shared/oauthAttempts.ts';
+import { configuredOAuthRedirect } from '../../shared/oauthRedirect.ts';
 import {
   ingestRecovery,
   normalizeOuraRecovery,
@@ -172,9 +174,8 @@ const PROVIDERS: Record<ProviderKey, ProviderConfig> = {
 
 // ---- helpers ----
 
-function selfUrl(req: Request): string {
-  const url = new URL(req.url);
-  return `${url.origin}${url.pathname}`;
+function selfUrl(_req: Request): string {
+  return configuredOAuthRedirect(env('WEARABLE_REDIRECT_URI'), 'wearableOAuthSync');
 }
 
 async function fetchJson(token: string, url: string): Promise<any> {
@@ -210,8 +211,7 @@ async function refreshIfNeeded(conn: any, base44: any): Promise<string> {
 
 // ---- action handlers ----
 
-async function handleAuthorize(req: Request, base44: any) {
-  const body = await req.json().catch(() => ({}));
+async function handleAuthorize(req: Request, base44: any, body: any) {
   const provider = (body.provider || '') as ProviderKey;
   const cfg = PROVIDERS[provider];
   if (!cfg) return Response.json({ error: `Unsupported provider: ${provider}` }, { status: 400 });
@@ -223,7 +223,9 @@ async function handleAuthorize(req: Request, base44: any) {
   const athlete = await getOwnedAthlete(base44, user.id);
   if (!athlete) return Response.json({ error: 'No athlete profile found' }, { status: 404 });
 
-  const state = `${athlete.id}.${await hmacBase64Url(athlete.id, env(cfg.client_secret_env) || 'wearable-default-secret')}`;
+  const { state, cookie } = await issueOAuthAttempt(base44, {
+    provider, athlete, ownerUserId: user.id, redirectUri: `${selfUrl(req)}?provider=${provider}`,
+  });
   const params = new URLSearchParams({
     response_type: 'code',
     client_id: env(cfg.client_id_env),
@@ -231,7 +233,7 @@ async function handleAuthorize(req: Request, base44: any) {
     state,
     scope: cfg.default_scopes,
   });
-  return Response.json({ authorize_url: `${cfg.authorize_url}?${params.toString()}` });
+  return Response.json({ authorize_url: `${cfg.authorize_url}?${params.toString()}` }, { headers: { 'Cache-Control': 'no-store', 'Set-Cookie': cookie } });
 }
 
 async function handleOAuthCallback(req: Request, base44: any) {
@@ -241,12 +243,11 @@ async function handleOAuthCallback(req: Request, base44: any) {
   const code = u.searchParams.get('code');
   const state = u.searchParams.get('state') || '';
   if (!cfg || !code) return Response.json({ error: 'Invalid callback (missing provider or code)' }, { status: 400 });
-  const [athleteId, sig] = state.split('.');
-  if (!athleteId || !sig || (await hmacBase64Url(athleteId, env(cfg.client_secret_env) || 'wearable-default-secret')) !== sig) {
-    return Response.json({ error: 'Invalid state' }, { status: 400 });
-  }
-  const athlete = await base44.asServiceRole.entities.AthleteProfile.get(athleteId).catch(() => null);
-  if (!athlete) return Response.json({ error: 'Athlete profile not found' }, { status: 404 });
+  if (!env(cfg.client_id_env) || !env(cfg.client_secret_env)) return Response.json({ error: 'Provider is not configured.' }, { status: 503 });
+  let attempt;
+  try { attempt = await consumeOAuthAttempt(base44, state, provider, `${selfUrl(req)}?provider=${provider}`, req.headers.get('cookie') || ''); }
+  catch { return Response.json({ error: 'Invalid or expired state. Start connecting again.' }, { status: 400 }); }
+  const { athleteId, athlete } = attempt;
 
   const body = new URLSearchParams({ grant_type: 'authorization_code', code, redirect_uri: `${selfUrl(req)}?provider=${provider}` });
   const headers: Record<string, string> = { 'Content-Type': 'application/x-www-form-urlencoded' };
@@ -258,7 +259,8 @@ async function handleOAuthCallback(req: Request, base44: any) {
   }
   const tokenRes = await fetch(cfg.token_url, { method: 'POST', headers, body });
   const tok = await tokenRes.json();
-  if (!tokenRes.ok) return Response.json({ error: `Token exchange failed: ${tokenRes.status}`, details: tok }, { status: 502 });
+  if (!tokenRes.ok) return Response.json({ error: 'Provider token exchange failed. Start connecting again.' }, { status: 502 });
+  if (typeof tok.access_token !== 'string' || !tok.access_token.trim()) return Response.json({ error: 'Provider did not return a usable access token. Start connecting again.' }, { status: 502 });
 
   const now = new Date();
   const existing = await base44.asServiceRole.entities.WearableConnection.filter({ athlete_id: athleteId, provider });
@@ -276,7 +278,7 @@ async function handleOAuthCallback(req: Request, base44: any) {
     connected_at: now.toISOString(),
   });
   const html = `<!doctype html><meta http-equiv="refresh" content="2;url=${u.origin}/settings"><body style="font-family:system-ui;padding:3rem"><h2>${provider} connected</h2><p>Redirecting to your settings…</p></body>`;
-  return new Response(html, { headers: { 'Content-Type': 'text/html' } });
+  return new Response(html, { headers: { 'Content-Type': 'text/html', 'Cache-Control': 'no-store', 'Referrer-Policy': 'no-referrer' } });
 }
 
 async function handleStatus(base44: any, provider: ProviderKey) {
@@ -369,7 +371,7 @@ Deno.serve(async (req) => {
     const provider = (body.provider || u.searchParams.get('provider') || '') as ProviderKey;
     if (!PROVIDERS[provider]) return Response.json({ error: `Unknown provider: ${provider}` }, { status: 400 });
 
-    if (action === 'authorize') return await handleAuthorize(req, base44);
+    if (action === 'authorize') return await handleAuthorize(req, base44, body);
     if (action === 'status') return await handleStatus(base44, provider);
     if (action === 'sync') return await handleSync(base44, provider);
     if (action === 'disconnect') return await handleDisconnect(base44, provider);

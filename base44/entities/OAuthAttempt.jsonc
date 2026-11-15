@@ -1,0 +1,18 @@
+{
+  "name": "OAuthAttempt",
+  "type": "object",
+  "description": "Short-lived service-only OAuth binding. No client access. Contains PKCE verifier; requires expiry/trash retention and account-deletion coverage before release.",
+  "properties": {
+    "provider": { "type": "string" },
+    "athlete_id": { "type": "string" },
+    "owner_user_id": { "type": "string" },
+    "redirect_uri": { "type": "string" },
+    "nonce_hash": { "type": "string" },
+    "browser_binding_hash": { "type": "string" },
+    "pkce_verifier": { "type": "string" },
+    "issued_at": { "type": "number" },
+    "expires_at": { "type": "number" }
+  },
+  "required": ["provider", "athlete_id", "owner_user_id", "redirect_uri", "nonce_hash", "browser_binding_hash", "issued_at", "expires_at"],
+  "rls": { "create": false, "read": false, "update": false, "delete": false }
+}
