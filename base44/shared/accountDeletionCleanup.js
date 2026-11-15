@@ -16,8 +16,15 @@ export async function runAccountEntityCleanup(cleanup) {
  * authenticate and retry. Never call deleteUser when an entity step failed.
  */
 export async function finalizeAccountDeletion(cleanup, deleteUser) {
-  const failedEntities = await runAccountEntityCleanup(cleanup);
+  // Deleting the owned AthleteProfile early can make a partial retry
+  // impossible: its athlete_id is needed to identify service-created rows.
+  // Keep profiles until every other entity cleanup has completed successfully.
+  const profileSteps = cleanup.filter(([name]) => name === 'AthleteProfile');
+  const dependentSteps = cleanup.filter(([name]) => name !== 'AthleteProfile');
+  const failedEntities = await runAccountEntityCleanup(dependentSteps);
   if (failedEntities.length) return { success: false, failedEntities };
+  const profileFailures = await runAccountEntityCleanup(profileSteps);
+  if (profileFailures.length) return { success: false, failedEntities: profileFailures };
   await deleteUser();
   return { success: true, failedEntities: [] };
 }
