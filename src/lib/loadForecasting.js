@@ -7,8 +7,13 @@ const K_CTL = 1 - Math.exp(-1 / CTL_DAYS);
 const K_ATL = 1 - Math.exp(-1 / ATL_DAYS);
 
 export function toDateKey(value) {
+  if (typeof value === "string" && /^\d{4}-\d{2}-\d{2}$/.test(value)) {
+    const date = new Date(value + "T00:00:00Z");
+    if (!Number.isFinite(date.getTime()) || date.toISOString().slice(0, 10) !== value) return null;
+    return value;
+  }
   const date = value instanceof Date ? value : new Date(value);
-  return date.toISOString().split("T")[0];
+  return Number.isFinite(date.getTime()) ? date.toISOString().split("T")[0] : null;
 }
 
 function addDays(dateKey, n) {
@@ -74,7 +79,11 @@ export function calculateHistoricalAndProjectedLoad(completedSessions = [], plan
   for (const s of completedSessions) {
     if (!s?.date) continue;
     const key = toDateKey(s.date);
-    const load = s.session_trimp || s.session_tss || 0;
+    if (!key) continue;
+    const rawLoad = s.session_trimp ?? s.session_tss;
+    if (rawLoad == null) continue;
+    const load = Number(rawLoad);
+    if (!Number.isFinite(load) || load < 0) continue;
     loadByDate[key] = (loadByDate[key] || 0) + load;
   }
 
@@ -88,9 +97,11 @@ export function calculateHistoricalAndProjectedLoad(completedSessions = [], plan
   for (const p of plannedWorkouts) {
     if (!p?.date) continue;
     const key = toDateKey(p.date);
+    if (!key) continue;
     plannedLoadByDate[key] = (plannedLoadByDate[key] || 0) + estimateProjectedLoad(p);
   }
 
+  if (!Number.isInteger(daysAhead) || daysAhead < 0 || daysAhead > 365) return [];
   const endDate = addDays(todayKey, daysAhead);
 
   const points = [];
