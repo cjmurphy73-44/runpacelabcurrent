@@ -43,6 +43,11 @@
     "notes": {
       "type": "string",
       "maxLength": 500
+    },
+    "revision": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "Optimistic revision hint. NOT an atomic CAS unless backend verifies conditional update support."
     }
   },
   "required": [
@@ -56,16 +61,22 @@
   ],
   "rls": {
     "create": {
-      "created_by_id": "{{user.id}}"
+      "user_condition": {
+        "role": "admin"
+      }
     },
     "read": {
       "created_by_id": "{{user.id}}"
     },
     "update": {
-      "created_by_id": "{{user.id}}"
+      "user_condition": {
+        "role": "admin"
+      }
     },
     "delete": {
-      "created_by_id": "{{user.id}}"
+      "user_condition": {
+        "role": "admin"
+      }
     }
   }
 }
