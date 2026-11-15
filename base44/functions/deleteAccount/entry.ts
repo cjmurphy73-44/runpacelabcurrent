@@ -1,5 +1,5 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.49';
-import { finalizeAccountDeletion } from '../../shared/accountDeletionCleanup.js';
+import { finalizeAccountDeletion, linkedAthleteCleanup, resolveOwnedAthleteIds } from '../../shared/accountDeletionCleanup.js';
 
 // Permanently deletes the calling user's account and all owned data.
 // Triggered from the Athlete Settings Danger Zone. There is no client-side
@@ -15,6 +15,10 @@ export default async function(req) {
 
     const e = base44.asServiceRole.entities;
     const owned = { created_by_id: user.id };
+    // Do not trust the User's linked athlete ID as deletion authority. List
+    // service-role profiles by their actual owner and reject mismatched links.
+    const ownedProfiles = await e.AthleteProfile.filter(owned);
+    const athleteIds = resolveOwnedAthleteIds(user, ownedProfiles);
 
     // Keep entity labels in failure reports, never record contents or secrets.
     const cleanup = [
@@ -33,13 +37,13 @@ export default async function(req) {
       ["CoachAthleteAssignment", () => e.CoachAthleteAssignment.deleteMany({ coach_user_id: user.id })],
       // Also remove roster entries where THIS user is the athlete, so coaches
       // don't keep a dangling reference to a deleted profile.
-      ...(user.data?.athlete_profile_id ? [["CoachAthleteAssignmentByAthlete", () => e.CoachAthleteAssignment.deleteMany({ athlete_profile_id: user.data.athlete_profile_id })]] : []),
+      ...athleteIds.map((athleteId) => ["CoachAthleteAssignmentByAthlete", () => e.CoachAthleteAssignment.deleteMany({ athlete_profile_id: athleteId })]),
       ["Subscription", () => e.Subscription.deleteMany({ user_id: user.id })],
       ["LabResult", () => e.LabResult.deleteMany(owned)],
       ["BetaFeedback", () => e.BetaFeedback.deleteMany(owned)],
-      // WebhookEvent rows are written by service-role sync functions, so created_by_id
-      // never points at the athlete; match on athlete_id instead or deletion leaves them.
-      ...(user.data?.athlete_profile_id ? [["WebhookEvent", () => e.WebhookEvent.deleteMany({ athlete_id: user.data.athlete_profile_id })]] : []),
+      // Also remove service-created records with athlete_id but no matching creator.
+      // Scope only to profiles verified as owned by the authenticated user.
+      ...linkedAthleteCleanup(e, athleteIds),
     ];
     const result = await finalizeAccountDeletion(cleanup, () => e.User.delete(user.id));
     if (!result.success) {
