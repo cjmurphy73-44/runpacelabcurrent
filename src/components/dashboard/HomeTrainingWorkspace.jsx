@@ -53,6 +53,14 @@ export default function HomeTrainingWorkspace({ athlete, workouts = [], onWorkou
         </TabsContent>
 
         <TabsContent value="readiness" className="space-y-3">
+          <div className="rounded-md border border-border bg-card px-4 py-3 text-sm" role="note">
+            <p className="font-medium">Training form (TSB)</p>
+            {typeof athlete?.current_tsb === "number" && Number.isFinite(athlete.current_tsb) ? (
+              <p className="text-muted-foreground">{athlete.current_tsb > 0 ? "+" : ""}{athlete.current_tsb.toFixed(1)} training-load balance. This reflects recent versus longer-term training load, not medical or coach clearance.</p>
+            ) : (
+              <p className="text-muted-foreground">Form unavailable until sufficient training-load data is recorded.</p>
+            )}
+          </div>
           <WidgetBoundary name="Readiness score"><ReadinessScoreCard /></WidgetBoundary>
           <Button asChild variant="outline" className="min-h-[44px] w-full sm:w-auto">
             <Link to="/recovery">Explore recovery <ArrowRight aria-hidden="true" className="ml-2 w-4 h-4" /></Link>
