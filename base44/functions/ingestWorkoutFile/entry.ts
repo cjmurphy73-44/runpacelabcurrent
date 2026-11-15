@@ -10,6 +10,7 @@ import { assertSafeFileUrl } from '../../shared/urlGuard.ts';
 import { assertOwnsAthlete } from '../../shared/ownership.ts';
 import { reportError } from '../../shared/errorReport.ts';
 import { checkImportAllowance } from '../../shared/importLimit.ts';
+import { validateWorkoutImportDate } from '../../shared/workoutImportDate.ts';
 import { MAX_STREAM_SAMPLES, storageStream } from '../../shared/streamValidity.ts';
 
 Deno.serve(async (req) => {
@@ -22,8 +23,9 @@ Deno.serve(async (req) => {
     if (!athlete_id || !file_url || !file_name || !date) {
       return Response.json({ error: 'athlete_id, file_url, file_name and date are required' }, { status: 400 });
     }
-    if (new Date(date) > new Date()) {
-      return Response.json({ error: 'date cannot be in the future' }, { status: 400 });
+    const dateValidation = validateWorkoutImportDate(date);
+    if (!dateValidation.ok) {
+      return Response.json({ error: dateValidation.error }, { status: 400 });
     }
 
     const urlCheck = assertSafeFileUrl(file_url);
