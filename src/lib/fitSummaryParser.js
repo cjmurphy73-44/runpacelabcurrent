@@ -5,6 +5,24 @@
 const GARMIN_EPOCH_OFFSET_SEC = 631065600; // seconds between Unix epoch and FIT epoch (1989-12-31)
 const MAX_DURATION_SECONDS = 24 * 60 * 60; // reject sessions longer than 24h, sign of corrupted/misread timestamp data
 
+// Garmin FIT CRC-16 nibble lookup. Checksum input excludes the final file CRC.
+// A 14-byte header CRC is optional (zero permitted); the file CRC is mandatory.
+const FIT_CRC_TABLE = [
+  0x0000, 0xCC01, 0xD801, 0x1400, 0xF001, 0x3C00, 0x2800, 0xE401,
+  0xA001, 0x6C00, 0x7800, 0xB401, 0x5000, 0x9C01, 0x8801, 0x4400,
+];
+
+function fitCrc16(bytes, end) {
+  let crc = 0;
+  for (let i = 0; i < end; i += 1) {
+    const byte = bytes[i];
+    for (const nibble of [byte & 0x0f, byte >> 4]) {
+      crc = ((crc >> 4) & 0x0fff) ^ FIT_CRC_TABLE[crc & 0x0f] ^ FIT_CRC_TABLE[nibble];
+    }
+  }
+  return crc;
+}
+
 const SPORT_MAP = {
   0: "other",
   1: "running",
@@ -74,9 +92,37 @@ function assertBounds(offset, size, byteLength) {
 // certain third-party exports) omit it entirely, in that case we fall back to aggregating
 // "lap" (19) or "record" (20) messages, which are captured during the same single pass.
 export function parseFitSummary(arrayBuffer) {
+  if (!(arrayBuffer instanceof ArrayBuffer) || arrayBuffer.byteLength < 14) {
+    throw new Error("Invalid FIT header: missing or truncated file");
+  }
   const bytes = new Uint8Array(arrayBuffer);
   const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
   const headerSize = view.getUint8(0);
+  // Standard FIT headers are 12 bytes, or 14 bytes with header CRC.
+  // Never treat a generic binary payload as a FIT recording.
+  if ((headerSize !== 12 && headerSize !== 14)
+    || bytes.byteLength < headerSize + 2
+    || bytes[8] !== 46 || bytes[9] !== 70 || bytes[10] !== 73 || bytes[11] !== 84) {
+    throw new Error("Invalid FIT header: expected .FIT signature");
+  }
+  const declaredDataSize = view.getUint32(4, true);
+  if (declaredDataSize > bytes.byteLength - headerSize - 2) {
+    throw new Error("Invalid FIT header: declared data exceeds file size");
+  }
+  // FIT permits chained files, but this lightweight summary decoder supports only
+  // one file. Do not decode or silently discard records outside its declared body.
+  if (declaredDataSize < bytes.byteLength - headerSize - 2) {
+    throw new Error("Chained or appended FIT data is unsupported in summary decoder");
+  }
+  if (headerSize === 14) {
+    const headerCrc = view.getUint16(12, true);
+    if (headerCrc !== 0 && fitCrc16(bytes, 12) !== headerCrc) {
+      throw new Error("Invalid FIT header CRC: file header is corrupt");
+    }
+  }
+  if (fitCrc16(bytes, bytes.byteLength - 2) !== view.getUint16(bytes.byteLength - 2, true)) {
+    throw new Error("Invalid FIT file CRC: recording is corrupt or incomplete");
+  }
   let offset = headerSize;
   const localDefs = {};
   let session = null;
@@ -123,7 +169,7 @@ export function parseFitSummary(arrayBuffer) {
         let value = null;
         assertBounds(offset, f.size, bytes.byteLength);
         if (t !== 7 && f.size === baseTypeSize(f.baseType)) {
-          if (t === 2 || t === 10) value = view.getUint8(offset);
+          if (t === 0 || t === 2 || t === 10) value = view.getUint8(offset); // FIT enum (sport) and unsigned byte
           else if (t === 1) value = view.getInt8(offset);
           else if (t === 4 || t === 11) value = view.getUint16(offset, def.littleEndian);
           else if (t === 3) value = view.getInt16(offset, def.littleEndian);
