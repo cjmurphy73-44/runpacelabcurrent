@@ -15,3 +15,19 @@ Read-only Base44 status and entity schemas previously showed separate app IDs an
 
 ## HOLD
 Await exact-head CI, then investigate any confirmed failure. IP gate intact, Odysseus untouched, RaceResult mutations disabled; no merge, deployment, paid resource or production changes.
+
+## Task 2.21: exact-head repair and trust boundary
+
+At original PR #189 head `d2f2ba305574a1be92a8ab770e635302979f8cf0`, VDOT workflow run #7 / `43651376312` reported `sqlite=SUCCESS`, `vitest=FAILURE`. Job logs showed the committed race Vitest suite passed but TypeScript TS2339 failed on five `secPerKm`/`formatted` accesses in the shared boundary. Therefore prior JSDoc type-narrowing was **not** proven effective. Replaced pace candidate with an index-signature record plus explicit numeric type narrowing; exact-head CI evidence must determine whether this succeeds.
+
+The former `hasVerifiedVdotOwner(identity)` only checked a self-reported `ownedAthleteVerified: true` flag. That property alone is not evidence of an authenticated, owned athlete, even if the name implies it. The disabled boundary now requires a distinct injected `verifyOwnedAthlete(identity)` server dependency. Its result must bind the authenticated user's ID to a verified nonempty athlete ID, and client identity flags are ignored. Only that server-resolved athlete ID would be sent to a future calculate callback. This **does not implement a real database ownership lookup**: a future Base44 server adapter must derive the user from verified provider session context and enforce the caller's actual `AthleteProfile` ownership/assignment before returning a trusted result. The interface is a contract, not an authorization attestation. All VDOT functionality remains disabled by the hardcoded false constant and no handler is deployed.
+
+Synthetic tests cover forged flags, owner/athlete mismatch, blank resolution, missing authorization resolver, and zero auth/resolver/calculate calls under disabled mode. VDOT workflow now includes the shared TypeScript boundary and its evidence doc in pull-request path filters, preventing shared-code-only changes from silently escaping the dedicated test workflow. The frontend IP import gate remains a required step after typecheck.
+
+## Read-only Base44 staging identity evidence
+
+Base44 app metadata lists independent IDs: production `6a504ebe6a5a6d1be058226c`, staging `6aefe9d09e2788fc8591c758`. Read-only `get_app_status` reports production `ready` version `3f386d4d52042940cb1767e6950ec78e33b3c81e`, staging `ready` version `63c5aff20dc8d4ca3658841209ec3f9bd1c24f29`. Staging branch list contains only main; production has multiple separate active branches. This establishes **app/version separation**, not independent storage, auth tenancy, function routing, OAuth callback binding, secrets, webhook destinations or runtime isolation. No Base44 functions were invoked; no database, production or staging writes occurred. Enablement requires authoritative provider-scoped configuration and isolated synthetic cross-tenant negative verification, with no production athlete data.
+
+## Task 2.21 HOLD
+
+Do not enable the VDOT feature flag, publish server routes, write RaceResult data, merge/deploy or modify production. Preserve Odysseus and frontend science IP boundary. The exact new PR SHA and CI outcome are recorded in the PR checkpoint when available.
