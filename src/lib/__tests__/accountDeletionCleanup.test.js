@@ -161,7 +161,7 @@ describe("durable deletion recovery scope", () => {
 
   it("recovers verified IDs when profiles were removed by an earlier partial attempt", async () => {
     const create = vi.fn();
-    const profiles = vi.fn();
+    const profiles = vi.fn().mockResolvedValue([]);
     const entities = {
       AccountDeletionRecovery: {
         filter: vi.fn().mockResolvedValue([{
@@ -173,7 +173,7 @@ describe("durable deletion recovery scope", () => {
     };
     expect((await loadOrCreateDeletionRecovery(entities, { id: "owner" })).athlete_ids).toEqual(["mine"]);
     expect(create).not.toHaveBeenCalled();
-    expect(profiles).not.toHaveBeenCalled();
+    expect(profiles).toHaveBeenCalledWith({ created_by_id: "owner" });
   });
 
   it("fails closed for foreign, ambiguous, corrupt or unconfirmed recovery records", async () => {
@@ -238,5 +238,49 @@ describe("post-create deletion recovery consistency guard", () => {
     const entities = { AccountDeletionRecovery: { filter: vi.fn() } };
     await expect(verifyDeletionRecoveryScope(entities, "other", expected)).rejects.toThrow(/manual review/);
     expect(entities.AccountDeletionRecovery.filter).not.toHaveBeenCalled();
+  });
+});
+
+describe("journal scope reconciliation on retry", () => {
+  const journal = { id: "journal-1", user_id: "owner", athlete_ids: ["mine"], state: "prepared" };
+  const entitiesWith = (profiles) => ({
+    AccountDeletionRecovery: { filter: vi.fn().mockResolvedValue([{ ...journal }]) },
+    AthleteProfile: { filter: vi.fn().mockResolvedValue(profiles) },
+  });
+
+  it("rejects a prepared journal that omits the user's linked profile", async () => {
+    const e = entitiesWith([]);
+    await expect(loadOrCreateDeletionRecovery(e, {
+      id: "owner", data: { athlete_profile_id: "different" },
+    })).rejects.toThrow(/manual review/);
+    expect(e.AthleteProfile.filter).not.toHaveBeenCalled();
+  });
+
+  it("rejects a journal that omits newly created owned profiles", async () => {
+    const e = entitiesWith([
+      { id: "mine", created_by_id: "owner" },
+      { id: "added-later", created_by_id: "owner" },
+    ]);
+    await expect(loadOrCreateDeletionRecovery(e, { id: "owner" }))
+      .rejects.toThrow(/manual review/);
+  });
+
+  it("allows a retry when an owned profile was already removed", async () => {
+    const e = entitiesWith([]);
+    const result = await loadOrCreateDeletionRecovery(e, {
+      id: "owner", data: { athlete_profile_id: "mine" },
+    });
+    expect(result).toEqual(journal);
+  });
+
+  it("rejects foreign or malformed surviving profiles in a filtered response", async () => {
+    for (const profiles of [
+      [{ id: "mine", created_by_id: "other" }],
+      [{ created_by_id: "owner" }],
+    ]) {
+      const e = entitiesWith(profiles);
+      await expect(loadOrCreateDeletionRecovery(e, { id: "owner" }))
+        .rejects.toThrow(/manual review/);
+    }
   });
 });
