@@ -102,3 +102,28 @@ export async function loadOrCreateDeletionRecovery(entities, user) {
   }
   return created;
 }
+
+/**
+ * A post-create/read consistency check. This detects duplicate or replaced
+ * journals before destructive cleanup, but is NOT an atomic lock or unique
+ * constraint. Platform-level serialization remains a release prerequisite.
+ */
+export async function verifyDeletionRecoveryScope(entities, userId, expected) {
+  if (!userId || !expected?.id || expected.user_id !== userId ||
+      expected.state !== 'prepared' || !Array.isArray(expected.athlete_ids)) {
+    throw new Error('Deletion recovery scope requires manual review');
+  }
+  const records = await entities.AccountDeletionRecovery.filter({ user_id: userId });
+  if (!Array.isArray(records) || records.length !== 1) {
+    throw new Error('Deletion recovery scope requires manual review');
+  }
+  const actual = records[0];
+  if (!actual || actual.id !== expected.id || actual.user_id !== userId ||
+      actual.state !== 'prepared' || !Array.isArray(actual.athlete_ids) ||
+      actual.athlete_ids.length !== expected.athlete_ids.length ||
+      actual.athlete_ids.some((id, index) => id !== expected.athlete_ids[index]) ||
+      new Set(actual.athlete_ids).size !== actual.athlete_ids.length) {
+    throw new Error('Deletion recovery scope requires manual review');
+  }
+  return actual;
+}
