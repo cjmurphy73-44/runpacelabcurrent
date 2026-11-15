@@ -164,7 +164,7 @@ Before inviting anyone, **all** of these must be ✅:
 | Cohort | Size | Who | Exit criteria to advance |
 |---|---|---|---|
 | C0 | 1–2 | Builder + 1 trusted tester | All 🔴 items still ✅ after 48h; no new ❌ |
-| C1 | 5–10 | Invite-only, mixed devices | Zero 🔴 ❌; <3 🟡 open; billing path exercised by ≥1 real or test-mode purchase |
+| C1 | 5–10 | Invite-only, mixed devices | Zero 🔴 ❌; <3 🟡 open; billing path verified with a synthetic Stripe test-mode checkout and entitlement lifecycle only after independent staging isolation evidence; never require a real charge for beta advancement |
 | C2 | 20–50 | Wider opt-in | Zero 🔴 ❌; <5 🟡 open; support requests answered <48h |
 | C3 | public | Anyone | All gates green; monitoring + analytics live |
 
