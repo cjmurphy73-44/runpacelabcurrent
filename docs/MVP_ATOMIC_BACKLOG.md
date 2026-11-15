@@ -69,3 +69,11 @@ This file is the **single execution queue**, not a claim that beta readiness is 
 - **GitHub PR / merged SHA:** …
 - **Base44 deployment SHA / checkpoint / timestamp:** `NOT PUBLISHED` unless verified.
 - **Staging/live evidence and open blockers:** …
+
+## 2026-11-14: SCI-005 unit-integrity contract (proposed, not merged)
+
+- Branch: `feat/sci-load-unit-contract-20261114`; commits `392565bb197559f06cb0c92b8e5c5f085da57d6c` and `97b3bb93e1d1a802b301da49f7fd0f34a7737894`.
+- Scope: pure `src/science/loadUnitContract.js` and five synthetic regression cases; refuses TRIMP/TSS mixing, invalid provenance, missing/nonfinite/negative load and overflow; zero total has unknown verified share.
+- Acceptance evidence: source and test fixtures committed; GitHub CI pending. This is an opt-in validation contract, **not yet connected to ingestion, daily aggregation, dashboard or adaptive planning**.
+- Next task: map each existing load writer to an explicit metric/provenance field, then gate a single aggregation call site without rewriting historical records. No production data, secrets, schema or Odysseus changes.
+- Release: not merged; not deployed; Base44 source checkpoint remains unverified (REL-001); no live acceptance evidence.
