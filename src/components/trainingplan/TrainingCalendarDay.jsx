@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import moment from "moment";
 import { Download } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -8,7 +8,8 @@ import { calendarDayState } from "@/lib/calendarDaySessions";
 
 const ZONE_TRIMP_FACTOR = { Z1: 0.5, Z2: 0.7, Z3: 0.9, Z4: 1.1, Z5: 1.3 };
 
-export default function TrainingCalendarDay({ date, sessions, loading = false, failed = false, injury, plan, onExport }) {
+export default function TrainingCalendarDay({ date, sessions, loading = false, failed = false, stale = false, injury, plan, onExport }) {
+  const [expandedSession, setExpandedSession] = useState(null);
   const day = calendarDayState({ sessions, date, loading, failed });
   return (
     <Card>
@@ -21,24 +22,63 @@ export default function TrainingCalendarDay({ date, sessions, loading = false, f
         ) : day.kind === "loading" ? (
           <p role="status" className="text-sm text-muted-foreground">Loading scheduled sessions…</p>
         ) : day.kind === "rest" ? (
-          <p className="text-sm text-muted-foreground">No sessions scheduled</p>
+          <p className="text-sm text-muted-foreground">{stale ? "No current schedule confirmed for this day." : "No sessions scheduled"}</p>
         ) : (
           <div className="space-y-3" aria-label={`${day.sessions.length} scheduled session${day.sessions.length === 1 ? "" : "s"}`}>
             {day.sessions.map((session, index) => {
               const runningHold = injury?.level === "hold" && session.sport?.toLowerCase().startsWith("run");
               const factor = ZONE_TRIMP_FACTOR[session.prescribed_intensity_zone] || 0.8;
               const estimate = Math.round((session.prescribed_duration_minutes || 0) * factor);
+              const detailKey = `${date}-${session.id || index}`;
+              const open = expandedSession === detailKey;
+              const steps = Array.isArray(session.structured_steps) ? session.structured_steps : [];
+              const hasDetails = Boolean(session.description || session.target_pace || session.target_power > 0 ||
+                session.target_hr_low > 0 || session.target_hr_high > 0 || steps.length);
               return (
                 <section key={session.id || `${date}-${index}`} className={`rounded-md border border-border p-3 space-y-2 text-sm ${runningHold ? "opacity-70" : ""}`}>
                   <div className="flex justify-between items-start gap-2">
                     <p className="font-semibold capitalize">{session.title || session.sport || "Planned session"}</p>
                     {day.sessions.length > 1 && <span className="text-xs text-muted-foreground shrink-0">Session {index + 1} of {day.sessions.length}</span>}
                   </div>
+                  {stale && <p className="text-xs text-muted-foreground">Last loaded prescription, not a verified current schedule</p>}
                   {runningHold && <p className="text-xs font-medium text-destructive">Coach hold: swap running to rest or recovery</p>}
                   <p className="text-muted-foreground">{session.prescribed_duration_minutes || 0} min · {session.prescribed_intensity_zone || "Intensity unspecified"}</p>
                   <p className="text-muted-foreground">Estimated TRIMP ~{estimate}</p>
                   {session.rationale_text && <p className="text-xs text-muted-foreground">{session.rationale_text}</p>}
                   {session.status && <p className="text-xs uppercase tracking-wide text-muted-foreground">{session.status}</p>}
+                  {hasDetails && (
+                    <>
+                      <button type="button" className="w-full min-h-11 rounded border border-border px-3 text-left text-sm font-medium focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary"
+                        aria-expanded={open} aria-controls={`session-details-${detailKey}`}
+                        onClick={() => setExpandedSession(open ? null : detailKey)}>
+                        {open ? "Hide session details" : "View session details"}
+                      </button>
+                      {open && (
+                        <div id={`session-details-${detailKey}`} className="space-y-2 rounded-md bg-muted/40 p-3 text-sm">
+                          {session.description && <p>{session.description}</p>}
+                          {session.target_pace && <p>Target pace: {session.target_pace}</p>}
+                          {session.target_power > 0 && <p>Target power: {session.target_power} W</p>}
+                          {(session.target_hr_low > 0 || session.target_hr_high > 0) && (
+                            <p>Target heart rate: {session.target_hr_low || "Not specified"} to {session.target_hr_high || "Not specified"} bpm</p>
+                          )}
+                          {steps.length > 0 && (
+                            <div className="space-y-2">
+                              <p className="font-medium">Prescribed workout steps</p>
+                              <ol className="list-decimal pl-5 space-y-1">
+                                {steps.map((step, stepIndex) => (
+                                  <li key={step.order ?? stepIndex}>
+                                    <span className="capitalize">{step.type || "Step"}</span>
+                                    {Number.isFinite(step.duration_seconds) && <span> · {step.duration_seconds} sec</span>}
+                                    {step.description && <span> · {step.description}</span>}
+                                  </li>
+                                ))}
+                              </ol>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </>
+                  )}
                   {onExport && (
                     <FeatureGate feature="structured_export" plan={plan} compact>
                       <Button type="button" size="sm" variant="outline" onClick={() => onExport(session)} className="gap-1.5 w-full min-h-11">
