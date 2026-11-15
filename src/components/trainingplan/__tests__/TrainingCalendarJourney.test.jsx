@@ -2,12 +2,15 @@
 import React from "react";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 
 const mocks = vi.hoisted(() => ({
   filter: vi.fn(),
   invoke: vi.fn(),
   export: vi.fn(),
+  authUser: { id: "synthetic-user-A" },
 }));
+vi.mock("@/lib/AuthContext", () => ({ useAuth: () => ({ user: mocks.authUser }) }));
 vi.mock("@/api/base44Client", () => ({
   base44: { entities: { TrainingPlanSession: { filter: mocks.filter } }, functions: { invoke: mocks.invoke } },
 }));
@@ -29,12 +32,24 @@ vi.mock("@/components/ui/button", () => ({
 import moment from "moment";
 import TrainingCalendar from "@/components/dashboard/TrainingCalendar";
 
+function renderCalendar(props = {}) {
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  const view = (nextProps = props) => (
+    <QueryClientProvider client={client}>
+      <TrainingCalendar athleteId="synthetic" currentTsb={0} {...nextProps} />
+    </QueryClientProvider>
+  );
+  const result = render(view());
+  return { ...result, client, update: (nextProps) => result.rerender(view(nextProps)) };
+}
+
 describe("calendar seven-day athlete journey", () => {
   beforeEach(() => {
     cleanup();
     mocks.filter.mockReset();
     mocks.invoke.mockReset();
     mocks.export.mockReset();
+    mocks.authUser = { id: "synthetic-user-A" };
   });
 
   it("renders every same-day prescription and exports the selected session", async () => {
@@ -43,7 +58,7 @@ describe("calendar seven-day athlete journey", () => {
       { id: "am", date, sport: "running", title: "Morning easy run", start_time: "06:30", prescribed_duration_minutes: 45, prescribed_intensity_zone: "Z2", rationale_text: "Aerobic base", status: "planned" },
       { id: "pm", date, sport: "strength", title: "Evening strength", start_time: "18:00", prescribed_duration_minutes: 30, status: "planned" },
     ]);
-    render(<TrainingCalendar athleteId="synthetic" currentTsb={0} />);
+    renderCalendar();
     await waitFor(() => expect(screen.getByText("Morning easy run")).toBeTruthy());
     expect(screen.getByText("Evening strength")).toBeTruthy();
     expect(screen.getByText("Session 1 of 2")).toBeTruthy();
@@ -58,7 +73,7 @@ describe("calendar seven-day athlete journey", () => {
 
   it("never turns a failed query into seven confirmed rest days, and recovers on Retry", async () => {
     mocks.filter.mockRejectedValueOnce(new Error("synthetic outage")).mockResolvedValueOnce([]);
-    render(<TrainingCalendar athleteId="synthetic" currentTsb={0} />);
+    renderCalendar();
     await waitFor(() => expect(screen.getByRole("alert").textContent).toMatch(/could not load/i));
     expect(screen.getAllByText(/rest day not confirmed/i).length).toBe(7);
     expect(screen.queryByText("No sessions scheduled")).toBeNull();
@@ -77,7 +92,7 @@ describe("calendar seven-day athlete journey", () => {
     for (const width of [320, 390, 768]) {
       cleanup();
       Object.defineProperty(window, "innerWidth", { configurable: true, value: width });
-      const { container } = render(<TrainingCalendar athleteId="synthetic" currentTsb={0} />);
+      const { container } = renderCalendar();
       await waitFor(() => expect(screen.getByText("Easy run")).toBeTruthy());
       expect(screen.getByText("Evening mobility")).toBeTruthy();
       expect(screen.getByRole("button", { name: /download calendar \(\.ics\)/i })).toBeTruthy();
@@ -89,7 +104,7 @@ describe("calendar seven-day athlete journey", () => {
   it("does not claim adjustment success when the backend response is unknown", async () => {
     mocks.filter.mockResolvedValue([]);
     mocks.invoke.mockResolvedValue({ data: {} });
-    render(<TrainingCalendar athleteId="synthetic" currentTsb={3} />);
+    renderCalendar({ currentTsb: 3 });
     const adjust = await screen.findByRole("button", { name: /AI Microadjustment/i });
     await waitFor(() => expect(adjust.disabled).toBe(false));
     fireEvent.click(adjust);
@@ -101,7 +116,7 @@ describe("calendar seven-day athlete journey", () => {
   it("confirms an adjustment only after refreshed schedule evidence", async () => {
     mocks.filter.mockResolvedValue([]);
     mocks.invoke.mockResolvedValue({ data: { success: true, adjusted: [{ id: "mock-adjustment" }] } });
-    render(<TrainingCalendar athleteId="synthetic" currentTsb={3} />);
+    renderCalendar({ currentTsb: 3 });
     const adjust = await screen.findByRole("button", { name: /AI Microadjustment/i });
     await waitFor(() => expect(adjust.disabled).toBe(false));
     fireEvent.click(adjust);
@@ -109,9 +124,46 @@ describe("calendar seven-day athlete journey", () => {
     expect(mocks.filter).toHaveBeenCalledTimes(2);
   });
 
+  it("never displays another account's cached sessions after account switch", async () => {
+    const day = moment().format("YYYY-MM-DD");
+    mocks.filter.mockResolvedValueOnce([{ id: "old-user-session", date: day, title: "Private A workout" }])
+      .mockResolvedValueOnce([{ id: "new-user-session", date: day, title: "Private B workout" }]);
+    const view = renderCalendar();
+    await waitFor(() => expect(screen.getByText("Private A workout")).toBeTruthy());
+    mocks.authUser = { id: "synthetic-user-B" };
+    view.update();
+    expect(screen.queryByText("Private A workout")).toBeNull();
+    await waitFor(() => expect(screen.getByText("Private B workout")).toBeTruthy());
+    expect(screen.queryByText("Private A workout")).toBeNull();
+    expect(view.client.getQueryData(["athlete-plan", "synthetic-user-A", "synthetic", "week", day])).toHaveLength(1);
+    expect(view.client.getQueryData(["athlete-plan", "synthetic-user-B", "synthetic", "week", day])).toHaveLength(1);
+  });
+
+  it("blocks unauthenticated calendar access without backend requests or fake rest days", () => {
+    mocks.authUser = null;
+    renderCalendar();
+    expect(mocks.filter).not.toHaveBeenCalled();
+    expect(screen.getByText(/Sign in to view your scheduled training/i)).toBeTruthy();
+    expect(screen.queryByText("No sessions scheduled")).toBeNull();
+    expect(screen.getByRole("button", { name: /AI Microadjustment/i }).disabled).toBe(true);
+  });
+
+  it("cannot export stale workouts after a failed refresh", async () => {
+    const day = moment().format("YYYY-MM-DD");
+    mocks.filter.mockResolvedValueOnce([{ id: "old", date: day, title: "Old plan" }])
+      .mockRejectedValueOnce(new Error("refresh offline"));
+    const view = renderCalendar();
+    await waitFor(() => expect(screen.getByText("Old plan")).toBeTruthy());
+    await view.client.invalidateQueries({ queryKey: ["athlete-plan", "synthetic-user-A", "synthetic"] });
+    await waitFor(() => expect(screen.getByRole("alert").textContent).toMatch(/last loaded schedule/i));
+    expect(screen.queryByRole("button", { name: /Download calendar/i })).toBeNull();
+    expect(screen.queryByRole("button", { name: /Export Workout/i })).toBeNull();
+    expect(screen.getByRole("button", { name: /AI Microadjustment/i }).disabled).toBe(true);
+  });
+
   it("does not show the day as rest while loading", () => {
     mocks.filter.mockReturnValue(new Promise(() => {}));
-    render(<TrainingCalendar athleteId="synthetic" currentTsb={0} />);
+    renderCalendar();
     expect(screen.getAllByText(/Loading scheduled sessions/i)).toHaveLength(7);
     expect(screen.queryByText("No sessions scheduled")).toBeNull();
   });
