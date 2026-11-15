@@ -32,7 +32,7 @@ function estimateProjectedLoad(planned) {
 
 // Classifies a TSB (Training Stress Balance) value into a coaching zone.
 export function getTsbZoneInfo(tsbValue) {
-  if (tsbValue === null || tsbValue === undefined || isNaN(tsbValue)) {
+  if (typeof tsbValue !== 'number' || !Number.isFinite(tsbValue)) {
     return {
       label: "Neutral",
       badgeClass: "bg-muted text-muted-foreground border-border",
@@ -43,27 +43,27 @@ export function getTsbZoneInfo(tsbValue) {
     return {
       label: "Fresh",
       badgeClass: "bg-success/10 text-success border-success/30",
-      advice: "Well-rested, a good window for a hard effort or race.",
+      advice: "Modelled positive form balance; not a measure of recovery or clearance for a hard session.",
     };
   }
   if (tsbValue >= -10) {
     return {
       label: "Neutral",
       badgeClass: "bg-primary/10 text-primary border-primary/30",
-      advice: "Balanced form, maintain your current training load.",
+      advice: "Modelled form balance near zero. Review actual recovery, symptoms and training history.",
     };
   }
   if (tsbValue >= -25) {
     return {
-      label: "Optimal",
+      label: "Negative balance",
       badgeClass: "bg-warning/10 text-warning border-warning/30",
-      advice: "Productive fatigue, good for building fitness. Monitor recovery.",
+      advice: "Modelled negative form balance. This alone cannot establish productive adaptation.",
     };
   }
   return {
-    label: "High Risk",
+    label: "Marked negative balance",
     badgeClass: "bg-danger/10 text-danger border-danger/30",
-    advice: "Deep fatigue, high injury/illness risk. Prioritize recovery.",
+    advice: "Marked negative modelled form balance. Review recent workload, recovery and symptoms; this is not an individual injury-risk estimate.",
   };
 }
 
