@@ -18,6 +18,7 @@ function todayLocalISO() {
 export default function WorkoutUpload({ athleteId, onUploaded }) {
   const [file, setFile] = useState(null);
   const fileInputRef = useRef(null);
+  const submitInFlightRef = useRef(false);
   const [sport, setSport] = useState("running");
   const [date, setDate] = useState(todayLocalISO());
   const [status, setStatus] = useState(null);
@@ -25,11 +26,22 @@ export default function WorkoutUpload({ athleteId, onUploaded }) {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!file) return;
+    if (!file || submitInFlightRef.current) return;
+    submitInFlightRef.current = true;
     setUploading(true);
     setStatus(null);
+    let ingestRequested = false;
     try {
-      const { file_url } = await base44.integrations.Core.UploadFile({ file });
+      const uploadResult = await base44.integrations.Core.UploadFile({ file });
+      const file_url = uploadResult?.file_url;
+      // A completed transport call without a usable file URL is not an ingest.
+      // Fail before invoking the server rather than sending an undefined source.
+      if (typeof file_url !== "string" || !file_url.trim()) {
+        throw new Error("Upload returned no usable file URL");
+      }
+      // Once the ingest request begins, a rejected promise does not prove that
+      // the server did not save the workout. Never encourage a blind retry.
+      ingestRequested = true;
       const res = await base44.functions.invoke("ingestWorkoutFile", {
         athlete_id: athleteId,
         file_url,
@@ -44,11 +56,26 @@ export default function WorkoutUpload({ athleteId, onUploaded }) {
         // Clear the actual native input too: otherwise the same FIT cannot be
         // selected again and the UI may still show the previous filename.
         if (fileInputRef.current) fileInputRef.current.value = "";
-        onUploaded?.();
+        // Parent refresh failures must not misreport a confirmed saved workout.
+        // Refresh is best-effort. A slow or stalled parent callback must not
+        // keep the completed upload in its in-flight state indefinitely.
+        try {
+          Promise.resolve(onUploaded?.()).catch(() => {
+            // The confirmed save status remains authoritative.
+          });
+        } catch {
+          // A synchronous refresh error cannot invalidate the confirmed save.
+        }
       }
     } catch (err) {
-      setStatus({ type: "error", message: err.message });
+      setStatus({
+        type: ingestRequested ? "warning" : "error",
+        message: ingestRequested
+          ? "Workout save could not be confirmed. Check your workout history before retrying to avoid a duplicate. Your selected file is still available."
+          : "File upload failed before workout processing began. Check your connection and retry. Your selected file is still available.",
+      });
     }
+    submitInFlightRef.current = false;
     setUploading(false);
   };
 
@@ -58,14 +85,14 @@ export default function WorkoutUpload({ athleteId, onUploaded }) {
       <CardContent>
         <form onSubmit={handleSubmit} className="space-y-3">
           <div>
-            <Label>File (.fit or .csv)</Label>
-            <Input ref={fileInputRef} type="file" accept=".fit,.csv,application/vnd.ant.fit,application/octet-stream" onChange={(e) => setFile(e.target.files?.[0] || null)} required />
+            <Label htmlFor="workout-upload-file">File (.fit or .csv)</Label>
+            <Input id="workout-upload-file" ref={fileInputRef} type="file" accept=".fit,.csv,application/vnd.ant.fit,application/octet-stream" onChange={(e) => setFile(e.target.files?.[0] || null)} required />
           </div>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <div>
-              <Label>Sport</Label>
+              <Label id="workout-upload-sport-label">Sport</Label>
               <Select value={sport} onValueChange={setSport}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectTrigger aria-labelledby="workout-upload-sport-label"><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="running">Running</SelectItem>
                   <SelectItem value="cycling">Cycling</SelectItem>
@@ -77,8 +104,8 @@ export default function WorkoutUpload({ athleteId, onUploaded }) {
               </Select>
             </div>
             <div>
-              <Label>Date</Label>
-              <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} max={todayLocalISO()} required />
+              <Label htmlFor="workout-upload-date">Date</Label>
+              <Input id="workout-upload-date" type="date" value={date} onChange={(e) => setDate(e.target.value)} max={todayLocalISO()} required />
             </div>
           </div>
           <Button type="submit" disabled={uploading || !file} className="w-full">
