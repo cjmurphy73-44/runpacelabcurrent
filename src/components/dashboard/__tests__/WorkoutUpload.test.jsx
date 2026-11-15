@@ -70,6 +70,16 @@ describe("single-file import input lifecycle", () => {
     expect(dateControl.required).toBe(true);
   });
 
+  it("stacks sport and date controls on narrow mobile widths", () => {
+    render(<WorkoutUpload athleteId="synthetic-athlete" />);
+    const dateControl = screen.getByLabelText("Date");
+    const metadataLayout = dateControl.closest(".grid");
+    expect(metadataLayout).not.toBeNull();
+    expect(metadataLayout.classList.contains("grid-cols-1")).toBe(true);
+    expect(metadataLayout.classList.contains("sm:grid-cols-2")).toBe(true);
+    expect(metadataLayout.classList.contains("grid-cols-2")).toBe(false);
+  });
+
   it("preserves the selected native file and avoids success callback when persistence is unverified", async () => {
     mocks.ingest.mockResolvedValue({ data: { success: true } });
     const onUploaded = vi.fn();
