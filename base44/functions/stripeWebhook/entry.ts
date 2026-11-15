@@ -82,7 +82,12 @@ export default async function(req) {
     try {
       const seen = await sr.entities.WebhookEvent.filter({ event_id: eventId });
       if (seen.length > 0) return Response.json({ received: true, duplicate: true });
-    } catch (e) { /* fail open — Stripe will retry */ }
+    } catch (e) {
+      // The event ledger is authoritative for duplicate suppression. If it cannot
+      // be read, do not risk provisioning a repeated event; Stripe can retry.
+      console.error("stripeWebhook: event deduplication lookup unavailable", e);
+      return Response.json({ error: "Webhook event ledger unavailable" }, { status: 503 });
+    }
 
     const provision = async (userId, plan, status, customer, subId, periodEnd) => {
       // Validate the user exists before provisioning — prevents granting access to
