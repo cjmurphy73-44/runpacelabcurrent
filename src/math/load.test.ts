@@ -80,7 +80,7 @@ describe('Training Load & Stress Engine', () => {
     });
   });
 
-  describe('calculateEWMA (CTL, ATL, TSB)' () => {
+  describe('calculateEWMA (CTL, ATL, TSB)', () => {
     it('accumulates CTL and ATL correctly over a week of training', () => {
       const dailyTss = [50, 60, 0, 75, 50, 100, 0];
       const { ctl, atl, tsb } = calculateEWMA(dailyTss);
