@@ -63,7 +63,7 @@ function Tile({ icon: Icon, label, value, suffix, sub, badge }) {
 }
 
 export default function PhysiologyStrip({ athlete }) {
-  const { dailyMetrics, workoutSessions } = useFitness();
+  const { dailyMetrics, workoutSessions, visibleRange } = useFitness();
   const { isGeek } = useUIPreferences();
 
   const vdot = athlete?.vdot_estimate ?? null;
@@ -78,14 +78,17 @@ export default function PhysiologyStrip({ athlete }) {
   );
 
   const runningCalibration = useMemo(
-    () => classifyRunningCalibration(workoutSessions, threshold.observedRunCount),
-    [workoutSessions, threshold.observedRunCount]
+    () => classifyRunningCalibration(workoutSessions, threshold.observedRunCount,
+      Date.now(), { historyTruncated: workoutSessions.length >= visibleRange }),
+    [workoutSessions, threshold.observedRunCount, visibleRange]
   );
   // A historic pace must not be presented as a verified current threshold
   // after a running gap or without enough qualified threshold evidence.
   const showProvisionalThreshold = threshold.paceMs != null && runningCalibration.status === "provisional";
   const thresholdStatus = runningCalibration.status === "running_gap"
     ? "Running break · historical estimate only"
+    : runningCalibration.status === "incomplete_history"
+      ? "Limited workout history · running continuity unverified"
     : runningCalibration.status === "needs_threshold_evidence"
       ? "Current threshold unverified · recalibration needed"
       : "Provisional estimate · requires validated threshold effort";
