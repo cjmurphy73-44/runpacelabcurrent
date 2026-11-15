@@ -3,7 +3,7 @@
 const MAX_AHEAD_MS = 14 * 60 * 60 * 1000; // maximum civil-date offset ahead of UTC
 
 export function validateWorkoutImportDate(value, now = Date.now()) {
-  if (typeof value !== "string" || !/^\\d{4}-\\d{2}-\\d{2}$/.test(value)) {
+  if (typeof value !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(value)) {
     return { ok: false, error: "date must be a valid YYYY-MM-DD calendar date" };
   }
   const [year, month, day] = value.split("-").map(Number);
