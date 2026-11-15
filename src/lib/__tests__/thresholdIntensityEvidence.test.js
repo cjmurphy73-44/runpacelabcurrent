@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { deriveRunningThresholdPace } from '../../../base44/shared/thresholdPace.ts';
+import { deriveRunningThresholdPace } from '../../science/thresholdPace';
 
 const yesterday = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
 const run = (overrides = {}) => ({
