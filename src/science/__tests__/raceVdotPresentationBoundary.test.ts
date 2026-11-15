@@ -29,7 +29,7 @@ describe('disabled server-owned VDOT presentation boundary', () => {
   });
   it('refuses client-supplied ownership flags without independent resolver proof', () => {
     const identity = { id: 'user-A', athleteId: 'attacker-athlete', ownedAthleteVerified: true };
-    expect(hasVerifiedVdotOwner(identity)).toBe(false);
+    expect(hasVerifiedVdotOwner(identity, undefined)).toBe(false);
     expect(hasVerifiedVdotOwner(identity, { userId: 'user-A', athleteId: 'athlete-A' })).toBe(false);
     expect(hasVerifiedVdotOwner(identity, { userId: 'user-A', athleteId: 'athlete-A',
       verifiedByServer: 'true' })).toBe(false);
