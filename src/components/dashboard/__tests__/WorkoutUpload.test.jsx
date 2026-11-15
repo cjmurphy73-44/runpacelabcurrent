@@ -65,7 +65,7 @@ describe("single-file upload UI acceptance", () => {
     expect(upload.disabled).toBe(true);
     selectSyntheticFit(container);
     expect(upload.disabled).toBe(false);
-    fireEvent.click(upload);
+    fireEvent.submit(container.querySelector('form'));
 
     await waitFor(() => expect(screen.getByRole("status").textContent).toMatch(/could not be verified/i));
     expect(screen.getByRole("status").textContent).toMatch(/before retrying/i);
@@ -82,7 +82,7 @@ describe("single-file upload UI acceptance", () => {
     sdk.invoke.mockResolvedValue({ data: { success: true, workout_session: { id: "saved-session" } } });
     const { container } = render(<WorkoutUpload athleteId="synthetic-athlete" onUploaded={onUploaded} />);
     selectSyntheticFit(container);
-    fireEvent.click(screen.getByRole("button", { name: "Upload" }));
+    fireEvent.submit(container.querySelector('form'));
 
     await waitFor(() => expect(screen.getByRole("status").textContent).toMatch(/Workout saved/i));
     expect(onUploaded).toHaveBeenCalledTimes(1);
@@ -94,7 +94,7 @@ describe("single-file upload UI acceptance", () => {
     sdk.invoke.mockResolvedValue({ data: { error: "FIT file CRC mismatch" } });
     const { container } = render(<WorkoutUpload athleteId="synthetic-athlete" onUploaded={onUploaded} />);
     selectSyntheticFit(container);
-    fireEvent.click(screen.getByRole("button", { name: "Upload" }));
+    fireEvent.submit(container.querySelector('form'));
 
     await waitFor(() => expect(screen.getByRole("status").textContent).toMatch(/export a fresh original recording/i));
     expect(screen.getByRole("status").textContent).toMatch(/do not assume a partial recording was imported/i);
@@ -107,7 +107,7 @@ describe("single-file upload UI acceptance", () => {
     sdk.invoke.mockResolvedValue({ data: { success: true, imported_sessions_count: 0, skipped_duplicates: 1 } });
     const { container } = render(<WorkoutUpload athleteId="synthetic-athlete" onUploaded={onUploaded} />);
     selectSyntheticFit(container);
-    fireEvent.click(screen.getByRole("button", { name: "Upload" }));
+    fireEvent.submit(container.querySelector('form'));
     await waitFor(() => expect(screen.getByRole("status").textContent).toMatch(/duplicate workout/i));
     expect(onUploaded).not.toHaveBeenCalled();
     expect(screen.getByRole("button", { name: "Upload" }).disabled).toBe(false);
