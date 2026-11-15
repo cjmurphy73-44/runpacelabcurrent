@@ -17,6 +17,31 @@ describe('Stripe entitlement lifecycle policy', () => {
     }
     expect(checkoutEntitlementDecision({ payment_status: 'paid', subscription: sub.id }, null)).toBe('pending');
   });
+  it('fails closed on malformed checkout and subscription identifiers', () => {
+    const paid = { payment_status: 'paid', subscription: sub.id };
+    expect(checkoutEntitlementDecision(null, sub)).toBe('pending');
+    expect(checkoutEntitlementDecision(paid, null)).toBe('pending');
+    for (const subscription of [undefined, null, '', 0, 123, {}, ['sub_synthetic']]) {
+      expect(checkoutEntitlementDecision({ ...paid, subscription }, sub)).toBe('pending');
+    }
+    for (const id of [undefined, null, '', 123, 'sub_other']) {
+      expect(checkoutEntitlementDecision(paid, { ...sub, id })).toBe('pending');
+    }
+  });
+
+  it('never grants checkout for unknown, malformed or non-active subscription statuses', () => {
+    const paid = { payment_status: 'paid', subscription: sub.id };
+    for (const status of [undefined, null, '', 'unknown', 'paused', 'incomplete_expired', 'past_due', 'trialing', true, 1]) {
+      expect(checkoutEntitlementDecision(paid, { ...sub, status })).toBe('pending');
+    }
+  });
+
+  it('maps unexpected lifecycle payloads to canceled rather than active', () => {
+    for (const status of [undefined, null, '', 'unknown', {}, ['active'], true, 1]) {
+      expect(lifecycleEntitlementStatus(status)).toBe('canceled');
+    }
+  });
+
   it('maps failed payment and cancellation to non-active entitlements', () => {
     expect(lifecycleEntitlementStatus('active')).toBe('active');
     expect(lifecycleEntitlementStatus('trialing')).toBe('active');
