@@ -91,6 +91,11 @@ export function parseFitSummary(arrayBuffer) {
   if (declaredDataSize > bytes.byteLength - headerSize - 2) {
     throw new Error("Invalid FIT header: declared data exceeds file size");
   }
+  // FIT permits chained files, but this lightweight summary decoder supports only
+  // one file. Do not decode or silently discard records outside its declared body.
+  if (declaredDataSize < bytes.byteLength - headerSize - 2) {
+    throw new Error("Chained or appended FIT data is unsupported in summary decoder");
+  }
   let offset = headerSize;
   const localDefs = {};
   let session = null;
