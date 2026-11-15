@@ -68,6 +68,8 @@ describe("Home daily training workspace", () => {
     await screen.findByRole("heading", { name: "running" });
     selectTab("Readiness");
     expect(screen.getByRole("heading", { name: "Existing readiness score" })).toBeTruthy();
+    expect(screen.getByText("Training form (TSB)")).toBeTruthy();
+    expect(screen.getByText(/\\+5\\.0 training-load balance/)).toBeTruthy();
     expect(screen.queryByRole("link", { name: /View training plan/ })).toBeNull();
     fireEvent.click(screen.getByRole("link", { name: /Explore recovery/ }));
     expect(screen.getByRole("heading", { name: "recovery destination" })).toBeTruthy();
