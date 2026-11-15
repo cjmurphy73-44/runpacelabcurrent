@@ -131,6 +131,21 @@ describe("single-file import input lifecycle", () => {
     expect(onUploaded).not.toHaveBeenCalled();
   });
 
+  it.each([undefined, null, {}, { file_url: undefined }, { file_url: null }])(
+    "does not invoke ingest when file transfer response is absent or incomplete %s",
+    async (uploadResult) => {
+      mocks.upload.mockResolvedValue(uploadResult);
+      const onUploaded = vi.fn();
+      render(<WorkoutUpload athleteId="synthetic-athlete" onUploaded={onUploaded} />);
+      const input = chooseFile();
+      submit();
+      await waitFor(() => expect(screen.getByRole("status").textContent).toMatch(/failed before workout processing began/i));
+      expect(mocks.ingest).not.toHaveBeenCalled();
+      expect(onUploaded).not.toHaveBeenCalled();
+      expect(input.files).toHaveLength(1);
+    }
+  );
+
   it.each([undefined, null, "", "   ", 123])(
     "does not invoke ingest when file transfer returns unusable URL %s",
     async (file_url) => {
