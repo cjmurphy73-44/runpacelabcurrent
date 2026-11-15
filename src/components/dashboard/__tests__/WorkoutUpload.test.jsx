@@ -48,7 +48,7 @@ function chooseFile() {
 }
 
 function submit() {
-  fireEvent.click(screen.getByRole("button", { name: "Upload" }));
+  // Dispatch the form submit explicitly: happy-dom does not reliably emulate\n  // native file-input constraint validation on a synthetic FileList.\n  fireEvent.submit(screen.getByRole("button", { name: "Upload" }).closest("form"));
 }
 
 describe("single-file import input lifecycle", () => {
