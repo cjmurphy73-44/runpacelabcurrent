@@ -57,10 +57,12 @@ describe('VDOT server response safety', () => {
   });
   it('never invokes auth or compute while disabled', async () => {
     const authenticate = vi.fn().mockRejectedValue(new Error('secret'));
+    const verifyOwnedAthlete = vi.fn();
     const calculate = vi.fn();
-    const handle = createVdotPresentationBoundary({ authenticate, calculate });
+    const handle = createVdotPresentationBoundary({ authenticate, verifyOwnedAthlete, calculate });
     expect(await handle(request, {})).toEqual({ status: 503, body: { error: 'unavailable' } });
     expect(authenticate).not.toHaveBeenCalled();
+    expect(verifyOwnedAthlete).not.toHaveBeenCalled();
     expect(calculate).not.toHaveBeenCalled();
   });
 });
