@@ -3,8 +3,12 @@ name: TrainPaceLab CI
 on:
   push:
     branches: [ main, master, dev ]
+  # Validate stacked draft PRs as well as PRs directly targeting main.
+  # This workflow has read-only permissions and uses no deployment or billing secrets.
   pull_request:
-    branches: [ main, master, dev ]
+  # Run the same validation for merge-queue candidates when branch protection uses a queue.
+  merge_group:
+    types: [checks_requested]
 
 permissions:
   contents: read
