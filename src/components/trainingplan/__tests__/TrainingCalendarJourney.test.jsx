@@ -68,6 +68,47 @@ describe("calendar seven-day athlete journey", () => {
     expect(mocks.filter).toHaveBeenCalledTimes(2);
   });
 
+  it("offers the real one-time calendar export and retains every session at narrow mobile widths", async () => {
+    const date = moment().format("YYYY-MM-DD");
+    mocks.filter.mockResolvedValue([
+      { id: "double-am", date, title: "Easy run", sport: "running", prescribed_duration_minutes: 40 },
+      { id: "double-pm", date, title: "Evening mobility", sport: "strength", prescribed_duration_minutes: 25 },
+    ]);
+    for (const width of [320, 390, 768]) {
+      cleanup();
+      Object.defineProperty(window, "innerWidth", { configurable: true, value: width });
+      const { container } = render(<TrainingCalendar athleteId="synthetic" currentTsb={0} />);
+      await waitFor(() => expect(screen.getByText("Easy run")).toBeTruthy());
+      expect(screen.getByText("Evening mobility")).toBeTruthy();
+      expect(screen.getByRole("button", { name: /download calendar \(\.ics\)/i })).toBeTruthy();
+      expect(screen.getByText(/one-time export, not live synchronization/i)).toBeTruthy();
+      expect(container.querySelector(".grid-cols-1.sm\\:grid-cols-2.lg\\:grid-cols-4")).toBeTruthy();
+    }
+  });
+
+  it("does not claim adjustment success when the backend response is unknown", async () => {
+    mocks.filter.mockResolvedValue([]);
+    mocks.invoke.mockResolvedValue({ data: {} });
+    render(<TrainingCalendar athleteId="synthetic" currentTsb={3} />);
+    const adjust = await screen.findByRole("button", { name: /AI Microadjustment/i });
+    await waitFor(() => expect(adjust.disabled).toBe(false));
+    fireEvent.click(adjust);
+    await waitFor(() => expect(screen.getByRole("status").textContent).toMatch(/could not be confirmed/i));
+    expect(mocks.filter).toHaveBeenCalledTimes(2);
+    expect(screen.getByRole("status").textContent).not.toMatch(/Adjustment confirmed/i);
+  });
+
+  it("confirms an adjustment only after refreshed schedule evidence", async () => {
+    mocks.filter.mockResolvedValue([]);
+    mocks.invoke.mockResolvedValue({ data: { success: true, adjusted: [{ id: "mock-adjustment" }] } });
+    render(<TrainingCalendar athleteId="synthetic" currentTsb={3} />);
+    const adjust = await screen.findByRole("button", { name: /AI Microadjustment/i });
+    await waitFor(() => expect(adjust.disabled).toBe(false));
+    fireEvent.click(adjust);
+    await waitFor(() => expect(screen.getByRole("status").textContent).toMatch(/Adjustment confirmed/i));
+    expect(mocks.filter).toHaveBeenCalledTimes(2);
+  });
+
   it("does not show the day as rest while loading", () => {
     mocks.filter.mockReturnValue(new Promise(() => {}));
     render(<TrainingCalendar athleteId="synthetic" currentTsb={0} />);
