@@ -1,3 +1,4 @@
+import { stripeEventLedgerKey } from "../../shared/stripeEventLedgerKey.ts";
 import { createClientFromRequest } from "npm:@base44/sdk@0.8.44";
 import { secrets } from "base44:runtime";
 import { constantTimeEqual } from "../../shared/crypto.ts";
@@ -78,7 +79,7 @@ export default async function(req) {
     // Event-id idempotency: Stripe retries events. Key on the Stripe event id so a
     // retried event is processed exactly once — independent of the subscription-level
     // dedup below.
-    const eventId = `stripe:${event.id}`;
+    const eventId = stripeEventLedgerKey(event);\n    if (!eventId) return Response.json({ error: "Invalid Stripe event identity" }, { status: 400 });
     try {
       const seen = await sr.entities.WebhookEvent.filter({ event_id: eventId });
       if (seen.length > 0) return Response.json({ received: true, duplicate: true });
