@@ -32,7 +32,8 @@ export default function WorkoutUpload({ athleteId, onUploaded }) {
     setStatus(null);
     let ingestRequested = false;
     try {
-      const { file_url } = await base44.integrations.Core.UploadFile({ file });
+      const uploadResult = await base44.integrations.Core.UploadFile({ file });
+      const file_url = uploadResult?.file_url;
       // A completed transport call without a usable file URL is not an ingest.
       // Fail before invoking the server rather than sending an undefined source.
       if (typeof file_url !== "string" || !file_url.trim()) {
