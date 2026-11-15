@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { runAccountEntityCleanup, finalizeAccountDeletion, linkedAthleteCleanup, resolveOwnedAthleteIds } from "../../../base44/shared/accountDeletionCleanup.js";
+import { runAccountEntityCleanup, finalizeAccountDeletion, linkedAthleteCleanup, resolveOwnedAthleteIds, loadOrCreateDeletionRecovery } from "../../../base44/shared/accountDeletionCleanup.js";
 
 describe("account deletion cleanup executor", () => {
   it("reports no failures when every entity deletion succeeds", async () => {
@@ -137,5 +137,71 @@ describe("profile retention across partial cleanup", () => {
     ], deleteUser);
     expect(result).toEqual({ success: false, failedEntities: ["AthleteProfile"] });
     expect(deleteUser).not.toHaveBeenCalled();
+  });
+});
+
+describe("durable deletion recovery scope", () => {
+  it("persists owned profile IDs before deletion and rejects unverified persistence", async () => {
+    const create = vi.fn(async (data) => ({ ...data, id: "journal-1" }));
+    const entities = {
+      AccountDeletionRecovery: { filter: vi.fn().mockResolvedValue([]), create },
+      AthleteProfile: { filter: vi.fn().mockResolvedValue([
+        { id: "mine", created_by_id: "owner" },
+      ]) },
+    };
+    const result = await loadOrCreateDeletionRecovery(entities, {
+      id: "owner", data: { athlete_profile_id: "mine" },
+    });
+    expect(result).toMatchObject({ id: "journal-1", user_id: "owner", athlete_ids: ["mine"] });
+    expect(create).toHaveBeenCalledWith({ user_id: "owner", athlete_ids: ["mine"], state: "prepared" });
+    entities.AccountDeletionRecovery.filter.mockResolvedValue([]);
+    create.mockResolvedValueOnce({ id: "journal-2", user_id: "other", athlete_ids: ["mine"], state: "prepared" });
+    await expect(loadOrCreateDeletionRecovery(entities, { id: "owner" })).rejects.toThrow(/verified/);
+  });
+
+  it("recovers verified IDs when profiles were removed by an earlier partial attempt", async () => {
+    const create = vi.fn();
+    const profiles = vi.fn();
+    const entities = {
+      AccountDeletionRecovery: {
+        filter: vi.fn().mockResolvedValue([{
+          id: "journal-1", user_id: "owner", athlete_ids: ["mine"], state: "prepared",
+        }]),
+        create,
+      },
+      AthleteProfile: { filter: profiles },
+    };
+    expect((await loadOrCreateDeletionRecovery(entities, { id: "owner" })).athlete_ids).toEqual(["mine"]);
+    expect(create).not.toHaveBeenCalled();
+    expect(profiles).not.toHaveBeenCalled();
+  });
+
+  it("fails closed for foreign, ambiguous, corrupt or unconfirmed recovery records", async () => {
+    const user = { id: "owner" };
+    const entity = { AccountDeletionRecovery: { filter: vi.fn() } };
+    for (const records of [
+      [{ id: "bad", user_id: "other", athlete_ids: ["foreign"], state: "prepared" }],
+      [{ id: "bad", user_id: "owner", athlete_ids: ["mine", "mine"], state: "prepared" }],
+      [{ id: "bad", user_id: "owner", athlete_ids: ["mine"], state: "user_deleted" }],
+      [{ id: "bad", user_id: "owner", athlete_ids: "mine", state: "prepared" }],
+      [{ id: "one" }, { id: "two" }],
+    ]) {
+      entity.AccountDeletionRecovery.filter.mockResolvedValueOnce(records);
+      await expect(loadOrCreateDeletionRecovery(entity, user)).rejects.toThrow(/manual review/);
+    }
+  });
+
+  it("does not write a recovery record for a foreign-linked profile", async () => {
+    const create = vi.fn();
+    const entities = {
+      AccountDeletionRecovery: { filter: vi.fn().mockResolvedValue([]), create },
+      AthleteProfile: { filter: vi.fn().mockResolvedValue([
+        { id: "mine", created_by_id: "owner" },
+      ]) },
+    };
+    await expect(loadOrCreateDeletionRecovery(entities, {
+      id: "owner", data: { athlete_profile_id: "foreign" },
+    })).rejects.toThrow(/linkage/);
+    expect(create).not.toHaveBeenCalled();
   });
 });
