@@ -69,3 +69,9 @@ This file is the **single execution queue**, not a claim that beta readiness is 
 - **GitHub PR / merged SHA:** …
 - **Base44 deployment SHA / checkpoint / timestamp:** `NOT PUBLISHED` unless verified.
 - **Staging/live evidence and open blockers:** …
+
+## 2026-11-14 ING explicit recording persistence receipt (PR #118)
+
+- Current `ingestWorkoutFile` persists `WorkoutSession.streams` only when stream length <=3600, but `success:true` was returned for longer files without an explicit saved-stream status. Attachment reconciliation also returned success without proof that the master stream was retained.
+- Additive backend response `recording_persistence` now reports `not_stored_on_session` for >3600 samples, `attachment_unverified` for attachments, and `session_write_reported` for a short stream returned by the session create. All cases set `full_recording_verified:false` until authoritative chunked readback exists. Five synthetic tests authored, execution pending.
+- Draft PR #118 is source-only and unmerged. No production writes, schema changes, original-file retention guarantees or chunk writer activation. Next: integrate this response into PR #111 import UX, then verify staging end-to-end and complete distributed-lock chunk storage work.

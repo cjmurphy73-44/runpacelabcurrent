@@ -11,6 +11,7 @@ import { assertOwnsAthlete } from '../../shared/ownership.ts';
 import { reportError } from '../../shared/errorReport.ts';
 import { checkImportAllowance } from '../../shared/importLimit.ts';
 import { MAX_STREAM_SAMPLES, storageStream } from '../../shared/streamValidity.ts';
+import { recordingPersistenceReceipt } from '../../shared/recordingPersistenceReceipt.ts';
 
 Deno.serve(async (req) => {
   try {
@@ -252,7 +253,8 @@ Deno.serve(async (req) => {
       // ZERO-DELTA LOAD GUARD: deliberately do NOT invoke calculateDailyTRIMP or
       // recalculateCTLATLTSB — the session's training load was already counted on the
       // first asset. Attaching a second format enriches the stream/laps only.
-      return Response.json({ success: true, attached: true, workout_session_id: match.id });
+      return Response.json({ success: true, attached: true, workout_session_id: match.id,
+        recording_persistence: recordingPersistenceReceipt(masterStream.length, true) });
     }
 
     // First-upload path: create the session + its first WorkoutAsset, then count load once.
@@ -374,7 +376,9 @@ Deno.serve(async (req) => {
     // inside the AI evaluation before any prose is written).
     const stateSummary = await buildAthleteStateSummary(base44, session).catch(() => null);
 
-    return Response.json({ success: true, workout_session: session, attached: false, athlete_state_summary: stateSummary });
+    return Response.json({ success: true, workout_session: session, attached: false,
+      recording_persistence: recordingPersistenceReceipt(stream.length, false, Array.isArray(session.streams) ? session.streams.length : null),
+      athlete_state_summary: stateSummary });
   } catch (error) {
     try { await reportError(base44, { source: 'ingestWorkoutFile', message: error.message, stack: error.stack, severity: 'High' }); } catch {}
     return Response.json({ error: error.message }, { status: 500 });
