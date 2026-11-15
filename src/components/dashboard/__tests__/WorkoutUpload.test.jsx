@@ -131,6 +131,22 @@ describe("single-file import input lifecycle", () => {
     expect(onUploaded).not.toHaveBeenCalled();
   });
 
+  it.each([undefined, null, "", "   ", 123])(
+    "does not invoke ingest when file transfer returns unusable URL %s",
+    async (file_url) => {
+      mocks.upload.mockResolvedValue({ file_url });
+      const onUploaded = vi.fn();
+      render(<WorkoutUpload athleteId="synthetic-athlete" onUploaded={onUploaded} />);
+      const input = chooseFile();
+      submit();
+      await waitFor(() => expect(screen.getByRole("status").textContent).toMatch(/failed before workout processing began/i));
+      expect(mocks.ingest).not.toHaveBeenCalled();
+      expect(onUploaded).not.toHaveBeenCalled();
+      expect(input.files).toHaveLength(1);
+      expect(screen.getByRole("button", { name: "Upload" }).disabled).toBe(false);
+    }
+  );
+
   it("allows only one in-flight ingest even if form submission is repeated", async () => {
     let finishIngest;
     mocks.ingest.mockImplementation(() => new Promise((resolve) => { finishIngest = resolve; }));
