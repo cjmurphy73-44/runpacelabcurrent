@@ -27,6 +27,6 @@ Do not run deletion against production or real athlete accounts to satisfy these
 - New exact-head CI for the above changes is pending; do not carry forward the earlier CI result as proof of this commit.
 
 ## Platform isolation and file storage status
-- Source documentation contains contradictory staging assumptions. An older MVP roadmap declares no staging environment, while later workflow and draft PRs refer to staging isolation work. No platform-authoritative proof of separate authentication, database, function deployments, secrets and effective SDK routing has been acquired in this checkpoint.
+- Source documentation contains contradictory staging assumptions. An older MVP roadmap declares no staging environment, while later workflow and draft PRs refer to staging isolation work. Base44 read-only app listing confirms two named app identities: TrainPaceLab-Staging (`6aefe9d09e2788fc8591c758`) and TrainPaceLab (`6a504ebe6a5a6d1be058226c`). This is **identity only**, not proof of separate authentication, database, function deployments, secrets or effective SDK routing.
 - Repository search found no supported `storage.delete` implementation. A guessed SDK file-deletion API must not be deployed. Obtain vendor documentation or official support confirmation, along with deletion ownership and purge verification, before implementing file purge.
 - No remote data reads, synthetic writes, storage deletes or live backend calls were performed in this checkpoint.
