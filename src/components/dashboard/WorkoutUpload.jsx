@@ -56,7 +56,12 @@ export default function WorkoutUpload({ athleteId, onUploaded }) {
         // Clear the actual native input too: otherwise the same FIT cannot be
         // selected again and the UI may still show the previous filename.
         if (fileInputRef.current) fileInputRef.current.value = "";
-        onUploaded?.();
+        // Parent refresh failures must not misreport a confirmed saved workout.
+        try {
+          onUploaded?.();
+        } catch {
+          // The confirmed save status remains authoritative.
+        }
       }
     } catch (err) {
       setStatus({
