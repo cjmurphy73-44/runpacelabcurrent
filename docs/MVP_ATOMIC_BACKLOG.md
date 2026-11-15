@@ -69,3 +69,10 @@ This file is the **single execution queue**, not a claim that beta readiness is 
 - **GitHub PR / merged SHA:** …
 - **Base44 deployment SHA / checkpoint / timestamp:** `NOT PUBLISHED` unless verified.
 - **Staging/live evidence and open blockers:** …
+
+## 2026-11-14 UX per-workout saved recording status (PR #109)
+
+- Audit: `WorkoutDetailModal` showed a partial-recording warning only when `recordingCoverage.partial`; workouts with no saved samples had no equivalent prominent recovery action. `WorkoutZonePanel` already fails closed on unverified streams, so it remains unchanged.
+- Change: `workoutRecordingStatus` distinguishes usable saved samples, partial/unverified sample coverage, and unavailable recording detail using existing `recordingCoverage` and `hasVerifiedStreams`. Workout detail shows accessible status and original FIT/TCX import link where needed. Never claims original file retention or Garmin/COROS sync completion.
+- Evidence: commits `9a8b5257`, `0926b75c`, `f78b3d7d`; four synthetic Vitest cases authored, execution pending. Draft PR #109 unmerged/undeployed.
+- Next: browser test mobile and keyboard focus, verify real FIT/TCX imports and Garmin/COROS original recording retention with server evidence; add provider-specific ingest state only after verified backend contract. No production data or schemas touched.
