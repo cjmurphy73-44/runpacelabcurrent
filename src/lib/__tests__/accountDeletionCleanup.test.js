@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { runAccountEntityCleanup } from "../../../base44/shared/accountDeletionCleanup.js";
+import { runAccountEntityCleanup, finalizeAccountDeletion } from "../../../base44/shared/accountDeletionCleanup.js";
 
 describe("account deletion cleanup executor", () => {
   it("reports no failures when every entity deletion succeeds", async () => {
@@ -29,5 +29,32 @@ describe("account deletion cleanup executor", () => {
     expect(await runAccountEntityCleanup(cleanup)).toEqual(["WorkoutSession"]);
     expect(await runAccountEntityCleanup(cleanup)).toEqual([]);
     expect(removePlan).toHaveBeenCalledTimes(2);
+  });
+});
+
+describe("account identity deletion gate", () => {
+  it("never deletes User after any entity cleanup failure", async () => {
+    const deleteUser = vi.fn();
+    const result = await finalizeAccountDeletion([
+      ["WorkoutAsset", vi.fn().mockRejectedValue(new Error("private internal error"))],
+      ["WorkoutSession", vi.fn().mockResolvedValue(undefined)],
+    ], deleteUser);
+    expect(result).toEqual({ success: false, failedEntities: ["WorkoutAsset"] });
+    expect(deleteUser).not.toHaveBeenCalled();
+  });
+
+  it("deletes User exactly once after all cleanup steps succeed", async () => {
+    const deleteUser = vi.fn().mockResolvedValue(undefined);
+    const result = await finalizeAccountDeletion([
+      ["WorkoutAsset", vi.fn().mockResolvedValue(undefined)],
+      ["WorkoutSession", vi.fn().mockResolvedValue(undefined)],
+    ], deleteUser);
+    expect(result).toEqual({ success: true, failedEntities: [] });
+    expect(deleteUser).toHaveBeenCalledOnce();
+  });
+
+  it("does not report success if User deletion fails", async () => {
+    const deleteUser = vi.fn().mockRejectedValue(new Error("identity deletion failed"));
+    await expect(finalizeAccountDeletion([], deleteUser)).rejects.toThrow("identity deletion failed");
   });
 });
