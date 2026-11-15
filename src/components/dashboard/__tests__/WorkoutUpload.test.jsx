@@ -172,6 +172,24 @@ describe("single-file import input lifecycle", () => {
     }
   );
 
+  it("prevents a second file transfer while the first upload is unresolved", async () => {
+    let finishUpload;
+    mocks.upload.mockImplementation(() => new Promise((resolve) => { finishUpload = resolve; }));
+    mocks.ingest.mockResolvedValue({ data: { success: true, workout_session: { id: "synthetic-session" } } });
+    const onUploaded = vi.fn();
+    render(<WorkoutUpload athleteId="synthetic-athlete" onUploaded={onUploaded} />);
+    chooseFile();
+    submit();
+    expect(mocks.upload).toHaveBeenCalledTimes(1);
+    // Simulate a second submit queued before the UI finishes rendering disabled state.
+    fireEvent.submit(screen.getByRole("button", { name: "Processing..." }).closest("form"));
+    expect(mocks.upload).toHaveBeenCalledTimes(1);
+    expect(mocks.ingest).not.toHaveBeenCalled();
+    finishUpload({ file_url: "https://example.invalid/synthetic.fit" });
+    await waitFor(() => expect(onUploaded).toHaveBeenCalledTimes(1));
+    expect(mocks.ingest).toHaveBeenCalledTimes(1);
+  });
+
   it("allows only one in-flight ingest even if form submission is repeated", async () => {
     let finishIngest;
     mocks.ingest.mockImplementation(() => new Promise((resolve) => { finishIngest = resolve; }));
