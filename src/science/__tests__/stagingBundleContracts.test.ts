@@ -30,8 +30,8 @@ describe('Science 1.7: staging Deno function bundle contracts', () => {
       expect(text).toContain('status: 503');
       expect(text).toContain("req.method !== 'POST'");
       expect(text).toContain('status: 405');
-      expect(text).not.toMatch(/(?:WorkoutSession|DailyMetrics|AthleteProfile)\\.(?:create|update|bulkUpdate|delete)\\s*\\(/);
-      expect(text).not.toMatch(/(?:success:\\s*true|status:\\s*200)/);
+      expect(text).not.toMatch(/(?:WorkoutSession|DailyMetrics|AthleteProfile)\.(?:create|update|bulkUpdate|delete)\s*\(/);
+      expect(text).not.toMatch(/(?:success:\s*true|status:\s*200)/);
     }
     const load = source('calculateTrainingLoad');
     expect(load).toContain('client.auth.me()');
