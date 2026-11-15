@@ -5,7 +5,7 @@
 Three decisions shape everything below:
 
 1. **Separate load models.** Verified-stream load and summary-derived load are stored, aggregated and displayed as distinct things. Summary sessions stay in activity history and may carry a clearly labelled load, but they never become stream analytics.
-2. **No staging environment.** Validation runs in the current published app with deterministic fixtures plus real provider accounts. Provider-risk is managed with a dedicated internal test athlete, not with a second app.
+2. **Isolated staging required for risky validation (release gate).** The separate Base44 staging app (`6aefe9d09e2788fc8591c758`) is a candidate environment, not proof of backend, auth-tenant, function or database isolation from production (`6a504ebe6a5a6d1be058226c`). Never use production athlete records or real provider credentials as fixtures. Keep Vercel Preview identity checks fail-closed until the effective SDK backend HTTPS origin, auth boundary and data/function isolation are independently attested. Synthetic unit tests can run locally without that evidence; authenticated staging integration tests cannot. Record exact Git SHA, CI run, Vercel deployment status, Base44 checkpoint and verified runtime observations separately. See `docs/STAGING_DASHBOARD_ACCEPTANCE.md` and `docs/MVP_ATOMIC_BACKLOG.md`.
 3. **MVP value first.** Sequence by athlete-visible value and revenue risk, not by the original seven-PR directive order.
 
 Status legend: ✅ done and evidenced · 🟡 partly done or unverified · ❌ not started · ⛔ blocked.
