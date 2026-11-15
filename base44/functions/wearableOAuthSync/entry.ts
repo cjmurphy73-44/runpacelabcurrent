@@ -12,6 +12,7 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
 import { getOwnedAthlete } from '../../shared/workoutIngest.ts';
 import { env } from '../../shared/oauth.ts';
 import { issueOAuthAttempt, consumeOAuthAttempt } from '../../shared/oauthAttempts.ts';
+import { configuredOAuthRedirect } from '../../shared/oauthRedirect.ts';
 import {
   ingestRecovery,
   normalizeOuraRecovery,
@@ -173,9 +174,8 @@ const PROVIDERS: Record<ProviderKey, ProviderConfig> = {
 
 // ---- helpers ----
 
-function selfUrl(req: Request): string {
-  const url = new URL(req.url);
-  return `${url.origin}${url.pathname}`;
+function selfUrl(_req: Request): string {
+  return configuredOAuthRedirect(env('WEARABLE_REDIRECT_URI'), 'wearableOAuthSync');
 }
 
 async function fetchJson(token: string, url: string): Promise<any> {

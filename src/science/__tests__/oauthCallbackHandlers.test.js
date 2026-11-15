@@ -5,10 +5,11 @@ import { webcrypto } from 'node:crypto';
 import ts from 'typescript';
 import { describe, expect, it, vi } from 'vitest';
 import * as attempts from '../../../base44/shared/oauthAttempts';
+import * as redirects from '../../../base44/shared/oauthRedirect';
 
 const athlete = { id: 'synthetic-athlete', created_by_id: 'synthetic-owner' };
 
-function harness(functionName, { configured = true, consumeResult, foreign = false } = {}) {
+function harness(functionName, { configured = true, consumeResult, foreign = false, callbackUri } = {}) {
   const rows = new Map(); let count = 0;
   const attemptRepo = {
     create: vi.fn(async (data) => { const row = { ...data, id: `attempt-${++count}` }; rows.set(row.id, row); return row; }),
@@ -26,12 +27,13 @@ function harness(functionName, { configured = true, consumeResult, foreign = fal
     OAuthAttempt: attemptRepo, AthleteProfile: { get: vi.fn(async () => ({ ...athlete })) },
     CorosConnection: connection, WearableConnection: connection,
   } } };
-  const env = (key) => configured ? ({ COROS_MCP_CLIENT_ID: 'public-client-id', OURA_CLIENT_ID: 'public-oura-id', OURA_CLIENT_SECRET: 'synthetic-private-secret', COROS_REDIRECT_URI: 'https://synthetic.test/functions/corosSync' }[key] || '') : '';
+  const env = (key) => configured ? ({ COROS_MCP_CLIENT_ID: 'public-client-id', OURA_CLIENT_ID: 'public-oura-id', OURA_CLIENT_SECRET: 'synthetic-private-secret', COROS_REDIRECT_URI: callbackUri ?? 'https://synthetic.test/functions/corosSync', WEARABLE_REDIRECT_URI: callbackUri ?? 'https://synthetic.test/functions/wearableOAuthSync' }[key] || '') : '';
   const network = vi.fn(async () => Response.json({ access_token: 'synthetic-provider-token', expires_in: 300 }));
   const modules = {
     'npm:@base44/sdk@0.8.31': { createClientFromRequest: () => client },
     '../../shared/oauth.ts': { env },
     '../../shared/oauthAttempts.ts': attempts,
+    '../../shared/oauthRedirect.ts': redirects,
     '../../shared/workoutIngest.ts': { getOwnedAthlete: async () => foreign ? { ...athlete, created_by_id: 'foreign-user' } : athlete },
     '../../shared/corosMcp.ts': { fetchWithTimeout: network },
     '../../shared/errorReport.ts': { reportError: vi.fn() },
@@ -121,6 +123,14 @@ describe.each(['corosSync', 'wearableOAuthSync'])('%s actual request router', (f
   it('fails closed when provider configuration is absent', async () => {
     const h = harness(functionName, { configured: false });
     await h.authorize(); await h.callback('fake.' + 'x'.repeat(43));
+    expect(h.attemptRepo.create).not.toHaveBeenCalled();
+    expect(h.network).not.toHaveBeenCalled();
+    expect(h.connection.create).not.toHaveBeenCalled();
+  });
+  it.each(['', 'http://synthetic.test/callback', 'https://internal.base44.workers.dev/run/hash'])('does not initiate or exchange with invalid callback configuration: %s', async (callbackUri) => {
+    const h = harness(functionName, { callbackUri });
+    expect((await h.authorize()).status).toBeGreaterThanOrEqual(400);
+    await h.callback('attempt-1.' + 'x'.repeat(43));
     expect(h.attemptRepo.create).not.toHaveBeenCalled();
     expect(h.network).not.toHaveBeenCalled();
     expect(h.connection.create).not.toHaveBeenCalled();

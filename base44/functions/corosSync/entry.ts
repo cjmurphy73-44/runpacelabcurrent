@@ -5,6 +5,7 @@ import { resolveTimeInZone } from '../../shared/hrZones.ts';
 import { resolveActiveCalories } from '../../shared/calories.ts';
 import { env } from '../../shared/oauth.ts';
 import { issueOAuthAttempt, consumeOAuthAttempt } from '../../shared/oauthAttempts.ts';
+import { configuredOAuthRedirect } from '../../shared/oauthRedirect.ts';
 import { ingestRecovery } from '../../shared/recoveryIngest.ts';
 import { runPostWorkoutEvaluation } from '../../shared/postWorkoutAI.ts';
 import { assertSafeFileUrl } from '../../shared/urlGuard.ts';
@@ -48,9 +49,7 @@ function getClientId(): string {
 // Use the stable public function URL, overridable via COROS_REDIRECT_URI if the DCR
 // registration used a different value.
 function selfUrl(_req: Request): string {
-  const override = env('COROS_REDIRECT_URI');
-  if (override) return override;
-  return 'https://trainpacelab.base44.app/functions/corosSync';
+  return configuredOAuthRedirect(env('COROS_REDIRECT_URI'), 'corosSync');
 }
 
 // Public app origin for the callback page's "back to settings" link. req.url is the
