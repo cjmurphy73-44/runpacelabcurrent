@@ -1,4 +1,6 @@
 import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
+import { pathToFileURL } from "node:url";
 
 const SHA = /^[a-f0-9]{40}$/i;
 const DEPLOYMENT = /^dpl_[A-Za-z0-9]+$/;
@@ -16,8 +18,8 @@ export function assessReleaseEvidence(evidence, now = new Date()) {
   if (evidence.github?.branch !== "main") errors.push("GitHub source branch must be main");
   const ci = evidence.ci;
   if (ci?.sha !== sha || !SHA.test(ci?.sha ?? "")) errors.push("CI SHA must match GitHub SHA");
-  if (ci?.check !== "validate" || ci?.conclusion !== "success" || ci?.status !== "completed") {
-    errors.push("Required GitHub validate check must be completed successfully");
+  if (ci?.check !== "validate" || ci?.conclusion !== "success" || ci?.status !== "completed" || ci?.integration_id !== 15368) {
+    errors.push("Required GitHub validate check must succeed from the approved GitHub Actions integration");
   }
   if (!/^https:\/\/github\.com\/cjmurphy73-44\/runpacelabcurrent\/actions\/runs\/\d+$/.test(ci?.run_url ?? "")) {
     errors.push("Required CI run URL must identify the TrainPaceLab GitHub repository");
@@ -44,7 +46,7 @@ export function assessReleaseEvidence(evidence, now = new Date()) {
     errors.push("Smoke evidence must be timestamped within the past 24 hours");
   }
   for (const name of REQUIRED_SMOKES) {
-    if (!Array.isArray(smoke?.checks) || !smoke.checks.some(c => c?.name === name && c?.status === "pass" && typeof c?.evidence_url === "string" && /^https:\/\//.test(c.evidence_url))) {
+    if (!Array.isArray(smoke?.checks) || smoke.checks.filter(c => c?.name === name).length !== 1 || !smoke.checks.some(c => c?.name === name && c?.status === "pass" && typeof c?.evidence_url === "string" && /^https:\/\//.test(c.evidence_url))) {
       errors.push(`Missing passing smoke evidence for ${name}`);
     }
   }
@@ -56,7 +58,7 @@ export function assessReleaseEvidence(evidence, now = new Date()) {
   return { ready: errors.length === 0, errors };
 }
 
-if (process.argv[1] && import.meta.url === new URL(`file://${process.argv[1]}`).href) {
+if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1])).href) {
   const filename = process.argv[2];
   if (!filename) {
     console.error("Usage: node scripts/verify-release-provenance.mjs path/to/evidence.json");
