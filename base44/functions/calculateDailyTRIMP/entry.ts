@@ -1,5 +1,6 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
 import { assertOwnsAthlete } from '../../shared/ownership.ts';
+import { dailyLoadValue } from '../../shared/ewmaDaily.ts';
 
 Deno.serve(async (req) => {
   try {
@@ -20,7 +21,7 @@ Deno.serve(async (req) => {
 
     const sessions = await base44.entities.WorkoutSession.filter({ athlete_id, date });
     // Use HR-based TRIMP as the primary stress metric; fall back to rTSS when HR was unavailable.
-    const totalTrimp = sessions.reduce((sum, s) => sum + (s.session_trimp || s.session_tss || 0), 0);
+    const totalTrimp = sessions.reduce((sum, s) => sum + dailyLoadValue(s), 0);
     const rounded = Math.round(totalTrimp * 100) / 100;
 
     const existing = await base44.entities.DailyMetrics.filter({ athlete_id, date });
