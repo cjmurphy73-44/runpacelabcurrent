@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { base44 } from "@/api/base44Client";
+import { singleFileImportOutcome } from "@/lib/singleFileImportOutcome";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -35,12 +36,11 @@ export default function WorkoutUpload({ athleteId, onUploaded }) {
         sport,
         date,
       });
-      if (res.data?.error) {
-        setStatus({ type: "error", message: res.data.error });
-      } else {
-        setStatus({ type: "success", message: "Workout ingested successfully." });
+      const outcome = singleFileImportOutcome(res?.data, file.name);
+      setStatus({ type: outcome.type, message: outcome.message });
+      if (outcome.confirmed) {
         setFile(null);
-        onUploaded();
+        onUploaded?.();
       }
     } catch (err) {
       setStatus({ type: "error", message: err.message });
@@ -81,7 +81,7 @@ export default function WorkoutUpload({ athleteId, onUploaded }) {
             {uploading ? "Processing..." : "Upload"}
           </Button>
           {status && (
-            <p className={`text-sm ${status.type === "error" ? "text-destructive" : "text-success"}`}>{status.message}</p>
+            <p role="status" aria-live="polite" className={`text-sm ${status.type === "error" ? "text-destructive" : status.type === "warning" ? "text-warning" : "text-success"}`}>{status.message}</p>
           )}
         </form>
       </CardContent>
