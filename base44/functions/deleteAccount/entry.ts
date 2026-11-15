@@ -1,5 +1,5 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.49';
-import { finalizeAccountDeletion, linkedAthleteCleanup, loadOrCreateDeletionRecovery } from '../../shared/accountDeletionCleanup.js';
+import { finalizeAccountDeletion, linkedAthleteCleanup, loadOrCreateDeletionRecovery, verifyDeletionRecoveryScope } from '../../shared/accountDeletionCleanup.js';
 
 // Permanently deletes the calling user's account and all owned data.
 // Triggered from the Athlete Settings Danger Zone. There is no client-side
@@ -18,6 +18,9 @@ export default async function(req) {
     // A service-role-only recovery record retains verified athlete IDs even if
     // User deletion fails after AthleteProfile deletion. No record = no cleanup.
     const recovery = await loadOrCreateDeletionRecovery(e, user);
+    // Fail closed when another request has created/replaced a journal.
+    // This check does not provide transactional concurrency control.
+    await verifyDeletionRecoveryScope(e, user.id, recovery);
     const athleteIds = recovery.athlete_ids;
 
     // Keep entity labels in failure reports, never record contents or secrets.
