@@ -186,11 +186,6 @@
           "id": "{{user.data.athlete_profile_id}}"
         },
         {
-          "id": {
-            "$in": "{{user.data.coached_athletes}}"
-          }
-        },
-        {
           "user_condition": {
             "role": "admin"
           }
