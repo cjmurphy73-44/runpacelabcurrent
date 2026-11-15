@@ -92,8 +92,8 @@ export function syncGuideFor(selected = []) {
   // Saved selections may contain repeated keys after imports or retries.
   // Render each known provider once, retaining the athlete's chosen order.
   return [...new Set(keys)]
+    .filter((key) => typeof key === "string" && Object.hasOwn(WEARABLE_MAP, key))
     .map((key) => WEARABLE_MAP[key])
-    .filter(Boolean)
     .map((w) => ({
       key: w.key,
       label: w.label,
