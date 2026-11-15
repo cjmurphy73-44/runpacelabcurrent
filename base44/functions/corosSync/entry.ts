@@ -10,7 +10,7 @@ import { assertSafeFileUrl } from '../../shared/urlGuard.ts';
 import { constantTimeEqual } from '../../shared/crypto.ts';
 import { getSyncLookbackDays } from '../../shared/syncLookback.ts';
 import { parseFitWithLaps, summarizeStream } from '../../shared/workoutParsers.ts';
-import { isUsableTelemetry, storageStream, MAX_STREAM_SAMPLES } from '../../shared/streamValidity.ts';
+import { isUsableTelemetry, inlineRecordingOrUndefined } from '../../shared/streamValidity.ts';
 import { persistCorosBatches } from '../../shared/corosBatchPersistence.ts';
 import { corosActivityId, isDuplicateCorosSession } from '../../shared/corosActivityIdentity.ts';
 import {
@@ -329,7 +329,8 @@ async function handleWebhook(req, base44) {
     zone_method: zoneResult.zone_method,
     zone_bounds_bpm: zoneResult.zone_bounds_bpm,
     temperature_c: temperatureC ?? undefined,
-    streams: fitParsed ? storageStream(fitParsed.stream.slice(0, MAX_STREAM_SAMPLES)) : undefined,
+    // Never save a 3600-point prefix as if it represented the full activity.
+    streams: fitParsed ? inlineRecordingOrUndefined(fitParsed.stream) : undefined,
     laps: fitParsed?.laps?.length ? fitParsed.laps : undefined,
     ...energy,
   });
@@ -451,7 +452,9 @@ function applyFitTelemetry(payload: any, fit: any, athlete: any): boolean {
   payload.zone_seconds = zoneResult.zone_seconds;
   payload.zone_method = zoneResult.zone_method;
   payload.zone_bounds_bpm = zoneResult.zone_bounds_bpm;
-  payload.streams = storageStream(fit.stream.slice(0, MAX_STREAM_SAMPLES));
+  // Long FIT recordings retain full-stream derived zones/load, but the legacy inline
+  // stream field is omitted until verified durable chunk persistence is wired.
+  payload.streams = inlineRecordingOrUndefined(fit.stream);
   if (fit.laps?.length) payload.laps = fit.laps.slice(0, 200);
   return true;
 }
