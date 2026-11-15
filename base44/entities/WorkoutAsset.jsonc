@@ -32,7 +32,7 @@
       "type": "integer",
       "minimum": 1,
       "maximum": 4,
-      "description": "Reconciliation priority weight: FIT=4, TCX=3, CSV=2, manual=1 \u2014 higher wins per timestamp/channel"
+      "description": "Reconciliation priority weight: FIT=4, TCX=3, CSV=2, manual=1 — higher wins per timestamp/channel"
     },
     "parsing_status": {
       "type": "string",
@@ -74,11 +74,6 @@
       "$or": [
         {
           "data.athlete_id": "{{user.data.athlete_profile_id}}"
-        },
-        {
-          "data.athlete_id": {
-            "$in": "{{user.data.coached_athletes}}"
-          }
         },
         {
           "user_condition": {
