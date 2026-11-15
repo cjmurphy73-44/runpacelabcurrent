@@ -3,7 +3,8 @@ import { VALID_SPORTS, calcTrimp, normalizeSport, getOwnedAthlete } from '../../
 import { resolveSessionLoad } from '../../shared/loadModel.ts';
 import { resolveTimeInZone } from '../../shared/hrZones.ts';
 import { resolveActiveCalories } from '../../shared/calories.ts';
-import { env, hmacBase64Url } from '../../shared/oauth.ts';
+import { env } from '../../shared/oauth.ts';
+import { issueOAuthAttempt, consumeOAuthAttempt } from '../../shared/oauthAttempts.ts';
 import { ingestRecovery } from '../../shared/recoveryIngest.ts';
 import { runPostWorkoutEvaluation } from '../../shared/postWorkoutAI.ts';
 import { assertSafeFileUrl } from '../../shared/urlGuard.ts';
@@ -81,7 +82,7 @@ function callbackPage(kind: 'success' | 'error', title: string, detail: string, 
 <h2 style="color:${color}">${heading}</h2>
 <p style="color:#374151;white-space:pre-wrap">${escapeHtml(detail)}</p>
 <p style="margin-top:1.5rem"><a href="${escapeHtml(origin)}/settings">Back to settings</a></p>${closeScript}</body>`;
-  return new Response(html, { status: 200, headers: { 'Content-Type': 'text/html' } });
+  return new Response(html, { status: 200, headers: { 'Content-Type': 'text/html', 'Cache-Control': 'no-store', 'Referrer-Policy': 'no-referrer' } });
 }
 
 // ---- base64url + PKCE helpers ----
@@ -91,11 +92,6 @@ function b64url(buf: ArrayBuffer | Uint8Array): string {
   for (let i = 0; i < bytes.length; i++) s += String.fromCharCode(bytes[i]);
   return btoa(s).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
 }
-function b64urlDecode(str: string): string {
-  const s = str.replace(/-/g, '+').replace(/_/g, '/');
-  const pad = s.length % 4 ? '='.repeat(4 - (s.length % 4)) : '';
-  return atob(s + pad);
-}
 function randomB64url(n = 32): string {
   return b64url(crypto.getRandomValues(new Uint8Array(n)));
 }
@@ -104,38 +100,11 @@ async function pkceChallenge(verifier: string): Promise<string> {
   return b64url(digest);
 }
 
-// HMAC-signed state carries athleteId + the PKCE verifier so the callback is stateless.
-async function buildState(athleteId: string, verifier: string): Promise<string> {
-  const payload = `${athleteId}.${b64url(new TextEncoder().encode(verifier))}`;
-  const sig = await hmacBase64Url(payload, getClientId() || '');
-  return `${payload}.${sig}`;
-}
-async function parseState(state: string): Promise<{ athleteId: string | null; verifier: string | null; ok: boolean }> {
-  // State format: athleteId.b64url(verifier).sig  — three dot-separated parts.
-  // buildState signs the full "athleteId.b64url(verifier)" payload, so we must
-  // reconstruct that same payload before verifying the HMAC. Splitting into
-  // only two parts (as the old code did) treats the verifier as the signature
-  // and discards the real signature, so verification always fails.
-  const parts = (state || '').split('.');
-  if (parts.length < 3) return { athleteId: null, verifier: null, ok: false };
-  const athleteId = parts[0];
-  const verifierB64 = parts[1];
-  const sig = parts.slice(2).join('.');
-  if (!athleteId || !verifierB64 || !sig) return { athleteId: null, verifier: null, ok: false };
-  const clientId = getClientId();
-  if (!clientId) return { athleteId: null, verifier: null, ok: false };
-  const payload = `${athleteId}.${verifierB64}`;
-  if (!constantTimeEqual(await hmacBase64Url(payload, clientId), sig)) return { athleteId, verifier: null, ok: false };
-  try { return { athleteId, verifier: b64urlDecode(verifierB64), ok: true }; }
-  catch { return { athleteId, verifier: null, ok: false }; }
-}
-
 
 // ---- action handlers ----
 
-// Browser redirect: COROS sends ?code=...&state=<athleteId>.<verifier>.<sig>. No user
-// session (it's a redirect landing) so state is HMAC-verified and the owner resolved
-// from the athlete profile's created_by_id.
+// Browser redirect consumes an opaque, expiring server-side attempt before
+// token exchange. Neither athlete identity nor the PKCE verifier is in state.
 async function handleOAuthCallback(req, base44) {
   const u = new URL(req.url);
   const origin = appOrigin(req);
@@ -146,11 +115,14 @@ async function handleOAuthCallback(req, base44) {
     console.error('COROS callback: missing authorization code');
     return callbackPage('error', 'Connection failed', 'COROS did not return an authorization code. Please try connecting again.', origin);
   }
-  const { athleteId, verifier, ok } = await parseState(state);
-  if (!ok || !athleteId || !verifier) {
+  if (!getClientId()) return callbackPage('error', 'Connection unavailable', 'COROS is not configured.', origin);
+  let attempt;
+  try { attempt = await consumeOAuthAttempt(base44, state, 'coros', selfUrl(req), req.headers.get('cookie') || ''); }
+  catch {
     console.error('COROS callback: invalid state');
     return callbackPage('error', 'Connection failed', 'The security state from COROS did not verify. This usually means the link expired or was opened in a different browser. Please try connecting again.', origin);
   }
+  const { athleteId, verifier, athlete } = attempt;
 
   const tokenRes = await fetchWithTimeout(TOKEN_ENDPOINT, {
     method: 'POST',
@@ -165,7 +137,7 @@ async function handleOAuthCallback(req, base44) {
   });
   if (!tokenRes.ok) {
     const txt = await tokenRes.text();
-    console.error('COROS token exchange failed:', tokenRes.status, txt);
+    console.error('COROS token exchange failed:', tokenRes.status);
     // Map the common COROS reasons to plain language for the athlete.
     let reason = txt;
     try { const j = JSON.parse(txt); reason = j.error_description || j.error || txt; } catch { /* not JSON */ }
@@ -174,11 +146,13 @@ async function handleOAuthCallback(req, base44) {
       : /redirect_uri/i.test(reason)
         ? ' The redirect address did not match what COROS has registered. Contact support.'
         : '';
-    return callbackPage('error', 'COROS connection failed', `COROS rejected the token exchange (${tokenRes.status}).${hint} Reason: ${reason}`, origin);
+    return callbackPage('error', 'COROS connection failed', `COROS rejected the token exchange (${tokenRes.status}).${hint} Please start connecting again.`, origin);
   }
   const tok = await tokenRes.json();
+  if (typeof tok.access_token !== 'string' || !tok.access_token.trim()) {
+    return callbackPage('error', 'COROS connection failed', 'COROS did not return a usable access token. Please start connecting again.', origin);
+  }
 
-  const athlete = await base44.asServiceRole.entities.AthleteProfile.get(athleteId).catch(() => null);
   if (!athlete) {
     console.error('COROS callback: athlete profile not found', athleteId);
     return callbackPage('error', 'Connection failed', 'Your athlete profile could not be found. Complete your profile in TrainPaceLab, then try again.', origin);
@@ -353,11 +327,12 @@ async function handleAuthorize(req, base44) {
   if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
   const athlete = await getOwnedAthlete(base44, user.id);
   if (!athlete) return Response.json({ error: 'No athlete profile found' }, { status: 404 });
+  if (!getClientId()) return Response.json({ error: 'COROS is not configured.' }, { status: 503 });
 
   const verifier = randomB64url(32);
   const challenge = await pkceChallenge(verifier);
-  const state = await buildState(athlete.id, verifier);
   const redirectUri = selfUrl(req);
+  const { state, cookie } = await issueOAuthAttempt(base44, { provider: 'coros', athlete, ownerUserId: user.id, redirectUri, verifier });
   console.log('COROS authorize: redirect_uri =', redirectUri, 'athlete =', athlete.id);
   const params = new URLSearchParams({
     response_type: 'code',
@@ -368,7 +343,7 @@ async function handleAuthorize(req, base44) {
     scope: SCOPE,
     state,
   });
-  return Response.json({ authorize_url: `${AUTHORIZE_ENDPOINT}?${params.toString()}`, redirect_uri: redirectUri });
+  return Response.json({ authorize_url: `${AUTHORIZE_ENDPOINT}?${params.toString()}`, redirect_uri: redirectUri }, { headers: { 'Cache-Control': 'no-store', 'Set-Cookie': cookie } });
 }
 
 async function handleStatus(base44) {
