@@ -7,7 +7,7 @@ export interface AutoReplanPreviewCardProps {
 }
 
 export const AutoReplanPreviewCard: React.FC<AutoReplanPreviewCardProps> = ({
-  initialInput = { acwr: 1.38, chronic: 42, acute: 58, rpe: 8 },
+  initialInput = { acwr: Number.NaN, chronic: 0, acute: 0, rpe: Number.NaN },
   onAcceptReplan,
 }) => {
   const [input, setInput] = useState<AdaptiveInput>(initialInput);
@@ -16,25 +16,28 @@ export const AutoReplanPreviewCard: React.FC<AutoReplanPreviewCardProps> = ({
   );
   const [isSyncing, setIsSyncing] = useState(false);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const handleInputChange = (field: keyof AdaptiveInput, value: number) => {
     const updated = { ...input, [field]: value };
     setInput(updated);
     setRecommendation(calculateAdaptiveRecommendation(updated));
     setSuccessMessage(null);
+    setErrorMessage(null);
   };
 
   const handleAccept = async () => {
+    if (!onAcceptReplan || isSyncing) return;
     setIsSyncing(true);
+    setSuccessMessage(null);
+    setErrorMessage(null);
     try {
-      // Simulate API sync with backend adaptive coach/reconciliation endpoint
-      await new Promise((resolve) => setTimeout(resolve, 600));
-      if (onAcceptReplan) {
-        onAcceptReplan(recommendation);
-      }
-      setSuccessMessage('Schedule successfully adapted and pushed to calendar!');
+      // The parent owns persistence and must reject if the plan cannot be updated.
+      await onAcceptReplan(recommendation);
+      setSuccessMessage('Review request completed. Check your training plan for confirmed changes.');
     } catch (err) {
-      console.error('Failed to sync replan', err);
+      console.error('Replan review failed', err);
+      setErrorMessage('Could not complete the review. Your schedule has not been confirmed as changed. Please retry.');
     } finally {
       setIsSyncing(false);
     }
@@ -56,7 +59,7 @@ export const AutoReplanPreviewCard: React.FC<AutoReplanPreviewCardProps> = ({
       <div className="flex items-center justify-between mb-4">
         <div>
           <h3 className="text-lg font-semibold tracking-tight">Auto-Replanning & Adaptive Engine</h3>
-          <p className="text-xs text-slate-400">Live ACWR & fatigue shift preview</p>
+          <p className="text-xs text-slate-400">Workload review preview · no automatic plan changes</p>
         </div>
         <span
           className={`text-xs px-2.5 py-1 rounded-full border font-medium uppercase tracking-wider ${getStatusColor(
@@ -95,14 +98,15 @@ export const AutoReplanPreviewCard: React.FC<AutoReplanPreviewCardProps> = ({
         <div className="flex items-center justify-between mb-2">
           <span className="text-xs uppercase font-semibold text-slate-400">Recommended Shift</span>
           <span className="text-sm font-bold text-indigo-400">
-            {recommendation.adjustmentPercentage > 0 ? `+${recommendation.adjustmentPercentage}%` : `${recommendation.adjustmentPercentage}%`} volume
+            {recommendation.adjustmentPercentage === 0 ? 'No automatic change' : `${recommendation.adjustmentPercentage > 0 ? '+' : ''}${recommendation.adjustmentPercentage}% suggested (review only)`}
           </span>
         </div>
         <p className="text-sm text-slate-300 leading-relaxed">{recommendation.guidanceText}</p>
       </div>
 
+      {errorMessage && <p role="alert" className="mb-4 text-sm text-red-400">{errorMessage}</p>}
       {successMessage && (
-        <div className="mb-4 p-3 bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs rounded-lg flex items-center gap-2">
+        <div role="status" className="mb-4 p-3 bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs rounded-lg flex items-center gap-2">
           <span>✓</span>
           <span>{successMessage}</span>
         </div>
@@ -110,18 +114,19 @@ export const AutoReplanPreviewCard: React.FC<AutoReplanPreviewCardProps> = ({
 
       <button
         onClick={handleAccept}
-        disabled={isSyncing}
+        disabled={isSyncing || !onAcceptReplan}
         className="w-full bg-indigo-600 hover:bg-indigo-500 active:bg-indigo-700 disabled:opacity-50 text-white font-medium py-2.5 px-4 rounded-lg text-sm transition-colors shadow-lg shadow-indigo-600/20 flex items-center justify-center gap-2"
       >
         {isSyncing ? (
           <>
             <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-            <span>Syncing Schedule Shift...</span>
+            <span>Requesting review...</span>
           </>
         ) : (
-          <span>Accept & Apply Replan to Schedule</span>
+          <span>{onAcceptReplan ? 'Request plan review' : 'Plan changes unavailable'}</span>
         )}
       </button>
+      <p className="mt-2 text-xs text-slate-400">No calendar update occurs from this preview. A connected plan service must confirm any changes.</p>
     </div>
   );
 };
