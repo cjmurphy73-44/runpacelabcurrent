@@ -33,6 +33,11 @@ export default function WorkoutUpload({ athleteId, onUploaded }) {
     let ingestRequested = false;
     try {
       const { file_url } = await base44.integrations.Core.UploadFile({ file });
+      // A completed transport call without a usable file URL is not an ingest.
+      // Fail before invoking the server rather than sending an undefined source.
+      if (typeof file_url !== "string" || !file_url.trim()) {
+        throw new Error("Upload returned no usable file URL");
+      }
       // Once the ingest request begins, a rejected promise does not prove that
       // the server did not save the workout. Never encourage a blind retry.
       ingestRequested = true;
