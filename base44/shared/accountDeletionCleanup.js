@@ -65,3 +65,40 @@ export function linkedAthleteCleanup(entities, athleteIds) {
     ])
   );
 }
+
+/**
+ * Persist the deletion scope before removing its AthleteProfile rows.
+ * Only the trusted service-role AccountDeletionRecovery entity may back retries.
+ * A missing or ambiguous record must never authorize destructive cleanup.
+ */
+export async function loadOrCreateDeletionRecovery(entities, user) {
+  if (!user?.id) throw new Error('Deletion requires an authenticated user');
+  const existing = await entities.AccountDeletionRecovery.filter({ user_id: user.id });
+  if (!Array.isArray(existing) || existing.length > 1) {
+    throw new Error('Deletion recovery scope requires manual review');
+  }
+  if (existing.length === 1) {
+    const record = existing[0];
+    if (record?.user_id !== user.id || record.state !== 'prepared' ||
+        !Array.isArray(record.athlete_ids) ||
+        !record.athlete_ids.every((id) => typeof id === 'string' && id.length > 0) ||
+        new Set(record.athlete_ids).size !== record.athlete_ids.length) {
+      throw new Error('Deletion recovery scope requires manual review');
+    }
+    return record;
+  }
+
+  const ownedProfiles = await entities.AthleteProfile.filter({ created_by_id: user.id });
+  const athleteIds = resolveOwnedAthleteIds(user, ownedProfiles);
+  const created = await entities.AccountDeletionRecovery.create({
+    user_id: user.id,
+    athlete_ids: athleteIds,
+    state: 'prepared',
+  });
+  if (!created?.id || created.user_id !== user.id ||
+      created.state !== 'prepared' ||
+      JSON.stringify(created.athlete_ids) !== JSON.stringify(athleteIds)) {
+    throw new Error('Deletion recovery record could not be verified');
+  }
+  return created;
+}
