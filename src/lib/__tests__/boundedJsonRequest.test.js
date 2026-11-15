@@ -27,9 +27,14 @@ describe('anonymous feedback bounded JSON reader', () => {
   });
 
   it('rejects a declared oversize body before reading', async () => {
-    const result = await readBoundedJsonRequest(
-      request('{"message":"hello"}', { 'content-length': '9999999' }), 40,
-    );
+    // Request() may normalize Content-Length. Supply a controlled header
+    // separately to prove the early-rejection branch before reading body.
+    const original = request('{"message":"hello"}');
+    const controlled = {
+      headers: new Headers({ 'content-length': '9999999' }),
+      body: original.body,
+    };
+    const result = await readBoundedJsonRequest(controlled, 40);
     expect(result).toMatchObject({ ok: false, status: 413 });
   });
 
