@@ -1,10 +1,10 @@
 import { readFileSync } from "node:fs";
-import { fileURLToPath } from "node:url";
+import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 
 // Offline policy contract. Vercel owns the actual minimatch evaluation and
 // deployment decision; these tests intentionally do not call Vercel.
-const configPath = fileURLToPath(new URL("../../../vercel.json", import.meta.url));
+const configPath = resolve(process.cwd(), "vercel.json");
 const policy = JSON.parse(readFileSync(configPath, "utf8")).git.deploymentEnabled;
 
 function matchesOurPolicyGlob(pattern, branch) {
