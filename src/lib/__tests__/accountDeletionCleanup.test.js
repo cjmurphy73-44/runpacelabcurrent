@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { runAccountEntityCleanup, finalizeAccountDeletion, linkedAthleteCleanup, resolveOwnedAthleteIds, loadOrCreateDeletionRecovery } from "../../../base44/shared/accountDeletionCleanup.js";
+import { runAccountEntityCleanup, finalizeAccountDeletion, linkedAthleteCleanup, resolveOwnedAthleteIds, loadOrCreateDeletionRecovery, verifyDeletionRecoveryScope } from "../../../base44/shared/accountDeletionCleanup.js";
 
 describe("account deletion cleanup executor", () => {
   it("reports no failures when every entity deletion succeeds", async () => {
@@ -203,5 +203,40 @@ describe("durable deletion recovery scope", () => {
       id: "owner", data: { athlete_profile_id: "foreign" },
     })).rejects.toThrow(/linkage/);
     expect(create).not.toHaveBeenCalled();
+  });
+});
+
+describe("post-create deletion recovery consistency guard", () => {
+  const expected = { id: "journal-1", user_id: "owner", athlete_ids: ["mine"], state: "prepared" };
+
+  it("accepts exactly one matching persisted journal", async () => {
+    const entities = { AccountDeletionRecovery: { filter: vi.fn().mockResolvedValue([{ ...expected }]) } };
+    await expect(verifyDeletionRecoveryScope(entities, "owner", expected)).resolves.toEqual(expected);
+    expect(entities.AccountDeletionRecovery.filter).toHaveBeenCalledWith({ user_id: "owner" });
+  });
+
+  it("rejects two simultaneous journals for the same user before cleanup", async () => {
+    const entities = { AccountDeletionRecovery: { filter: vi.fn().mockResolvedValue([
+      { ...expected }, { ...expected, id: "journal-2" },
+    ]) } };
+    await expect(verifyDeletionRecoveryScope(entities, "owner", expected)).rejects.toThrow(/manual review/);
+  });
+
+  it("rejects replaced, altered or missing journals before cleanup", async () => {
+    for (const records of [
+      [], [{ ...expected, id: "different" }],
+      [{ ...expected, athlete_ids: ["foreign"] }],
+      [{ ...expected, state: "user_deleted" }],
+      [{ ...expected, athlete_ids: ["mine", "mine"] }],
+    ]) {
+      const entities = { AccountDeletionRecovery: { filter: vi.fn().mockResolvedValue(records) } };
+      await expect(verifyDeletionRecoveryScope(entities, "owner", expected)).rejects.toThrow(/manual review/);
+    }
+  });
+
+  it("rejects a journal for a different authenticated user", async () => {
+    const entities = { AccountDeletionRecovery: { filter: vi.fn() } };
+    await expect(verifyDeletionRecoveryScope(entities, "other", expected)).rejects.toThrow(/manual review/);
+    expect(entities.AccountDeletionRecovery.filter).not.toHaveBeenCalled();
   });
 });
