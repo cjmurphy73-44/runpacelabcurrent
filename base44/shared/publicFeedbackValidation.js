@@ -20,7 +20,8 @@ export function validatePublicFeedback(input) {
     return { ok: false, status: 400, error: 'Invalid route' };
   }
   const allowed = new Set(['bug', 'idea', 'other', 'billing', 'account']);
-  const feedback_type = allowed.has(input.feedback_type) ? input.feedback_type : 'other';
+  const feedback_type = input.feedback_type == null ? 'bug' :
+    allowed.has(input.feedback_type) ? input.feedback_type : 'other';
   // BetaFeedback's existing schema allows only bug/idea/other. Preserve the
   // supported public categories without changing the storage schema.
   const storedType = feedback_type === 'idea' ? 'idea'
