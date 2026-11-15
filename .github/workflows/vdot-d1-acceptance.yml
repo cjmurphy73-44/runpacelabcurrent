@@ -7,6 +7,7 @@ on:
       - 'base44/shared/vdot*.ts'
       - 'base44/shared/race*.ts'
       - 'scripts/check-client-science-imports.mjs'
+      - 'src/lib/vdotPresentationClient.ts'
       - '.github/workflows/vdot-d1-acceptance.yml'
   workflow_dispatch:
 jobs:
@@ -33,7 +34,7 @@ jobs:
           cache: npm
       - run: npm ci
       - name: Execute committed RaceResult tests
-        run: npx vitest run src/science/__tests__/raceWorkerAuth.test.ts src/science/__tests__/raceNonceStore.test.ts src/science/__tests__/raceCorrectionReplay.test.ts src/science/__tests__/racePersistencePort.test.ts src/science/__tests__/raceFrontendIpGate.test.ts src/science/__tests__/raceVdotPresentationBoundary.test.ts src/science/__tests__/raceVdotResponseSafety.test.ts
+        run: npx vitest run src/science/__tests__/raceWorkerAuth.test.ts src/science/__tests__/raceNonceStore.test.ts src/science/__tests__/raceCorrectionReplay.test.ts src/science/__tests__/racePersistencePort.test.ts src/science/__tests__/raceFrontendIpGate.test.ts src/science/__tests__/raceVdotPresentationBoundary.test.ts src/science/__tests__/raceVdotResponseSafety.test.ts src/science/__tests__/raceVdotClientState.test.ts
       - name: Typecheck
         run: npm run typecheck
       - name: Frontend science IP import review gate
