@@ -12,13 +12,11 @@ import RecoveryLab from "@/components/dashboard/RecoveryLab";
 import DataCommandCenter from "@/components/dashboard/DataCommandCenter";
 import CoachAdvice from "@/components/dashboard/CoachAdvice";
 import BaselineHistoryMatrix from "@/components/dashboard/BaselineHistoryMatrix";
-import ReadinessScoreCard from "@/components/dashboard/ReadinessScoreCard";
 import AutonomicStressCard from "@/components/dashboard/AutonomicStressCard";
 import SleepEnergyCard from "@/components/dashboard/SleepEnergyCard";
 import HolisticFactorsLog from "@/components/dashboard/HolisticFactorsLog";
-import TodaySessionCard from "@/components/dashboard/TodaySessionCard";
 import WeeklyVolumeLine from "@/components/dashboard/WeeklyVolumeLine";
-import DashboardGreeting from "@/components/dashboard/DashboardGreeting";
+import HomeTrainingWorkspace from "@/components/dashboard/HomeTrainingWorkspace";
 import DashboardQuickActions from "@/components/dashboard/DashboardQuickActions";
 
 import HorizonStrip from "@/components/dashboard/HorizonStrip";
@@ -232,22 +230,25 @@ export default function Home() {
           </section>
         ) : (
           <>
-          <DashboardGreeting athlete={athlete} />
-          <WidgetBoundary name="Quick actions"><DashboardQuickActions /></WidgetBoundary>
+          <HomeTrainingWorkspace
+            key={athlete.id}
+            athlete={athlete}
+            workouts={workouts}
+            onWorkoutChanged={() => loadAthleteData(athlete.id)}
+          />
           <div className="space-y-8">
         <AnomalyAlertBanner />
         {/* 1, Today's snapshot */}
-        <section className="space-y-4">
-          <SectionHeading index="01" title="Today's snapshot" description="Your form, readiness and prescribed session for today." icon={Sun} />
+        <CollapsibleSection title="Training overview & tools" subtitle="Sync, fitness, weekly volume and shortcuts" icon={Sun}>
           <WidgetBoundary name="Today's focus"><TodayFocusLine athlete={athlete} /></WidgetBoundary>
-          <WidgetBoundary name="Today's session"><TodaySessionCard athleteId={athlete.id} /></WidgetBoundary>
           <WidgetBoundary name="Wearable sync"><WearableSyncBar onSynced={() => loadAthleteData(athlete.id)} /></WidgetBoundary>
           <div className="grid min-w-0 grid-cols-1 gap-4 xl:grid-cols-2">
             <div className="min-w-0"><WidgetBoundary name="Physiology strip"><PhysiologyStrip athlete={athlete} /></WidgetBoundary></div>
             <div className="min-w-0"><WidgetBoundary name="Calibration meter"><CalibrationMeter athlete={athlete} athleteId={athlete.id} /></WidgetBoundary></div>
           </div>
           <WidgetBoundary name="Weekly volume"><WeeklyVolumeLine athleteId={athlete.id} /></WidgetBoundary>
-        </section>
+          <WidgetBoundary name="Quick actions"><DashboardQuickActions /></WidgetBoundary>
+        </CollapsibleSection>
 
         {/* 2, Coaching: the AI read on the last two weeks sits directly under today's snapshot */}
         <section className="space-y-4">
@@ -320,8 +321,7 @@ export default function Home() {
           deep
         >
           <WidgetBoundary name="AI synthesis"><AISynthesisCard athleteId={athlete.id} /></WidgetBoundary>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
-            <WidgetBoundary name="Readiness score"><ReadinessScoreCard /></WidgetBoundary>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
             <WidgetBoundary name="Sleep & energy"><SleepEnergyCard /></WidgetBoundary>
             <WidgetBoundary name="Autonomic stress"><AutonomicStressCard /></WidgetBoundary>
           </div>
