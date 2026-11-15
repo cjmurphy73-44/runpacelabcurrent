@@ -73,6 +73,31 @@ describe('disabled server-owned VDOT presentation boundary', () => {
     expect(verifyOwnedAthlete).not.toHaveBeenCalled();
     expect(calculate).not.toHaveBeenCalled();
   });
+  it('fails closed before any dependency invocation even if providers throw', async () => {
+    const authenticate = vi.fn().mockRejectedValue(new Error('do not expose auth details'));
+    const verifyOwnedAthlete = vi.fn().mockRejectedValue(new Error('do not expose records'));
+    const calculate = vi.fn().mockRejectedValue(new Error('do not expose model'));
+    const handler = createVdotPresentationBoundary({ authenticate, verifyOwnedAthlete, calculate });
+    for (const request of [undefined, null, { kind: 'paces', vdot: 50 },
+      { kind: 'norwegian', vdot: 52, format: '10x1000', athleteId: 'spoofed' }]) {
+      expect(await handler(request, { id: 'user', ownedAthleteVerified: true }))
+        .toEqual({ status: 503, body: { error: 'unavailable' } });
+    }
+    expect(authenticate).not.toHaveBeenCalled();
+    expect(verifyOwnedAthlete).not.toHaveBeenCalled();
+    expect(calculate).not.toHaveBeenCalled();
+  });
+  it('requires exact authenticated owner equality, not coercible identities', () => {
+    const identity = { id: 'u-1' };
+    for (const proof of [
+      { userId: 1, athleteId: 'athlete', verifiedByServer: true },
+      { userId: 'u-1 ', athleteId: 'athlete', verifiedByServer: true },
+      { userId: 'u-2', athleteId: 'athlete', verifiedByServer: true },
+      { userId: 'u-1', athleteId: 123, verifiedByServer: true },
+      { userId: 'u-1', athleteId: '', verifiedByServer: true },
+      { userId: 'u-1', athleteId: 'athlete', verifiedByServer: 'true' },
+    ]) expect(hasVerifiedVdotOwner(identity, proof)).toBe(false);
+  });
   it('rejects missing dependencies', () => {
     expect(() => createVdotPresentationBoundary({} as never)).toThrow('server_dependencies_required');
   });
