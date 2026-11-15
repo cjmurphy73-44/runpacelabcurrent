@@ -92,4 +92,31 @@ describe("single-file import input lifecycle", () => {
     expect(input.files).toHaveLength(1);
     expect(onUploaded).not.toHaveBeenCalled();
   });
+  it("warns that an interrupted ingest may have persisted and retains the selected file", async () => {
+    mocks.ingest.mockRejectedValue(new Error("network timeout with sensitive details"));
+    const onUploaded = vi.fn();
+    render(<WorkoutUpload athleteId="synthetic-athlete" onUploaded={onUploaded} />);
+    const input = chooseFile();
+    submit();
+    await waitFor(() => expect(screen.getByRole("status").textContent).toMatch(/check your workout history before retrying/i));
+    expect(screen.getByRole("status").textContent).not.toMatch(/network timeout|saved successfully/i);
+    expect(input.files).toHaveLength(1);
+    expect(screen.getByRole("button", { name: "Upload" }).disabled).toBe(false);
+    expect(onUploaded).not.toHaveBeenCalled();
+    expect(mocks.ingest).toHaveBeenCalledTimes(1);
+  });
+
+  it("distinguishes a failed file transfer before ingest from an uncertain server save", async () => {
+    mocks.upload.mockRejectedValue(new Error("private upload transport failure"));
+    const onUploaded = vi.fn();
+    render(<WorkoutUpload athleteId="synthetic-athlete" onUploaded={onUploaded} />);
+    const input = chooseFile();
+    submit();
+    await waitFor(() => expect(screen.getByRole("status").textContent).toMatch(/failed before workout processing began/i));
+    expect(screen.getByRole("status").textContent).not.toMatch(/private upload transport failure|workout save could not be confirmed/i);
+    expect(input.files).toHaveLength(1);
+    expect(mocks.ingest).not.toHaveBeenCalled();
+    expect(onUploaded).not.toHaveBeenCalled();
+  });
+
 });
