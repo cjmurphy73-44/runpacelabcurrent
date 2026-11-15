@@ -111,6 +111,7 @@ function TrainingCalendarContent({ athleteId, currentTsb, userId }) {
           <TrainingCalendarDay
             key={date} date={date} sessions={sessions}
             loading={loading} failed={unavailable || (query.isError && !query.data)}
+            stale={query.isError && Array.isArray(query.data)}
             injury={injury} plan={plan}
             onExport={verified && !query.isFetching ? downloadWorkoutFile : undefined}
           />
