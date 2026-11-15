@@ -116,6 +116,20 @@ describe("single-file import input lifecycle", () => {
     expect(input.files).toHaveLength(0);
   });
 
+  it("preserves confirmed save when asynchronous parent refresh rejects", async () => {
+    mocks.ingest.mockResolvedValue({ data: { success: true, workout_session: { id: "synthetic-session" } } });
+    const onUploaded = vi.fn().mockRejectedValue(new Error("private async refresh failure"));
+    render(<WorkoutUpload athleteId="synthetic-athlete" onUploaded={onUploaded} />);
+    const input = chooseFile();
+    submit();
+    await waitFor(() => expect(screen.getByRole("button", { name: "Upload" }).disabled).toBe(true));
+    await waitFor(() => expect(screen.getByRole("button", { name: "Upload" }).disabled).toBe(false));
+    expect(onUploaded).toHaveBeenCalledTimes(1);
+    expect(screen.getByRole("status").textContent).toMatch(/Workout saved/i);
+    expect(screen.getByRole("status").textContent).not.toMatch(/could not be confirmed|private async refresh failure/i);
+    expect(input.files).toHaveLength(0);
+  });
+
   it("preserves the selected file and shows FIT recovery on explicit corrupt FIT rejection", async () => {
     mocks.ingest.mockResolvedValue({ data: { error: "CRC mismatch" } });
     const onUploaded = vi.fn();
