@@ -1,6 +1,7 @@
 import React, { useMemo } from "react";
 import { Target } from "lucide-react";
 import { useFitness } from "@/context/FitnessContext";
+import { useCoachInjurySignal } from "@/hooks/useCoachInjurySignal";
 
 // One-line "what to do today", derived only from data already on the dashboard
 // (latest readiness score + current form/TSB). No new calculations or network calls.
@@ -26,13 +27,18 @@ function buildFocus(readiness, tsb) {
 
 export default function TodayFocusLine({ athlete }) {
   const { dailyMetrics } = useFitness() || {};
+  const injury = useCoachInjurySignal(athlete?.id);
   const readiness = useMemo(() => {
     if (!dailyMetrics?.length) return null;
     const latest = [...dailyMetrics].sort((a, b) => (b.date || "").localeCompare(a.date || ""))[0];
     return latest?.readiness_score ?? null;
   }, [dailyMetrics]);
 
-  const focus = buildFocus(readiness, athlete?.current_tsb);
+  const focus = injury.level === "hold"
+    ? { tone: "text-danger", text: "Running is paused under your current coach hold. Readiness and form scores do not override this restriction; follow the hold guidance in Today's Session." }
+    : injury.loading || injury.unavailable
+      ? { tone: "text-warning", text: "Coaching restrictions are being checked. Readiness alone does not establish clearance to run." }
+      : buildFocus(readiness, athlete?.current_tsb);
   if (!focus) return null;
 
   return (
