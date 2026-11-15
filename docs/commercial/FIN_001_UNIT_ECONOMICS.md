@@ -36,7 +36,7 @@ For month `m`, beginning paid accounts `N[m]`:
 - `contribution[m] = net_revenue[m] - payment_cost[m] - service_cost[m]`.
 - `operating_result[m] = contribution[m] - F - M`.
 - `cash_end[m] = cash_start[m] + operating_result[m]`, **only if** cash timing, tax and capital expenditure are also accounted for; otherwise mark cash forecast incomplete.
-- `contribution_per_paid = P * (1 - f) - t - v`.
+- `contribution_per_paid = P * (1 - f) - t - v`. Calculate money in integer cents or exact decimal arithmetic; round according to documented billing policy before break-even thresholds. Binary floating-point may otherwise turn an exact 10-account threshold into 11.
 - `break_even_paid = ceil((F + M) / contribution_per_paid)` only when contribution_per_paid is positive. Otherwise break-even is **not attainable** under those assumptions.
 - `gross_revenue_LTV_proxy = P / c` and `contribution_LTV_proxy = contribution_per_paid / c` only when `c > 0` and steady-state assumptions hold. If churn is unknown or zero, output **N/A**, not infinity or a fabricated LTV.
 - `CAC = attributable_acquisition_spend / verified_new_paying_accounts` only when denominator is positive and attribution is defined; otherwise **N/A**.
@@ -46,7 +46,7 @@ For month `m`, beginning paid accounts `N[m]`:
 
 These numbers exist solely to make the formulas independently checkable.
 
-**Example A, one synthetic paid account:** `P=10, f=0.03, t=0.30, v=1.40` implies contribution per paid account = `10 - 0.30 - 0.30 - 1.40 = A$8.00`. With `F=80, M=0`, break-even = `ceil(80/8)=10` average paid accounts. These are invented fixture values, not TrainPaceLab pricing or costs.
+**Example A, one synthetic paid account (calculate in cents, not binary floats):** `P=10, f=0.03, t=0.30, v=1.40` implies contribution per paid account = `10 - 0.30 - 0.30 - 1.40 = A$8.00`. With `F=80, M=0`, break-even = `ceil(80/8)=10` average paid accounts. These are invented fixture values, not TrainPaceLab pricing or costs.
 
 **Example B, nonviable contribution:** `P=5, f=0.10, t=0.50, v=5` gives `5 - 0.50 - 0.50 - 5 = -A$1.00`. Break-even and CAC payback must report **N/A**, not a negative subscriber count.
 
