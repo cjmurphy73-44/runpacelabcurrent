@@ -1,7 +1,7 @@
 {
   "name": "CoachAthleteAssignment",
   "type": "object",
-  "description": "Links a coach (User with role 'coach' or 'admin') to an athlete (AthleteProfile) in the coach's roster. Drives the Coach Workspace roster, comparison views, and plan-assignment tools. One row per coach\u2192athlete relationship; status 'archived' removes the athlete from the active roster without deleting the link.",
+  "description": "Links a coach (User with role 'coach' or 'admin') to an athlete (AthleteProfile) in the coach's roster. Drives the Coach Workspace roster, comparison views, and plan-assignment tools. One row per coach→athlete relationship; status 'archived' removes the athlete from the active roster without deleting the link. Assignment creation is admin-only while a server-authorized athlete-consent flow is not yet available; frontend coaches must not self-authorize athlete data access.",
   "properties": {
     "coach_user_id": {
       "type": "string",
@@ -35,16 +35,9 @@
   ],
   "rls": {
     "create": {
-      "$or": [
-        {
-          "data.coach_user_id": "{{user.id}}"
-        },
-        {
-          "user_condition": {
-            "role": "admin"
-          }
-        }
-      ]
+      "user_condition": {
+        "role": "admin"
+      }
     },
     "read": {
       "$or": [
