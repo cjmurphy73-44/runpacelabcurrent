@@ -20,16 +20,19 @@ export default function CyclingPowerScenario({ workout, athlete }) {
       cda, headwindKmh: wind, gradePercent: grade,
     }) : null;
   return (
-    <section aria-label="Cycling power scenario" className="rounded-lg border border-border/60 bg-secondary/20 p-3 space-y-3">
+    <section aria-label="Cycling power scenario" className="min-w-0 max-w-full overflow-hidden rounded-lg border border-border/60 bg-secondary/20 p-3 space-y-3">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h4 className="text-sm font-semibold">Cycling power scenario</h4>
-        <span className="text-[11px] rounded border border-border px-2 py-1">Modelled · not measured</span>
+        <span className="max-w-full text-[11px] rounded border border-border px-2 py-1">Modelled · not measured</span>
       </div>
       <p className="text-xs text-muted-foreground">
         Illustrative steady-speed watts at the ride's overall average speed, with adjustable
         flat-road/wind/position assumptions. Not the ride's measured or actual average power,
         and not suitable for power training zones, TSS or FTP calibration.
       </p>
+      <details className="group min-w-0" >
+        <summary className="cursor-pointer rounded border border-border px-3 py-2 text-xs font-medium focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary">Adjust modelling assumptions</summary>
+        <div className="mt-3 min-w-0 space-y-3">
       {!available ? (
         <p className="text-xs text-muted-foreground">A valid athlete weight, ride distance and duration are required for this scenario.</p>
       ) : (
@@ -37,10 +40,10 @@ export default function CyclingPowerScenario({ workout, athlete }) {
           <p className="text-lg font-mono font-semibold">
             {estimate ? `${estimate.watts} W` : "—"} <span className="text-xs text-muted-foreground font-sans">scenario only</span>
           </p>
-          <div className="grid grid-cols-2 gap-3 text-xs">
-            <label className="space-y-1">Bike + equipment (kg)
+          <div className="grid min-w-0 grid-cols-1 gap-3 text-xs sm:grid-cols-2">
+            <label className="block min-w-0 space-y-1">Bike + equipment (kg)
               <input aria-label="Bike and equipment mass in kg" type="number" min="3" max="35" step="1" value={bikeMass}
-                onChange={e => setBikeMass(Number(e.target.value))} className="w-full rounded border border-border bg-background p-2" />
+                onChange={e => setBikeMass(Number(e.target.value))} className="block w-full min-w-0 max-w-full rounded border border-border bg-background p-2" />
             </label>
             <label className="space-y-1">Road grade (%)
               <input aria-label="Road grade percent" type="number" min="-20" max="20" step="0.5" value={grade}
@@ -58,6 +61,8 @@ export default function CyclingPowerScenario({ workout, athlete }) {
           <p className="text-[11px] text-muted-foreground">Assumptions: total mass includes athlete ({mass} kg); air density 1.225 kg/m³, Crr 0.005, drivetrain efficiency 97.5%. Stops, acceleration, drafting and changing terrain are not modelled. Adjust inputs to examine sensitivity.</p>
         </>
       )}
+        </div>
+      </details>
       <p className="text-xs text-muted-foreground">FTP: unavailable from this recording without calibrated power or a validated power-duration test. An unverified scenario is never saved as FTP.</p>
     </section>
   );
