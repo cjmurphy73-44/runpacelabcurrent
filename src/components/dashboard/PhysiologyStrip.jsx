@@ -83,7 +83,7 @@ export default function PhysiologyStrip({ athlete }) {
   );
   // A historic pace must not be presented as a verified current threshold
   // after a running gap or without enough qualified threshold evidence.
-  const thresholdCurrent = threshold.paceMs != null && runningCalibration.currentVerified;
+  const showProvisionalThreshold = threshold.paceMs != null && runningCalibration.status === "provisional";
   const thresholdStatus = runningCalibration.status === "running_gap"
     ? "Running break · historical estimate only"
     : runningCalibration.status === "needs_threshold_evidence"
@@ -122,8 +122,8 @@ export default function PhysiologyStrip({ athlete }) {
       <Tile
         icon={Gauge}
         label={<Term k="threshold_pace">Threshold pace</Term>}
-        value={thresholdCurrent ? formatPace(threshold.paceMs) : "Unverified"}
-        suffix={thresholdCurrent ? "/km" : ""}
+        value={showProvisionalThreshold ? formatPace(threshold.paceMs) : "Unverified"}
+        suffix={showProvisionalThreshold ? "/km" : ""}
         sub={threshold.paceMs ? thresholdStatus + (isGeek ? ` · Last estimate ${formatPace(threshold.paceMs)}/km (${humanThresholdSource(threshold.source)})` : "") : "Set VDOT or a baseline"}
       />
       <Tile
