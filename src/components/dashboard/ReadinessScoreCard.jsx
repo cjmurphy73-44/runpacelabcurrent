@@ -4,6 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { useFitness } from "@/context/FitnessContext";
 import RecoverySourceBadge from "@/components/dashboard/RecoverySourceBadge";
 import { computeHolisticReadiness } from "@/science/readiness";
+import { readinessFallbackInputs } from "@/lib/readinessFallbackInputs";
 import { base44 } from "@/api/base44Client";
 import { TrendingUp, TrendingDown, Minus, ShieldCheck } from "lucide-react";
 
@@ -28,29 +29,8 @@ export default function ReadinessScoreCard() {
   // Instant local computation, displayed immediately while the server-authoritative
   // score loads. Kept as a fallback so the card never goes blank.
   const localHolistic = useMemo(() => {
-    if (!today) return null;
-    const hrvBase = biometricTelemetry
-      .map((r) => r.hrv_ms).filter((v) => typeof v === "number" && v > 0);
-    const rhrBase = biometricTelemetry
-      .map((r) => r.resting_hr).filter((v) => typeof v === "number" && v > 0);
-    const sleepBase = biometricTelemetry
-      .map((r) => r.sleep_score).filter((v) => typeof v === "number" && v > 0);
-    return computeHolisticReadiness(
-      {
-        hrv: today.hrv,
-        sleep_score: today.sleep_score,
-        sleep_duration_hours: today.sleep_duration_hours,
-        resting_hr: today.resting_hr,
-        body_battery: today.body_battery,
-        stress_score: today.stress_score,
-        tsb: today.calculated_tsb,
-      },
-      {
-        hrv: hrvBase.length ? hrvBase.reduce((a, b) => a + b, 0) / hrvBase.length : null,
-        resting_hr: rhrBase.length ? rhrBase.reduce((a, b) => a + b, 0) / rhrBase.length : null,
-        sleep_score: sleepBase.length ? sleepBase.reduce((a, b) => a + b, 0) / sleepBase.length : null,
-      }
-    );
+    const inputs = readinessFallbackInputs(today, biometricTelemetry);
+    return inputs ? computeHolisticReadiness(inputs.current, inputs.baseline, inputs.tsb) : null;
   }, [today, biometricTelemetry]);
 
   // S6: fetch the server-authoritative readiness score (proprietary formula runs
