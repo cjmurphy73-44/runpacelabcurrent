@@ -22,12 +22,9 @@ describe('coach self-service roster privacy containment', () => {
     expect(page).toContain('verified coach connection');
   });
 
-  it('retains the existing health-data RLS dependency as a documented backend blocker', () => {
-    expect(JSON.parse(profile).rls.read.$or).toEqual(expect.arrayContaining([
-      { id: { $in: '{{user.data.coached_athletes}}' } },
-    ]));
-    // Existing cache-based profile reads still need a server-trusted update path.
-    // Direct creation of coach-athlete assignments must fail for ordinary users.
+  it('fails closed on client-controlled coach cache and blocks direct coach assignment', () => {
+    expect(JSON.stringify(JSON.parse(profile).rls.read)).not.toContain('{{user.data.coached_athletes}}');
+    // Assignment creation remains admin-only until athlete consent is verified.
     expect(JSON.parse(assignments).rls.create).toEqual({
       user_condition: { role: 'admin' },
     });
