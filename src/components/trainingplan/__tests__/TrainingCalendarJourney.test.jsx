@@ -124,6 +124,33 @@ describe("calendar seven-day athlete journey", () => {
     expect(mocks.filter).toHaveBeenCalledTimes(2);
   });
 
+  it("reveals only server-supplied target details and structured steps on a touch-sized control", async () => {
+    const date = moment().format("YYYY-MM-DD");
+    mocks.filter.mockResolvedValue([{
+      id: "structured-run", date, sport: "running", title: "Intervals",
+      prescribed_duration_minutes: 50, prescribed_intensity_zone: "Z4",
+      target_hr_low: 145, target_hr_high: 165, target_pace: "4:30/km",
+      description: "Warm up, intervals, cooldown",
+      structured_steps: [
+        { order: 0, type: "warmup", duration_seconds: 600, description: "Easy pace" },
+        { order: 1, type: "interval", duration_seconds: 180, description: "Controlled hard" },
+      ],
+    }]);
+    renderCalendar();
+    await waitFor(() => expect(screen.getByText("Intervals")).toBeTruthy());
+    const show = screen.getByRole("button", { name: "View session details" });
+    expect(show.className).toContain("min-h-11");
+    expect(show.getAttribute("aria-expanded")).toBe("false");
+    fireEvent.click(show);
+    expect(screen.getByText(/Target pace: 4:30\/km/i)).toBeTruthy();
+    expect(screen.getByText(/145 to 165 bpm/i)).toBeTruthy();
+    expect(screen.getByText(/Warm up, intervals, cooldown/i)).toBeTruthy();
+    expect(screen.getByText(/180 sec/i)).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Hide session details" }).getAttribute("aria-expanded")).toBe("true");
+    fireEvent.click(screen.getByRole("button", { name: "Hide session details" }));
+    expect(screen.queryByText(/145 to 165 bpm/i)).toBeNull();
+  });
+
   it("never displays another account's cached sessions after account switch", async () => {
     const day = moment().format("YYYY-MM-DD");
     mocks.filter.mockResolvedValueOnce([{ id: "old-user-session", date: day, title: "Private A workout" }])
@@ -156,6 +183,9 @@ describe("calendar seven-day athlete journey", () => {
     await waitFor(() => expect(screen.getByText("Old plan")).toBeTruthy());
     await view.client.invalidateQueries({ queryKey: ["athlete-plan", "synthetic-user-A", "synthetic"] });
     await waitFor(() => expect(screen.getByRole("alert").textContent).toMatch(/last loaded schedule/i));
+    expect(screen.getByText(/Last loaded prescription, not a verified current schedule/i)).toBeTruthy();
+    expect(screen.getAllByText(/No current schedule confirmed for this day/i)).toHaveLength(6);
+    expect(screen.queryByText("No sessions scheduled")).toBeNull();
     expect(screen.queryByRole("button", { name: /Download calendar/i })).toBeNull();
     expect(screen.queryByRole("button", { name: /Export Workout/i })).toBeNull();
     expect(screen.getByRole("button", { name: /AI Microadjustment/i }).disabled).toBe(true);
