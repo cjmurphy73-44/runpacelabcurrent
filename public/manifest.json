@@ -1,7 +1,7 @@
 {
-  "name": "TrainPaceLab — Elite Athletic Intelligence",
+  "name": "TrainPaceLab | Endurance Training Intelligence",
   "short_name": "TrainPaceLab",
-  "description": "Adaptive, science-backed endurance training built from your wearables, recovery and race history.",
+  "description": "Understand training load, recovery signals and structured endurance plans with transparent data-quality limits.",
   "start_url": "/app",
   "scope": "/",
   "display": "standalone",
@@ -14,6 +14,12 @@
       "sizes": "any",
       "type": "image/svg+xml",
       "purpose": "any"
+    },
+    {
+      "src": "/assets/trainpacelab-maskable.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "maskable"
     },
     {
       "src": "/assets/logo-300x300.png",

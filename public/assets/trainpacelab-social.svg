@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 630" role="img" aria-labelledby="title desc">
+<title id="title">TrainPaceLab, training intelligence grounded in your data</title>
+<desc id="desc">Dark graphite social sharing card with a lime running track motif, the TrainPaceLab wordmark and an understated training-load line</desc>
+<defs><linearGradient id="bg" x2="1" y2="1"><stop stop-color="#11191B"/><stop offset="1" stop-color="#080B0D"/></linearGradient><linearGradient id="line" x2="1"><stop stop-color="#53646B"/><stop offset="1" stop-color="#D4F36B"/></linearGradient></defs>
+<rect width="1200" height="630" fill="url(#bg)"/>
+<path d="M710 85h250c145 0 210 90 210 230s-65 230-210 230H710c-145 0-210-90-210-230S565 85 710 85Z" fill="none" stroke="#2B383B" stroke-width="3"/>
+<path d="M710 137h250c108 0 158 65 158 178s-50 178-158 178H710c-108 0-158-65-158-178s50-178 158-178Z" fill="none" stroke="#273437" stroke-width="3"/>
+<path d="M560 370l78-26 52 20 63-96 55 52 60-90 58 36 72-110 77 38" fill="none" stroke="url(#line)" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/>
+<g transform="translate(64 68) scale(.1015625)">
+<rect width="512" height="512" rx="112" fill="#0B0D0E"/>
+<path d="M150 112h212c72 0 112 46 112 113v62c0 69-44 113-112 113H150C82 400 38 354 38 287v-62c0-67 44-113 112-113Z" fill="none" stroke="#53646B" stroke-width="24"/>
+<path d="M145 256h74l31-61 47 123 35-62h47" fill="none" stroke="#D4F36B" stroke-width="30" stroke-linecap="round" stroke-linejoin="round"/>
+</g>
+<text x="133" y="103" fill="#F3F6F3" font-size="30" font-family="Arial,Helvetica,sans-serif" font-weight="700">TrainPaceLab</text>
+<text x="64" y="257" fill="#F3F6F3" font-size="56" font-family="Arial,Helvetica,sans-serif" font-weight="700">Train with context.</text>
+<text x="64" y="324" fill="#F3F6F3" font-size="56" font-family="Arial,Helvetica,sans-serif" font-weight="700">Not guesswork.</text>
+<text x="64" y="390" fill="#B6C3C3" font-size="23" font-family="Arial,Helvetica,sans-serif">Training load, recovery and planning</text>
+<text x="64" y="423" fill="#B6C3C3" font-size="23" font-family="Arial,Helvetica,sans-serif">with the evidence visible.</text>
+<path d="M64 532h1072" stroke="#314044" stroke-width="2"/>
+<text x="64" y="574" fill="#D4F36B" font-size="20" font-family="Arial,Helvetica,sans-serif" letter-spacing="1">TRAINPACELAB.COM</text>
+<text x="1136" y="574" fill="#93A4A7" font-size="18" text-anchor="end" font-family="Arial,Helvetica,sans-serif">ENDURANCE TRAINING INTELLIGENCE</text>
+</svg>
