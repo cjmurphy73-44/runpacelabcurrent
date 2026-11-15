@@ -85,7 +85,7 @@ export function deriveRunningThresholdPace(
       } else if (baseline) {
         intensityOk = pace >= baseline * (1 - PACE_BAND) && pace <= baseline * (1 + PACE_BAND);
       } else {
-        intensityOk = true;
+        intensityOk = false;
       }
       return intensityOk ? { pace, age } : null;
     })
