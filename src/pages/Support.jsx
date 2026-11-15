@@ -37,16 +37,22 @@ export default function Support() {
     if (!message.trim()) return;
     setBusy(true);
     try {
-      await base44.functions.invoke("logBetaFeedback", {
+      const response = await base44.functions.invoke("logBetaFeedback", {
         feedback_type: type,
         message,
         contact_email: email || undefined,
         route: "/support",
       });
+      // A resolved SDK call is not evidence that the feedback row was saved.
+      // The function returns { success: true, id } only after create succeeds.
+      const result = response?.data;
+      if (result?.success !== true || typeof result.id !== "string" || !result.id.trim() || result.error) {
+        throw new Error("Your message could not be confirmed. Please check and try again.");
+      }
       setSent(true);
       toast({ title: "Message sent", description: "We'll get back to you soon." });
     } catch (err) {
-      toast({ title: "Could not send", description: err?.message || "Please try again.", variant: "destructive" });
+      toast({ title: "Could not confirm message", description: "Your message may not have been saved. Please check before retrying.", variant: "destructive" });
     } finally {
       setBusy(false);
     }
