@@ -60,6 +60,16 @@ describe("single-file import input lifecycle", () => {
   });
   afterEach(() => cleanup());
 
+  it("provides programmatically associated labels for file and date controls", () => {
+    render(<WorkoutUpload athleteId="synthetic-athlete" />);
+    const fileControl = screen.getByLabelText("File (.fit or .csv)");
+    const dateControl = screen.getByLabelText("Date");
+    expect(fileControl.type).toBe("file");
+    expect(dateControl.type).toBe("date");
+    expect(fileControl.required).toBe(true);
+    expect(dateControl.required).toBe(true);
+  });
+
   it("preserves the selected native file and avoids success callback when persistence is unverified", async () => {
     mocks.ingest.mockResolvedValue({ data: { success: true } });
     const onUploaded = vi.fn();
