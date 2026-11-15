@@ -1,3 +1,4 @@
+import { approvedCheckoutOrigin } from '../../shared/checkoutOrigin.ts';
 import { secrets } from "base44:runtime";
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
 import { reportError } from '../../shared/errorReport.ts';
@@ -27,8 +28,8 @@ export default async function(req) {
 
     const origin = req.headers.get("X-Base44-App-Url")?.replace(/\/+$/, "");
     if (!origin) {
-      console.error("stripeCheckout: missing X-Base44-App-Url header");
-      return Response.json({ error: "Could not determine the app URL for checkout." }, { status: 400 });
+      console.error("stripeCheckout: unapproved return origin or missing checkout allowlist");
+      return Response.json({ error: "Checkout return URL is not configured or approved." }, { status: 400 });
     }
     const params = new URLSearchParams();
     // fixed_by_ui (Checkout Studio) parameters
