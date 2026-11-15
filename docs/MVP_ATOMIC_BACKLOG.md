@@ -1,5 +1,7 @@
 # TrainPaceLab — Atomic MVP Delivery Backlog
 
+> **Current release decision: HOLD.** Use the [single release-gate tracker](RELEASE_GATE_TRACKER.md) for go/no-go status. The implementation plans and dated evidence below are retained for history; old checkmarks, live-price claims and published-app test instructions are not current acceptance or authorization. Use independently verified isolated staging for synthetic write-path tests.
+
 **Updated:** 2026-11-12 (Australia/Brisbane). **Canonical repository:** `cjmurphy73-44/runpacelabcurrent`; protected `main`. **Current source baseline:** `4515b88594df6e1458670693d07cf8e74e7ed162` (PR #31). **Base44 production:** app `6a504ebe6a5a6d1be058226c`, latest reported checkpoint source `3f386d4` (not proof of current source). 
 
 This file is the **single execution queue**, not a claim that beta readiness is complete. `src/PRODUCTION_ROADMAP.md` contains earlier phases and some obsolete status assertions; `src/BETA_READINESS_ROADMAP.md` is the release acceptance companion. Current evidence wins. Work **one atomic task per PR**, with explicit source-path scope, tests, and a disposition of `merged / awaiting CI / blocked / verified live`. Do not call a code merge a production release.

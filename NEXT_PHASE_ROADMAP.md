@@ -1,5 +1,7 @@
 # TrainPaceLab — Next-Phase Reliability Roadmap
 
+> **Current release decision: HOLD.** Use the [single release-gate tracker](docs/RELEASE_GATE_TRACKER.md) for go/no-go status. The implementation plans and dated evidence below are retained for history; old checkmarks, live-price claims and published-app test instructions are not current acceptance or authorization. Use independently verified isolated staging for synthetic write-path tests.
+
 > **Superseded for sequencing.** `MVP_ROADMAP.md` now owns the delivery order (MVP value first, separate load models, no staging). This file remains the traceability and status appendix for its M0 to M6 rows.
 
 _Concise, risk-first, ordered plan across the three open tracks: beta readiness, wearable (COROS) reconnection, and science reliability._

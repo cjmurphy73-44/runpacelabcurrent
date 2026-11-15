@@ -1,5 +1,7 @@
 # TrainPaceLab — Beta Readiness Roadmap
 
+> **Current release decision: HOLD.** Use the [single release-gate tracker](../docs/RELEASE_GATE_TRACKER.md) for go/no-go status. The implementation plans and dated evidence below are retained for history; old checkmarks, live-price claims and published-app test instructions are not current acceptance or authorization. Use independently verified isolated staging for synthetic write-path tests.
+
 _A risk-first, pass/fail verification plan for the staged external beta._
 _Status legend: ✅ pass · ❌ fail · 🟡 unverified · ⛔ blocked. An item stays 🟡 until fresh runtime evidence is recorded._
 
