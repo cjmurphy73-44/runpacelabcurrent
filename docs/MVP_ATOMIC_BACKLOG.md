@@ -69,3 +69,10 @@ This file is the **single execution queue**, not a claim that beta readiness is 
 - **GitHub PR / merged SHA:** …
 - **Base44 deployment SHA / checkpoint / timestamp:** `NOT PUBLISHED` unless verified.
 - **Staging/live evidence and open blockers:** …
+
+## 2026-11-14 OPS manual read-only GitHub evidence audit (PR #104)
+
+- Audit: `.github/workflows/ci.yml` runs typecheck, Vitest, build and source-map check; PR #103 provides a separate post-release exact-SHA evidence contract. GitHub CI alone cannot prove Base44/Vercel/live source parity.
+- Change: workflow_dispatch-only `.github/workflows/manual-release-audit.yml` with read permissions and exact-SHA main/CI checks; pure evaluator `scripts/release-audit-evidence.mjs`, four synthetic Vitest tests. No deploy/merge/publish steps or secrets beyond GitHub's read-scoped token.
+- Evidence: commits `fe8ec21f`, `28c006b7`, `69059390`. Tests authored, not executed. Draft PR #104 unmerged; manual workflow not available on default branch until reviewed/merged.
+- Next: run workflow in a reviewed sandbox/default-branch context, validate GH API results and require independently attested Base44 checkpoint, Vercel and live acceptance before any release readiness claim. Do not use GitHub CI success alone to authorize publishing.

@@ -1,0 +1,52 @@
+name: Read-only release evidence audit
+
+on:
+  workflow_dispatch:
+    inputs:
+      expected_sha:
+        description: "Exact 40-character main commit SHA to inspect (no deployment)"
+        required: true
+        type: string
+
+permissions:
+  contents: read
+  actions: read
+  checks: read
+  statuses: read
+
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          persist-credentials: false
+      - name: Compare main and CI evidence
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          EXPECTED_SHA: ${{ inputs.expected_sha }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --input-type=module <<'NODE'
+          import { execFileSync } from 'node:child_process';
+          import { evaluateGitHubReleaseAudit } from './scripts/release-audit-evidence.mjs';
+          const api = path => JSON.parse(execFileSync('gh', ['api', path], { encoding: 'utf8' }));
+          const repo = process.env.GH_REPO;
+          const main = api(`repos/${repo}/git/ref/heads/main`).object.sha;
+          const expected = process.env.EXPECTED_SHA;
+          if (!/^[a-f0-9]{40}$/i.test(expected)) throw new Error('Invalid expected SHA');
+          // Workflow runs must refer to this exact commit, not a green unrelated branch.
+          const runs = api(`repos/${repo}/actions/runs?head_sha=${expected}&per_page=100`).workflow_runs
+            .filter(r => r.event === 'push' || r.event === 'pull_request')
+            .map(r => ({ status: r.status, conclusion: r.conclusion, name: r.name }));
+          const statuses = api(`repos/${repo}/commits/${expected}/status`).statuses
+            .map(s => ({ state: s.state, context: s.context }));
+          const result = evaluateGitHubReleaseAudit({ expectedSha: expected, mainSha: main, checks: statuses, workflows: runs });
+          console.log(JSON.stringify({ expectedSha: expected, mainSha: main, ...result, checks: statuses, workflows: runs }, null, 2));
+          console.log('NOT VERIFIED: Base44 checkpoint, published source, Vercel deployment, live acceptance, human approval.');
+          if (!result.readyForHumanReview) process.exitCode = 1;
+          NODE
