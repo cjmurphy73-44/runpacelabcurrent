@@ -85,6 +85,20 @@ export async function loadOrCreateDeletionRecovery(entities, user) {
         new Set(record.athlete_ids).size !== record.athlete_ids.length) {
       throw new Error('Deletion recovery scope requires manual review');
     }
+    // On retries, the User still exists even if AthleteProfile rows were
+    // removed. Do not accept a journal that omits the user's linked profile
+    // or any surviving owned profile. A partial-profile deletion is allowed.
+    const linkedId = user.data?.athlete_profile_id || user.athlete_profile_id;
+    if (linkedId && !record.athlete_ids.includes(linkedId)) {
+      throw new Error('Deletion recovery scope requires manual review');
+    }
+    const survivingProfiles = await entities.AthleteProfile.filter({ created_by_id: user.id });
+    if (!Array.isArray(survivingProfiles) ||
+        survivingProfiles.some((profile) =>
+          !profile?.id || profile.created_by_id !== user.id ||
+          !record.athlete_ids.includes(profile.id))) {
+      throw new Error('Deletion recovery scope requires manual review');
+    }
     return record;
   }
 
