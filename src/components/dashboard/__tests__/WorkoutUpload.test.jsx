@@ -130,6 +130,19 @@ describe("single-file import input lifecycle", () => {
     expect(input.files).toHaveLength(0);
   });
 
+  it("releases the upload busy state when confirmed save refresh never settles", async () => {
+    mocks.ingest.mockResolvedValue({ data: { success: true, workout_session: { id: "synthetic-session" } } });
+    const onUploaded = vi.fn(() => new Promise(() => {}));
+    render(<WorkoutUpload athleteId="synthetic-athlete" onUploaded={onUploaded} />);
+    const input = chooseFile();
+    submit();
+    await waitFor(() => expect(screen.getByRole("status").textContent).toMatch(/Workout saved/i));
+    await waitFor(() => expect(screen.getByRole("button", { name: "Upload" }).disabled).toBe(false));
+    expect(onUploaded).toHaveBeenCalledTimes(1);
+    expect(mocks.ingest).toHaveBeenCalledTimes(1);
+    expect(input.files).toHaveLength(0);
+  });
+
   it("preserves the selected file and shows FIT recovery on explicit corrupt FIT rejection", async () => {
     mocks.ingest.mockResolvedValue({ data: { error: "CRC mismatch" } });
     const onUploaded = vi.fn();
