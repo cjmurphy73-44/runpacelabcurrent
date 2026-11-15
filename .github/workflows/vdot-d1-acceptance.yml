@@ -4,8 +4,9 @@ on:
     paths:
       - 'infra/race-d1/**'
       - 'src/science/__tests__/race*.test.ts'
-      - 'base44/shared/vdotPresentationBoundary.ts'
-      - 'docs/VDOT_OWNER_IDENTITY_GATE_220.md'
+      - 'base44/shared/vdot*.ts'
+      - 'base44/shared/race*.ts'
+      - 'scripts/check-client-science-imports.mjs'
       - '.github/workflows/vdot-d1-acceptance.yml'
   workflow_dispatch:
 jobs:
