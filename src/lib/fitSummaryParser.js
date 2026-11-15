@@ -5,6 +5,24 @@
 const GARMIN_EPOCH_OFFSET_SEC = 631065600; // seconds between Unix epoch and FIT epoch (1989-12-31)
 const MAX_DURATION_SECONDS = 24 * 60 * 60; // reject sessions longer than 24h, sign of corrupted/misread timestamp data
 
+// Garmin FIT CRC-16 nibble lookup. Checksum input excludes the final file CRC.
+// A 14-byte header CRC is optional (zero permitted); the file CRC is mandatory.
+const FIT_CRC_TABLE = [
+  0x0000, 0xCC01, 0xD801, 0x1400, 0xF001, 0x3C00, 0x2800, 0xE401,
+  0xA001, 0x6C00, 0x7800, 0xB401, 0x5000, 0x9C01, 0x8801, 0x4400,
+];
+
+function fitCrc16(bytes, end) {
+  let crc = 0;
+  for (let i = 0; i < end; i += 1) {
+    const byte = bytes[i];
+    for (const nibble of [byte & 0x0f, byte >> 4]) {
+      crc = ((crc >> 4) & 0x0fff) ^ FIT_CRC_TABLE[crc & 0x0f] ^ FIT_CRC_TABLE[nibble];
+    }
+  }
+  return crc;
+}
+
 const SPORT_MAP = {
   0: "other",
   1: "running",
@@ -95,6 +113,15 @@ export function parseFitSummary(arrayBuffer) {
   // one file. Do not decode or silently discard records outside its declared body.
   if (declaredDataSize < bytes.byteLength - headerSize - 2) {
     throw new Error("Chained or appended FIT data is unsupported in summary decoder");
+  }
+  if (headerSize === 14) {
+    const headerCrc = view.getUint16(12, true);
+    if (headerCrc !== 0 && fitCrc16(bytes, 12) !== headerCrc) {
+      throw new Error("Invalid FIT header CRC: file header is corrupt");
+    }
+  }
+  if (fitCrc16(bytes, bytes.byteLength - 2) !== view.getUint16(bytes.byteLength - 2, true)) {
+    throw new Error("Invalid FIT file CRC: recording is corrupt or incomplete");
   }
   let offset = headerSize;
   const localDefs = {};
