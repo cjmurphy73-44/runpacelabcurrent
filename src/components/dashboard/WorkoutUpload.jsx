@@ -70,14 +70,14 @@ export default function WorkoutUpload({ athleteId, onUploaded }) {
       <CardContent>
         <form onSubmit={handleSubmit} className="space-y-3">
           <div>
-            <Label>File (.fit or .csv)</Label>
-            <Input ref={fileInputRef} type="file" accept=".fit,.csv,application/vnd.ant.fit,application/octet-stream" onChange={(e) => setFile(e.target.files?.[0] || null)} required />
+            <Label htmlFor="workout-upload-file">File (.fit or .csv)</Label>
+            <Input id="workout-upload-file" ref={fileInputRef} type="file" accept=".fit,.csv,application/vnd.ant.fit,application/octet-stream" onChange={(e) => setFile(e.target.files?.[0] || null)} required />
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <Label>Sport</Label>
+              <Label id="workout-upload-sport-label">Sport</Label>
               <Select value={sport} onValueChange={setSport}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectTrigger aria-labelledby="workout-upload-sport-label"><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="running">Running</SelectItem>
                   <SelectItem value="cycling">Cycling</SelectItem>
@@ -89,8 +89,8 @@ export default function WorkoutUpload({ athleteId, onUploaded }) {
               </Select>
             </div>
             <div>
-              <Label>Date</Label>
-              <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} max={todayLocalISO()} required />
+              <Label htmlFor="workout-upload-date">Date</Label>
+              <Input id="workout-upload-date" type="date" value={date} onChange={(e) => setDate(e.target.value)} max={todayLocalISO()} required />
             </div>
           </div>
           <Button type="submit" disabled={uploading || !file} className="w-full">
