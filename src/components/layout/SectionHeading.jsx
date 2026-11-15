@@ -3,7 +3,7 @@ import React from "react";
 export default function SectionHeading({ index, title, description, icon: Icon, action }) {
   return (
     <div className="border-b border-border pb-3">
-      <div className="flex items-end justify-between gap-4">
+      <div className="flex flex-col items-start gap-3 sm:flex-row sm:items-end sm:justify-between">
         <div className="min-w-0 flex items-center gap-2.5">
           {index && (
             <span className="text-xs font-mono tabular-nums font-semibold text-primary tracking-wider">{index}</span>
@@ -13,7 +13,7 @@ export default function SectionHeading({ index, title, description, icon: Icon, 
             {title}
           </h2>
         </div>
-        {action && <div className="shrink-0">{action}</div>}
+        {action && <div className="w-full min-w-0 sm:w-auto sm:shrink-0">{action}</div>}
       </div>
       {description && <p className="text-sm text-muted-foreground mt-1.5">{description}</p>}
     </div>
