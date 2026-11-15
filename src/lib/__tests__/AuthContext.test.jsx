@@ -25,6 +25,7 @@ const mocks = vi.hoisted(() => ({
   },
 }));
 
+vi.mock('@/api/base44Client', () => ({ base44: {} }));
 vi.mock('@/services/authService', () => ({ authService: mocks.authService }));
 vi.mock('@/lib/app-params', () => ({ appParams: mocks.appParams }));
 
