@@ -1,6 +1,25 @@
 import { describe, expect, it } from "vitest";
 import { parseFitSummary } from "../fitSummaryParser";
 
+// Independent bitwise CRC-16 test oracle (Garmin FIT, reflected 0xA001).
+// Header golden vector is from Garmin's published CheckIntegrity example.
+function referenceFitCrc(bytes, end) {
+  let crc = 0;
+  for (let i = 0; i < end; i += 1) {
+    crc ^= bytes[i];
+    for (let bit = 0; bit < 8; bit += 1) {
+      crc = (crc >>> 1) ^ ((crc & 1) ? 0xA001 : 0);
+    }
+  }
+  return crc;
+}
+
+function finalizeFitChecksums(bytes) {
+  const view = new DataView(bytes.buffer);
+  if (bytes[0] === 14) view.setUint16(12, referenceFitCrc(bytes, 12), true);
+  view.setUint16(bytes.length - 2, referenceFitCrc(bytes, bytes.length - 2), true);
+}
+
 function fitHeader({ size = 12, dataSize = 0, signature = ".FIT", trailingBytes = 0 } = {}) {
   const bytes = new Uint8Array(size + trailingBytes + 2);
   const view = new DataView(bytes.buffer);
@@ -8,6 +27,7 @@ function fitHeader({ size = 12, dataSize = 0, signature = ".FIT", trailingBytes 
   bytes[1] = 0x20;
   view.setUint32(4, dataSize, true);
   for (let i = 0; i < 4; i += 1) bytes[8 + i] = signature.charCodeAt(i);
+  finalizeFitChecksums(bytes);
   return bytes.buffer;
 }
 
@@ -46,6 +66,7 @@ function syntheticFitSession(headerSize = 12) {
   bytes[offset++] = 145;
   bytes[offset++] = 1; // running
   if (offset !== headerSize + dataLength) throw new Error("Synthetic FIT fixture size mismatch");
+  finalizeFitChecksums(bytes);
   return bytes.buffer;
 }
 
@@ -88,6 +109,32 @@ describe("browser FIT summary header validation", () => {
     appended.set(original);
     appended.set([0x40, 0, 0], original.length);
     expect(() => parseFitSummary(appended.buffer)).toThrow(/chained or appended FIT data/i);
+  });
+
+  it("matches Garmin's published 14-byte header CRC golden vector", () => {
+    const header = Uint8Array.from([0x0E, 0x10, 0x43, 0x08, 0x78, 0x06, 0x09, 0, 0x2E, 0x46, 0x49, 0x54]);
+    expect(referenceFitCrc(header, header.length)).toBe(0x8596);
+  });
+
+  it("rejects corrupt FIT data before returning a trusted workout summary", () => {
+    for (const headerSize of [12, 14]) {
+      const bytes = new Uint8Array(syntheticFitSession(headerSize));
+      bytes[headerSize + 7] ^= 1; // flip an elapsed-time field, leave CRC unchanged
+      expect(() => parseFitSummary(bytes.buffer)).toThrow(/Invalid FIT file CRC/);
+    }
+  });
+
+  it("rejects a corrupt 14-byte header CRC", () => {
+    const bytes = new Uint8Array(syntheticFitSession(14));
+    bytes[12] ^= 1; // corrupt only header checksum
+    expect(() => parseFitSummary(bytes.buffer)).toThrow(/Invalid FIT header CRC/);
+  });
+
+  it("permits an omitted optional header CRC only when the file CRC is correct", () => {
+    const bytes = new Uint8Array(syntheticFitSession(14));
+    bytes[12] = 0; bytes[13] = 0;
+    finalizeFitChecksums(bytes);
+    expect(parseFitSummary(bytes.buffer).sport).toBe("running");
   });
 
   it("decodes a synthetic FIT session through standard 12- and 14-byte headers", () => {
