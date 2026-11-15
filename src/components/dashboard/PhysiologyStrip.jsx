@@ -2,6 +2,7 @@ import React, { useMemo } from "react";
 import { useFitness } from "@/context/FitnessContext";
 import { calculateACWR } from "@/lib/injuryEngine";
 import { deriveRunningThresholdPace } from "@/utils/physiology/thresholdPaceEngine";
+import { classifyRunningCalibration } from "@/lib/runningCalibrationStatus";
 import { Term } from "@/components/ui/Term";
 import { AuditBadge } from "@/components/ui/AuditBadge";
 import { useUIPreferences } from "@/context/UIPreferencesContext";
@@ -76,6 +77,19 @@ export default function PhysiologyStrip({ athlete }) {
     [workoutSessions, athlete?.vdot_estimate, athlete?.functional_threshold_pace_ms, athlete?.lactate_threshold_hr]
   );
 
+  const runningCalibration = useMemo(
+    () => classifyRunningCalibration(workoutSessions, threshold.observedRunCount),
+    [workoutSessions, threshold.observedRunCount]
+  );
+  // A historic pace must not be presented as a verified current threshold
+  // after a running gap or without enough qualified threshold evidence.
+  const thresholdCurrent = threshold.paceMs != null && runningCalibration.currentVerified;
+  const thresholdStatus = runningCalibration.status === "running_gap"
+    ? "Running break · historical estimate only"
+    : runningCalibration.status === "needs_threshold_evidence"
+      ? "Current threshold unverified · recalibration needed"
+      : "Provisional estimate · requires validated threshold effort";
+
   const injury = useMemo(
     () => calculateACWR(dailyMetrics.map((d) => ({ load: d.total_trimp || 0 }))),
     [dailyMetrics]
@@ -108,9 +122,9 @@ export default function PhysiologyStrip({ athlete }) {
       <Tile
         icon={Gauge}
         label={<Term k="threshold_pace">Threshold pace</Term>}
-        value={formatPace(threshold.paceMs)}
-        suffix={threshold.paceMs ? "/km" : ""}
-        sub={threshold.paceMs ? (isGeek ? humanThresholdSource(threshold.source) : "Pace you can hold ~1 hour") : "Set in Physiology"}
+        value={thresholdCurrent ? formatPace(threshold.paceMs) : "Unverified"}
+        suffix={thresholdCurrent ? "/km" : ""}
+        sub={threshold.paceMs ? thresholdStatus + (isGeek ? ` · Last estimate ${formatPace(threshold.paceMs)}/km (${humanThresholdSource(threshold.source)})` : "") : "Set VDOT or a baseline"}
       />
       <Tile
         icon={ShieldAlert}
