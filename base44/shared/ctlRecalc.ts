@@ -6,6 +6,7 @@
 const DAY_MS = 86400000;
 
 import { calculateFitnessFatigueOde } from './fitnessFatigueOde.ts';
+import { auditDailyHistory, assessDailyLoad } from './dailyLoadEvidence.ts';
 
 export async function recomputeCTLATLTSB(base44: any, athlete_id: string) {
   const athlete = await base44.asServiceRole.entities.AthleteProfile.get(athlete_id).catch(() => null);
@@ -29,6 +30,20 @@ export async function recomputeCTLATLTSB(base44: any, athlete_id: string) {
   const atlAlpha = 2 / (timeConstantATL + 1);
 
   const sessions = await base44.asServiceRole.entities.WorkoutSession.filter({ athlete_id });
+  const existing = await base44.asServiceRole.entities.DailyMetrics.filter({ athlete_id });
+  const today = new Date().toISOString().slice(0, 10);
+  const coverage = auditDailyHistory(sessions, existing, today);
+  if (!coverage.eligible) {
+    return { success: false, code: 'LOAD_HISTORY_UNVERIFIED', reason: coverage.reason,
+      date: coverage.date, ctl: null, atl: null, tsb: null };
+  }
+  if (coverage.unit !== 'trimp') {
+    return { success: false, code: 'INCOMPATIBLE_LOAD_UNIT', reason: 'CTL/ATL TRIMP history requires measured or estimated TRIMP, not TSS or rest-only history.',
+      date: null, ctl: null, atl: null, tsb: null };
+  }
+  // No writes occur before this gate. Only explicitly confirmed rest days
+  // can contribute zero impulses, and all nonzero loads must use one unit.
+  const restDays = new Set(existing.filter((m: any) => m.confirmed_rest === true).map((m: any) => m.date));
   const trimpByDate: Record<string, number> = {};
   // Load is counted once per day, but kept split by provenance so the verified (measured
   // from a per-second stream) and summary (average-HR estimate) contributions never mix
@@ -37,14 +52,16 @@ export async function recomputeCTLATLTSB(base44: any, athlete_id: string) {
   const summaryByDate: Record<string, number> = {};
   for (const s of sessions) {
     if (!s.date) continue;
-    const load = s.session_trimp || s.session_tss || 0;
+    const assessment = assessDailyLoad([s]);
+    if (!assessment.eligible) continue; // coverage gate above already rejects this case
+    const load = assessment.load!;
     trimpByDate[s.date] = (trimpByDate[s.date] || 0) + load;
     if (s.load_source === 'stream') verifiedByDate[s.date] = (verifiedByDate[s.date] || 0) + load;
     else summaryByDate[s.date] = (summaryByDate[s.date] || 0) + load;
   }
+  for (const date of restDays) if (trimpByDate[date] === undefined) trimpByDate[date] = 0;
   const workoutDates = Object.keys(trimpByDate).sort();
 
-  const existing = await base44.asServiceRole.entities.DailyMetrics.filter({ athlete_id });
   const existingByDate: Record<string, string> = {};
   for (const m of existing) existingByDate[m.date] = m.id;
 

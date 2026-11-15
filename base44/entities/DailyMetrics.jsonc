@@ -11,7 +11,7 @@
       "format": "date",
       "description": "Calendar date these metrics apply to"
     },
-    "total_trimp": {
+    "confirmed_rest": {\n      "type": "boolean",\n      "default": false,\n      "description": "Explicitly verified rest day, not inferred from missing workouts or a successful sync"\n    },\n    "total_trimp": {
       "type": "number",
       "default": 0,
       "minimum": 0,
