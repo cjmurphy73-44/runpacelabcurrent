@@ -1,5 +1,7 @@
 # Base44 Project
 
+> **Current release decision: HOLD.** Use the [single release-gate tracker](docs/RELEASE_GATE_TRACKER.md) for go/no-go status. The implementation plans and dated evidence below are retained for history; old checkmarks, live-price claims and published-app test instructions are not current acceptance or authorization. Use independently verified isolated staging for synthetic write-path tests.
+
 Use this repository to run and edit the app locally, then publish changes back through Base44.
 
 **Source and publishing are separate.** GitHub `main` is protected by PRs and CI, while this Base44 app's two-way sync attempts direct pushes to `main`. That push is currently blocked. Do not assume a GitHub merge reached the Builder or published app. See [atomic backlog](docs/MVP_ATOMIC_BACKLOG.md) and [release issue #24](https://github.com/cjmurphy73-44/runpacelabcurrent/issues/24).

@@ -1,5 +1,7 @@
 # TrainPaceLab: MVP Roadmap
 
+> **Current release decision: HOLD.** Use the [single release-gate tracker](docs/RELEASE_GATE_TRACKER.md) for go/no-go status. The implementation plans and dated evidence below are retained for history; old checkmarks, live-price claims and published-app test instructions are not current acceptance or authorization. Use independently verified isolated staging for synthetic write-path tests.
+
 **Purpose.** Get Garmin and COROS athletes onto TrainPaceLab with no friction, give them data they can trust, and give them a coaching loop worth paying for. This file is the authoritative sequencing layer for the MVP phase. It replaces the risk-first ordering in `NEXT_PHASE_ROADMAP.md` (which stays as a traceability and status appendix) and pulls detail from `ROADMAP.md`, `PRODUCTION_ROADMAP.md`, `src/PRODUCTION_ROADMAP.md`, and `src/BETA_READINESS_ROADMAP.md`.
 
 Three decisions shape everything below:
