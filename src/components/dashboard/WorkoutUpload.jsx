@@ -28,8 +28,12 @@ export default function WorkoutUpload({ athleteId, onUploaded }) {
     if (!file) return;
     setUploading(true);
     setStatus(null);
+    let ingestRequested = false;
     try {
       const { file_url } = await base44.integrations.Core.UploadFile({ file });
+      // Once the ingest request begins, a rejected promise does not prove that
+      // the server did not save the workout. Never encourage a blind retry.
+      ingestRequested = true;
       const res = await base44.functions.invoke("ingestWorkoutFile", {
         athlete_id: athleteId,
         file_url,
@@ -47,7 +51,12 @@ export default function WorkoutUpload({ athleteId, onUploaded }) {
         onUploaded?.();
       }
     } catch (err) {
-      setStatus({ type: "error", message: err.message });
+      setStatus({
+        type: ingestRequested ? "warning" : "error",
+        message: ingestRequested
+          ? "Workout save could not be confirmed. Check your workout history before retrying to avoid a duplicate. Your selected file is still available."
+          : "File upload failed before workout processing began. Check your connection and retry. Your selected file is still available.",
+      });
     }
     setUploading(false);
   };
