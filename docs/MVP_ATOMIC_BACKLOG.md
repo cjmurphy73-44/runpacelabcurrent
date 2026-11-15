@@ -69,3 +69,9 @@ This file is the **single execution queue**, not a claim that beta readiness is 
 - **GitHub PR / merged SHA:** …
 - **Base44 deployment SHA / checkpoint / timestamp:** `NOT PUBLISHED` unless verified.
 - **Staging/live evidence and open blockers:** …
+
+## 2026-11-14 Backend planned/actual reconciliation preflight (PR #126)
+
+- Added authenticated read-only `preflightWorkoutMatch` endpoint, ownership guard, scoped WorkoutSession/TrainingPlanSession reads, duplicate-link query, deterministic pending/date/sport/duration validation and proposed completed/partial/excess status. All responses explicitly indicate `committed:false`.
+- Five synthetic tests authored. No production release or test execution evidenced. This does NOT make client-side confirmation atomic; related PR #123 removes automatic linking on screen load.
+- Hard blocker for durable linking: verify Base44 supports transactional/conditional compare-and-swap or a properly fenced server-side atomic primitive. Without it, do not claim concurrency safety or replace the two-write confirmation with another read-then-update implementation. Add simultaneous-confirmation, retry/idempotency and partial-write tests before activation.
