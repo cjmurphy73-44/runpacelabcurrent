@@ -69,3 +69,10 @@ This file is the **single execution queue**, not a claim that beta readiness is 
 - **GitHub PR / merged SHA:** …
 - **Base44 deployment SHA / checkpoint / timestamp:** `NOT PUBLISHED` unless verified.
 - **Staging/live evidence and open blockers:** …
+
+## 2026-11-14 SCI comparable daily stream TRIMP (PR #100)
+
+- Audit: `src/lib/loadForecasting.js` currently blends `session_trimp || session_tss || 0` into daily EWMA and imputes all absent dates as zero. PR #95 fixes the metric banner gate but not the underlying historical series.
+- Change: `src/lib/comparableDailyTrimp.js` provides pure daily TRIMP reconciliation for backend-labelled stream load with >=30% coverage and unused TSS zero/absent; invalid dates, summary loads and mixed units fail closed. Does not infer rest days or compute CTL/ATL/TSB.
+- Evidence: commits `03971e1a`, `9110ed2e`. Five synthetic Vitest cases authored, execution pending. Draft PR #100; unmerged and undeployed.
+- Next: obtain explicit day-completeness/ingest reconciliation evidence before projecting EWMA through missing dates. Coordinate with SCI-005 (#86), banner (#95) and chart (#92). No schema or production record changes.
