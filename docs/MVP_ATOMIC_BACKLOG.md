@@ -69,3 +69,10 @@ This file is the **single execution queue**, not a claim that beta readiness is 
 - **GitHub PR / merged SHA:** …
 - **Base44 deployment SHA / checkpoint / timestamp:** `NOT PUBLISHED` unless verified.
 - **Staging/live evidence and open blockers:** …
+
+## 2026-11-14 COMMERCIAL: assumption-only unit economics scenario (draft PR)
+
+- Audit: open PRs #100-104 cover scientific reconciliation and release evidence; recent main commit `c03498a6` covers checkout honesty. Avoided touching live Stripe or user financial data.
+- Change: pure `src/lib/subscriptionScenario.js` computes synthetic monthly revenue, variable/fixed costs, contribution, simple churn-based LTV, CAC payback and break-even subscribers. Explicit `assumption_only_not_actual_financials` label and exclusions; no real traction or fees assumed. Four synthetic Vitest cases in `src/lib/__tests__/subscriptionScenario.test.js`.
+- Evidence: commits `43014af8`, `96bc2326`. Tests authored, execution pending; no deployment or pricing changes.
+- Next: execute Vitest and review financial assumptions (GST, Stripe fees, refunds, tier mix, salaries, hosting), then build a separately approved scenario worksheet and customer-support/SEO acceptance tasks. Never treat hypothetical values as actual financials.
