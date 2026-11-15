@@ -137,7 +137,7 @@ export function parseFitSummary(arrayBuffer) {
         let value = null;
         assertBounds(offset, f.size, bytes.byteLength);
         if (t !== 7 && f.size === baseTypeSize(f.baseType)) {
-          if (t === 2 || t === 10) value = view.getUint8(offset);
+          if (t === 0 || t === 2 || t === 10) value = view.getUint8(offset); // FIT enum (sport) and unsigned byte
           else if (t === 1) value = view.getInt8(offset);
           else if (t === 4 || t === 11) value = view.getUint16(offset, def.littleEndian);
           else if (t === 3) value = view.getInt16(offset, def.littleEndian);
