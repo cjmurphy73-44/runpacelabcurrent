@@ -69,3 +69,10 @@ This file is the **single execution queue**, not a claim that beta readiness is 
 - **GitHub PR / merged SHA:** …
 - **Base44 deployment SHA / checkpoint / timestamp:** `NOT PUBLISHED` unless verified.
 - **Staging/live evidence and open blockers:** …
+
+## 2026-11-14 COM unit economics scenario (draft PR)
+
+- Isolated assumption-only AUD calculator `src/lib/commercialUnitEconomics.js` plus five synthetic Vitest cases and `docs/COMMERCIAL_UNIT_ECONOMICS.md`. No live Stripe, financial records, production entities or customer data accessed.
+- Commits: `651474aa`, `d47407a5`, `c0dc7c53`. Tests authored but not executed; PR draft, unmerged and undeployed.
+- Critical audit blocker on related PR #95: `stream_verified` is absent from tracked WorkoutSession schema and source search, while both `session_trimp` and `session_tss` have schema default 0. The proposed dashboard gate must be reconciled to the actual backend contract before merge, otherwise legitimate data may always be hidden.
+- Next: implement backend-to-frontend stream verification using existing `load_source` and `load_coverage_pct` with independent verification evidence, without altering production schema without approval. Commercial next: Stripe test-mode lifecycle and entitlement matrix.
