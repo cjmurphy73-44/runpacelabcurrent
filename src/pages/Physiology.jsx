@@ -3,6 +3,7 @@ import PageShell from "@/components/layout/PageShell";
 import { useAthlete } from "@/hooks/useAthlete";
 import { FitnessProvider } from "@/context/FitnessContext";
 import PhysiologyLab from "@/components/dashboard/PhysiologyLab";
+import RestHistoryReview from "@/components/physiology/RestHistoryReview";
 import { FlaskConical } from "lucide-react";
 
 export default function Physiology() {
@@ -23,6 +24,7 @@ export default function Physiology() {
         icon={FlaskConical}
         maxWidth="max-w-6xl"
       >
+        <RestHistoryReview athleteId={athlete.id} />
         <PhysiologyLab athlete={athlete} />
       </PageShell>
     </FitnessProvider>
