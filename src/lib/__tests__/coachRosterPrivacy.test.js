@@ -26,8 +26,10 @@ describe('coach self-service roster privacy containment', () => {
     expect(JSON.parse(profile).rls.read.$or).toEqual(expect.arrayContaining([
       { id: { $in: '{{user.data.coached_athletes}}' } },
     ]));
-    expect(JSON.parse(assignments).rls.create.$or).toEqual(expect.arrayContaining([
-      { 'data.coach_user_id': '{{user.id}}' },
-    ]));
+    // Existing cache-based profile reads still need a server-trusted update path.
+    // Direct creation of coach-athlete assignments must fail for ordinary users.
+    expect(JSON.parse(assignments).rls.create).toEqual({
+      user_condition: { role: 'admin' },
+    });
   });
 });
