@@ -69,3 +69,11 @@ This file is the **single execution queue**, not a claim that beta readiness is 
 - **GitHub PR / merged SHA:** …
 - **Base44 deployment SHA / checkpoint / timestamp:** `NOT PUBLISHED` unless verified.
 - **Staging/live evidence and open blockers:** …
+
+## 2026-11-14 UX/COM beta feedback receipt (PR #91)
+
+- Scope: `src/components/feedback/BetaFeedbackModal.jsx`, `src/components/feedback/feedbackReceipt.js`, `src/components/feedback/__tests__/feedbackReceipt.test.js`.
+- Baseline: beta feedback modal treated a truthy success flag without a persisted record ID as delivery, and automatically copied potentially sensitive message/email to the clipboard on network failure.
+- Change: only confirm success for explicit server receipt with nonempty ID, preserve failed drafts, remove implicit clipboard copying, add sensitive-data warning. Distinct from support-page PR #89 and backend PR #90.
+- Evidence: commits `de49cfde`, `f8e32d4a`, `12fe7e46`. Two synthetic tests authored with multiple negative inputs; execution unverified. Draft PR #91, unmerged, undeployed.
+- Next: isolated frontend acceptance test for success, rejected response and offline retry; server-side retention and abuse controls remain separate work.
