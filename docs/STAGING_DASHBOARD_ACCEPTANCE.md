@@ -215,3 +215,20 @@ New authoritative **read-only** Base44 platform response `GET /api/apps/{app_id}
 **Current technical limitations:** DNS rebinding is not prevented by URL syntax validation; installed SDK source-level popup origin/source checks do not prove backend OAuth state/PKCE; Node SDK ESM import is not equivalent to full Vite application SSR. Preserve fail-closed behavior. Do not change Vercel configuration, enable attestation, make live backend calls, merge or deploy.
 
 **Manual support request refinement (not sent):** In addition to the five questions above, please explain whether the shared `app_editor_redirect_uri`, `builder_redirect_uri` and `gateway_redirect_uri` values are expected for distinct apps, and how the platform binds callbacks and tokens to the correct app. Please confirm that distinct app-specific redirect URI lists imply distinct OAuth clients or only different permitted callback URLs. Read-only metadata or written answers only; do not activate any settings, run functions, or reveal secrets.
+
+## CI #723 and platform configuration comparison
+
+Exact-head GitHub CI #723 **passed** at `f1caf567e824e7719c99e3e06064957e67211b91`; PR #149 remains draft. PR #137 head `bb7e545e53c9a4f791803d08cfb46d7cbe97375a` and PR #140 head `11ce8b1550273e8b3474279eac0c3b545513dc87` remained unchanged and draft. Staging app's current Base44 version was `63c5aff20dc8d4ca3658841209ec3f9bd1c24f29`, newer than the previous evidence checkpoint; treat as concurrent work and **do not reset or overwrite**. Previous 57/57 staging offline tests/build remain historical evidence, **not retested at this newer revision**.
+
+Additional **read-only, app-scoped** Base44 platform metadata:
+- `GET /api/apps/{app_id}/entities/User/count`: staging **1** registered user, production **6**. Counts are not proof that identities or sessions cannot overlap; no individual records were accessed.
+- `GET /api/apps/{app_id}/secrets`: staging **3** masked secret names, production **17** masked secret names. Values were not returned, viewed or compared. Distinct configurations do not prove separate storage namespaces or service-role permissions.
+- `GET /api/apps/{app_id}/external-auth/list`: GitHub and Airtable connections are **disconnected** in staging and **active** in production. Production Airtable connector reports workspace ownership, and GitHub app ownership; this means connector sharing/scope still needs authoritative clarification. No connector was used or changed.
+- `GET /api/apps/{app_id}/backend-functions`: both responses **truncated**; cannot infer inventories or execution separation from these responses.
+- Previously verified app-specific OAuth redirect lists have **zero exact overlap** (5 staging versus 7 production), but editor/builder/gateway callback endpoints are shared.
+
+These are **configuration differences**, not proof of auth/session, database, function-execution, webhook or secrets isolation. No effective SDK backend origin, DNS binding, per-tenant OAuth state/PKCE contract, or privileged function authorization was returned. Keep Preview fail-closed.
+
+**Prepared support request addition (manual submission only):** Please confirm whether app-scoped user-count differences reflect independent auth user stores and session/token validity; whether independently listed masked secret names guarantee separate values, storage and permissions; whether disconnected app-scoped connectors can inherit workspace-level credentials or trigger external side effects; and whether shared OAuth editor/builder/gateway callback endpoints use a server-verified app binding, state/PKCE and permitted redirect validation. Please also supply an authoritative function/DB tenancy assertion and the exact staging SDK API origin and server-side app-ID enforcement contract. Written or masked metadata only. No settings changes, credentials, real function invocation or test users requested.
+
+**Release recommendation:** Keep draft PRs #149/#137/#140 open and staging client blocked. Obtain Base44's written evidence before any Preview attestation, branch-scoped Vercel env configuration, authenticated QA, merge or deployment.
