@@ -1,9 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 
-const page = readFileSync(new URL('../../pages/CoachWorkspace.jsx', import.meta.url), 'utf8');
-const profile = readFileSync(new URL('../../../base44/entities/AthleteProfile.jsonc', import.meta.url), 'utf8');
-const assignments = readFileSync(new URL('../../../base44/entities/CoachAthleteAssignment.jsonc', import.meta.url), 'utf8');
+const page = readFileSync(resolve(process.cwd(), 'src/pages/CoachWorkspace.jsx'), 'utf8');
+const profile = readFileSync(resolve(process.cwd(), 'base44/entities/AthleteProfile.jsonc'), 'utf8');
+const assignments = readFileSync(resolve(process.cwd(), 'base44/entities/CoachAthleteAssignment.jsonc'), 'utf8');
 
 describe('coach self-service roster privacy containment', () => {
   it('does not enumerate all athlete profiles for unauthorized direct linking', () => {
