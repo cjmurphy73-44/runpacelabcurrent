@@ -69,3 +69,9 @@ This file is the **single execution queue**, not a claim that beta readiness is 
 - **GitHub PR / merged SHA:** …
 - **Base44 deployment SHA / checkpoint / timestamp:** `NOT PUBLISHED` unless verified.
 - **Staging/live evidence and open blockers:** …
+
+### 2026-11-14 science coverage checkpoint (SCI-DATE-001)
+
+- **PR #76**, branch `fix/sci-calendar-day-coverage-20261114`, head `021b59ea3dbf5bd57e3506a1e0f3615efdcb947d`: prevent missing calendar days from being treated as consecutive training-load observations in ACWR, 7-day CTL ramp and TSB warning streaks. Four synthetic regression cases in `src/science/__tests__/adaptation.test.ts`. **Awaiting CI/review; not merged, deployed or live-verified.**
+- **Limitation:** the raw `buildLoadSeries` remains observation-stepped; it must not be presented as a complete daily trajectory when dates are missing. Next science task: provenance-aware daily coverage contract that distinguishes confirmed zero-load days from absent telemetry, then calculate CTL/ATL from complete daily intervals.
+- **Release gate:** Base44 source checkpoint mismatch tracked in #24; no publish or production data mutation. Verify exact GitHub SHA, CI, Vercel preview, and Base44 published source independently.

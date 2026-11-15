@@ -143,3 +143,36 @@ describe('adaptation: TSB form check', () => {
     expect(JSON.stringify(evaluateAdaptation(history))).toBe(JSON.stringify(evaluateAdaptation(history)));
   });
 });
+describe('adaptation: calendar coverage gates', () => {
+  it('does not treat seven spaced observations as seven consecutive load days', () => {
+    const sparse = days(30, 50).filter((_, index) => index % 2 === 0);
+    const result = evaluateAdaptation(sparse);
+    expect(result.acwr).toBeNull();
+    expect(result.ctl_ramp_7d).toBeNull();
+    expect(result.tsb_negative_streak_days).toBe(0);
+    expect(result.flags).toEqual([]);
+    expect(acuteChronicRatio(sparse)).toBeNull();
+  });
+
+  it('does not count a seven-day ramp across an unobserved calendar date', () => {
+    const sparse = days(10, 100).filter((_, index) => index !== 4);
+    const series = buildLoadSeries(sparse);
+    expect(ctlRamp7d(series)).toBeNull();
+  });
+
+  it('breaks consecutive negative TSB streaks across missing dates', () => {
+    const series = [
+      { date: '2026-01-01', load: 100, ctl: 40, atl: 80, tsb: -40 },
+      { date: '2026-01-03', load: 100, ctl: 40, atl: 80, tsb: -40 },
+      { date: '2026-01-04', load: 100, ctl: 40, atl: 80, tsb: -40 },
+    ];
+    expect(tsbNegativeStreak(series)).toBe(2);
+  });
+
+  it('preserves full-history assessment on a complete calendar sequence', () => {
+    const complete = days(40, 50);
+    const result = evaluateAdaptation(complete);
+    expect(result.acwr).not.toBeNull();
+    expect(result.ctl_ramp_7d).not.toBeNull();
+  });
+});
