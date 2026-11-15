@@ -1,4 +1,5 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.49';
+import { runAccountEntityCleanup } from '../../shared/accountDeletionCleanup.js';
 
 // Permanently deletes the calling user's account and all owned data.
 // Triggered from the Athlete Settings Danger Zone. There is no client-side
@@ -40,14 +41,7 @@ export default async function(req) {
       // never points at the athlete; match on athlete_id instead or deletion leaves them.
       ...(user.data?.athlete_profile_id ? [["WebhookEvent", () => e.WebhookEvent.deleteMany({ athlete_id: user.data.athlete_profile_id })]] : []),
     ];
-    const failedEntities = [];
-    for (const [entityName, del] of cleanup) {
-      try {
-        await del();
-      } catch (_error) {
-        failedEntities.push(entityName);
-      }
-    }
+    const failedEntities = await runAccountEntityCleanup(cleanup);
     if (failedEntities.length > 0) {
       // Do not remove the identity needed to retry incomplete cleanup.
       return Response.json({
