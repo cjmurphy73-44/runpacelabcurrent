@@ -74,9 +74,23 @@ function assertBounds(offset, size, byteLength) {
 // certain third-party exports) omit it entirely, in that case we fall back to aggregating
 // "lap" (19) or "record" (20) messages, which are captured during the same single pass.
 export function parseFitSummary(arrayBuffer) {
+  if (!(arrayBuffer instanceof ArrayBuffer) || arrayBuffer.byteLength < 14) {
+    throw new Error("Invalid FIT header: missing or truncated file");
+  }
   const bytes = new Uint8Array(arrayBuffer);
   const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
   const headerSize = view.getUint8(0);
+  // Standard FIT headers are 12 bytes, or 14 bytes with header CRC.
+  // Never treat a generic binary payload as a FIT recording.
+  if ((headerSize !== 12 && headerSize !== 14)
+    || bytes.byteLength < headerSize + 2
+    || bytes[8] !== 46 || bytes[9] !== 70 || bytes[10] !== 73 || bytes[11] !== 84) {
+    throw new Error("Invalid FIT header: expected .FIT signature");
+  }
+  const declaredDataSize = view.getUint32(4, true);
+  if (declaredDataSize > bytes.byteLength - headerSize - 2) {
+    throw new Error("Invalid FIT header: declared data exceeds file size");
+  }
   let offset = headerSize;
   const localDefs = {};
   let session = null;
