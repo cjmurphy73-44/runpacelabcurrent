@@ -121,4 +121,21 @@ describe("single-file import input lifecycle", () => {
     expect(onUploaded).not.toHaveBeenCalled();
   });
 
+  it("allows only one in-flight ingest even if form submission is repeated", async () => {
+    let finishIngest;
+    mocks.ingest.mockImplementation(() => new Promise((resolve) => { finishIngest = resolve; }));
+    const onUploaded = vi.fn();
+    render(<WorkoutUpload athleteId="synthetic-athlete" onUploaded={onUploaded} />);
+    chooseFile();
+    submit();
+    await waitFor(() => expect(mocks.ingest).toHaveBeenCalledTimes(1));
+    // A second synthetic submit bypasses the disabled button, as can an
+    // already-queued native event. The synchronous guard must still hold.
+    fireEvent.submit(screen.getByRole("button", { name: "Processing..." }).closest("form"));
+    expect(mocks.upload).toHaveBeenCalledTimes(1);
+    expect(mocks.ingest).toHaveBeenCalledTimes(1);
+    finishIngest({ data: { success: true, workout_session: { id: "synthetic-session" } } });
+    await waitFor(() => expect(onUploaded).toHaveBeenCalledTimes(1));
+  });
+
 });
