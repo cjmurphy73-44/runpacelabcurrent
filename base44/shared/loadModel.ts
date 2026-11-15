@@ -21,7 +21,8 @@ function banisterCoefficients(sex?: string): { a: number; b: number } {
 }
 
 function heartRateReserve(hr: any, restHr: number, maxHr: number): number | null {
-  if (!Number.isFinite(hr) || hr <= 0 || !Number.isFinite(maxHr) || maxHr <= restHr) return null;
+  if (!Number.isFinite(hr) || !Number.isFinite(restHr) || !Number.isFinite(maxHr) ||
+      restHr <= 0 || maxHr <= restHr || hr < restHr || hr > maxHr) return null;
   return Math.max(0, Math.min(1, (hr - restHr) / (maxHr - restHr)));
 }
 
@@ -83,9 +84,18 @@ export function resolveSessionLoad({
   maxHr?: number | null;
   sex?: string;
 }) {
-  const rest = Number(restHr) || 60;
-  const max = Number(maxHr) || 0;
-  const duration = Number(durationSeconds) || 0;
+  // Do not silently manufacture resting HR or accept impossible HR ranges.
+  // The legacy entity requires a numeric field. Zero with load_source='none'
+  // is a storage sentinel for unavailable load, NOT evidence of zero exertion.
+  const rest = restHr;
+  const max = maxHr;
+  const duration = durationSeconds;
+  if (typeof rest !== 'number' || typeof max !== 'number' ||
+      typeof duration !== 'number' || !Number.isFinite(rest) ||
+      !Number.isFinite(max) || !Number.isFinite(duration) ||
+      rest <= 0 || max <= rest || duration <= 0) {
+    return { session_trimp: 0, load_source: 'none' as const, load_coverage_pct: 0 };
+  }
 
   if (Array.isArray(stream) && stream.length >= 2 && isUsableTelemetry(stream, duration)) {
     const measured = integrateStreamTrimp(stream, rest, max, sex);
@@ -99,8 +109,11 @@ export function resolveSessionLoad({
     }
   }
 
-  const estimate = calcTrimp(duration / 60, Number(avgHr) || 0, rest, max, sex);
-  if (estimate > 0) {
+  if (typeof avgHr !== 'number' || !Number.isFinite(avgHr) || avgHr < rest || avgHr > max) {
+    return { session_trimp: 0, load_source: 'none' as const, load_coverage_pct: 0 };
+  }
+  const estimate = calcTrimp(duration / 60, avgHr, rest, max, sex);
+  if (Number.isFinite(estimate) && estimate > 0) {
     return { session_trimp: estimate, load_source: 'summary' as const, load_coverage_pct: 0 };
   }
   return { session_trimp: 0, load_source: 'none' as const, load_coverage_pct: 0 };
