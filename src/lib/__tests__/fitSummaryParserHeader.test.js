@@ -73,6 +73,23 @@ describe("browser FIT summary header validation", () => {
       expect(() => parseFitSummary(fitHeader({ size }))).toThrow(/No session, lap, or record data/);
     }
   });
+  it("rejects chained complete FIT files instead of silently returning the first session", () => {
+    const first = new Uint8Array(syntheticFitSession(12));
+    const second = new Uint8Array(syntheticFitSession(14));
+    const chained = new Uint8Array(first.length + second.length);
+    chained.set(first);
+    chained.set(second, first.length);
+    expect(() => parseFitSummary(chained.buffer)).toThrow(/chained or appended FIT data/i);
+  });
+
+  it("rejects unexplained trailing bytes beyond the declared FIT CRC", () => {
+    const original = new Uint8Array(syntheticFitSession(14));
+    const appended = new Uint8Array(original.length + 3);
+    appended.set(original);
+    appended.set([0x40, 0, 0], original.length);
+    expect(() => parseFitSummary(appended.buffer)).toThrow(/chained or appended FIT data/i);
+  });
+
   it("decodes a synthetic FIT session through standard 12- and 14-byte headers", () => {
     const expectedTimestamp = new Date((1100000000 + 631065600) * 1000).toISOString();
     for (const headerSize of [12, 14]) {
