@@ -1,3 +1,8 @@
+/**
+ * Legacy ACWR-facing adapter. ACWR is descriptive and cannot by itself justify
+ * a training prescription, injury prediction, or an "optimal" load label.
+ * See docs/SCIENCE_RESEARCH_AND_INTEGRATION.md.
+ */
 export interface AdaptiveRecommendation {
   status: 'optimal' | 'caution' | 'danger';
   adjustmentPercentage: number;
@@ -12,31 +17,19 @@ export interface AdaptiveInput {
 }
 
 export const calculateAdaptiveRecommendation = (input: AdaptiveInput): AdaptiveRecommendation => {
-  const { acwr } = input;
-  
-  if (acwr > 1.5) {
-    return {
-      status: 'danger',
-      adjustmentPercentage: -30,
-      guidanceText: 'High ACWR detected. Significant risk of overtraining. Recommend reducing intensity by 30% and focusing on recovery.'
-    };
-  } else if (acwr > 1.25) {
+  const { acwr, chronic, acute, rpe } = input;
+  if (![acwr, chronic, acute, rpe].every(Number.isFinite) ||
+      acwr < 0 || chronic < 0 || acute < 0 || rpe < 0 || rpe > 10) {
     return {
       status: 'caution',
-      adjustmentPercentage: -10,
-      guidanceText: 'ACWR trending high. Monitor fatigue closely and consider a 10% reduction in volume.'
-    };
-  } else if (acwr < 0.8) {
-    return {
-      status: 'caution',
-      adjustmentPercentage: 10,
-      guidanceText: 'ACWR indicates potential underloading. Safe to progress training load by 10%.'
+      adjustmentPercentage: 0,
+      guidanceText: 'Training-load inputs are invalid or incomplete. No automatic adjustment is available.',
     };
   }
-  
+
   return {
-    status: 'optimal',
+    status: 'caution',
     adjustmentPercentage: 0,
-    guidanceText: 'Load is optimal. Maintain current training volume.'
+    guidanceText: 'Acute-to-chronic workload ratio is descriptive only. Review verified training history, recovery, symptoms and the athlete’s goals before changing a plan.',
   };
 };
