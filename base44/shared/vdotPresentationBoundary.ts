@@ -35,10 +35,10 @@ export function validateVdotPresentationResponse(value, request) {
       throw new Error('invalid_response');
     }
     for (const candidate of Object.values(value.paces)) {
-      const pace = /** @type {{secPerKm?: number, formatted?: string}} */ (candidate);
+      const pace = candidate as { secPerKm?: unknown; formatted?: unknown };
       if (!pace || typeof pace !== 'object' || Array.isArray(pace) ||
           Object.keys(pace).sort().join(',') !== 'formatted,secPerKm' ||
-          !Number.isFinite(pace.secPerKm) || pace.secPerKm <= 0 || pace.secPerKm > 3600 ||
+          typeof pace.secPerKm !== 'number' || !Number.isFinite(pace.secPerKm) || pace.secPerKm <= 0 || pace.secPerKm > 3600 ||
           typeof pace.formatted !== 'string' || !/^\d{1,2}:[0-5]\d\/km$/.test(pace.formatted)) {
         throw new Error('invalid_response');
       }
@@ -55,8 +55,21 @@ export function validateVdotPresentationResponse(value, request) {
   }
   return Object.freeze(value);
 }
-export function createVdotPresentationBoundary({ authenticate, calculate }) {
-  if (typeof authenticate !== 'function' || typeof calculate !== 'function') {
+// An authenticated user ID is not an ownership proof. A trusted server-side
+// lookup MUST confirm the user owns the resolved athlete. Caller input and
+// requestContext flags are never sufficient to satisfy this separate check.
+// This remains a disabled contract, not a deployed Base44 function.
+export function hasVerifiedVdotOwner(identity, ownership) {
+  return !!identity && typeof identity === 'object' && !Array.isArray(identity) &&
+    typeof identity.id === 'string' && identity.id.trim().length > 0 &&
+    !!ownership && typeof ownership === 'object' && !Array.isArray(ownership) &&
+    typeof ownership.userId === 'string' && ownership.userId === identity.id &&
+    typeof ownership.athleteId === 'string' && ownership.athleteId.trim().length > 0 &&
+    ownership.verifiedByServer === true;
+}
+export function createVdotPresentationBoundary({ authenticate, verifyOwnedAthlete, calculate }) {
+  if (typeof authenticate !== 'function' || typeof verifyOwnedAthlete !== 'function' ||
+      typeof calculate !== 'function') {
     throw new Error('server_dependencies_required');
   }
   return async function handle(input, requestContext) {
@@ -64,14 +77,16 @@ export function createVdotPresentationBoundary({ authenticate, calculate }) {
     // Disabled branch is intentional until separate staging isolation and auth proof.
     try {
       const identity = await authenticate(requestContext);
-      if (!identity || typeof identity.id !== 'string' || !identity.id ||
-          identity.ownedAthleteVerified !== true) {
+      // The resolver must use the server session and a persisted ownership
+      // relationship, not any athlete ID or ownedAthleteVerified flag from input.
+      const ownership = await verifyOwnedAthlete(identity);
+      if (!hasVerifiedVdotOwner(identity, ownership)) {
         return { status: 401, body: { error: 'unauthorized' } };
       }
       let validated;
       try { validated = validateVdotPresentationRequest(input); }
       catch { return { status: 400, body: { error: 'invalid_request' } }; }
-      const output = await calculate(validated, identity);
+      const output = await calculate(validated, Object.freeze({ userId: identity.id, athleteId: ownership.athleteId }));
       return { status: 200, body: validateVdotPresentationResponse(output, validated) };
     } catch {
       // No exception text, stack, provider details or science data escapes.
