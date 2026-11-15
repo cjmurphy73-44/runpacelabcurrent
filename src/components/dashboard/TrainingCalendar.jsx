@@ -113,6 +113,7 @@ function TrainingCalendarContent({ athleteId, currentTsb, userId }) {
             loading={loading} failed={unavailable || (query.isError && !query.data)}
             stale={query.isError && Array.isArray(query.data)}
             injury={injury} plan={plan}
+            athleteId={athleteId} today={today} calendarEnd={days[6]}
             onExport={verified && !query.isFetching ? downloadWorkoutFile : undefined}
           />
         ))}
