@@ -294,7 +294,7 @@
     "read": {
       "$or": [
         {
-          "data.athlete_id": "{{user.data.athlete_profile_id}}"
+          "created_by_id": "{{user.id}}"
         },
         {
           "user_condition": {
