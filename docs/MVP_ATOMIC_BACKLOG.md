@@ -69,3 +69,27 @@ This file is the **single execution queue**, not a claim that beta readiness is 
 - **GitHub PR / merged SHA:** …
 - **Base44 deployment SHA / checkpoint / timestamp:** `NOT PUBLISHED` unless verified.
 - **Staging/live evidence and open blockers:** …
+
+## 2026-11-14 Planned/actual explicit matching (PR #123)
+
+- Audit found `usePlannedActualReconciliation.load()` automatically mutated `TrainingPlanSession.status` and `WorkoutSession.training_plan_session_id` on high-confidence algorithmic matches. Read-only screen load must not commit inferred completion.
+- Changed load to produce reviewable candidates without any automatic link writes; added one-to-one candidate guard to explicit confirmation, plus five synthetic tests. Draft PR #123; no deployment or executed CI.
+- High-priority follow-up: replace client-side two-write confirmation with a server-authorized, idempotent, race-safe operation. Recheck athlete ownership, session status and existing links on the server, and address partial writes. Preserve manual mark-complete as explicitly user initiated and distinguish it from a verified device workout.
+
+### 2026-11-14 fail-closed confirmation follow-up (PR #123)
+
+- Disabled the existing two-write client confirmation path until an atomic server-side operation is verified. This is an intentional temporary functionality gate; the UI must explain that linking is unavailable rather than claim a successful completion.
+- Corrected adaptive replan toast logic to require explicit backend `success: true` before claiming confirmation. Exceptions now report unverified failure, not a background success.
+- Coordinate with draft PR #126, which provides read-only preflight only. Neither PR establishes a transactional link. Before release, implement a verified conditional/transactional server commit and test concurrent confirmation, retries, partial writes, and RLS ownership.
+
+### 2026-11-14 integrated release candidate (draft PR #132)
+
+- Consolidates #123 read-only and fail-closed reconciliation, #126 scoped backend preflight, and #127 deterministic match candidate generation into one reviewable branch. GitHub compare showed nine changed files, branch ahead 13 commits and behind zero at inspection.
+- Test files authored but no executed CI results; no Base44 Builder sync or Vercel release verified. Do not merge #127 alone against the old auto-link-on-load hook. PR #132 is the preferred integrated review candidate.
+- Matching suggestions and preflight remain read-only. Manual workout link is intentionally unavailable pending verified atomic/idempotent server commit. Validate UX messaging and all test/build gates before production release.
+
+### 2026-11-14 reconciliation UI contract repair (PR #132)
+
+- Reconciliation UI expected `scheduled`, `durationVariancePercent` and `dayOffset` fields, which the new candidate matcher originally omitted. Matched the engine output to the component contract and updated its synthetic exact-match test.
+- UI now states suggestions are unverified and explicitly disables linking pending an atomic commit. Removed misleading ±1-day/±20% claim (current matcher is same-day/same-sport with 50–150% duration window), and removed pseudo-verified confidence percentage presentation.
+- Still pending: actual Vitest, lint, build, browser/mobile review, transactional confirmation and release review.
