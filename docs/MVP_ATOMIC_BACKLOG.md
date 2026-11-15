@@ -69,3 +69,17 @@ This file is the **single execution queue**, not a claim that beta readiness is 
 - **GitHub PR / merged SHA:** …
 - **Base44 deployment SHA / checkpoint / timestamp:** `NOT PUBLISHED` unless verified.
 - **Staging/live evidence and open blockers:** …
+
+## 2026-11-14 SCI/UX dashboard metric banner fail-closed (PR #95)
+
+- Audit: `DashboardMetricBanner.jsx` directly blended `session_trimp || session_tss || 0` and showed CTL/ATL/TSB even when provenance unverified.
+- Change: `dashboardLoadGate.js` requires comparable finite single-unit positive loads and explicit `stream_verified===true` on each session; dashboard cards now show unavailable plus accessible reason instead of invented load numbers. Readiness forecast remains a separate card and is not claimed verified by this gate.
+- Evidence: commits `aeab78b0`, `ecbdff86`, `d9dd2c87`. Three synthetic Vitest test cases authored, not executed. Draft PR #95, not merged or deployed.
+- Blocker: independently confirm `stream_verified` exists and is populated by backend; otherwise banner intentionally remains unavailable. Reconcile with PRs #86 and #92 before merge. Next: server-side verification contract and controlled fixtures, then mobile acceptance.
+
+## 2026-11-14 SCI/UX PR #95 schema contract repair
+
+- Confirmed tracked `base44/entities/WorkoutSession.jsonc` has no `stream_verified`. It persists `load_source` and `load_coverage_pct`, with `session_trimp` and `session_tss` both defaulting to zero. `base44/shared/loadModel.ts` assigns `stream` only for usable telemetry and sufficient measured coverage.
+- Repaired PR #95 gate to require positive TRIMP, unused TSS zero or absent, `load_source=stream`, and finite `load_coverage_pct >=30`. This is **persisted ingest provenance**, not independent raw-file verification. No schema migration.
+- Evidence: commits `fbf8748f` and `616a7a63`. Four synthetic Vitest cases authored; execution pending. Existing PR #95 remains draft and unmerged.
+- Blockers: confirm all ingest paths consistently write provenance; verify zero-default behavior in isolated Base44 fixtures, review frontend/chart parity and mobile accessibility. Next meaningful feature: backend-comparable daily load series for CTL/ATL/TSB without blending estimated summary values.
