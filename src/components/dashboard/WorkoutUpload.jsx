@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useRef, useState } from "react";
 import { base44 } from "@/api/base44Client";
 import { singleFileImportOutcome } from "@/lib/singleFileImportOutcome";
 import { Button } from "@/components/ui/button";
@@ -17,6 +17,7 @@ function todayLocalISO() {
 
 export default function WorkoutUpload({ athleteId, onUploaded }) {
   const [file, setFile] = useState(null);
+  const fileInputRef = useRef(null);
   const [sport, setSport] = useState("running");
   const [date, setDate] = useState(todayLocalISO());
   const [status, setStatus] = useState(null);
@@ -40,6 +41,9 @@ export default function WorkoutUpload({ athleteId, onUploaded }) {
       setStatus({ type: outcome.type, message: outcome.message });
       if (outcome.confirmed) {
         setFile(null);
+        // Clear the actual native input too: otherwise the same FIT cannot be
+        // selected again and the UI may still show the previous filename.
+        if (fileInputRef.current) fileInputRef.current.value = "";
         onUploaded?.();
       }
     } catch (err) {
@@ -55,7 +59,7 @@ export default function WorkoutUpload({ athleteId, onUploaded }) {
         <form onSubmit={handleSubmit} className="space-y-3">
           <div>
             <Label>File (.fit or .csv)</Label>
-            <Input type="file" accept=".fit,.csv,application/vnd.ant.fit,application/octet-stream" onChange={(e) => setFile(e.target.files?.[0] || null)} required />
+            <Input ref={fileInputRef} type="file" accept=".fit,.csv,application/vnd.ant.fit,application/octet-stream" onChange={(e) => setFile(e.target.files?.[0] || null)} required />
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
