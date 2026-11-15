@@ -11,7 +11,7 @@ Create a JSON record outside production systems. Populate it from independently 
   "github": { "branch": "main", "sha": "<exact 40-char GitHub main SHA>" },
   "ci": {
     "sha": "<identical SHA>", "check": "validate",
-    "status": "completed", "conclusion": "success",
+    "status": "completed", "conclusion": "success", "integration_id": 15368,
     "run_url": "https://github.com/cjmurphy73-44/runpacelabcurrent/actions/runs/<ID>"
   },
   "vercel": {
@@ -37,7 +37,7 @@ Create a JSON record outside production systems. Populate it from independently 
 }
 ```
 
-Run `node scripts/verify-release-provenance.mjs path/to/release.json`. Exit 0 only on internally complete evidence; exit 1 for blocked or contradictory evidence, exit 2 for invalid input. This checks field consistency and a 24-hour smoke freshness limit, **not** the authenticity of the provided evidence. Release reviewers must independently open source links and confirm current branch, CI, deployment ID, production alias and backend revision before signing off. The included Vitest fixtures are synthetic.
+Run `node scripts/verify-release-provenance.mjs path/to/release.json`. Exit 0 only on internally complete evidence; exit 1 for blocked or contradictory evidence, exit 2 for invalid input. This checks field consistency and a 24-hour smoke freshness limit, **not** the authenticity of the provided evidence. Release reviewers must independently open source links and confirm current branch, CI, deployment ID, production alias and backend revision before signing off. The included Vitest fixtures are synthetic. The local CLI entry point is also tested, but a structurally complete record never independently proves authenticity. This tool does **not** authorize merges or deployments; keep owner approval and release HOLD separate.
 
 ## Acceptance and hard stops
 
@@ -55,12 +55,13 @@ Run `node scripts/verify-release-provenance.mjs path/to/release.json`. Exit 0 on
 - Base44 protected-main sync/checkpoint mismatch remains unresolved; staging isolation unverified. This is **BLOCKED**, not `READY`.
 - Vercel `git.deploymentEnabled` on main allows `main` and `release/**` and blocks routine branches that inherit the configuration. Older branches without the file may continue deploying previews.
 
-## Operational recovery sequence (requires separate approval for writes)
+## Controlled production recovery and smoke acceptance proposal (requires separate approval for writes)
 
-1. Confirm current Vercel quota/recovery state from actual provider record; **do not** silently trigger deployment or buy a plan.
-2. Confirm deployment automation recognizes protected `main`. If quota is still preventing it, obtain owner permission for one deliberate recovery attempt only after limits and preview noise are controlled.
-3. Re-read GitHub main/validate and Vercel source/target/alias after any recovery. Never publish a stale Base44 checkpoint.
-4. Capture smoke evidence with isolated synthetic accounts and independently verify Base44 source/isolation.
-5. Only then consider the complete REL-002 gate. Keep release HOLD until all downstream beta gates are proved.
+1. Capture a read-only preflight at decision time: current protected `main` commit, exact `validate` check run with app integration ID 15368, most recent Vercel production ID/source/alias, GitHub Vercel failure context, and Vercel Hobby quota eligibility. If the quota window is not available or the status is ambiguous, **STOP**. Do not silently trigger a deployment, buy a plan or use an unverified rollback.
+2. Confirm Vercel Git linkage and `main` production target; no unapproved preview branch or Base44 builder publish. If quota has demonstrably cleared, request separate owner approval for **one** exact-SHA production recovery deployment, after reviewing whether provider action could run against a later commit. Avoid retries if source SHA or promotion target is uncertain.
+3. After an approved action, fetch the resulting Vercel deployment ID directly and confirm `target=production`, `READY`, Git SHA equals the authorized main SHA, and `trainpacelab.com` is actually assigned to that deployment. A `READY` preview or a GitHub green CI check alone is insufficient. Do not republish stale Base44 checkpoints.
+4. Perform non-destructive browser smoke on `https://trainpacelab.com`: public home renders, login entry loads without claiming auth worked, and 390px mobile navigation is accessible. Capture timestamp, observed path, browser/device, exact deployment identity and immutable evidence link separately for every check. Do not execute a real user login, billing, provider sync, or write athlete data without explicit authorization.
+5. Coordinate Base44 source/checkpoint proof with support issue #24 and PR #194; coordinate isolated staging acceptance with PR #149. These are independent, blocking gates, not automatic consequences of Vercel recovery. If Base44 checkpoint SHA semantics do not map to GitHub commit identity, document the validated mapping rather than inventing equal SHAs; adjust the contract through review before a legitimate release can pass.
+6. Re-run the offline evidence verifier and independently inspect all source references. Record PASS, FAIL or UNKNOWN per gate. Keep release HOLD until remaining authenticated, security, payments and science beta acceptance evidence is separately approved.
 
 **Ownership:** Release Engineering owns this evidence chain; specialist PR owners supply function-level CI/runtime evidence. Do not edit other agents' branches or Odysseus to manufacture release evidence.
