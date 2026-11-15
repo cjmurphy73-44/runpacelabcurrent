@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useRef, useState } from "react";
 import { base44 } from "@/api/base44Client";
 import { singleFileImportOutcome } from "@/lib/singleFileImportOutcome";
 import { Button } from "@/components/ui/button";
@@ -17,6 +17,7 @@ function todayLocalISO() {
 
 export default function WorkoutUpload({ athleteId, onUploaded }) {
   const [file, setFile] = useState(null);
+  const fileInputRef = useRef(null);
   const [sport, setSport] = useState("running");
   const [date, setDate] = useState(todayLocalISO());
   const [status, setStatus] = useState(null);
@@ -40,12 +41,17 @@ export default function WorkoutUpload({ athleteId, onUploaded }) {
       setStatus({ type: outcome.type, message: outcome.message });
       if (outcome.confirmed) {
         setFile(null);
+        // Reset the DOM file picker too, so the same filename can be selected again.
+        if (fileInputRef.current) fileInputRef.current.value = "";
         onUploaded?.();
       }
-    } catch (err) {
-      setStatus({ type: "error", message: err.message });
+    } catch {
+      // A transport failure can happen after the server has persisted a session.
+      // Never promise a safe blind retry or clear the still-selected file.
+      setStatus({ type: "error", message: "Import outcome could not be verified. Check your workout log before retrying to avoid duplicate sessions." });
+    } finally {
+      setUploading(false);
     }
-    setUploading(false);
   };
 
   return (
@@ -55,7 +61,7 @@ export default function WorkoutUpload({ athleteId, onUploaded }) {
         <form onSubmit={handleSubmit} className="space-y-3">
           <div>
             <Label>File (.fit or .csv)</Label>
-            <Input type="file" accept=".fit,.csv,application/vnd.ant.fit,application/octet-stream" onChange={(e) => setFile(e.target.files?.[0] || null)} required />
+            <Input ref={fileInputRef} type="file" accept=".fit,.csv,application/vnd.ant.fit,application/octet-stream" onChange={(e) => setFile(e.target.files?.[0] || null)} required />
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
