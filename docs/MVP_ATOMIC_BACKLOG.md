@@ -69,3 +69,12 @@ This file is the **single execution queue**, not a claim that beta readiness is 
 - **GitHub PR / merged SHA:** …
 - **Base44 deployment SHA / checkpoint / timestamp:** `NOT PUBLISHED` unless verified.
 - **Staging/live evidence and open blockers:** …
+
+## 2026-11-14 COM/SEC support intake audit (PR #90)
+
+- Scope: `base44/functions/logBetaFeedback/entry.ts`, `base44/shared/feedbackValidation.js`, `src/science/__tests__/feedbackValidation.test.js`.
+- Observed baseline: anonymous service-role feedback creation accepted unvalidated category/route/email and returned raw backend error messages. The public support UI and beta feedback modal both call this function.
+- Change: enforce POST/JSON and an 8 KiB streamed request bound, validate message/category/email/route before privileged write, return generic errors and require a persisted record ID. Preserve existing BetaFeedback category schema; billing/account map to `other` pending approved schema change.
+- Evidence: commits `feaef0c6`, `c9730d4`, `cd419e8`, `d2212458` (intermediate regex correction `8401426`); five synthetic tests authored, not yet confirmed executed. Draft PR #90, unmerged, undeployed, CI unverified.
+- Blockers: no durable anonymous rate limiter, CAPTCHA/abuse gate, retention/deletion policy or isolated endpoint acceptance test. Do not claim production privacy compliance or live release.
+- Next: test Base44 function invocation compatibility with isolated synthetic requests, then add durable per-origin abuse control and documented admin retention/deletion policy. Avoid storing raw IP addresses or message content in logs.
