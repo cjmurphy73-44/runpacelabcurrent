@@ -89,7 +89,9 @@ export const WEARABLE_MAP = WEARABLES.reduce((acc, w) => {
 // Always an array, callers map over it and check `.length`.
 export function syncGuideFor(selected = []) {
   const keys = Array.isArray(selected) ? selected : [];
-  return keys
+  // Saved selections may contain repeated keys after imports or retries.
+  // Render each known provider once, retaining the athlete's chosen order.
+  return [...new Set(keys)]
     .map((key) => WEARABLE_MAP[key])
     .filter(Boolean)
     .map((w) => ({
