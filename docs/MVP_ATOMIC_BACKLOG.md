@@ -69,3 +69,10 @@ This file is the **single execution queue**, not a claim that beta readiness is 
 - **GitHub PR / merged SHA:** …
 - **Base44 deployment SHA / checkpoint / timestamp:** `NOT PUBLISHED` unless verified.
 - **Staging/live evidence and open blockers:** …
+
+## 2026-11-14 UX/SCI workout history load display (PR #93)
+
+- Audit: `src/pages/Workouts.jsx` showed `session_trimp || session_tss || 0` as TRIMP, masking TSS and missing values. RecentWorkouts already has a separate presentation helper; avoid duplicating its PR scope.
+- Change: `src/lib/historyLoadLabel.js` explicitly distinguishes TSS/TRIMP, refuses dual-field ambiguity and invalid values, labels summary and unknown provenance; `src/pages/Workouts.jsx` renders amount and provenance per session.
+- Evidence: commits `bb497327`, `d6637cba`, `0b793673`. Four synthetic Vitest cases authored, not yet run. Draft PR #93, not merged or deployed.
+- Next: independently verify backend stream provenance and unify RecentWorkouts/workout history display after SCI-005 contracts are reconciled; run UI at 320/390px.
