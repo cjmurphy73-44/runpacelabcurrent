@@ -5,7 +5,7 @@
 Three decisions shape everything below:
 
 1. **Separate load models.** Verified-stream load and summary-derived load are stored, aggregated and displayed as distinct things. Summary sessions stay in activity history and may carry a clearly labelled load, but they never become stream analytics.
-2. **No staging environment.** Validation runs in the current published app with deterministic fixtures plus real provider accounts. Provider-risk is managed with a dedicated internal test athlete, not with a second app.
+2. **Staging isolation is a release gate, not an assumption.** Use synthetic fixtures and read-only checks while independent Base44 staging authentication, database, functions, secrets and SDK routing boundaries remain unverified (see draft PR #149). Never run write-path or payment acceptance tests against the published app or production athlete records. Once isolation is independently evidenced, use authorized isolated test accounts for provider and billing acceptance; record the exact app/backend identity and source SHA. A Vercel Preview build or distinct Base44 app ID alone does not prove isolation.
 3. **MVP value first.** Sequence by athlete-visible value and revenue risk, not by the original seven-PR directive order.
 
 Status legend: ✅ done and evidenced · 🟡 partly done or unverified · ❌ not started · ⛔ blocked.
