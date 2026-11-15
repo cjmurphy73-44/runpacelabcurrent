@@ -19,7 +19,7 @@ vi.mock("@/context/FitnessContext", () => ({ useFitness: () => ({ biometricTelem
 // to it; session, hold and workout detail UI remain real components.
 vi.mock("../ReadinessScoreCard", () => ({ default: () => <h2>Existing readiness score</h2> }));
 
-const athlete = { id: "synthetic-athlete", first_name: "Alex", resting_hr: 60, max_heart_rate: 190 };
+const athlete = { id: "synthetic-athlete", first_name: "Alex", resting_hr: 60, max_heart_rate: 190, current_ctl: 42, current_tsb: 5 };
 const workout = { id: "synthetic-ride", date: "2026-11-14", sport: "cycling", duration_minutes: 45, distance_km: 20, avg_hr: 130 };
 const session = { sport: "running", prescribed_duration_minutes: 40, prescribed_intensity_zone: "Z2" };
 const clearState = { level: "none", loading: false, unavailable: false, evidence: [], reload: vi.fn(), clearHold: vi.fn() };
@@ -50,6 +50,11 @@ describe("Home daily training workspace", () => {
 
   it("starts on today's session with one next action to the training plan", async () => {
     mount();
+    expect(screen.getByRole("heading", { level: 1, name: /Alex/ })).toBeTruthy();
+    expect(screen.getByText("Fitness")).toBeTruthy();
+    expect(screen.getByText("42")).toBeTruthy();
+    expect(screen.getByText("Form")).toBeTruthy();
+    expect(screen.getByText("+5")).toBeTruthy();
     expect(screen.getByRole("tab", { name: "Today" }).getAttribute("aria-selected")).toBe("true");
     expect(await screen.findByRole("heading", { name: "running" })).toBeTruthy();
     expect(screen.getByText("40 min")).toBeTruthy();
@@ -103,6 +108,7 @@ describe("Home daily training workspace", () => {
     useCoachInjurySignal.mockReturnValue({ ...clearState, level: "hold", summary: "Running remains paused by your coach." });
     mount();
     expect(await screen.findByText("Running paused")).toBeTruthy();
+    expect(screen.queryByText(/great day for a quality session/)).toBeNull();
     await screen.findByText(/Today's 40 min Z2 run is swapped/);
     expect(screen.queryByRole("heading", { name: "running" })).toBeNull();
     for (const name of ["Readiness", "Last workout", "Today"]) {

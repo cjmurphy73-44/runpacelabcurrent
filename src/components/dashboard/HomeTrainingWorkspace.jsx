@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import WidgetBoundary from "@/components/common/WidgetBoundary";
 import TodaySessionCard from "@/components/dashboard/TodaySessionCard";
+import DashboardGreeting from "@/components/dashboard/DashboardGreeting";
 import ReadinessScoreCard from "@/components/dashboard/ReadinessScoreCard";
 import CoachHoldCard from "@/components/dashboard/CoachHoldCard";
 import WorkoutDetailModal from "@/components/workout/WorkoutDetailModal";
@@ -24,16 +25,8 @@ export default function HomeTrainingWorkspace({ athlete, workouts = [], onWorkou
   const latest = [...workouts].sort((a, b) => (b.date || "").localeCompare(a.date || ""))[0];
 
   return (
-    <section aria-labelledby="home-training-heading" className="min-w-0 space-y-4">
-      <div>
-        <p className="text-xs text-muted-foreground">
-          {new Date().toLocaleDateString(undefined, { weekday: "long", day: "numeric", month: "long" })}
-        </p>
-        <h1 id="home-training-heading" className="text-2xl sm:text-3xl font-heading font-bold tracking-tight break-words">
-          Today{athlete.first_name ? `, ${athlete.first_name}` : ""}
-        </h1>
-        <p className="mt-1 text-sm text-muted-foreground">Your session, your recovery, your last workout. All in one place.</p>
-      </div>
+    <section aria-label="Daily training" className="min-w-0 space-y-4">
+      <DashboardGreeting athlete={athlete} />
 
       <Tabs value={tab} onValueChange={setTab} className="min-w-0 space-y-4">
         <TabsList aria-label="Your daily training" className="grid h-auto w-full grid-cols-3 gap-1 p-1">
