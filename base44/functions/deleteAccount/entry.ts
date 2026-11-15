@@ -56,6 +56,6 @@ export default async function(req) {
 
     return Response.json({ success: true });
   } catch (error) {
-    return Response.json({ error: error.message }, { status: 500 });
+    return Response.json({ error: 'Account deletion could not be completed. Please retry or contact support.' }, { status: 500 });
   }
 }
