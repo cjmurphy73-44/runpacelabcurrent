@@ -22,6 +22,7 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.52';
 import { computeHolisticReadiness, computeBaseline } from '../../shared/readiness.ts';
 import { calculateVDOT, getTrainingPaces, getEquivalentTimes, danielsThresholdMs, formatPaceFromMs } from '../../shared/vdot.ts';
 import { deriveRunningThresholdPace } from '../../shared/thresholdPace.ts';
+import { classifyRunningCalibration } from '../../shared/runningCalibrationStatus.js';
 
 const RACE_DISTANCES_M = {
   fiveKm: 5000,
@@ -60,6 +61,10 @@ export default async function(req: Request): Promise<Response> {
       athlete.lactate_threshold_hr ?? null,
     );
 
+    // Shared with dashboard: this describes evidence/confidence only. It does
+    // not change stored VDOT or the athlete's threshold baseline.
+    const calibration = classifyRunningCalibration(sessions, thresholdPace.observedRunCount);
+
     const vdot = vdotResult.vdot ?? athlete.vdot_estimate ?? null;
     let trainingPaces = null;
     let equivalentTimes = null;
@@ -75,6 +80,16 @@ export default async function(req: Request): Promise<Response> {
       vdot_source_session_id: vdotResult.source_session_id ?? null,
       vdot_source_date: vdotResult.source_date ?? null,
       vdot_source_sport: vdotResult.source_sport ?? null,
+      running_calibration: {
+        ...calibration,
+        // Source of the pace estimate, not proof of verified performance.
+        threshold_source: thresholdPace.source,
+        observed_threshold_run_count: thresholdPace.observedRunCount,
+        recent_cross_train_count: thresholdPace.recentCrossTrainCount,
+        history_scope: 'last_200_sessions',
+        historical_vdot_source: vdotResult.source,
+        historical_vdot_session_id: vdotResult.source_session_id ?? null,
+      },
       training_paces: trainingPaces,
       equivalent_times: equivalentTimes,
       threshold_pace: thresholdPace.paceMs ? {
