@@ -13,12 +13,12 @@ const PILLARS = [
   {
     icon: Activity,
     title: "Designed by athletes who race",
-    body: "The algorithms are written, tested, and validated by runners who train at threshold and know what a hard week feels like. The model is calibrated against real race results, not theoretical midpoints.",
+    body: "Training decisions should account for your recorded sessions, recovery context and individual response. Model outputs are estimates, not proof of fitness or injury risk.",
   },
   {
     icon: FlaskConical,
     title: "Transparent, not a black box",
-    body: "You can see what feeds every metric and what it assumes. The implementation stays ours; the methodology is yours to inspect. Where the math is deterministic, the math runs.",
+    body: "Our methods and limitations should be available when you want to explore them, without putting research papers between you and today's training.",
   },
   {
     icon: Users,
