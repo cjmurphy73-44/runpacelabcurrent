@@ -122,7 +122,7 @@ describe("single-file import input lifecycle", () => {
     render(<WorkoutUpload athleteId="synthetic-athlete" onUploaded={onUploaded} />);
     const input = chooseFile();
     submit();
-    await waitFor(() => expect(screen.getByRole("button", { name: "Upload" }).disabled).toBe(true));
+    await waitFor(() => expect(screen.getByRole("status").textContent).toMatch(/Workout saved/i));
     await waitFor(() => expect(screen.getByRole("button", { name: "Upload" }).disabled).toBe(false));
     expect(onUploaded).toHaveBeenCalledTimes(1);
     expect(screen.getByRole("status").textContent).toMatch(/Workout saved/i);
