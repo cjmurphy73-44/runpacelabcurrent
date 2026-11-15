@@ -47,12 +47,12 @@
     "ode_fitness": {
       "type": "number",
       "default": 0,
-      "description": "Two-compartment ODE fitness compartment f(t) \u2014 Banister impulse-response model with separate gain constants k1/k2. Computed alongside the EWMA CTL/ATL/TSB so the athlete can compare both models."
+      "description": "Two-compartment ODE fitness compartment f(t) — Banister impulse-response model with separate gain constants k1/k2. Computed alongside the EWMA CTL/ATL/TSB so the athlete can compare both models."
     },
     "ode_fatigue": {
       "type": "number",
       "default": 0,
-      "description": "Two-compartment ODE fatigue compartment g(t) \u2014 accumulates faster than fitness (k2 > k1) but decays on a shorter time constant tau2."
+      "description": "Two-compartment ODE fatigue compartment g(t) — accumulates faster than fitness (k2 > k1) but decays on a shorter time constant tau2."
     },
     "ode_form": {
       "type": "number",
@@ -174,11 +174,6 @@
       "$or": [
         {
           "data.athlete_id": "{{user.data.athlete_profile_id}}"
-        },
-        {
-          "data.athlete_id": {
-            "$in": "{{user.data.coached_athletes}}"
-          }
         },
         {
           "user_condition": {
