@@ -15,6 +15,8 @@ export function hasVerifiedStreams(session) {
     const time = point?.time;
     if (typeof time !== 'number') return false;
     if (!Number.isFinite(time) || time <= previous) return false;
+    // A long recording gap cannot be hidden by otherwise dense samples.
+    if (previous !== -Infinity && time - previous > 30) return false;
     previous = time;
     if (typeof point?.heart_rate === 'number' && Number.isFinite(point.heart_rate) && point.heart_rate > 0) withHr += 1;
     if (typeof point?.power === 'number' && Number.isFinite(point.power) && point.power > 0) withPower += 1;

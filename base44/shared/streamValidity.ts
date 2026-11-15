@@ -17,6 +17,8 @@ export function isUsableTelemetry(stream, durationSeconds) {
     const time = point?.time;
     if (typeof time !== 'number') return false;
     if (!Number.isFinite(time) || time <= previous) return false;
+    // Reject large discontinuities even when average sampling is dense.
+    if (previous !== -Infinity && time - previous > 30) return false;
     previous = time;
   }
   const span = stream[stream.length - 1].time - stream[0].time;
