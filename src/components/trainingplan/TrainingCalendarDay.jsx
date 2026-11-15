@@ -5,11 +5,15 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import FeatureGate from "@/components/billing/FeatureGate";
 import { calendarDayState } from "@/lib/calendarDaySessions";
+import { previewPlanSessionMove } from "@/lib/planReschedulePreview";
 
 const ZONE_TRIMP_FACTOR = { Z1: 0.5, Z2: 0.7, Z3: 0.9, Z4: 1.1, Z5: 1.3 };
 
-export default function TrainingCalendarDay({ date, sessions, loading = false, failed = false, stale = false, injury, plan, onExport }) {
+export default function TrainingCalendarDay({ date, sessions, loading = false, failed = false, stale = false, injury, plan, onExport, athleteId, today, calendarEnd }) {
   const [expandedSession, setExpandedSession] = useState(null);
+  const [movingSession, setMovingSession] = useState(null);
+  const [moveDate, setMoveDate] = useState("");
+  const [movePreview, setMovePreview] = useState(null);
   const day = calendarDayState({ sessions, date, loading, failed });
   return (
     <Card>
@@ -78,6 +82,44 @@ export default function TrainingCalendarDay({ date, sessions, loading = false, f
                         </div>
                       )}
                     </>
+                  )}
+                  {!stale && !loading && !failed && !runningHold &&
+                    session.status === "pending" && session.id && session.training_plan_id &&
+                    session.athlete_id === athleteId && (
+                    <div className="space-y-2">
+                      <button type="button"
+                        className="min-h-11 w-full rounded-md border border-border px-3 text-left font-medium focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary"
+                        onClick={() => {
+                          setMovingSession(movingSession === detailKey ? null : detailKey);
+                          setMoveDate("");
+                          setMovePreview(null);
+                        }}>
+                        {movingSession === detailKey ? "Cancel move preview" : "Preview reschedule"}
+                      </button>
+                      {movingSession === detailKey && (
+                        <div className="rounded-md border border-border p-3 space-y-3">
+                          <p className="text-xs text-muted-foreground">Preview only. This cannot save or move a workout.</p>
+                          <label className="block text-sm font-medium" htmlFor={`move-date-${detailKey}`}>Proposed new date</label>
+                          <input id={`move-date-${detailKey}`} type="date"
+                            className="min-h-11 w-full rounded border border-border bg-background px-3 text-base"
+                            min={today} max={calendarEnd} value={moveDate}
+                            onChange={(event) => { setMoveDate(event.target.value); setMovePreview(null); }} />
+                          <button type="button" className="min-h-11 w-full rounded border border-border px-3 font-medium"
+                            onClick={() => setMovePreview(previewPlanSessionMove({
+                              session, destination: moveDate, sessions, athleteId, today, calendarEnd,
+                            }))}>
+                            Check proposed move
+                          </button>
+                          {movePreview && (
+                            <p role="status" className={`text-sm ${movePreview.ok ? "text-muted-foreground" : "text-destructive"}`}>
+                              {movePreview.ok
+                                ? `Proposed: ${movePreview.from} to ${movePreview.to}. Not saved. Your calendar remains unchanged.`
+                                : movePreview.reason}
+                            </p>
+                          )}
+                        </div>
+                      )}
+                    </div>
                   )}
                   {onExport && (
                     <FeatureGate feature="structured_export" plan={plan} compact>
