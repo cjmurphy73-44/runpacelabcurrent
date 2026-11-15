@@ -18,6 +18,7 @@ function todayLocalISO() {
 export default function WorkoutUpload({ athleteId, onUploaded }) {
   const [file, setFile] = useState(null);
   const fileInputRef = useRef(null);
+  const submitInFlightRef = useRef(false);
   const [sport, setSport] = useState("running");
   const [date, setDate] = useState(todayLocalISO());
   const [status, setStatus] = useState(null);
@@ -25,7 +26,8 @@ export default function WorkoutUpload({ athleteId, onUploaded }) {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!file) return;
+    if (!file || submitInFlightRef.current) return;
+    submitInFlightRef.current = true;
     setUploading(true);
     setStatus(null);
     let ingestRequested = false;
@@ -58,6 +60,7 @@ export default function WorkoutUpload({ athleteId, onUploaded }) {
           : "File upload failed before workout processing began. Check your connection and retry. Your selected file is still available.",
       });
     }
+    submitInFlightRef.current = false;
     setUploading(false);
   };
 
