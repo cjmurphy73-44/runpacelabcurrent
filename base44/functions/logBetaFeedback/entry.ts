@@ -7,33 +7,38 @@
 // only admins can read all of them for triage.
 
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.44';
+import { claimRateLimit } from '../../shared/rateLimit.ts';
+import { validatePublicFeedback } from '../../shared/publicFeedbackValidation.js';
 
 export default async function (req: Request): Promise<Response> {
   try {
     const base44 = createClientFromRequest(req);
-    const body = await req.json().catch(() => ({}));
+    // Fast reject declared oversize requests before JSON parsing. Actual field
+    // lengths are checked again because content-length may be missing/forged.
+    const declaredSize = Number(req.headers.get('content-length'));
+    if (Number.isFinite(declaredSize) && declaredSize > 16000) {
+      return Response.json({ error: 'Feedback submission too large' }, { status: 413 });
+    }
+    const body = await req.json().catch(() => null);
+    const validation = validatePublicFeedback(body);
+    if (!validation.ok) {
+      return Response.json({ error: validation.error }, { status: validation.status });
+    }
 
-    const feedback_type = body.feedback_type === 'idea' ? 'idea'
-      : body.feedback_type === 'other' ? 'other'
-      : 'bug';
-    const message = String(body.message || '').slice(0, 4000);
-    if (!message.trim()) return Response.json({ error: 'message is required' }, { status: 400 });
+    // Public support must work without login. Bound anonymous service-role
+    // writes per worker; a distributed edge limit is still needed at scale.
+    const ip = req.headers.get('cf-connecting-ip') ||
+      req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'unknown';
+    if (!claimRateLimit(`public-feedback:${ip}`, 5, 5 * 60 * 1000)) {
+      return Response.json({ error: 'Too many submissions. Please try again later.' }, { status: 429 });
+    }
 
-    const contact_email = body.contact_email ? String(body.contact_email).slice(0, 200) : undefined;
-    const route = body.route ? String(body.route).slice(0, 300) : undefined;
-
-    // Use asServiceRole so public (unauthenticated) support submissions from the
-    // /support page succeed — the user-scoped client would fail RLS without a session.
-    const record = await base44.asServiceRole.entities.BetaFeedback.create({
-      feedback_type,
-      message,
-      contact_email,
-      route,
-    });
+    const record = await base44.asServiceRole.entities.BetaFeedback.create(validation.data);
 
     return Response.json({ success: true, id: record.id });
   } catch (error) {
-    console.error('logBetaFeedback', error.message);
-    return Response.json({ error: error.message }, { status: 500 });
+    // A public endpoint must not expose provider, database or secret details.
+    console.error('logBetaFeedback failed');
+    return Response.json({ error: 'Unable to submit feedback. Please try again.' }, { status: 500 });
   }
 }
