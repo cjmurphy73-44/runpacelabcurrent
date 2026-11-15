@@ -194,3 +194,24 @@ Please provide authoritative **read-only evidence**, or written platform attesta
 5. SDK routing: the **effective HTTPS API server origin** for `@base44/sdk@0.8.61`, whether requests are bound to the configured app ID server-side, and the safe `serverUrl` and `appBaseUrl` values for this staging app. Please clarify how Preview and OAuth callbacks select their backend and how DNS changes are handled.
 
 Please do **not** activate testing mode, change app settings, execute functions, create users, make backend requests or share secret values as part of this request. Metadata or written answers suffice. Until verified, Preview remains fail-closed.
+
+## CI #710 and read-only OAuth redirect metadata (release gate)
+
+Exact-head CI #710 **passed** for draft PR #149 commit `af307acf3580519010ee040f2ac390e28d50214c`. No new application code or speculative tests were needed. The previously verified staging checkpoint `6af8f52016beec059a19c7a5` (57/57 offline tests and staging build passed) remains preserved.
+
+New authoritative **read-only** Base44 platform response `GET /api/apps/{app_id}/oauth-redirect-uris` was compared for staging `6aefe9d09e2788fc8591c758` and production `6a504ebe6a5a6d1be058226c`:
+- Staging reports **5** app redirect URI entries, production **7**; **zero exact URI overlap** between these two app-specific lists.
+- Both apps report the **same editor, builder and gateway redirect URI** values. This demonstrates shared platform-level callback infrastructure, **not** shared application sessions or authorization. The app-specific URI difference is useful but does **not** establish independent OAuth client registration, auth user directory, state/PKCE verification or backend tenant enforcement.
+- `GET /api/apps/{app_id}` responses were **truncated**, so no claims about test-mode settings, secrets or tenant metadata can be made from them. Previously observed `agent-profile` fields remain limited to distinct app IDs, runtime, custom auth enrollment and entitlements.
+
+**Release gates (all must be evidenced before enabling Preview routing):**
+1. Base44 written confirmation of **separate auth users/roles/sessions/OAuth client scopes**, including implications of shared editor/builder/gateway callback endpoints.
+2. Independent database tenant/collection isolation and privileged function access boundaries.
+3. Function/workflow deployment namespace and execution-context isolation.
+4. Independent secrets, service tokens, connectors, webhook routing and external side effects.
+5. Effective `@base44/sdk` HTTPS `serverUrl` / `appBaseUrl` and server-side app-ID binding, including DNS/redirect behavior.
+6. Only then branch-specific Preview environment review, exact-SHA build and authenticated acceptance under a separately approved safe test plan.
+
+**Current technical limitations:** DNS rebinding is not prevented by URL syntax validation; installed SDK source-level popup origin/source checks do not prove backend OAuth state/PKCE; Node SDK ESM import is not equivalent to full Vite application SSR. Preserve fail-closed behavior. Do not change Vercel configuration, enable attestation, make live backend calls, merge or deploy.
+
+**Manual support request refinement (not sent):** In addition to the five questions above, please explain whether the shared `app_editor_redirect_uri`, `builder_redirect_uri` and `gateway_redirect_uri` values are expected for distinct apps, and how the platform binds callbacks and tokens to the correct app. Please confirm that distinct app-specific redirect URI lists imply distinct OAuth clients or only different permitted callback URLs. Read-only metadata or written answers only; do not activate any settings, run functions, or reveal secrets.
