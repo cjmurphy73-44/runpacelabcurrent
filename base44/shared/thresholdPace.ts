@@ -56,7 +56,7 @@ export function deriveRunningThresholdPace(sessions, vdot, storedFtpMs, lactateT
       let intensityOk = false;
       if (lactateThresholdHr && s.avg_hr) intensityOk = Math.abs(s.avg_hr - lactateThresholdHr) / lactateThresholdHr <= HR_BAND;
       else if (baseline) intensityOk = pace >= baseline * (1 - PACE_BAND) && pace <= baseline * (1 + PACE_BAND);
-      else intensityOk = true;
+      else intensityOk = false;
       return intensityOk ? { pace, age } : null;
     })
     .filter(Boolean);
