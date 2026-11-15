@@ -58,7 +58,7 @@ export default function WorkoutUpload({ athleteId, onUploaded }) {
         if (fileInputRef.current) fileInputRef.current.value = "";
         // Parent refresh failures must not misreport a confirmed saved workout.
         try {
-          onUploaded?.();
+          await onUploaded?.();
         } catch {
           // The confirmed save status remains authoritative.
         }
