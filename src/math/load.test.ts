@@ -70,7 +70,7 @@ describe('Training Load & Stress Engine', () => {
         [45, 50, 190, 170],
         [155, 50, 190, 200],
       ]) {
-        expect(calculatehrTSS(3600, ...values)).toEqual({ tss: 0, intensityFactor: 0 });
+        expect(calculatehrTSS(3600, values[0], values[1], values[2], values[3])).toEqual({ tss: 0, intensityFactor: 0 });
       }
     });
 
