@@ -124,6 +124,29 @@ describe("calendar seven-day athlete journey", () => {
     expect(mocks.filter).toHaveBeenCalledTimes(2);
   });
 
+  it("previews a pending workout move on mobile without calling any write API", async () => {
+    const today = moment().format("YYYY-MM-DD");
+    const tomorrow = moment().add(1, "day").format("YYYY-MM-DD");
+    mocks.filter.mockResolvedValue([{
+      id: "pending-move", training_plan_id: "plan-one", athlete_id: "synthetic",
+      date: today, sport: "running", status: "pending", prescribed_duration_minutes: 40,
+    }]);
+    Object.defineProperty(window, "innerWidth", { configurable: true, value: 390 });
+    renderCalendar();
+    const preview = await screen.findByRole("button", { name: "Preview reschedule" });
+    expect(preview.className).toContain("min-h-11");
+    fireEvent.click(preview);
+    expect(screen.getByText(/cannot save or move a workout/i)).toBeTruthy();
+    fireEvent.change(screen.getByLabelText("Proposed new date"), { target: { value: tomorrow } });
+    fireEvent.click(screen.getByRole("button", { name: "Check proposed move" }));
+    expect(screen.getByRole("status").textContent).toMatch(/Not saved. Your calendar remains unchanged/i);
+    expect(screen.getByText(/running/i)).toBeTruthy();
+    expect(mocks.invoke).not.toHaveBeenCalled();
+    expect(mocks.filter).toHaveBeenCalledTimes(1);
+    fireEvent.click(screen.getByRole("button", { name: "Cancel move preview" }));
+    expect(screen.queryByText(/cannot save or move a workout/i)).toBeNull();
+  });
+
   it("reveals only server-supplied target details and structured steps on a touch-sized control", async () => {
     const date = moment().format("YYYY-MM-DD");
     mocks.filter.mockResolvedValue([{
