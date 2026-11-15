@@ -28,6 +28,18 @@ describe('injury-aware running calibration confidence without fabricated detrain
       .toMatchObject({ status: 'provisional', currentVerified: false });
   });
 
+  it('does not claim a 56-day running break if the activity query was truncated', () => {
+    expect(classifyRunningCalibration([runDaysAgo(56), runDaysAgo(1, 'cycling')],
+      0, now, { historyTruncated: true })).toMatchObject({
+      status: 'incomplete_history', currentVerified: false, recentRunAgeDays: 56,
+    });
+  });
+
+  it('keeps a confirmed gap when the supplied history is not truncated', () => {
+    expect(classifyRunningCalibration([runDaysAgo(56)],
+      0, now, { historyTruncated: false }).status).toBe('running_gap');
+  });
+
   it('ignores future, malformed and unrelated sport records', () => {
     expect(classifyRunningCalibration([
       runDaysAgo(-1), { sport: 'running', date: 'invalid' }, runDaysAgo(48, 'swimming'),
@@ -46,7 +58,9 @@ describe('frontend and Base44 physiology share calibration provenance', () => {
 
   it('uses the same classifier in backend and exposes evidence without persisting changes', () => {
     expect(backend).toContain("from '../../shared/runningCalibrationStatus.js'");
-    expect(backend).toContain('classifyRunningCalibration(sessions, thresholdPace.observedRunCount)');
+    expect(backend).toContain('classifyRunningCalibration(sessions, thresholdPace.observedRunCount,');
+    expect(backend).toContain('historyTruncated: sessions.length >= 200');
+    expect(backend).toContain('history_truncated: sessions.length >= 200');
     expect(backend).toContain('running_calibration: {');
     expect(backend).toContain('threshold_source: thresholdPace.source');
     expect(backend).toContain('history_scope: \'last_200_sessions\'');
