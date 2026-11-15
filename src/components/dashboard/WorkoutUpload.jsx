@@ -79,7 +79,7 @@ export default function WorkoutUpload({ athleteId, onUploaded }) {
             <Label htmlFor="workout-upload-file">File (.fit or .csv)</Label>
             <Input id="workout-upload-file" ref={fileInputRef} type="file" accept=".fit,.csv,application/vnd.ant.fit,application/octet-stream" onChange={(e) => setFile(e.target.files?.[0] || null)} required />
           </div>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <div>
               <Label id="workout-upload-sport-label">Sport</Label>
               <Select value={sport} onValueChange={setSport}>
