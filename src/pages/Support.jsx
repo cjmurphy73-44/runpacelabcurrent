@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label";
 import { base44 } from "@/api/base44Client";
 import { useToast } from "@/components/ui/use-toast";
 import PublicFooter from "@/components/layout/PublicFooter";
+import { isConfirmedFeedbackReceipt } from "@/lib/feedbackReceipt";
 
 const CATEGORIES = [
   { key: "bug", label: "Bug report" },
@@ -45,8 +46,7 @@ export default function Support() {
       });
       // A resolved SDK call is not evidence that the feedback row was saved.
       // The function returns { success: true, id } only after create succeeds.
-      const result = response?.data;
-      if (result?.success !== true || typeof result.id !== "string" || !result.id.trim() || result.error) {
+      if (!isConfirmedFeedbackReceipt(response)) {
         throw new Error("Your message could not be confirmed. Please check and try again.");
       }
       setSent(true);
