@@ -7,6 +7,8 @@ The app is published at `https://trainpacelab.base44.app` and accepts real Strip
 
 Evidence goes in the **Evidence** column of each checklist (route, date, tester, device, and a one-line observed outcome). Source inspection alone is never a pass. Preview/browser limitations are recorded as 🟡 unverified, not as ✅.
 
+> **2026-11-15 P0 deletion checkpoint (draft PR #195):** The source-level account deletion fail-closed gate and athlete-ID-scoped service-created record cleanup have been added with offline regression tests. CI was green for earlier head `a1b76a9`; CI for the latest edits is not yet confirmed. **Checklist 1.7 remains unverified:** uploaded files are not proven purged, staging tenant isolation is not proven, and no authenticated deletion test has been run. The Base44 app inventory shows separate TrainPaceLab and TrainPaceLab-Staging app IDs only. See `docs/ACCOUNT_DELETION_ACCEPTANCE_2026-11-15.md` for precise acceptance gates. No production deletion or deployment has occurred.
+
 ---
 
 ## Route inventory (grounding)
