@@ -39,6 +39,34 @@ describe("verified telemetry frontend/backend parity", () => {
         heart_rate: 145,
       })),
     }, true],
+    ["31-second pause with valid power and complete timestamps", {
+      duration_seconds: 151,
+      streams: Array.from({ length: 121 }, (_, i) => ({
+        time: i + (i >= 60 ? 30 : 0),
+        power: 220,
+      })),
+    }, false],
+    ["two separate 20-second pauses stay within per-gap limit", {
+      duration_seconds: 159,
+      streams: Array.from({ length: 121 }, (_, i) => ({
+        time: i + (i >= 40 ? 19 : 0) + (i >= 80 ? 19 : 0),
+        heart_rate: 145,
+      })),
+    }, true],
+    ["repeated timestamp after a pause", {
+      duration_seconds: 150,
+      streams: Array.from({ length: 121 }, (_, i) => ({
+        time: i === 61 ? 89 : i + (i >= 60 ? 29 : 0),
+        heart_rate: 145,
+      })),
+    }, false],
+    ["non-finite timestamp within otherwise valid recording", {
+      duration_seconds: 120,
+      streams: Array.from({ length: 120 }, (_, i) => ({
+        time: i === 60 ? Number.NaN : i,
+        heart_rate: 145,
+      })),
+    }, false],
     ["sparse recorded intervals", sessionWith(() => ({ heart_rate: 145 }), 10), false],
     ["duration exceeds recorded span", { ...sessionWith(() => ({ heart_rate: 145 })), duration_seconds: 1000 }, false],
   ];
