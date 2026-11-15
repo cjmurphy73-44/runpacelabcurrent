@@ -1,5 +1,5 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.49';
-import { finalizeAccountDeletion, linkedAthleteCleanup, resolveOwnedAthleteIds } from '../../shared/accountDeletionCleanup.js';
+import { finalizeAccountDeletion, linkedAthleteCleanup, loadOrCreateDeletionRecovery } from '../../shared/accountDeletionCleanup.js';
 
 // Permanently deletes the calling user's account and all owned data.
 // Triggered from the Athlete Settings Danger Zone. There is no client-side
@@ -15,10 +15,10 @@ export default async function(req) {
 
     const e = base44.asServiceRole.entities;
     const owned = { created_by_id: user.id };
-    // Do not trust the User's linked athlete ID as deletion authority. List
-    // service-role profiles by their actual owner and reject mismatched links.
-    const ownedProfiles = await e.AthleteProfile.filter(owned);
-    const athleteIds = resolveOwnedAthleteIds(user, ownedProfiles);
+    // A service-role-only recovery record retains verified athlete IDs even if
+    // User deletion fails after AthleteProfile deletion. No record = no cleanup.
+    const recovery = await loadOrCreateDeletionRecovery(e, user);
+    const athleteIds = recovery.athlete_ids;
 
     // Keep entity labels in failure reports, never record contents or secrets.
     const cleanup = [
@@ -55,6 +55,9 @@ export default async function(req) {
       }, { status: 500 });
     }
 
+    // Remove the recovery record only after User deletion succeeds. A failed
+    // purge leaves a service-only record requiring operator reconciliation.
+    await e.AccountDeletionRecovery.delete(recovery.id);
     return Response.json({ success: true });
   } catch (error) {
     return Response.json({ error: 'Account deletion could not be completed. Please retry or contact support.' }, { status: 500 });
