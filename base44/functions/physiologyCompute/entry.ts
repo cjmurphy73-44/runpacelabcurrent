@@ -63,7 +63,8 @@ export default async function(req: Request): Promise<Response> {
 
     // Shared with dashboard: this describes evidence/confidence only. It does
     // not change stored VDOT or the athlete's threshold baseline.
-    const calibration = classifyRunningCalibration(sessions, thresholdPace.observedRunCount);
+    const calibration = classifyRunningCalibration(sessions, thresholdPace.observedRunCount,
+      Date.now(), { historyTruncated: sessions.length >= 200 });
 
     const vdot = vdotResult.vdot ?? athlete.vdot_estimate ?? null;
     let trainingPaces = null;
@@ -87,6 +88,7 @@ export default async function(req: Request): Promise<Response> {
         observed_threshold_run_count: thresholdPace.observedRunCount,
         recent_cross_train_count: thresholdPace.recentCrossTrainCount,
         history_scope: 'last_200_sessions',
+        history_truncated: sessions.length >= 200,
         historical_vdot_source: vdotResult.source,
         historical_vdot_session_id: vdotResult.source_session_id ?? null,
       },
