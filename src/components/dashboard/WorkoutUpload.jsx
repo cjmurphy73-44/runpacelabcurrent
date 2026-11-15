@@ -57,10 +57,14 @@ export default function WorkoutUpload({ athleteId, onUploaded }) {
         // selected again and the UI may still show the previous filename.
         if (fileInputRef.current) fileInputRef.current.value = "";
         // Parent refresh failures must not misreport a confirmed saved workout.
+        // Refresh is best-effort. A slow or stalled parent callback must not
+        // keep the completed upload in its in-flight state indefinitely.
         try {
-          await onUploaded?.();
+          Promise.resolve(onUploaded?.()).catch(() => {
+            // The confirmed save status remains authoritative.
+          });
         } catch {
-          // The confirmed save status remains authoritative.
+          // A synchronous refresh error cannot invalidate the confirmed save.
         }
       }
     } catch (err) {
