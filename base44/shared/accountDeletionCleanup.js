@@ -141,3 +141,27 @@ export async function verifyDeletionRecoveryScope(entities, userId, expected) {
   }
   return actual;
 }
+
+/**
+ * Read-only, privacy-minimizing operator triage of a deletion journal.
+ * This deliberately cannot authorize or execute deletion, and does not
+ * return stored user IDs or athlete IDs to a caller.
+ *
+ * userExists must be established by an independently authorized lookup.
+ * A missing or indeterminate lookup never allows journal purging.
+ */
+export function classifyDeletionRecoveryForReview(record, userExists) {
+  if (!record?.id || !record.user_id || record.state !== 'prepared' ||
+      !Array.isArray(record.athlete_ids) ||
+      !record.athlete_ids.every((id) => typeof id === 'string' && id.length > 0) ||
+      new Set(record.athlete_ids).size !== record.athlete_ids.length ||
+      typeof userExists !== 'boolean') {
+    return { status: 'manual_review', safe_to_purge: false };
+  }
+  if (userExists) {
+    return { status: 'account_exists_retry_or_investigate', safe_to_purge: false };
+  }
+  // Identity may be gone but athlete rows, uploads and third-party copies may
+  // remain. Never classify a missing user as proof of complete deletion.
+  return { status: 'orphaned_journal_investigate', safe_to_purge: false };
+}
