@@ -7,6 +7,7 @@ import moment from "moment";
 import { Download, Sparkles } from "lucide-react";
 import { useCoachInjurySignal } from "@/hooks/useCoachInjurySignal";
 import CoachHoldCard from "@/components/dashboard/CoachHoldCard";
+import CalendarSyncModule from "@/components/dashboard/CalendarSyncModule";
 import { useSubscription } from "@/hooks/useSubscription";
 import FeatureGate from "@/components/billing/FeatureGate";
 
@@ -55,6 +56,9 @@ export default function TrainingCalendar({ athleteId, currentTsb }) {
           {requesting ? "Adjusting…" : "AI Microadjustment"}
         </Button>
       </div>
+      {!loading && sessions.length > 0 && (
+        <CalendarSyncModule workouts={sessions.filter((session) => !(injury.level === "hold" && session.sport?.toLowerCase().startsWith("run")))} />
+      )}
       {loading ? (
         <p className="text-sm text-muted-foreground">Loading...</p>
       ) : (

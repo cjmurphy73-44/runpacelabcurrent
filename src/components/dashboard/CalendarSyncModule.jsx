@@ -1,149 +1,44 @@
 import React, { useState } from 'react';
+import { buildTrainingCalendarICS } from '@/lib/trainingCalendarICS';
 
 export default function CalendarSyncModule({ workouts = [], onSyncComplete }) {
-  const [syncStatus, setSyncStatus] = useState('idle'); // idle, syncing, success, error
-  const [selectedFormat, setSelectedFormat] = useState('ics'); // ics, google, apple
-  const [errorMessage, setErrorMessage] = useState('');
+  const [result, setResult] = useState(null);
+  const [error, setError] = useState('');
 
-  const generateICSFile = () => {
+  const exportFile = () => {
+    setError('');
+    setResult(null);
+    let url;
     try {
-      setSyncStatus('syncing');
-      
-      // Build ICS calendar content
-      let icsContent = [
-        'BEGIN:VCALENDAR',
-        'VERSION:2.0',
-        'PRODID:-//TrainPaceLab//Calendar Sync Engine//EN',
-        'CALSCALE:GREGORIAN',
-        'METHOD:PUBLISH'
-      ];
-
-      workouts.forEach((workout, index) => {
-        const startDate = workout.date ? new Date(workout.date) : new Date();
-        const endDate = new Date(startDate.getTime() + (workout.durationMinutes || 60) * 60000);
-
-        const formatDate = (date) => {
-          return date.toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z';
-        };
-
-        icsContent.push(
-          'BEGIN:VEVENT',
-          `UID:trainpacelab-${workout.id || index}-${Date.now()}@trainpacelab.com`,
-          `DTSTAMP:${formatDate(new Date())}`,
-          `DTSTART:${formatDate(startDate)}`,
-          `DTEND:${formatDate(endDate)}`,
-          `SUMMARY:[TrainPaceLab] ${workout.title || workout.sport || 'Scheduled Workout'}`,
-          `DESCRIPTION:Target Intensity: ${workout.intensity || 'Normal'}\\nLoad Score: ${workout.loadScore || 'N/A'}\\nNotes: ${workout.notes || 'Automated prescription from TrainPaceLab engine.'}`,
-          'END:VEVENT'
-        );
-      });
-
-      icsContent.push('END:VCALENDAR');
-
-      const blob = new Blob([icsContent.join('\r\n')], { type: 'text/calendar;charset=utf-8' });
-      const url = window.URL.createObjectURL(blob);
+      const exported = buildTrainingCalendarICS(workouts);
+      if (!exported.exported) throw new Error('No scheduled sessions with valid dates to export.');
+      const blob = new Blob([exported.content], { type: 'text/calendar;charset=utf-8' });
+      url = URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
-      link.setAttribute('download', `trainpacelab_schedule_${new Date().toISOString().split('T')[0]}.ics`);
+      link.download = 'trainpacelab-training-plan.ics';
       document.body.appendChild(link);
       link.click();
-      document.body.removeChild(link);
-
-      setSyncStatus('success');
-      if (onSyncComplete) onSyncComplete({ format: 'ics', count: workouts.length });
-    } catch (err) {
-      console.error('ICS generation error:', err);
-      setErrorMessage('Failed to generate calendar export.');
-      setSyncStatus('error');
+      link.remove();
+      setResult({ exported: exported.exported, skipped: exported.skipped });
+      onSyncComplete?.({ format: 'ics', count: exported.exported, skipped: exported.skipped });
+    } catch (e) {
+      setError(e?.message || 'Could not export your training plan.');
+    } finally {
+      if (url) URL.revokeObjectURL(url);
     }
   };
 
-  const handleExternalSync = (provider) => {
-    setSyncStatus('syncing');
-    setTimeout(() => {
-      setSyncStatus('success');
-      if (onSyncComplete) onSyncComplete({ provider, count: workouts.length });
-    }, 1200);
-  };
-
   return (
-    <div className="bg-card text-card-foreground rounded-lg shadow border border-border p-6 max-w-4xl mx-auto space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between border-b border-border pb-4">
-        <div>
-          <h2 className="text-xl font-heading font-bold text-foreground">Calendar Export & Session Sync</h2>
-          <p className="text-sm text-muted-foreground mt-1">
-            Export adaptive workout prescriptions to standard calendar formats or synchronize directly with external calendar endpoints.
-          </p>
-        </div>
-        <div className="mt-4 sm:mt-0 flex items-center space-x-2">
-          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-primary/10 text-primary">
-            {workouts.length} Sessions Ready
-          </span>
-        </div>
+    <section className="rounded-lg border border-border bg-card p-4 sm:p-6 space-y-4" aria-label="Export training plan to calendar">
+      <div className="space-y-1">
+        <h2 className="font-heading font-bold text-lg">Add your plan to a calendar</h2>
+        <p className="text-sm text-muted-foreground">Download a standard .ics file and import it into Apple Calendar, Google Calendar or Outlook. This is a one-time export, not live synchronization.</p>
       </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        {/* ICS File Export */}
-        <div className={`p-4 rounded-lg border transition-all ${selectedFormat === 'ics' ? 'border-primary bg-primary/5' : 'border-border hover:border-primary/40'}`} onClick={() => setSelectedFormat('ics')}>
-          <div className="flex items-center justify-between mb-2">
-            <span className="font-semibold text-foreground">Universal .ICS File</span>
-            <span className="text-xs text-muted-foreground tabular-nums">Standard</span>
-          </div>
-          <p className="text-xs text-muted-foreground mb-4">Compatible with Apple Calendar, Outlook, and local calendar apps.</p>
-          <button 
-            onClick={(e) => { e.stopPropagation(); generateICSFile(); }}
-            disabled={syncStatus === 'syncing' || workouts.length === 0}
-            className="w-full min-h-[44px] bg-primary text-primary-foreground text-sm font-medium py-2 px-4 rounded-md hover:bg-primary/90 disabled:opacity-50 transition-colors"
-          >
-            {syncStatus === 'syncing' && selectedFormat === 'ics' ? 'Generating...' : 'Export .ICS'}
-          </button>
-        </div>
-
-        {/* Google Calendar Sync */}
-        <div className={`p-4 rounded-lg border transition-all ${selectedFormat === 'google' ? 'border-primary bg-primary/5' : 'border-border hover:border-primary/40'}`} onClick={() => setSelectedFormat('google')}>
-          <div className="flex items-center justify-between mb-2">
-            <span className="font-semibold text-foreground">Google Calendar</span>
-            <span className="text-xs text-success font-medium">Cloud API</span>
-          </div>
-          <p className="text-xs text-muted-foreground mb-4">Direct sync with your primary Google Calendar schedule.</p>
-          <button 
-            onClick={(e) => { e.stopPropagation(); handleExternalSync('google'); }}
-            disabled={syncStatus === 'syncing' || workouts.length === 0}
-            className="w-full min-h-[44px] bg-card border border-border text-foreground text-sm font-medium py-2 px-4 rounded-md hover:bg-accent disabled:opacity-50 transition-colors"
-          >
-            {syncStatus === 'syncing' && selectedFormat === 'google' ? 'Syncing...' : 'Sync Google Calendar'}
-          </button>
-        </div>
-
-        {/* Apple Calendar WebCal Feed */}
-        <div className={`p-4 rounded-lg border transition-all ${selectedFormat === 'apple' ? 'border-primary bg-primary/5' : 'border-border hover:border-primary/40'}`} onClick={() => setSelectedFormat('apple')}>
-          <div className="flex items-center justify-between mb-2">
-            <span className="font-semibold text-foreground">Apple WebCal Feed</span>
-            <span className="text-xs text-accent-foreground font-medium">Live Feed</span>
-          </div>
-          <p className="text-xs text-muted-foreground mb-4">Subscribe to automatic background updates for schedule changes.</p>
-          <button 
-            onClick={(e) => { e.stopPropagation(); handleExternalSync('apple'); }}
-            disabled={syncStatus === 'syncing' || workouts.length === 0}
-            className="w-full min-h-[44px] bg-card border border-border text-foreground text-sm font-medium py-2 px-4 rounded-md hover:bg-accent disabled:opacity-50 transition-colors"
-          >
-            {syncStatus === 'syncing' && selectedFormat === 'apple' ? 'Subscribing...' : 'Copy WebCal Link'}
-          </button>
-        </div>
-      </div>
-
-      {syncStatus === 'success' && (
-        <div className="p-3 bg-success/10 border border-success/30 rounded-md text-xs text-success flex items-center justify-between">
-          <span>Calendar synchronization completed successfully! All {workouts.length} workout sessions processed.</span>
-          <span className="tabular-nums font-semibold">{new Date().toLocaleTimeString()}</span>
-        </div>
-      )}
-
-      {syncStatus === 'error' && (
-        <div className="p-3 bg-danger/10 border border-danger/30 rounded-md text-xs text-danger">
-          <span>Error: {errorMessage || 'Failed to complete session sync.'}</span>
-        </div>
-      )}
-    </div>
+      <p className="text-sm text-muted-foreground">{workouts.length} planned sessions available. Sessions are all-day reminders because no start time has been specified.</p>
+      <button type="button" onClick={exportFile} disabled={!workouts.length} className="min-h-[44px] w-full sm:w-auto rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">Download calendar (.ics)</button>
+      {result && <p role="status" className="text-sm text-muted-foreground">Downloaded {result.exported} sessions{result.skipped ? `; skipped ${result.skipped} sessions with invalid or missing dates` : ''}. Import the file into your calendar to add them. Future plan changes require another export.</p>}
+      {error && <p role="alert" className="text-sm text-destructive">{error}</p>}
+    </section>
   );
 }
