@@ -1,5 +1,5 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.49';
-import { runAccountEntityCleanup } from '../../shared/accountDeletionCleanup.js';
+import { finalizeAccountDeletion } from '../../shared/accountDeletionCleanup.js';
 
 // Permanently deletes the calling user's account and all owned data.
 // Triggered from the Athlete Settings Danger Zone. There is no client-side
@@ -41,18 +41,15 @@ export default async function(req) {
       // never points at the athlete; match on athlete_id instead or deletion leaves them.
       ...(user.data?.athlete_profile_id ? [["WebhookEvent", () => e.WebhookEvent.deleteMany({ athlete_id: user.data.athlete_profile_id })]] : []),
     ];
-    const failedEntities = await runAccountEntityCleanup(cleanup);
-    if (failedEntities.length > 0) {
+    const result = await finalizeAccountDeletion(cleanup, () => e.User.delete(user.id));
+    if (!result.success) {
       // Do not remove the identity needed to retry incomplete cleanup.
       return Response.json({
         success: false,
         error: 'Account deletion is incomplete. Your account remains active; please retry or contact support.',
-        failed_entities: failedEntities,
+        failed_entities: result.failedEntities,
       }, { status: 500 });
     }
-
-    // Finally, delete the user account record itself.
-    await base44.asServiceRole.entities.User.delete(user.id);
 
     return Response.json({ success: true });
   } catch (error) {
