@@ -195,10 +195,10 @@ export function parseFitSummary(arrayBuffer) {
       const distances = records.map((r) => r.distance).filter((d) => typeof d === "number");
       session = {
         timestamp: earliestTimestamp,
-        // Records are logged ~1/sec; when the timestamp span is implausibly large (corrupt/missing
-        // earliest record), the span is pure noise (~years), so fall back to the record count as a
-        // best-effort elapsed-second estimate rather than throwing away the whole file.
-        total_elapsed_time: sanitizeSpan(latestTimestamp - earliestTimestamp) || Math.min(records.length, MAX_DURATION_SECONDS),
+        // Record count is not elapsed time: smart recording and paused devices
+        // produce variable intervals. Reject missing/implausible timestamp spans
+        // instead of fabricating a workout duration from the number of samples.
+        total_elapsed_time: sanitizeSpan(latestTimestamp - earliestTimestamp),
         total_distance_meters: distances.length > 0 ? Math.max(...distances) : 0,
         avg_heart_rate: average(records.map((r) => r.heart_rate)),
         max_heart_rate: records.some((r) => r.heart_rate > 0) ? Math.max(...records.map((r) => r.heart_rate || 0)) : null,
