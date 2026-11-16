@@ -40,7 +40,8 @@ export default async function (req: Request): Promise<Response> {
 
     return Response.json({ success: true, id: record.id });
   } catch (error) {
-    console.error('logBetaFeedback', error.message);
-    return Response.json({ error: error.message }, { status: 500 });
+    // Avoid logging SDK exceptions that may contain customer or tenant data.
+    console.error('logBetaFeedback: submission failed');
+    return Response.json({ error: 'Support request could not be confirmed' }, { status: 500 });
   }
 }
