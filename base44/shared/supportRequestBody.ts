@@ -16,7 +16,10 @@ export async function readSupportJson(req: Request): Promise<Record<string, unkn
     throw new SupportBodyError(413);
   }
   if (!req.body) throw new SupportBodyError(400);
-  const reader = req.body.getReader();
+  // A previously consumed or locked request body is invalid input, not an SDK failure.
+  let reader: ReadableStreamDefaultReader<Uint8Array>;
+  try { reader = req.body.getReader(); }
+  catch { throw new SupportBodyError(400); }
   const chunks: Uint8Array[] = [];
   let size = 0;
   try {
