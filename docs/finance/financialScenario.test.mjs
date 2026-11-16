@@ -23,3 +23,15 @@ test('rejects negative, nonfinite and impossible churn inputs', () => {
     expect(() => forecastMonth({ ...input, ...patch })).toThrow(RangeError);
   }
 });
+
+test('rejects fractional and unsafe customer counts without inventing a cohort', () => {
+  for (const patch of [
+    { openingCustomers: 0.5 },
+    { newCustomers: 1.25 },
+    { openingCustomers: Number.MAX_SAFE_INTEGER + 1 },
+    { newCustomers: Number.MAX_SAFE_INTEGER + 1 },
+  ]) {
+    expect(() => forecastMonth({ ...input, ...patch })).toThrow(RangeError);
+  }
+  expect(forecastMonth({ ...input, openingCustomers: 0, newCustomers: 0 }).closingCustomers).toBe(0);
+});
