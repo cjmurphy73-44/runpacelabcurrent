@@ -35,7 +35,8 @@ export default function Support() {
 
   const submit = async (e) => {
     e.preventDefault();
-    if (!message.trim()) return;
+    // Mirror backend storage limits: never silently truncate a user's report.
+    if (!message.trim() || message.length > 4000 || email.length > 200) return;
     setBusy(true);
     try {
       const response = await base44.functions.invoke("logBetaFeedback", {
@@ -142,6 +143,7 @@ export default function Support() {
                   <Input
                     id="email"
                     type="email"
+                    maxLength={200}
                     placeholder="you@example.com"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
@@ -152,6 +154,7 @@ export default function Support() {
                   <Label htmlFor="message">Message <span className="text-destructive">*</span></Label>
                   <Textarea
                     id="message"
+                    maxLength={4000}
                     placeholder="Tell us what happened or what you need help with..."
                     value={message}
                     onChange={(e) => setMessage(e.target.value)}
@@ -160,7 +163,7 @@ export default function Support() {
                   />
                 </div>
 
-                <Button type="submit" className="w-full" disabled={busy || !message.trim()}>
+                <Button type="submit" className="w-full" disabled={busy || !message.trim() || message.length > 4000 || email.length > 200}>
                   {busy ? <><Loader2 className="w-4 h-4 animate-spin" />Sending…</> : "Send message"}
                 </Button>
               </form>
