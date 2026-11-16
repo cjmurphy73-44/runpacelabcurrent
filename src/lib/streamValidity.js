@@ -14,6 +14,9 @@ export function hasVerifiedStreams(session) {
   for (const point of stream) {
     const time = Number(point?.time);
     if (!Number.isFinite(time) || time <= previous) return false;
+    // A long unobserved interval cannot be treated as continuous telemetry,
+    // even when the average sample interval is small.
+    if (previous !== -Infinity && time - previous > 30) return false;
     previous = time;
     if (typeof point?.heart_rate === 'number' && Number.isFinite(point.heart_rate) && point.heart_rate > 0) withHr += 1;
     if (typeof point?.power === 'number' && Number.isFinite(point.power) && point.power > 0) withPower += 1;
