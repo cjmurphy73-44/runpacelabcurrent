@@ -23,6 +23,7 @@ import { computeHolisticReadiness, computeBaseline } from '../../shared/readines
 import { getTrainingPaces, getEquivalentTimes, formatPaceFromMs } from '../../shared/vdot.ts';
 import { deriveRunningThresholdPace } from '../../shared/thresholdPace.ts';
 import { classifyRunningCalibration } from '../../shared/runningCalibrationStatus.js';
+import { resolveVdotReference } from '../../shared/runningVdotProvenance.js';
 
 export default async function(req: Request): Promise<Response> {
   try {
@@ -46,7 +47,7 @@ export default async function(req: Request): Promise<Response> {
       .filter({ athlete_id: athlete.id }, '-date', 200)
       .catch(() => []);
 
-    const vdotResult = computeVdotFromSessions(sessions, athlete);
+    const vdotResult = resolveVdotReference(sessions, athlete);
     const thresholdPace = deriveRunningThresholdPace(
       sessions,
       vdotResult.vdot ?? athlete.vdot_estimate ?? null,
@@ -168,21 +169,3 @@ function computeReadiness(today, history) {
   return { score, status, baseline, signal_count: signalCount, has_baseline: hasBaseline };
 }
 
-// WorkoutSession currently has no trusted, server-attested race or maximal
-// performance marker. Sport, duration, distance and provider summaries alone
-// cannot distinguish a race from an easy return-from-injury run or a ride
-// misclassified as running. Keep historical VDOT as a reference only.
-// No session automatically becomes evidence to recalibrate running capability.
-function computeVdotFromSessions(_sessions, athlete) {
-  return {
-    vdot: null,
-    source: athlete.vdot_estimate > 0
-      ? 'Stored historical VDOT — current running performance unverified'
-      : 'No verified running performance available',
-    source_session_id: null,
-    source_date: null,
-    source_sport: null,
-    performance_verified: false,
-    qualification_reason: 'no_server_attested_running_performance',
-  };
-}
