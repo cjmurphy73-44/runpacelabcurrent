@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { isConfirmedFeedbackReceipt } from "./feedbackReceipt";
 
@@ -21,5 +22,15 @@ describe("support feedback persistence acknowledgement", () => {
     { error: "network failed" },
   ])("fails closed for unconfirmed result %#", (response) => {
     expect(isConfirmedFeedbackReceipt(response)).toBe(false);
+  });
+});
+
+// Guard the public receipt copy until support staffing and response SLAs are verified.
+describe("support receipt copy is evidence-based", () => {
+  it("does not promise an unverified response time", () => {
+    const source = readFileSync(new URL("../pages/Support.jsx", import.meta.url), "utf8");
+    expect(source).not.toContain("We'll get back to you soon");
+    expect(source).not.toContain("our team will take a look");
+    expect(source).toContain("A response time is not guaranteed.");
   });
 });
