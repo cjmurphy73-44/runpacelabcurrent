@@ -12,6 +12,7 @@ import { Check, Sparkles, ArrowLeft, Ticket, Loader2, ReceiptText } from "lucide
 import PageShell from "@/components/layout/PageShell";
 import { PLAN_DETAILS, PLAN_TIERS } from "@/lib/subscriptionFeatures";
 import { billingReturnNotice, freePlanAction } from "@/lib/billingReturnNotice";
+import { trustedStripeBillingUrl } from "@/lib/trustedStripeBillingUrl";
 
 export default function Subscribe() {
   const { user } = useAuth();
@@ -37,8 +38,8 @@ export default function Subscribe() {
     setPortalBusy(true);
     try {
       const res = await base44.functions.invoke("stripeBillingPortal", {});
-      const url = res?.data?.url;
-      if (!url) throw new Error("No portal URL returned");
+      const url = trustedStripeBillingUrl(res?.data?.url, "portal");
+      if (!url) throw new Error("Invalid billing portal destination");
       const isFramed = window.self !== window.top;
       if (isFramed) {
         const tab = window.open(url, "_blank");
@@ -69,8 +70,8 @@ export default function Subscribe() {
     try {
       base44.analytics.track({ eventName: "checkout_started", properties: { plan: tier } });
       const res = await base44.functions.invoke("stripeCheckout", { plan: tier, user_id: user?.id });
-      const url = res?.data?.url;
-      if (!url) throw new Error("No checkout URL returned");
+      const url = trustedStripeBillingUrl(res?.data?.url, "checkout");
+      if (!url) throw new Error("Invalid checkout destination");
       if (checkoutTab) checkoutTab.location.replace(url);
       else window.location.assign(url);
     } catch (e) {
