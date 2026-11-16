@@ -16,6 +16,9 @@ export function isUsableTelemetry(stream, durationSeconds) {
   for (const point of stream) {
     const time = Number(point?.time);
     if (!Number.isFinite(time) || time <= previous) return false;
+    // A long unobserved interval cannot be treated as continuous telemetry,
+    // even when the average sample interval is small.
+    if (previous !== -Infinity && time - previous > 30) return false;
     previous = time;
   }
   const span = Number(stream[stream.length - 1].time) - Number(stream[0].time);
