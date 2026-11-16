@@ -5,7 +5,7 @@
 Three decisions shape everything below:
 
 1. **Separate load models.** Verified-stream load and summary-derived load are stored, aggregated and displayed as distinct things. Summary sessions stay in activity history and may carry a clearly labelled load, but they never become stream analytics.
-2. **No staging environment.** Validation runs in the current published app with deterministic fixtures plus real provider accounts. Provider-risk is managed with a dedicated internal test athlete, not with a second app.
+2. **Isolated validation before publication.** Run deterministic fixtures and synthetic negative-case tests in an isolated executable environment with external calls denied. A separate Base44 staging backend is not yet independently verified; previews must fail closed rather than use production data, OAuth, payments or privileged functions. Real-provider acceptance requires a separately approved isolated test account and verified backend separation. Do not run destructive, payment or experimental tests against the published application. Record source CI, deployment and verified-live acceptance as distinct evidence.
 3. **MVP value first.** Sequence by athlete-visible value and revenue risk, not by the original seven-PR directive order.
 
 Status legend: ✅ done and evidenced · 🟡 partly done or unverified · ❌ not started · ⛔ blocked.
