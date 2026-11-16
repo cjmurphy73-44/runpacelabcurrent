@@ -36,6 +36,6 @@ export function settleVdotPresentation<T>(
 ): VdotPresentationState<T> {
   if (!VDOT_CLIENT_PRESENTATION_ENABLED) return { status: 'unavailable', reason: 'not_enabled' };
   if (previous.status !== 'loading' || previous.requestKey !== requestKey) return previous;
-  if (!outcome.ok) return { status: 'error', reason: outcome.reason };
+  if (outcome.ok === false) return { status: 'error', reason: outcome.reason };
   return { status: 'ready', requestKey, result: outcome.value };
 }
