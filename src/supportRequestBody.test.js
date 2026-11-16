@@ -43,6 +43,13 @@ describe('anonymous support request byte ceiling', () => {
     await rejectStatus(request(''), 400);
     await rejectStatus(request(new Uint8Array([0xff])), 400);
   });
+  it('maps a failing request stream to a controlled 400 without leaking the stream error', async () => {
+    const body = new ReadableStream({ start(controller) {
+      controller.error(new Error('private upstream detail'));
+    } });
+    const req = new Request('https://example.invalid/support', { method: 'POST', body, duplex: 'half' });
+    await expect(readSupportJson(req)).rejects.toMatchObject({ status: 400, message: 'Invalid request body' });
+  });
   it('rejects a locked request body with a controlled 400', async () => {
     const req = request('{"message":"test"}');
     const reader = req.body.getReader();
