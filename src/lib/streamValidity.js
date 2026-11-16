@@ -15,8 +15,8 @@ export function hasVerifiedStreams(session) {
     const time = Number(point?.time);
     if (!Number.isFinite(time) || time <= previous) return false;
     previous = time;
-    if (typeof point?.heart_rate === 'number' && point.heart_rate > 0) withHr += 1;
-    if (typeof point?.power === 'number' && point.power > 0) withPower += 1;
+    if (typeof point?.heart_rate === 'number' && Number.isFinite(point.heart_rate) && point.heart_rate > 0) withHr += 1;
+    if (typeof point?.power === 'number' && Number.isFinite(point.power) && point.power > 0) withPower += 1;
   }
 
   const span = Number(stream[stream.length - 1].time) - Number(stream[0].time);
