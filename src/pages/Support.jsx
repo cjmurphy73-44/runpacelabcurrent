@@ -50,7 +50,7 @@ export default function Support() {
         throw new Error("Your message could not be confirmed. Please check and try again.");
       }
       setSent(true);
-      toast({ title: "Message sent", description: "We'll get back to you soon." });
+      toast({ title: "Message received", description: "Your report was saved. A response time is not guaranteed." });
     } catch (err) {
       toast({ title: "Could not confirm message", description: "Your message may not have been saved. Please check before retrying.", variant: "destructive" });
     } finally {
@@ -76,7 +76,7 @@ export default function Support() {
         <div className="mb-8">
           <h1 className="font-heading text-3xl font-bold">Contact support</h1>
           <p className="mt-2 text-muted-foreground">
-            Found a bug, have a billing question, or need help with your account? Send it through and our team will take a look.
+            Found a bug, have a billing question, or need help with your account? Send a report for review. Response availability and timing are not yet guaranteed.
           </p>
         </div>
 
@@ -101,7 +101,7 @@ export default function Support() {
               <CheckCircle2 className="w-12 h-12 text-success mx-auto mb-4" />
               <h2 className="font-heading text-xl font-semibold">Thanks, message received</h2>
               <p className="mt-2 text-sm text-muted-foreground">
-                We'll review your message and get back to you{email ? ` at ${email}` : ""} if needed. For billing issues, you can also manage your subscription directly from the billing portal.
+                Your report has been saved. A reply is not guaranteed{email ? `, but you provided ${email} for possible follow-up` : ""}. For billing issues, you can also manage your subscription directly from the billing portal.
               </p>
               <div className="flex flex-col sm:flex-row gap-2 justify-center mt-6">
                 <Button asChild variant="outline">

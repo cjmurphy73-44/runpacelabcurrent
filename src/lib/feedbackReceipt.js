@@ -5,5 +5,5 @@ export function isConfirmedFeedbackReceipt(response) {
   return result?.success === true &&
     typeof result.id === "string" &&
     result.id.trim().length > 0 &&
-    !result.error;
+    !Object.prototype.hasOwnProperty.call(result, "error");
 }
