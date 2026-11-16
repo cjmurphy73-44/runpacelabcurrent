@@ -37,6 +37,25 @@ describe('anonymous support request byte ceiling', () => {
     } });
     await rejectStatus(new Request('https://example.invalid/support', { method: 'POST', body, duplex: 'half' }), 413);
   });
+  it('cancels an oversized streamed body without consuming later chunks', async () => {
+    let cancelled = false;
+    let laterChunkRequested = false;
+    const body = new ReadableStream({
+      pull(controller) {
+        if (!laterChunkRequested) {
+          laterChunkRequested = true;
+          controller.enqueue(new Uint8Array(MAX_SUPPORT_BODY_BYTES + 1));
+        } else {
+          controller.enqueue(new Uint8Array(1));
+        }
+      },
+      cancel() { cancelled = true; },
+    }, { highWaterMark: 0 });
+    const req = new Request('https://example.invalid/support', { method: 'POST', body, duplex: 'half' });
+    await rejectStatus(req, 413);
+    expect(cancelled).toBe(true);
+    expect(req.body.locked).toBe(false);
+  });
   it('rejects invalid JSON, arrays, empty and malformed UTF-8', async () => {
     await rejectStatus(request('{oops'), 400);
     await rejectStatus(request('[]'), 400);
