@@ -14,6 +14,10 @@ describe("support feedback persistence acknowledgement", () => {
     { data: { success: true, id: 123 } },
     { data: { success: false, id: "synthetic-id" } },
     { data: { success: true, id: "synthetic-id", error: "failed" } },
+    { data: { success: true, id: "synthetic-id", error: "" } },
+    { data: { success: true, id: "synthetic-id", error: null } },
+    { data: { success: true, id: "synthetic-id", error: false } },
+    { data: { success: true, id: "synthetic-id", error: 0 } },
     { error: "network failed" },
   ])("fails closed for unconfirmed result %#", (response) => {
     expect(isConfirmedFeedbackReceipt(response)).toBe(false);
