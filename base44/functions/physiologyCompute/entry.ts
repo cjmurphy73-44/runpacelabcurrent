@@ -11,7 +11,7 @@
 // Computes:
 //   - holistic readiness score + components (HRV/sleep/RHR/TSB blended against
 //     a 14-day rolling baseline)
-//   - VDOT estimate from the athlete's strongest recent qualifying race
+//   - Historical stored VDOT as reference until a verified performance source exists
 //   - Daniels training paces (E/M/T/I/R) from VDOT
 //   - running threshold pace reconciled from recent threshold-intensity runs
 //
@@ -20,16 +20,9 @@
 
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.52';
 import { computeHolisticReadiness, computeBaseline } from '../../shared/readiness.ts';
-import { calculateVDOT, getTrainingPaces, getEquivalentTimes, danielsThresholdMs, formatPaceFromMs } from '../../shared/vdot.ts';
+import { getTrainingPaces, getEquivalentTimes, formatPaceFromMs } from '../../shared/vdot.ts';
 import { deriveRunningThresholdPace } from '../../shared/thresholdPace.ts';
 import { classifyRunningCalibration } from '../../shared/runningCalibrationStatus.js';
-
-const RACE_DISTANCES_M = {
-  fiveKm: 5000,
-  tenKm: 10000,
-  halfMarathon: 21097.5,
-  marathon: 42195,
-};
 
 export default async function(req: Request): Promise<Response> {
   try {
@@ -81,6 +74,8 @@ export default async function(req: Request): Promise<Response> {
       vdot_source_session_id: vdotResult.source_session_id ?? null,
       vdot_source_date: vdotResult.source_date ?? null,
       vdot_source_sport: vdotResult.source_sport ?? null,
+      vdot_performance_verified: vdotResult.performance_verified,
+      vdot_qualification_reason: vdotResult.qualification_reason,
       running_calibration: {
         ...calibration,
         // Source of the pace estimate, not proof of verified performance.
@@ -173,49 +168,21 @@ function computeReadiness(today, history) {
   return { score, status, baseline, signal_count: signalCount, has_baseline: hasBaseline };
 }
 
-// Find the strongest recent qualifying race effort and compute VDOT from it.
-// Falls back to the stored vdot_estimate if no qualifying session exists.
-function computeVdotFromSessions(sessions, athlete) {
-  const recent = (sessions || []).filter((s) => {
-    if (!s.date) return false;
-    const ageDays = (Date.now() - Date.parse(s.date)) / 86400000;
-    return ageDays <= 180; // last ~6 months
-  });
-
-  let bestVdot = null;
-  let sourceSession = null;
-
-  for (const s of recent) {
-    // VDOT is a running-performance model — only running sessions qualify.
-    // Non-running efforts (cycling, swimming, strength, triathlon, other)
-    // must never influence the running estimate.
-    if (!s.sport || !s.sport.toLowerCase().startsWith('run')) continue;
-    const durS = s.duration_seconds ?? (s.duration_minutes ? s.duration_minutes * 60 : 0);
-    const distM = s.distance_km ? s.distance_km * 1000 : 0;
-    if (!durS || durS < 180 || distM < 1200) continue; // Daniels requires >= 3 min, >= 1200 m
-    try {
-      const vdot = calculateVDOT(durS, distM);
-      if (vdot > 0 && (bestVdot == null || vdot > bestVdot)) {
-        bestVdot = vdot;
-        sourceSession = s;
-      }
-    } catch { /* session doesn't qualify */ }
-  }
-
-  if (bestVdot != null) {
-    return {
-      vdot: bestVdot,
-      source: `From run on ${sourceSession?.date || 'recent date'}`,
-      source_session_id: sourceSession?.id ?? null,
-      source_date: sourceSession?.date ?? null,
-      source_sport: 'running',
-    };
-  }
+// WorkoutSession currently has no trusted, server-attested race or maximal
+// performance marker. Sport, duration, distance and provider summaries alone
+// cannot distinguish a race from an easy return-from-injury run or a ride
+// misclassified as running. Keep historical VDOT as a reference only.
+// No session automatically becomes evidence to recalibrate running capability.
+function computeVdotFromSessions(_sessions, athlete) {
   return {
     vdot: null,
-    source: athlete.vdot_estimate ? 'Stored VDOT' : 'No qualifying run yet',
+    source: athlete.vdot_estimate > 0
+      ? 'Stored historical VDOT — current running performance unverified'
+      : 'No verified running performance available',
     source_session_id: null,
     source_date: null,
     source_sport: null,
+    performance_verified: false,
+    qualification_reason: 'no_server_attested_running_performance',
   };
 }
