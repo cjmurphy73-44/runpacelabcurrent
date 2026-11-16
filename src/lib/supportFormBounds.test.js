@@ -4,7 +4,7 @@ import { describe, expect, it } from "vitest";
 // Static guard for the public form: server still must validate untrusted input.
 describe("public support form input bounds", () => {
   const source = readFileSync(new URL("../pages/Support.jsx", import.meta.url), "utf8");
-  const backend = readFileSync(new URL("../../../base44/functions/logBetaFeedback/entry.ts", import.meta.url), "utf8");
+  const backend = readFileSync(new URL("../../base44/functions/logBetaFeedback/entry.ts", import.meta.url), "utf8");
 
   it("mirrors the current backend field lengths without silent client truncation", () => {
     expect(backend).toContain("slice(0, 4000)");
