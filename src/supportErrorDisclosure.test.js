@@ -15,9 +15,9 @@ describe("public support backend error disclosure", () => {
 
   it("does not emit raw SDK exception messages to logs", () => {
     const catchBlock = source.slice(source.lastIndexOf("} catch (error)"));
-    expect(catchBlock).toContain("console.error(\'logBetaFeedback: submission failed\')");
-    expect(catchBlock).not.toMatch(/console\\.(?:error|warn|log)\\([^)]*error\\.(?:message|stack)/);
-    expect(catchBlock).not.toMatch(/JSON\\.stringify\\(error\\)/);
+    expect(catchBlock).toContain("console.error('logBetaFeedback: submission failed')");
+    expect(catchBlock).not.toMatch(/console\.(?:error|warn|log)\([^)]*error\.(?:message|stack)/);
+    expect(catchBlock).not.toMatch(/JSON\.stringify\(error\\)/);
   });
 
   it("does not include the internal exception in the public response", () => {
