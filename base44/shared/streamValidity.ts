@@ -16,14 +16,17 @@ export function isUsableTelemetry(stream, durationSeconds) {
   for (const point of stream) {
     const time = Number(point?.time);
     if (!Number.isFinite(time) || time <= previous) return false;
+    // A long unobserved interval cannot be treated as continuous telemetry,
+    // even when the average sample interval is small.
+    if (previous !== -Infinity && time - previous > 30) return false;
     previous = time;
   }
   const span = Number(stream[stream.length - 1].time) - Number(stream[0].time);
   if (span < 60 || span / (stream.length - 1) > 5) return false;
   const duration = Number(durationSeconds) || 0;
   if (duration > 0 && (span < duration * 0.6 || span > duration * 1.5 + 300)) return false;
-  const withHr = stream.filter((p) => typeof p.heart_rate === 'number' && p.heart_rate > 0).length;
-  const withPower = stream.filter((p) => typeof p.power === 'number' && p.power > 0).length;
+  const withHr = stream.filter((p) => typeof p.heart_rate === 'number' && Number.isFinite(p.heart_rate) && p.heart_rate > 0).length;
+  const withPower = stream.filter((p) => typeof p.power === 'number' && Number.isFinite(p.power) && p.power > 0).length;
   return withHr >= stream.length * 0.5 || withPower >= stream.length * 0.5;
 }
 

@@ -31,8 +31,8 @@ describe("verified time-based recording intervals", () => {
   it("does not bridge recording gaps or count missing HR as zero", () => {
     const session = syntheticWorkout(601);
     session.streams = session.streams.filter(p => p.time < 200 || p.time > 400);
-    const rows = recordingIntervals(session);
-    expect(rows[0].hrCoverage).toBeLessThan(0.8);
-    expect(rows[0].avgHr).toBeNull();
+    // The verified-stream gate now fails closed on gaps over 30 seconds.
+    // An unverified recording must not produce interval analytics at all.
+    expect(recordingIntervals(session)).toEqual([]);
   });
 });
