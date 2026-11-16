@@ -33,7 +33,9 @@ export default async function (req: Request): Promise<Response> {
 
     return Response.json({ success: true, id: record.id });
   } catch (error) {
-    console.error('logBetaFeedback', error.message);
+    // The SDK exception may contain submitted health, contact or tenant data.
+    // Log only the handler name; do not emit raw exception text or request data.
+    console.error('logBetaFeedback: submission failed');
     // Public submissions must not disclose internal SDK, database or tenant errors.
     return Response.json({ error: 'Support request could not be confirmed' }, { status: 500 });
   }
