@@ -61,6 +61,30 @@ describe('stream evidence parity with backend', () => {
     expect(hasVerifiedStreams(session)).toBe(false);
     expect(isUsableTelemetry(session.streams, session.duration_seconds)).toBe(false);
   });
+  it('keeps a 30-second telemetry pause eligible but rejects 31 seconds in both gates', () => {
+    const recording = (gap) => {
+      const session = makeSession(() => ({ heart_rate: 145 }));
+      session.streams = session.streams.map((point, i) => ({
+        ...point,
+        time: i + (i >= 60 ? gap - 1 : 0),
+      }));
+      session.duration_seconds = 120 + gap - 1;
+      return session;
+    };
+    for (const [gap, eligible] of [[30, true], [31, false]]) {
+      const session = recording(gap);
+      expect(hasVerifiedStreams(session)).toBe(eligible);
+      expect(isUsableTelemetry(session.streams, session.duration_seconds)).toBe(eligible);
+    }
+  });
+  it('accepts legitimate five-second sampled telemetry without inferring one-hertz coverage', () => {
+    const session = {
+      duration_seconds: 600,
+      streams: Array.from({ length: 121 }, (_, i) => ({ time: i * 5, heart_rate: 140 })),
+    };
+    expect(hasVerifiedStreams(session)).toBe(true);
+    expect(isUsableTelemetry(session.streams, session.duration_seconds)).toBe(true);
+  });
   it('rejects sparse timestamps despite channel coverage', () => {
     const session = makeSession(() => ({ heart_rate: 140 }));
     session.streams = session.streams.map((p, i) => ({ ...p, time: i * 10 }));
