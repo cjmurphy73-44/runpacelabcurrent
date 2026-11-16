@@ -12,7 +12,7 @@ export class SupportBodyError extends Error {
 
 export async function readSupportJson(req: Request): Promise<Record<string, unknown>> {
   const length = req.headers.get('content-length');
-  if (length !== null && /^\\d+$/.test(length) && Number(length) > MAX_SUPPORT_BODY_BYTES) {
+  if (length !== null && /^\d+$/.test(length) && Number(length) > MAX_SUPPORT_BODY_BYTES) {
     throw new SupportBodyError(413);
   }
   if (!req.body) throw new SupportBodyError(400);
