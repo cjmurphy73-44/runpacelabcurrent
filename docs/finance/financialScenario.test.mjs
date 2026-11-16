@@ -35,3 +35,20 @@ test('rejects fractional and unsafe customer counts without inventing a cohort',
   }
   expect(forecastMonth({ ...input, openingCustomers: 0, newCustomers: 0 }).closingCustomers).toBe(0);
 });
+
+test('rejects finite inputs whose derived revenue, cash or LTV overflow', () => {
+  for (const patch of [
+    { openingCustomers: 100, newCustomers: 0, priceAud: 1e308 },
+    { openingCashAud: 1e308, fixedCostAud: 1e308, acquisitionSpendAud: 1e308 },
+    { priceAud: 1e308, monthlyChurnRate: Number.MIN_VALUE },
+  ]) {
+    expect(() => forecastMonth({ ...input, ...patch })).toThrow(RangeError);
+  }
+});
+
+test('preserves finite negative cash and zero-denominator null metrics', () => {
+  const result = forecastMonth({ ...input, openingCashAud: -1000, monthlyChurnRate: 0, newCustomers: 0 });
+  expect(Number.isFinite(result.closingCashAud)).toBe(true);
+  expect(result.steadyStateLtvAud).toBe(null);
+  expect(result.assumedCacAud).toBe(null);
+});
