@@ -15,7 +15,16 @@ export function forecastMonth({ openingCustomers, newCustomers, monthlyChurnRate
   const revenueAud = averageCustomers * priceAud;
   const contributionAud = revenueAud - averageCustomers * variableCostAud;
   const netCashFlowAud = contributionAud - fixedCostAud - acquisitionSpendAud;
-  return { churned, closingCustomers, averageCustomers, revenueAud, contributionAud, netCashFlowAud, closingCashAud: openingCashAud + netCashFlowAud,
-    assumedCacAud: newCustomers > 0 ? acquisitionSpendAud / newCustomers : null,
-    steadyStateLtvAud: monthlyChurnRate > 0 ? (priceAud - variableCostAud) / monthlyChurnRate : null };
+  const closingCashAud = openingCashAud + netCashFlowAud;
+  const assumedCacAud = newCustomers > 0 ? acquisitionSpendAud / newCustomers : null;
+  const steadyStateLtvAud = monthlyChurnRate > 0 ? (priceAud - variableCostAud) / monthlyChurnRate : null;
+  const outputs = [churned, closingCustomers, averageCustomers, revenueAud, contributionAud,
+    netCashFlowAud, closingCashAud, assumedCacAud, steadyStateLtvAud];
+  // Finite inputs can still overflow when multiplied or divided. Never
+  // present Infinity/NaN as a meaningful financial projection.
+  if (outputs.some(v => v !== null && !Number.isFinite(v))) {
+    throw new RangeError('Scenario output exceeds numeric range');
+  }
+  return { churned, closingCustomers, averageCustomers, revenueAud, contributionAud,
+    netCashFlowAud, closingCashAud, assumedCacAud, steadyStateLtvAud };
 }
