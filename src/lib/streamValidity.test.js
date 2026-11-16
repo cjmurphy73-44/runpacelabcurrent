@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { hasVerifiedStreams, analyticsEligible } from './streamValidity.js';
+import { isUsableTelemetry } from '../../base44/shared/streamValidity.ts';
 
 const makeSession = (sample) => ({
   duration_seconds: 120,
@@ -7,6 +8,19 @@ const makeSession = (sample) => ({
 });
 
 describe('stream evidence parity with backend', () => {
+  it('matches the backend gate for representative synthetic provider recordings', () => {
+    const cases = [
+      makeSession(() => ({ heart_rate: 140 })),
+      makeSession(() => ({ power: 220 })),
+      makeSession(i => i % 3 === 0 ? { heart_rate: 140 } : i % 3 === 1 ? { power: 220 } : {}),
+      makeSession(() => ({ heart_rate: '140', power: 0 })),
+      makeSession(i => ({ heart_rate: i % 2 === 0 ? 140 : null })),
+      makeSession(i => ({ power: i % 2 === 0 ? 220 : null })),
+    ];
+    for (const session of cases) {
+      expect(hasVerifiedStreams(session)).toBe(isUsableTelemetry(session.streams, session.duration_seconds));
+    }
+  });
   it('accepts dense heart-rate telemetry', () => {
     expect(hasVerifiedStreams(makeSession(() => ({ heart_rate: 140 })))).toBe(true);
   });
