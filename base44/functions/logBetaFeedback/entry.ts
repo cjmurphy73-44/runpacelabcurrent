@@ -7,11 +7,12 @@
 // only admins can read all of them for triage.
 
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.44';
+import { readSupportJson, SupportBodyError } from '../../shared/supportRequestBody.ts';
 
 export default async function (req: Request): Promise<Response> {
   try {
+    const body = await readSupportJson(req);
     const base44 = createClientFromRequest(req);
-    const body = await req.json().catch(() => ({}));
 
     const feedback_type = body.feedback_type === 'idea' ? 'idea'
       : body.feedback_type === 'other' ? 'other'
@@ -33,6 +34,9 @@ export default async function (req: Request): Promise<Response> {
 
     return Response.json({ success: true, id: record.id });
   } catch (error) {
+    if (error instanceof SupportBodyError) {
+      return Response.json({ error: error.message }, { status: error.status });
+    }
     // The SDK exception may contain submitted health, contact or tenant data.
     // Log only the handler name; do not emit raw exception text or request data.
     console.error('logBetaFeedback: submission failed');
