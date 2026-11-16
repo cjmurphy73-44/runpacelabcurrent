@@ -34,6 +34,7 @@ export default async function (req: Request): Promise<Response> {
     return Response.json({ success: true, id: record.id });
   } catch (error) {
     console.error('logBetaFeedback', error.message);
-    return Response.json({ error: error.message }, { status: 500 });
+    // Public submissions must not disclose internal SDK, database or tenant errors.
+    return Response.json({ error: 'Support request could not be confirmed' }, { status: 500 });
   }
 }
