@@ -39,7 +39,7 @@ test('rejects fractional and unsafe customer counts without inventing a cohort',
 test('rejects finite inputs whose derived revenue, cash or LTV overflow', () => {
   for (const patch of [
     { openingCustomers: 100, newCustomers: 0, priceAud: 1e308 },
-    { openingCashAud: 1e308, fixedCostAud: 1e308, acquisitionSpendAud: 1e308 },
+    { variableCostAud: 1e308, fixedCostAud: 1e308, acquisitionSpendAud: 1e308 },
     { priceAud: 1e308, monthlyChurnRate: Number.MIN_VALUE },
   ]) {
     expect(() => forecastMonth({ ...input, ...patch })).toThrow(RangeError);
