@@ -16,10 +16,17 @@ export default async function (req: Request): Promise<Response> {
     const feedback_type = body.feedback_type === 'idea' ? 'idea'
       : body.feedback_type === 'other' ? 'other'
       : 'bug';
-    const message = String(body.message || '').slice(0, 4000);
-    if (!message.trim()) return Response.json({ error: 'message is required' }, { status: 400 });
-
-    const contact_email = body.contact_email ? String(body.contact_email).slice(0, 200) : undefined;
+    // Reject oversized reports before service-role persistence. Silent truncation
+    // loses incident evidence and can make an unsafe submission look complete.
+    if (typeof body.message !== 'string' || !body.message.trim()) {
+      return Response.json({ error: 'message is required' }, { status: 400 });
+    }
+    if (body.message.length > 4000 || (body.contact_email != null &&
+        (typeof body.contact_email !== 'string' || body.contact_email.length > 200))) {
+      return Response.json({ error: 'support fields exceed allowed length' }, { status: 400 });
+    }
+    const message = body.message;
+    const contact_email = body.contact_email || undefined;
     const route = body.route ? String(body.route).slice(0, 300) : undefined;
 
     // Use asServiceRole so public (unauthenticated) support submissions from the
