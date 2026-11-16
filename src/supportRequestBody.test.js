@@ -43,6 +43,17 @@ describe('anonymous support request byte ceiling', () => {
     await rejectStatus(request(''), 400);
     await rejectStatus(request(new Uint8Array([0xff])), 400);
   });
+  it('rejects a locked request body with a controlled 400', async () => {
+    const req = request('{"message":"test"}');
+    const reader = req.body.getReader();
+    try { await rejectStatus(req, 400); }
+    finally { reader.releaseLock(); }
+  });
+  it('rejects an already consumed request body with a controlled 400', async () => {
+    const req = request('{"message":"test"}');
+    await req.text();
+    await rejectStatus(req, 400);
+  });
   it('exposes only fixed public errors', () => {
     expect(new SupportBodyError(413).message).toBe('Request body too large');
     expect(new SupportBodyError(400).message).toBe('Invalid request body');
