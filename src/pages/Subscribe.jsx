@@ -35,19 +35,24 @@ export default function Subscribe() {
   }, [params, refresh]);
 
   const openBillingPortal = async () => {
+    // In framed previews, reserve the tab synchronously while the click still
+    // has user activation. Opening after the network await is popup-blocked.
+    const isFramed = window.self !== window.top;
+    const portalTab = isFramed ? window.open("", "_blank") : null;
+    if (isFramed && !portalTab) {
+      toast({ title: "Allow popups to open billing.", variant: "destructive" });
+      return;
+    }
+    if (portalTab) portalTab.opener = null;
     setPortalBusy(true);
     try {
       const res = await base44.functions.invoke("stripeBillingPortal", {});
       const url = trustedStripeBillingUrl(res?.data?.url, "portal");
       if (!url) throw new Error("Invalid billing portal destination");
-      const isFramed = window.self !== window.top;
-      if (isFramed) {
-        const tab = window.open(url, "_blank");
-        if (!tab) toast({ title: "Allow popups to open billing.", variant: "destructive" });
-      } else {
-        window.location.assign(url);
-      }
+      if (portalTab) portalTab.location.replace(url);
+      else window.location.assign(url);
     } catch (e) {
+      portalTab?.close();
       toast({ title: "Could not open billing portal", description: e.message, variant: "destructive" });
     } finally {
       setPortalBusy(false);
