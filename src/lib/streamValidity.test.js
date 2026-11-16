@@ -39,6 +39,16 @@ describe('stream evidence parity with backend', () => {
   it('rejects numeric strings and non-positive values as measured channels', () => {
     expect(hasVerifiedStreams(makeSession(() => ({ heart_rate: '140', power: 0 })))).toBe(false);
   });
+  it('rejects non-finite heart rate and power as measured evidence in both gates', () => {
+    for (const value of [Infinity, -Infinity, NaN]) {
+      const session = makeSession(() => ({ heart_rate: value, power: value }));
+      expect(hasVerifiedStreams(session)).toBe(false);
+      expect(isUsableTelemetry(session.streams, session.duration_seconds)).toBe(false);
+    }
+    const valid = makeSession(() => ({ heart_rate: 145, power: 0 }));
+    expect(hasVerifiedStreams(valid)).toBe(true);
+    expect(isUsableTelemetry(valid.streams, valid.duration_seconds)).toBe(true);
+  });
   it('rejects sparse timestamps despite channel coverage', () => {
     const session = makeSession(() => ({ heart_rate: 140 }));
     session.streams = session.streams.map((p, i) => ({ ...p, time: i * 10 }));
