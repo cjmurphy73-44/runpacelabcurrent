@@ -102,7 +102,7 @@ export default function Support() {
               <CheckCircle2 className="w-12 h-12 text-success mx-auto mb-4" />
               <h2 className="font-heading text-xl font-semibold">Thanks, message received</h2>
               <p className="mt-2 text-sm text-muted-foreground">
-                Your report has been saved. A reply is not guaranteed{email ? `, but you provided ${email} for possible follow-up` : ""}. For billing issues, you can also manage your subscription directly from the billing portal.
+                Your report has been saved. A reply is not guaranteed. For billing issues, you can also manage your subscription directly from the billing portal.
               </p>
               <div className="flex flex-col sm:flex-row gap-2 justify-center mt-6">
                 <Button asChild variant="outline">
