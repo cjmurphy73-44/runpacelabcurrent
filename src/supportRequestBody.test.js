@@ -11,10 +11,19 @@ describe('anonymous support request byte ceiling', () => {
     await expect(readSupportJson(request(JSON.stringify({ message: 'test' })))).resolves.toEqual({ message: 'test' });
   });
   it('rejects over-limit Content-Length before consuming body', async () => {
-    await rejectStatus(request('{}', { 'content-length': String(MAX_SUPPORT_BODY_BYTES + 1) }), 413);
+    const req = request('{}', { 'content-length': String(MAX_SUPPORT_BODY_BYTES + 1) });
+    await rejectStatus(req, 413);
+    expect(req.body.locked).toBe(false); // Header precheck must not acquire a body reader.
   });
   it('rejects actual oversized bytes even when declared length is smaller', async () => {
-    await rejectStatus(request(JSON.stringify({ message: 'x'.repeat(MAX_SUPPORT_BODY_BYTES) })), 413);
+    await rejectStatus(request(JSON.stringify({ message: 'x'.repeat(MAX_SUPPORT_BODY_BYTES) }), { 'content-length': '1' }), 413);
+  });
+  it('accepts exactly the byte ceiling with no declared length', async () => {
+    const prefix = '{"message":"';
+    const suffix = '"}';
+    const body = prefix + 'x'.repeat(MAX_SUPPORT_BODY_BYTES - prefix.length - suffix.length) + suffix;
+    expect(new TextEncoder().encode(body).byteLength).toBe(MAX_SUPPORT_BODY_BYTES);
+    await expect(readSupportJson(request(body))).resolves.toMatchObject({ message: expect.any(String) });
   });
   it('counts multibyte UTF-8 bytes rather than characters', async () => {
     await rejectStatus(request(JSON.stringify({ message: 'é'.repeat(MAX_SUPPORT_BODY_BYTES / 2) })), 413);
