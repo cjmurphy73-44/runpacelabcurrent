@@ -34,6 +34,14 @@ describe("verified telemetry gate", () => {
     expect(hasVerifiedStreams({ duration_seconds: 3600, streams: stream() })).toBe(false);
   });
 
+  it("rejects coercible but unmeasured timestamps", () => {
+    for (const invalidTime of [null, "", " ", true, "30", -1]) {
+      const points = stream();
+      points[30].time = invalidTime;
+      expect(hasVerifiedStreams({ duration_seconds: 120, streams: points })).toBe(false);
+    }
+  });
+
   it("rejects invalid timestamps rather than claiming measured time in zone", () => {
     const bad = stream();
     bad[7].time = "invalid";
