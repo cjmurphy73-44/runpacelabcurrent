@@ -1,10 +1,11 @@
 import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
 
 // Source-contract regression: this guards the UI/server trust boundary without
 // invoking Base44 or Stripe. It is not a substitute for an isolated handler test.
-const subscribe = readFileSync(new URL('../pages/Subscribe.jsx', import.meta.url), 'utf8');
-const checkout = readFileSync(new URL('../../base44/functions/stripeCheckout/entry.ts', import.meta.url), 'utf8');
+const subscribe = readFileSync(resolve(process.cwd(), 'src/pages/Subscribe.jsx'), 'utf8');
+const checkout = readFileSync(resolve(process.cwd(), 'base44/functions/stripeCheckout/entry.ts'), 'utf8');
 
 describe('checkout identity provenance contract', () => {
   it('sends only the selected plan from the client', () => {
