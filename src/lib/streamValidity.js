@@ -11,8 +11,8 @@ export function hasVerifiedStreams(session) {
   let measured = 0;
 
   for (const point of stream) {
-    const time = Number(point?.time);
-    if (!Number.isFinite(time) || time <= previous) return false;
+    const time = point?.time;
+    if (typeof time !== 'number' || !Number.isFinite(time) || time < 0 || time <= previous) return false;
     previous = time;
     const hr = Number(point?.heart_rate);
     const power = Number(point?.power);
