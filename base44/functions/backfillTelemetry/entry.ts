@@ -18,6 +18,7 @@ import { resolveSessionLoad } from '../../shared/loadModel.ts';
 import { recomputeCTLATLTSB } from '../../shared/ctlRecalc.ts';
 import { assertSafeFileUrl } from '../../shared/urlGuard.ts';
 import { isUsableTelemetry } from '../../shared/streamValidity.ts';
+import { isBackfillCandidate } from '../../shared/backfillCandidates.ts';
 import { garminConfig, refreshGarminToken } from '../../shared/garminAuth.ts';
 import { corosAccessToken, queryCorosRecords, downloadCorosFit } from '../../shared/corosMcp.ts';
 
@@ -30,18 +31,9 @@ function storageStream(stream) {
   }));
 }
 
-function hasUsableStream(session) {
-  return Array.isArray(session.streams) && session.streams.length > 10;
-}
-
-// A session needs work when it holds a stale synthetic zone split to clear, or when it
-// has no per-second stream but a raw file to refetch. A summary-only session with no
-// attached file can never gain zones, so it is not re-scanned on every run.
-function isCandidate(session) {
-  if (session.zone_method === 'average' || session.zone_method === 'laps') return true;
-  if (hasUsableStream(session)) return false;
-  return Boolean(session.raw_file_url);
-}
+// Include identifiable COROS summary sessions: the provider can still retain the
+// original FIT even when no raw file URL was saved with the session.
+const isCandidate = isBackfillCandidate;
 
 function typeFromName(name) {
   const n = String(name || '').toLowerCase();
