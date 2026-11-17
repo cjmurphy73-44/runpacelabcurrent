@@ -1,7 +1,6 @@
 import React, { useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { base44 } from "@/api/base44Client";
-import { useAuth } from "@/lib/AuthContext";
 import { useSubscription } from "@/hooks/useSubscription";
 import { useToast } from "@/components/ui/use-toast";
 import { Button } from "@/components/ui/button";
@@ -14,7 +13,6 @@ import { PLAN_DETAILS, PLAN_TIERS } from "@/lib/subscriptionFeatures";
 import { billingReturnNotice, freePlanAction } from "@/lib/billingReturnNotice";
 
 export default function Subscribe() {
-  const { user } = useAuth();
   const { plan: currentPlan, isPro, refresh } = useSubscription();
   const { toast } = useToast();
   const [busy, setBusy] = useState(null);
@@ -68,7 +66,7 @@ export default function Subscribe() {
     setBusy(tier);
     try {
       base44.analytics.track({ eventName: "checkout_started", properties: { plan: tier } });
-      const res = await base44.functions.invoke("stripeCheckout", { plan: tier, user_id: user?.id });
+      const res = await base44.functions.invoke("stripeCheckout", { plan: tier });
       const url = res?.data?.url;
       if (!url) throw new Error("No checkout URL returned");
       if (checkoutTab) checkoutTab.location.replace(url);
