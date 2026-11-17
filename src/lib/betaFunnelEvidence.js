@@ -2,7 +2,7 @@
 // Counts must be independently verified, unique users in one fixed cohort/window.
 // Null is "not measurable", never a fabricated zero-percent conversion.
 export const BETA_FUNNEL_STAGES = Object.freeze([
-  'landing', 'signup', 'connected', 'trusted_workout', 'returning_week_one', 'paid',
+  'landing', 'signup', 'connected', 'trusted_workout', 'returning_week_one', 'paid_after_week_one',
 ]);
 
 export function evaluateBetaFunnel(counts, { evidenceVerified = false, minimumCohort = 10 } = {}) {
