@@ -19,8 +19,10 @@ export function boundedRecordingPreview(stream, maxSamples = 3600) {
   const samples = count <= maxSamples
     ? stream.slice()
     : Array.from({ length: maxSamples }, (_, index) => stream[Math.floor(index * (count - 1) / (maxSamples - 1))]);
+  // The preview is a separate payload: callers must not mutate original FIT samples.
+  const previewSamples = samples.map((sample) => ({ ...sample }));
   return {
-    samples,
+    samples: previewSamples,
     provenance: {
       original_samples: count,
       stored_samples: samples.length,
