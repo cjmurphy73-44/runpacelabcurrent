@@ -11,8 +11,8 @@ export function boundedRecordingPreview(stream, maxSamples = 3600) {
   // Do not accept unordered or synthetic timestamps as a truthful time preview.
   let previous = -Infinity;
   for (const sample of stream) {
-    if (typeof sample?.time !== 'number' || !Number.isFinite(sample.time) || sample.time <= previous) {
-      throw new TypeError('Recording timestamps must be finite and strictly increasing');
+    if (typeof sample?.time !== 'number' || !Number.isFinite(sample.time) || sample.time < 0 || sample.time <= previous) {
+      throw new TypeError('Recording timestamps must be nonnegative, finite and strictly increasing');
     }
     previous = sample.time;
   }
