@@ -7,7 +7,7 @@ import ts from 'typescript';
 // Execute the actual backend handler with an injected in-memory SDK. Never
 // import the remote npm: SDK or create a real Base44 client.
 const source = readFileSync(
-  new URL('../../base44/functions/logBetaFeedback/entry.ts', import.meta.url),
+  new URL('../base44/functions/logBetaFeedback/entry.ts', import.meta.url),
   'utf8',
 );
 const compiled = ts.transpileModule(source, {
