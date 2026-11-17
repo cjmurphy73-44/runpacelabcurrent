@@ -32,6 +32,16 @@ describe('bounded COROS recording preview', () => {
     expect(() => boundedRecordingPreview(recording(3), 1)).toThrow();
     expect(() => boundedRecordingPreview(recording(3), 99999)).toThrow();
   });
+  it('keeps preview sample edits isolated from the original FIT stream', () => {
+    for (const count of [3, 7201]) {
+      const original = recording(count);
+      const preview = boundedRecordingPreview(original);
+      expect(preview.samples[0]).not.toBe(original[0]);
+      preview.samples[0].heart_rate = 999;
+      expect(original[0].heart_rate).toBe(130);
+      expect(original[0].time).toBe(0);
+    }
+  });
   it('handles empty recordings without invented timestamps', () => {
     expect(boundedRecordingPreview([]).provenance).toEqual({ original_samples: 0, stored_samples: 0, complete: true, first_time: null, last_time: null });
   });
