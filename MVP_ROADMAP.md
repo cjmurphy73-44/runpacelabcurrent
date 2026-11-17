@@ -163,16 +163,18 @@ Track: connect completion, first-sync success, repeat-sync success, duplicate ra
 
 ---
 
-## 5. Validating without a staging environment
+## 5. Validation while staging isolation remains unverified
+
+**Fail-closed acceptance policy:** Until a separate Base44 backend, authentication, data store, functions, secrets and SDK routing are independently evidenced, only offline deterministic fixtures, mocked handlers and network-denied synthetic browser tests are permitted. Preview must not access production services. Read-only published-app observation may be documented separately when explicitly authorized, but it is not a substitute for isolated acceptance. Real-provider accounts, authenticated write-path probes, Stripe test-mode integration and any live purchase/refund require separate explicit approval and an independently verified isolated environment; never use production athlete or payment records as fixtures.
 
 | Layer | Method | Risk controller |
 |---|---|---|
 | Math | Existing `vitest` suites plus new fixtures per `load_basis` path | Fixtures are deterministic files, never live payloads |
-| Ingestion | Push synthetic FIT/TCX/CSV through `ingestWorkoutFile` against a dedicated internal test athlete | Test athlete is excluded from any published metric |
-| Provider flows | Real Garmin and COROS accounts on the published app | Guard against duplicate pushes with `WebhookEvent` idempotency; never run destructive tests on real athlete rows |
-| Billing | Test mode first, then a single live purchase, then refund | Live charge only after test-mode lifecycle passes |
-| Privacy | Two-account SDK probes | Evidence recorded per probe, not inferred from RLS source |
-| Runtime errors | Dashboard Logs plus `logErrorToAirtable` | Check after each phase, not only at launch |
+| Ingestion | Execute synthetic FIT/TCX/CSV fixtures against mocked `ingestWorkoutFile` handlers in an isolated runner | Deny external requests; no Base44 write or real athlete record |
+| Provider flows | Mock Garmin/COROS callbacks, retries and duplicate events with synthetic identities | No live OAuth, webhook or account access; real-provider acceptance remains blocked pending verified isolation and separate approval |
+| Billing | Exercise mocked checkout, portal, signed-event and entitlement lifecycle fixtures offline | No Stripe sessions, charges, refunds or production calls; real test-mode and live acceptance require separately approved isolation |
+| Privacy | Run synthetic two-identity ownership/RLS negative cases against mocked SDK or isolated test doubles | No real accounts or production records; backend isolation and authenticated acceptance remain unverified |
+| Runtime errors | Inspect isolated test-run diagnostics and mocked `logErrorToAirtable` outcomes | No live Airtable or Base44 function invocation; published telemetry is a separate, approved read-only evidence gate |
 
 Explicit non-assumption: a passing source review is never a pass. Preview sandbox instability is a known issue, so a browser check that fails to load is recorded as unverified, not as a defect and not as a success.
 
