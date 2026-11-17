@@ -60,7 +60,7 @@ const STEPS = [
 ];
 
 const FAQ = [
-  { q: "Do I need a paid plan to try it?", a: "No. The free tier gives you the dashboard, physiology lab, wearable sync with 90 days of history, 10 file imports a day, and 20 AI coach messages a week. Upgrade only when you want full history, adaptive re-planning, and structured workout export." },
+  { q: "Do I need a paid plan to try it?", a: "No. You can start on the free plan and explore the dashboard, supported workout imports and available connections. Limits and included features depend on the current plan and provider availability; review Plans & billing before upgrading. Paid access is confirmed by your account subscription, not a checkout return link." },
   { q: "Which wearables are supported?", a: "COROS has a connection flow; check its current connection and sync status in Settings. Garmin and other recovery connections depend on provider setup and availability. Direct Strava sync is not available yet. You can upload supported FIT, TCX and CSV workout files or log workouts and recovery manually." },
   { q: "Is this only for runners?", a: "No. TrainPaceLab is multi-sport, running, cycling, swimming, triathlon, and strength all feed the same physiology model so your training load reflects everything you do." },
   { q: "How does the physiology model work?", a: "Standard platforms model fitness as a single exponential curve of past mileage. TrainPaceLab distinguishes the metabolic and autonomic cost of different session types, threshold work, aerobic volume, VO2max intervals, so your training load reflects what your body actually experienced, not just how many minutes you ran." },
