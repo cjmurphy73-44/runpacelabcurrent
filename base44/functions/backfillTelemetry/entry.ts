@@ -19,6 +19,7 @@ import { recomputeCTLATLTSB } from '../../shared/ctlRecalc.ts';
 import { assertSafeFileUrl } from '../../shared/urlGuard.ts';
 import { isUsableTelemetry } from '../../shared/streamValidity.ts';
 import { isBackfillCandidate } from '../../shared/backfillCandidates.ts';
+import { matchingCorosRecordForBackfill } from '../../shared/corosActivityIdentity.ts';
 import { garminConfig, refreshGarminToken } from '../../shared/garminAuth.ts';
 import { corosAccessToken, queryCorosRecords, downloadCorosFit } from '../../shared/corosMcp.ts';
 
@@ -150,16 +151,11 @@ async function corosFileFor(base44, athlete, session) {
   let records;
   try { records = await queryCorosRecords(accessToken, fmt(from), fmt(to)); } catch { return null; }
 
-  const targetMinutes = Number(session.duration_minutes) || 0;
-  const candidates = records.filter((r) => r.label_id && r.date === day && (!r.sport || r.sport === session.sport));
-  if (!candidates.length) return null;
-  // A day can hold several sessions and the report duration is rounded, so the closest
-  // duration wins rather than requiring an exact match.
-  const best = candidates.reduce((a, b) =>
-    Math.abs((a.duration_seconds || 0) / 60 - targetMinutes) <= Math.abs((b.duration_seconds || 0) / 60 - targetMinutes) ? a : b);
-  if (Math.abs((best.duration_seconds || 0) / 60 - targetMinutes) > 5) return null;
-
-  try { return await downloadCorosFit(accessToken, best.label_id, best.sport_type); } catch { return null; }
+  // A nearest-duration match can silently assign another same-day workout's
+  // telemetry. Historical sessions without exact identity stay summary-only.
+  const match = matchingCorosRecordForBackfill(session, records);
+  if (!match) return null;
+  try { return await downloadCorosFit(accessToken, match.label_id, match.sport_type); } catch { return null; }
 }
 
 function sortKey(s) {
