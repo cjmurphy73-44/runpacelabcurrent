@@ -5,7 +5,7 @@
 Three decisions shape everything below:
 
 1. **Separate load models.** Verified-stream load and summary-derived load are stored, aggregated and displayed as distinct things. Summary sessions stay in activity history and may carry a clearly labelled load, but they never become stream analytics.
-2. **No staging environment.** Validation runs in the current published app with deterministic fixtures plus real provider accounts. Provider-risk is managed with a dedicated internal test athlete, not with a second app.
+2. **Isolated validation before publication.** Run deterministic fixtures and synthetic negative-case tests in an isolated executable environment with external calls denied. A separate Base44 staging backend is not yet independently verified; previews must fail closed rather than use production data, OAuth, payments or privileged functions. Real-provider acceptance requires a separately approved isolated test account and verified backend separation. Do not run destructive, payment or experimental tests against the published application. Record source CI, deployment and verified-live acceptance as distinct evidence.
 3. **MVP value first.** Sequence by athlete-visible value and revenue risk, not by the original seven-PR directive order.
 
 Status legend: ✅ done and evidenced · 🟡 partly done or unverified · ❌ not started · ⛔ blocked.
@@ -86,7 +86,7 @@ Indicative effort assumes one developer.
 ### P0: Baseline and fixtures (1 day)
 Capture the current state before changing it, so every later gate has a reference.
 
-- Record current Garmin and COROS connection rows, sync timestamps, session counts, and `WebhookEvent` counts for the internal test athlete.
+- Record a synthetic baseline of mocked Garmin/COROS connection states, sync timestamps, session counts and `WebhookEvent` identities. Any existing production counts require separately approved read-only evidence collection; do not query or mutate real athlete rows for fixtures.
 - Run the existing suites (`src/science/__tests__/*`, `src/math/*.test.ts`, `npx vitest run`) and record the pass baseline.
 - Add FIT, TCX and CSV fixtures to `src/science/goldencases/` covering: full stream, header-only file, corrupt header, laps without stream, summary payload with no file.
 
@@ -133,11 +133,11 @@ One loop, done well: readiness and context, today's recommendation, post-workout
 
 ### P4: Paid access that can be trusted (4 to 6 days)
 
-- Test-mode lifecycle first: checkout, `stripeWebhook` provisioning with confirmed payment status and matching amount and currency, cancellation, failed payment, billing portal.
+- Verify checkout, `stripeWebhook` provisioning, amount/currency checks, cancellation, failed payment and billing portal with mocked synthetic events first. Stripe test-mode integration is blocked until isolation is independently proven and separately approved.
 - Confirm the webhook ignores `base44_test_checkout: "true"` sessions, and that `checkout.session.completed` without confirmed payment grants nothing.
 - Entitlements read from `Subscription` server-side only. `FEATURE` gating already exists via `useSubscription` / `FeatureGate`; verify it cannot be bypassed client-side.
 - Plan copy matches reality: do not sell Garmin if P1 showed it is not usable for new accounts.
-- One live purchase on the published domain, then a refund and cancellation to prove the reverse path.
+- Defer any live purchase, refund or cancellation until a separate, explicitly approved release acceptance plan after isolated test-mode lifecycle evidence; never perform transactions as part of this development phase.
 
 **Gate:** a real customer can pay, receives exactly the advertised access, and can cancel; an inactive subscription loses access on the next request.
 
@@ -163,16 +163,18 @@ Track: connect completion, first-sync success, repeat-sync success, duplicate ra
 
 ---
 
-## 5. Validating without a staging environment
+## 5. Validation while staging isolation remains unverified
+
+**Fail-closed acceptance policy:** Until a separate Base44 backend, authentication, data store, functions, secrets and SDK routing are independently evidenced, only offline deterministic fixtures, mocked handlers and network-denied synthetic browser tests are permitted. Preview must not access production services. Read-only published-app observation may be documented separately when explicitly authorized, but it is not a substitute for isolated acceptance. Real-provider accounts, authenticated write-path probes, Stripe test-mode integration and any live purchase/refund require separate explicit approval and an independently verified isolated environment; never use production athlete or payment records as fixtures.
 
 | Layer | Method | Risk controller |
 |---|---|---|
 | Math | Existing `vitest` suites plus new fixtures per `load_basis` path | Fixtures are deterministic files, never live payloads |
-| Ingestion | Push synthetic FIT/TCX/CSV through `ingestWorkoutFile` against a dedicated internal test athlete | Test athlete is excluded from any published metric |
-| Provider flows | Real Garmin and COROS accounts on the published app | Guard against duplicate pushes with `WebhookEvent` idempotency; never run destructive tests on real athlete rows |
-| Billing | Test mode first, then a single live purchase, then refund | Live charge only after test-mode lifecycle passes |
-| Privacy | Two-account SDK probes | Evidence recorded per probe, not inferred from RLS source |
-| Runtime errors | Dashboard Logs plus `logErrorToAirtable` | Check after each phase, not only at launch |
+| Ingestion | Execute synthetic FIT/TCX/CSV fixtures against mocked `ingestWorkoutFile` handlers in an isolated runner | Deny external requests; no Base44 write or real athlete record |
+| Provider flows | Mock Garmin/COROS callbacks, retries and duplicate events with synthetic identities | No live OAuth, webhook or account access; real-provider acceptance remains blocked pending verified isolation and separate approval |
+| Billing | Exercise mocked checkout, portal, signed-event and entitlement lifecycle fixtures offline | No Stripe sessions, charges, refunds or production calls; real test-mode and live acceptance require separately approved isolation |
+| Privacy | Run synthetic two-identity ownership/RLS negative cases against mocked SDK or isolated test doubles | No real accounts or production records; backend isolation and authenticated acceptance remain unverified |
+| Runtime errors | Inspect isolated test-run diagnostics and mocked `logErrorToAirtable` outcomes | No live Airtable or Base44 function invocation; published telemetry is a separate, approved read-only evidence gate |
 
 Explicit non-assumption: a passing source review is never a pass. Preview sandbox instability is a known issue, so a browser check that fails to load is recorded as unverified, not as a defect and not as a success.
 
@@ -191,7 +193,7 @@ Explicit non-assumption: a passing source review is never a pass. Preview sandbo
 
 | Original PR | Lands in | Note |
 |---|---|---|
-| PR 1 Staging isolation and webhook guards | P0 and P1 | No staging app; guards become idempotency and test-athlete isolation |
+| PR 1 Staging isolation and webhook guards | P0 and P1 | Staging backend isolation is unverified; fail closed until separate auth, data, functions, secrets and routing are evidenced |
 | PR 2 Math and test suite parity | P0 and P2 | Fixtures plus per-basis load tests |
 | PR 3 Server authorization and RLS | P5 | Two-account probe is the gate, RLS is already largely in place |
 | PR 4 Stripe billing isolation | P4 | Event-id idempotency already implemented; paid-state and amount matching are the gaps |
