@@ -16,6 +16,19 @@ describe('HR zone recording discontinuities', () => {
     expect(result.zone_seconds.reduce((a, b) => a + b, 0)).toBe(2);
   });
 
+  it('does not carry pre-pause HR into post-pause missing readings', () => {
+    const result = timeInZoneFromStream([
+      { time: 0, heart_rate: 140 },
+      { time: 1, heart_rate: 140 },
+      { time: 301, heart_rate: null },
+      { time: 302, heart_rate: null },
+      { time: 303, heart_rate: 150 },
+    ], 60, 180);
+    expect(result.total_seconds).toBe(3);
+    expect(result.covered_seconds).toBe(2);
+    expect(result.zone_seconds.reduce((a, b) => a + b, 0)).toBe(2);
+  });
+
   it('preserves real intervals up to and including 60 seconds', () => {
     const result = timeInZoneFromStream([
       { time: 0, heart_rate: 120 },
