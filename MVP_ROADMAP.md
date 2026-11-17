@@ -86,7 +86,7 @@ Indicative effort assumes one developer.
 ### P0: Baseline and fixtures (1 day)
 Capture the current state before changing it, so every later gate has a reference.
 
-- Record current Garmin and COROS connection rows, sync timestamps, session counts, and `WebhookEvent` counts for the internal test athlete.
+- Record a synthetic baseline of mocked Garmin/COROS connection states, sync timestamps, session counts and `WebhookEvent` identities. Any existing production counts require separately approved read-only evidence collection; do not query or mutate real athlete rows for fixtures.
 - Run the existing suites (`src/science/__tests__/*`, `src/math/*.test.ts`, `npx vitest run`) and record the pass baseline.
 - Add FIT, TCX and CSV fixtures to `src/science/goldencases/` covering: full stream, header-only file, corrupt header, laps without stream, summary payload with no file.
 
@@ -133,11 +133,11 @@ One loop, done well: readiness and context, today's recommendation, post-workout
 
 ### P4: Paid access that can be trusted (4 to 6 days)
 
-- Test-mode lifecycle first: checkout, `stripeWebhook` provisioning with confirmed payment status and matching amount and currency, cancellation, failed payment, billing portal.
+- Verify checkout, `stripeWebhook` provisioning, amount/currency checks, cancellation, failed payment and billing portal with mocked synthetic events first. Stripe test-mode integration is blocked until isolation is independently proven and separately approved.
 - Confirm the webhook ignores `base44_test_checkout: "true"` sessions, and that `checkout.session.completed` without confirmed payment grants nothing.
 - Entitlements read from `Subscription` server-side only. `FEATURE` gating already exists via `useSubscription` / `FeatureGate`; verify it cannot be bypassed client-side.
 - Plan copy matches reality: do not sell Garmin if P1 showed it is not usable for new accounts.
-- One live purchase on the published domain, then a refund and cancellation to prove the reverse path.
+- Defer any live purchase, refund or cancellation until a separate, explicitly approved release acceptance plan after isolated test-mode lifecycle evidence; never perform transactions as part of this development phase.
 
 **Gate:** a real customer can pay, receives exactly the advertised access, and can cancel; an inactive subscription loses access on the next request.
 
@@ -193,7 +193,7 @@ Explicit non-assumption: a passing source review is never a pass. Preview sandbo
 
 | Original PR | Lands in | Note |
 |---|---|---|
-| PR 1 Staging isolation and webhook guards | P0 and P1 | No staging app; guards become idempotency and test-athlete isolation |
+| PR 1 Staging isolation and webhook guards | P0 and P1 | Staging backend isolation is unverified; fail closed until separate auth, data, functions, secrets and routing are evidenced |
 | PR 2 Math and test suite parity | P0 and P2 | Fixtures plus per-basis load tests |
 | PR 3 Server authorization and RLS | P5 | Two-account probe is the gate, RLS is already largely in place |
 | PR 4 Stripe billing isolation | P4 | Event-id idempotency already implemented; paid-state and amount matching are the gaps |
