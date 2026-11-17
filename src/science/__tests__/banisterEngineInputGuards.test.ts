@@ -25,7 +25,9 @@ describe('Banister model input provenance guards', () => {
     expect(a).toEqual(b);
     expect(a.ctl).toBeLessThan(valid.ctl);
     expect(a.atl).toBeLessThan(valid.atl);
-    expect(a.tsb).toBeCloseTo(a.ctl - a.atl, 2);
+    // TSB uses unrounded CTL/ATL; displayed values are rounded separately.
+    // Independent rounding permits a difference of one hundredth.
+    expect(Math.abs(a.tsb - (a.ctl - a.atl))).toBeLessThanOrEqual(0.010000001);
   });
   it('does not mutate the input state', () => {
     const original = Object.freeze({ ...valid });
