@@ -1,8 +1,8 @@
 import { readFileSync } from "node:fs";
-import { fileURLToPath } from "node:url";
+import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 
-const html = readFileSync(fileURLToPath(new URL("../../../index.html", import.meta.url)), "utf8");
+const html = readFileSync(resolve(process.cwd(), "index.html"), "utf8");
 
 function meta(attribute, key) {
   const escaped = key.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
