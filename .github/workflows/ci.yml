@@ -4,7 +4,7 @@ on:
   push:
     branches: [ main, master, dev ]
   pull_request:
-    branches: [ main, master, dev, fix/support-security-integration-20261116, fix/pr239-static-tests-node-env-20261117 ]
+    branches: [ main, master, dev, fix/support-security-integration-20261116, fix/pr239-static-tests-node-env-20261117, test/tpl-fail-closed-fetch-20261117 ]
 
 permissions:
   contents: read
@@ -31,6 +31,12 @@ jobs:
 
       - name: Install Dependencies
         run: npm ci
+
+      - name: Read-only exact-lockfile dependency audit
+        shell: bash
+        run: |
+          npm audit --json > /tmp/tpl-audit.json || audit_status=$?
+          node -e 'const fs=require("node:fs"); const a=JSON.parse(fs.readFileSync("/tmp/tpl-audit.json","utf8")); if(a.error || !a.vulnerabilities || !a.metadata?.vulnerabilities) { console.error("Audit report unavailable", a.error || "missing vulnerability data"); process.exit(1); } console.log("AUDIT_SUMMARY_JSON=" + JSON.stringify({metadata:a.metadata.vulnerabilities,packages:Object.entries(a.vulnerabilities).map(([name,v])=>({name,severity:v.severity,isDirect:v.isDirect,range:v.range,via:v.via,effects:v.effects,fixAvailable:v.fixAvailable,nodes:v.nodes}))}));'
 
       - name: Run Type Check
         run: npm run typecheck
