@@ -26,6 +26,15 @@ export function calculateNextBanisterState(
   tauCtl: number = 42,
   tauAtl: number = 7
 ): BanisterState {
+  // Invalid source load or decay constants must never propagate NaN/Infinity into
+  // athlete-facing readiness. Reject rather than silently coercing missing data.
+  if (!currentState || !Number.isFinite(currentState.ctl) ||
+      !Number.isFinite(currentState.atl) || !Number.isFinite(currentState.tsb) ||
+      !Number.isFinite(dailyTss) || dailyTss < 0 ||
+      !Number.isFinite(tauCtl) || tauCtl <= 0 ||
+      !Number.isFinite(tauAtl) || tauAtl <= 0) {
+    throw new RangeError('Invalid Banister state, load or time constant');
+  }
   const ctlFactor = 1 - Math.exp(-1 / tauCtl);
   const atlFactor = 1 - Math.exp(-1 / tauAtl);
 
