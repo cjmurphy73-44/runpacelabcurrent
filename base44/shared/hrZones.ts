@@ -55,7 +55,12 @@ export function timeInZoneFromStream(stream, restHr, maxHr) {
     const prev = stream[i - 1] || {};
     if (i > 0) {
       const raw = Number(pt.time) - Number(prev.time);
-      const dt = Number.isFinite(raw) ? Math.min(Math.max(raw, 0), 60) : 0;
+      // A discontinuity longer than 60 seconds is a pause, not 60 seconds of measured exercise.
+      // Never fabricate zone duration across gaps or out-of-order timestamps.
+      const dt = Number.isFinite(raw) && raw > 0 && raw <= 60 ? raw : 0;
+      // Discontinuous timestamps break HR continuity. Missing samples after a
+      // pause must not inherit measurements recorded before that pause.
+      if (dt === 0) lastHr = null;
       if (dt > 0) {
         total += dt;
         const hr = Number.isFinite(pt.heart_rate) && pt.heart_rate > 0 ? pt.heart_rate : lastHr;
