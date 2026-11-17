@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { timeInZoneFromStream, resolveTimeInZone } from '../../../base44/shared/hrZones.ts';
+import { timeInZoneFromStream, resolveTimeInZone } from '../../../base44/shared/hrZones';
 
 describe('HR zone recording discontinuities', () => {
   const profile = { restHr: 60, maxHr: 180 };
