@@ -4,7 +4,7 @@ on:
   push:
     branches: [ main, master, dev ]
   pull_request:
-    branches: [ main, master, dev, fix/support-security-integration-20261116 ]
+    branches: [ main, master, dev, fix/support-security-integration-20261116, fix/pr239-static-tests-node-env-20261117 ]
 
 permissions:
   contents: read

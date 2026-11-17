@@ -3,12 +3,6 @@ import React from 'react';
 import { renderHook, waitFor } from '@testing-library/react';
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 
-beforeEach(() => {
-  globalThis.fetch = vi.fn().mockImplementation(() => 
-    Promise.resolve({ ok: true, json: () => Promise.resolve({}) })
-  );
-});
-
 const mocks = vi.hoisted(() => ({
   authService: {
     getMe: vi.fn(),
@@ -24,6 +18,10 @@ const mocks = vi.hoisted(() => ({
     appBaseUrl: 'https://example.base44.com',
   },
 }));
+
+// AuthContext imports the client but does not call it. Mock the module to
+// prevent SDK initialization, telemetry and transport side effects.
+vi.mock('@/api/base44Client', () => ({ base44: {} }));
 
 vi.mock('@/services/authService', () => ({ authService: mocks.authService }));
 vi.mock('@/lib/app-params', () => ({ appParams: mocks.appParams }));
