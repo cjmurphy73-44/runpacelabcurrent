@@ -6,6 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { UploadCloud } from "lucide-react";
+import { classifyWorkoutUploadReceipt } from "@/lib/workoutUploadReceipt";
 
 // Local-calendar YYYY-MM-DD. Date.toISOString() is UTC, so a morning upload in
 // UTC+10 (Brisbane) would otherwise default to the previous day.
@@ -35,15 +36,14 @@ export default function WorkoutUpload({ athleteId, onUploaded }) {
         sport,
         date,
       });
-      if (res.data?.error) {
-        setStatus({ type: "error", message: res.data.error });
-      } else {
-        setStatus({ type: "success", message: "Workout ingested successfully." });
+      const outcome = classifyWorkoutUploadReceipt(res);
+      setStatus({ type: outcome.kind === "success" ? "success" : "error", message: outcome.message });
+      if (outcome.kind === "success") {
         setFile(null);
-        onUploaded();
+        onUploaded?.();
       }
     } catch (err) {
-      setStatus({ type: "error", message: err.message });
+      setStatus({ type: "error", message: "Upload could not be completed. Check your connection and workout history before retrying." });
     }
     setUploading(false);
   };
@@ -81,7 +81,7 @@ export default function WorkoutUpload({ athleteId, onUploaded }) {
             {uploading ? "Processing..." : "Upload"}
           </Button>
           {status && (
-            <p className={`text-sm ${status.type === "error" ? "text-destructive" : "text-success"}`}>{status.message}</p>
+            <p role="status" aria-live="polite" className={`text-sm ${status.type === "error" ? "text-destructive" : "text-success"}`}>{status.message}</p>
           )}
         </form>
       </CardContent>
