@@ -26,6 +26,9 @@ describe('bounded COROS recording preview', () => {
   it('rejects malformed recording timestamps and unsafe limits', () => {
     expect(() => boundedRecordingPreview([{ time: 1 }, { time: 1 }])).toThrow();
     expect(() => boundedRecordingPreview([{ time: null }])).toThrow();
+    expect(() => boundedRecordingPreview([{ time: -1 }, { time: 0 }])).toThrow();
+    expect(() => boundedRecordingPreview([{ time: -0.5 }])).toThrow();
+    expect(() => boundedRecordingPreview([{ time: 0 }, { time: Infinity }])).toThrow();
     expect(() => boundedRecordingPreview(recording(3), 1)).toThrow();
     expect(() => boundedRecordingPreview(recording(3), 99999)).toThrow();
   });
