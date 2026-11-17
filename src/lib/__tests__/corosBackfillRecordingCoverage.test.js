@@ -1,8 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 import { recordingTruncationNotice } from '../../../base44/shared/recordingTruncationNotice.ts';
 
-const source = readFileSync(new URL('../../../base44/functions/backfillTelemetry/entry.ts', import.meta.url), 'utf8');
+const source = readFileSync(resolve(process.cwd(), 'base44/functions/backfillTelemetry/entry.ts'), 'utf8');
 
 describe('COROS backfill full-duration recording disclosure contract', () => {
   it('returns a separate warning field rather than counting successful recoveries as errors', () => {
