@@ -22,6 +22,7 @@ import { isBackfillCandidate } from '../../shared/backfillCandidates.ts';
 import { matchingCorosRecordForBackfill } from '../../shared/corosActivityIdentity.ts';
 import { garminConfig, refreshGarminToken } from '../../shared/garminAuth.ts';
 import { corosAccessToken, queryCorosRecords, downloadCorosFit } from '../../shared/corosMcp.ts';
+import { recordingTruncationNotice } from '../../shared/recordingTruncationNotice.ts';
 
 const BATCH_SIZE = 25;
 const MAX_STREAM_SAMPLES = 3600;
@@ -273,7 +274,8 @@ async function processSession(base44, athlete, session, restHr, maxHr) {
     }
   }
 
-  return { outcome: 'recovered', updated: true, update, fromProvider };
+  return { outcome: 'recovered', updated: true, update, fromProvider,
+    recording_notice: recordingTruncationNotice(masterStream, MAX_STREAM_SAMPLES) };
 }
 
 async function handlePreview(base44) {
@@ -320,6 +322,7 @@ async function handleRun(base44, athlete_id, cursor) {
   let failed = 0;
   let touched = false;
   const errors = [];
+  const recording_notices = [];
 
   for (const session of chunk) {
     try {
@@ -327,6 +330,7 @@ async function handleRun(base44, athlete_id, cursor) {
       if (res.update && res.updated) {
         await base44.asServiceRole.entities.WorkoutSession.update(session.id, res.update);
         touched = true;
+        if (res.recording_notice) recording_notices.push({ session_id: session.id, notice: res.recording_notice });
       }
       if (res.outcome === 'recovered') recovered++;
       else summaryOnly++;
@@ -352,6 +356,7 @@ async function handleRun(base44, athlete_id, cursor) {
     streams_recovered: recovered,
     summary_only: summaryOnly,
     failed,
+    recording_notices,
     has_more: candidates.length > chunk.length,
     next_cursor: last ? { date: last.date, id: last.id } : null,
     recalculated: recalculated ? { ctl: recalculated.ctl, atl: recalculated.atl, tsb: recalculated.tsb } : null,
