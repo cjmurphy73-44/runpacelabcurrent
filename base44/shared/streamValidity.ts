@@ -14,8 +14,8 @@ export function isUsableTelemetry(stream, durationSeconds) {
   if (!Array.isArray(stream) || stream.length < 60) return false;
   let previous = -Infinity;
   for (const point of stream) {
-    const time = Number(point?.time);
-    if (!Number.isFinite(time) || time <= previous) return false;
+    const time = point?.time;
+    if (typeof time !== 'number' || !Number.isFinite(time) || time < 0 || time <= previous) return false;
     previous = time;
   }
   const span = Number(stream[stream.length - 1].time) - Number(stream[0].time);
