@@ -29,13 +29,8 @@ export const calculateTrainingLoads = (workoutHistory: WorkoutSession[], maxHr: 
   return dailyLoads;
 };
 
-export const getVdotPaceZones = (vdotScore: number) => {
-  // Logic for Jack Daniels VDOT conversion
-  return {
-    easy: "5:00 - 5:30 min/km",
-    marathon: "4:30 - 4:45 min/km",
-    threshold: "4:00 - 4:15 min/km",
-    interval: "3:45 - 3:55 min/km",
-    repetition: "3:30 - 3:40 min/km"
-  };
-};
+// Fail closed: this legacy helper never implemented a VDOT-to-pace model.
+// Returning fixed paces for every athlete misrepresents prescription precision.
+// No production caller currently uses this export; retain the name for
+// compatibility until a validated, provenance-aware server model replaces it.
+export const getVdotPaceZones = (_vdotScore: number): null => null;
