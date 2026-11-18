@@ -2,7 +2,7 @@ import React, { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 
 /** Fixture-friendly, read-only activity trend. Does not derive physiological load. */
-export function summarizeActivityProgress(workouts = [], today = new Date(), historyLimited = false, days = 7) {
+export function summarizeActivityProgress(workouts = [], today = new Date(), days = 7) {
   const end = Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), today.getUTCDate());
   const buckets = Array.from({ length: days }, (_, i) => {
     const date = new Date(end - (days - 1 - i) * 86400000).toISOString().slice(0, 10);
