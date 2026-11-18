@@ -22,7 +22,7 @@ function CurrentCoachStatus({ athleteId }) {
   return <CoachHoldCard injury={injury} hideWhenNone />;
 }
 
-export default function HomeTrainingWorkspace({ athlete, workouts = [], onWorkoutChanged }) {
+export default function HomeTrainingWorkspace({ athlete, workouts = [], progressWorkouts = workouts, progressHistoryLimited = false, onWorkoutChanged }) {
   const [tab, setTab] = useState("today");
   const latest = [...workouts].sort((a, b) => (b.date || "").localeCompare(a.date || ""))[0];
 
@@ -103,7 +103,7 @@ export default function HomeTrainingWorkspace({ athlete, workouts = [], onWorkou
           </Button>
         </TabsContent>
       </Tabs>
-      <WidgetBoundary name="Activity progress"><HomeProgressPanel workouts={workouts} /></WidgetBoundary>
+      <WidgetBoundary name="Activity progress"><HomeProgressPanel workouts={progressWorkouts} historyLimited={progressHistoryLimited} /></WidgetBoundary>
     </section>
   );
 }
