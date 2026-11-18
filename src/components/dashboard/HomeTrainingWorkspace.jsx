@@ -9,6 +9,7 @@ import TodaySessionCard from "@/components/dashboard/TodaySessionCard";
 import DashboardGreeting from "@/components/dashboard/DashboardGreeting";
 import ReadinessScoreCard from "@/components/dashboard/ReadinessScoreCard";
 import TodayDecisionSummary from "@/components/dashboard/TodayDecisionSummary";
+import RunningCapabilityPanel from "@/components/dashboard/RunningCapabilityPanel";
 import CoachHoldCard from "@/components/dashboard/CoachHoldCard";
 import WorkoutDetailModal from "@/components/workout/WorkoutDetailModal";
 import { useCoachInjurySignal } from "@/hooks/useCoachInjurySignal";
@@ -21,7 +22,7 @@ function CurrentCoachStatus({ athleteId }) {
   return <CoachHoldCard injury={injury} hideWhenNone />;
 }
 
-export default function HomeTrainingWorkspace({ athlete, workouts = [], onWorkoutChanged }) {
+export default function HomeTrainingWorkspace({ athlete, workouts = [], runningHistory = [], onWorkoutChanged }) {
   const [tab, setTab] = useState("today");
   const latest = [...workouts].sort((a, b) => (b.date || "").localeCompare(a.date || ""))[0];
 
@@ -49,9 +50,7 @@ export default function HomeTrainingWorkspace({ athlete, workouts = [], onWorkou
 
         <TabsContent value="today" className="space-y-3">
           <WidgetBoundary name="Today's session"><TodaySessionCard athleteId={athlete.id} /></WidgetBoundary>
-          <Button asChild variant="outline" className="min-h-[44px] w-full sm:w-auto">
-            <Link to="/plan">View training plan <ArrowRight aria-hidden="true" className="ml-2 w-4 h-4" /></Link>
-          </Button>
+          <WidgetBoundary name="Running capability"><RunningCapabilityPanel athlete={athlete} workouts={runningHistory} showActions={false} /></WidgetBoundary>
         </TabsContent>
 
         <TabsContent value="readiness" className="space-y-3">
