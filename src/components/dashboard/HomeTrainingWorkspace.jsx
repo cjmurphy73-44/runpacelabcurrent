@@ -8,6 +8,7 @@ import WidgetBoundary from "@/components/common/WidgetBoundary";
 import TodaySessionCard from "@/components/dashboard/TodaySessionCard";
 import DashboardGreeting from "@/components/dashboard/DashboardGreeting";
 import ReadinessScoreCard from "@/components/dashboard/ReadinessScoreCard";
+import TodayDecisionSummary from "@/components/dashboard/TodayDecisionSummary";
 import CoachHoldCard from "@/components/dashboard/CoachHoldCard";
 import WorkoutDetailModal from "@/components/workout/WorkoutDetailModal";
 import { useCoachInjurySignal } from "@/hooks/useCoachInjurySignal";
@@ -27,6 +28,7 @@ export default function HomeTrainingWorkspace({ athlete, workouts = [], onWorkou
   return (
     <section aria-label="Daily training" className="min-w-0 space-y-4">
       <DashboardGreeting athlete={athlete} />
+      <WidgetBoundary name="Daily decision summary"><TodayDecisionSummary athlete={athlete} workouts={workouts} /></WidgetBoundary>
 
       <Tabs value={tab} onValueChange={setTab} className="min-w-0 space-y-4">
         <TabsList aria-label="Your daily training" className="grid h-auto w-full grid-cols-3 gap-1 p-1">
