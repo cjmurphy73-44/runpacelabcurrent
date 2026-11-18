@@ -10,10 +10,27 @@ export const REQUIRED_GATES = Object.freeze([
 ]);
 
 const SHA = /^[a-f0-9]{40}$/;
-const VALID_EVIDENCE = /^https:\/\/(github\.com|api\.github\.com|vercel\.com|[a-z0-9-]+\.vercel\.app)\//i;
+// URL shape alone is not proof. Restrict links to the owned repository or
+// Vercel's dashboard; reviewers must still authenticate the evidence itself.
+function isScopedEvidenceUrl(value) {
+  if (typeof value !== "string") return false;
+  try {
+    const url = new URL(value);
+    if (url.protocol !== "https:" || url.username || url.password || url.port || url.search || url.hash) return false;
+    if (url.hostname === "github.com") {
+      return /^\/cjmurphy73-44\/runpacelabcurrent\/(actions\/runs\/\d+|pull\/\d+|commit\/[a-f0-9]{40})(\/)?$/.test(url.pathname);
+    }
+    if (url.hostname === "api.github.com") {
+      return /^\/repos\/cjmurphy73-44\/runpacelabcurrent\/(actions\/runs\/\d+|commits\/[a-f0-9]{40}\/status)(\/)?$/.test(url.pathname);
+    }
+    return url.hostname === "vercel.com" && /^\/[A-Za-z0-9_-]+\/[A-Za-z0-9_-]+\/deployments\/[A-Za-z0-9_-]+\/?$/.test(url.pathname);
+  } catch { return false; }
+}
 
-export function evaluateReleaseEvidence(candidate) {
+export function evaluateReleaseEvidence(candidate, now = Date.now()) {
   const blockers = [];
+  const reviewTime = typeof now === "number" && Number.isFinite(now) ? now : NaN;
+  const MAX_EVIDENCE_AGE_MS = 30 * 24 * 60 * 60 * 1000;
   if (!candidate || typeof candidate !== "object" || Array.isArray(candidate)) {
     return { readyForReview: false, blockers: ["candidate: missing or malformed"] };
   }
@@ -29,11 +46,16 @@ export function evaluateReleaseEvidence(candidate) {
       blockers.push(`${gate}: no verified pass`);
       continue;
     }
-    if (typeof item.evidenceUrl !== "string" || !VALID_EVIDENCE.test(item.evidenceUrl)) {
+    if (!isScopedEvidenceUrl(item.evidenceUrl)) {
       blockers.push(`${gate}: trusted evidence link missing`);
     }
     if (typeof item.verifiedAt !== "string" || !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$/.test(item.verifiedAt) || !Number.isFinite(Date.parse(item.verifiedAt))) {
       blockers.push(`${gate}: UTC verification timestamp missing`);
+    } else {
+      const verified = Date.parse(item.verifiedAt);
+      if (!Number.isFinite(reviewTime) || verified > reviewTime || reviewTime - verified > MAX_EVIDENCE_AGE_MS || new Date(verified).toISOString().replace(".000Z", "Z") !== item.verifiedAt) {
+        blockers.push(`${gate}: stale, future or invalid verification time`);
+      }
     }
     if (item.gitSha !== candidate.gitSha) blockers.push(`${gate}: evidence does not match exact head`);
   }
