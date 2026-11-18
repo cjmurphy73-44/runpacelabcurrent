@@ -65,38 +65,38 @@ export function computeHolisticReadiness(
 
   // 1. HRV Z-Score Normalization
   if (validHrv && validHrvBaseline) {
-    hrvZScore = (current.hrvMs - baseline.hrvMean) / baseline.hrvStdDev;
+    hrvZScore = (current.hrvMs! - baseline!.hrvMean!) / baseline!.hrvStdDev!;
     // Map Z-score (-2 to +2) to 0-100 score (Z=0 -> 70, Z=+2 -> 100, Z=-2 -> 40)
     hrvComponent = Math.max(0, Math.min(100, 70 + hrvZScore * 15));
     validCount++;
   } else if (validHrv) {
     // Fallback if no baseline: absolute scale (e.g., 20ms to 100ms mapped to 30-100)
-    hrvComponent = Math.max(20, Math.min(100, 30 + (current.hrvMs / 100) * 70));
+    hrvComponent = Math.max(20, Math.min(100, 30 + (current.hrvMs! / 100) * 70));
     validCount++;
   }
 
   // 2. Sleep Score Direct Scaling
   if (validSleep) {
-    sleepComponent = Math.max(0, Math.min(100, current.sleepScore));
+    sleepComponent = Math.max(0, Math.min(100, current.sleepScore!));
     validCount++;
   }
 
   // 3. Resting HR Delta Penalty
   if (validRhr && validRhrBaseline) {
-    rhrDelta = current.restingHr - baseline.restingHrMean;
+    rhrDelta = current.restingHr! - baseline!.restingHrMean!;
     // Elevated RHR is bad (+bpm -> penalty). Each bpm above mean subtracts 5 points from 70.
     rhrComponent = Math.max(0, Math.min(100, 70 - rhrDelta * 5));
     validCount++;
   } else if (validRhr) {
     // Fallback based on absolute RHR (lower is better, e.g., 40-80 bpm)
-    rhrComponent = Math.max(0, Math.min(100, 100 - (current.restingHr - 40) * 1.5));
+    rhrComponent = Math.max(0, Math.min(100, 100 - (current.restingHr! - 40) * 1.5));
     validCount++;
   }
 
   // 4. Form (TSB) Modifier (-30 to +30 TSB mapped to 30-100)
   if (validTsb) {
     // TSB around 0 to +15 is optimal fresh. TSB < -20 is high fatigue.
-    const clampedTsb = Math.max(-30, Math.min(30, tsb));
+    const clampedTsb = Math.max(-30, Math.min(30, tsb!));
     tsbComponent = Math.max(0, Math.min(100, 70 + (clampedTsb / 30) * 30));
     validCount++;
   }
