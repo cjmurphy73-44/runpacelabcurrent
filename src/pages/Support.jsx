@@ -117,11 +117,12 @@ export default function Support() {
             </CardHeader>
             <CardContent>
               <form onSubmit={submit} className="space-y-4">
-                <div className="flex flex-wrap gap-2">
+                <div role="group" aria-label="Support request category" className="flex flex-wrap gap-2">
                   {CATEGORIES.map((opt) => (
                     <Button
                       key={opt.key}
                       type="button"
+                      aria-pressed={type === opt.key}
                       variant={type === opt.key ? "default" : "outline"}
                       size="sm"
                       onClick={() => setType(opt.key)}
