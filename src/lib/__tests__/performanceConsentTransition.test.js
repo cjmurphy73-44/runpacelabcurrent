@@ -70,7 +70,7 @@ describe('synthetic-only performance consent issuance/revocation journal', () =>
 
   it('does not trust client-provided server or consent verification flags', () => {
     expect(review(input({ event: { ...issue, server_verified: true,
-      verified: true, consent_verified: true, may_recalibrate: true } })).toMatchObject({
+      verified: true, consent_verified: true, may_recalibrate: true } }))).toMatchObject({
       review_ready: true, consent_verified: false, may_recalibrate: false,
     });
   });
