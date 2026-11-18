@@ -28,6 +28,7 @@ export const CALCULATORS = [
 
 export const INSIGHTS = [
   { to: "/analytics", label: "Analytics", icon: LineChart },
+  { to: "/workout-review", label: "Workout Review", icon: HeartPulse },
   { to: "/predict", label: "Race Predictor", icon: Target },
   { to: "/pbs", label: "Race Ledger", icon: Trophy },
   { to: "/kanban", label: "Training Board", icon: KanbanSquare },
