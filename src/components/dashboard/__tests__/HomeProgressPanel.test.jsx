@@ -1,6 +1,7 @@
 import React from "react";
 import { describe, expect, it } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
+import { MemoryRouter } from "react-router-dom";
 import HomeProgressPanel, { summarizeActivityProgress } from "../HomeProgressPanel";
 
 const today = new Date("2026-11-18T12:00:00Z");
@@ -27,7 +28,7 @@ describe("Home activity progress (synthetic only)", () => {
     expect(result.minutes).toBe(135);
   });
   it("renders accessible range controls and truthful missing-duration explanation", () => {
-    const html = renderToStaticMarkup(<HomeProgressPanel workouts={workouts} today={today} />);
+    const html = renderToStaticMarkup(<MemoryRouter><HomeProgressPanel workouts={workouts} today={today} /></MemoryRouter>);
     expect(html).toContain('aria-label="Activity history range"');
     expect(html).toContain('aria-pressed="true"');
     expect(html).toContain("2 sessions without verified duration");
@@ -35,7 +36,7 @@ describe("Home activity progress (synthetic only)", () => {
     expect(html).toContain("Review all workouts");
   });
   it("renders a useful no-data recovery state", () => {
-    const html = renderToStaticMarkup(<HomeProgressPanel workouts={[]} today={today} />);
+    const html = renderToStaticMarkup(<MemoryRouter><HomeProgressPanel workouts={[]} today={today} /></MemoryRouter>);
     expect(html).toContain("No saved sessions in this period");
     expect(html).not.toContain("without verified duration");
   });
