@@ -35,6 +35,10 @@ describe("Home activity progress (synthetic only)", () => {
     expect(html).toContain("Recorded duration, not fitness or training load.");
     expect(html).toContain("Review all workouts");
   });
+  it("discloses when the backend query caps history", () => {
+    const html = renderToStaticMarkup(<MemoryRouter><HomeProgressPanel workouts={workouts} today={today} historyLimited /></MemoryRouter>);
+    expect(html).toContain("Older sessions may be missing from this comparison.");
+  });
   it("renders a useful no-data recovery state", () => {
     const html = renderToStaticMarkup(<MemoryRouter><HomeProgressPanel workouts={[]} today={today} /></MemoryRouter>);
     expect(html).toContain("No saved sessions in this period");
