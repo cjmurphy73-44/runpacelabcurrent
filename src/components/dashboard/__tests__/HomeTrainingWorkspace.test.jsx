@@ -69,7 +69,7 @@ describe("Home daily training workspace", () => {
     mount([workout, oldRun]);
     await screen.findByRole("heading", { name: "running" });
     expect(screen.getByRole("heading", { name: "What the data says" })).toBeTruthy();
-    expect(screen.getByRole("heading", { name: /Running capability/ })).toBeTruthy();
+    expect(screen.getByText("Running capability")).toBeTruthy();
     expect(screen.getByText("Current pace unverified")).toBeTruthy();
     expect(screen.getAllByRole("link", { name: /Today.s plan/ })).toHaveLength(1);
     expect(screen.getByRole("link", { name: /Explore race-based paces/ })).toBeTruthy();
