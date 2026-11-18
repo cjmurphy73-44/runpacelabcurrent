@@ -9,6 +9,7 @@ import TodaySessionCard from "@/components/dashboard/TodaySessionCard";
 import DashboardGreeting from "@/components/dashboard/DashboardGreeting";
 import ReadinessScoreCard from "@/components/dashboard/ReadinessScoreCard";
 import TodayDecisionSummary from "@/components/dashboard/TodayDecisionSummary";
+import HomeProgressPanel from "@/components/dashboard/HomeProgressPanel";
 import CoachHoldCard from "@/components/dashboard/CoachHoldCard";
 import WorkoutDetailModal from "@/components/workout/WorkoutDetailModal";
 import { useCoachInjurySignal } from "@/hooks/useCoachInjurySignal";
@@ -102,6 +103,7 @@ export default function HomeTrainingWorkspace({ athlete, workouts = [], onWorkou
           </Button>
         </TabsContent>
       </Tabs>
+      <WidgetBoundary name="Activity progress"><HomeProgressPanel workouts={workouts} /></WidgetBoundary>
     </section>
   );
 }
