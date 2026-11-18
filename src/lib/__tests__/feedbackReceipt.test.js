@@ -15,7 +15,9 @@ describe("beta feedback persistence receipt", () => {
   it("does not silently copy feedback or display raw backend errors", () => {
     const source = readFileSync(new URL("../../components/feedback/BetaFeedbackModal.jsx", import.meta.url), "utf8");
     expect(source).toContain("feedbackWasAccepted(res)");
-    expect(source).not.toMatch(/navigator\\.clipboard|res\\?\\.data\\?\\.error|e\\?\\.message/);
+    expect(source).not.toContain("navigator.clipboard");
+    expect(source).not.toContain("res?.data?.error");
+    expect(source).not.toContain("e?.message");
     expect(source).toContain("Your message is still here.");
   });
 });
