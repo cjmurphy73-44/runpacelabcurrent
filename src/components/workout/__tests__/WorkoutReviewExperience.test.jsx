@@ -18,12 +18,12 @@ const workout = (streams) => ({
 });
 const view = (w) => render(<MemoryRouter><WorkoutReviewExperience workout={w} /></MemoryRouter>);
 describe('WorkoutReviewExperience', () => {
-  it('switches measured HR to speed and reveals missing power without inventing data', () => {
+  it('switches measured HR to pace and reveals missing power without inventing data', () => {
     view(workout(stream(7201)));
     expect(screen.getByRole('img', { name: /heart rate measurements/i })).toBeTruthy();
-    fireEvent.click(screen.getByRole('button', { name: 'Speed' }));
-    expect(screen.getByRole('img', { name: /speed measurements/i })).toBeTruthy();
-    expect(screen.getByRole('button', { name: 'Speed' }).getAttribute('aria-pressed')).toBe('true');
+    fireEvent.click(screen.getByRole('button', { name: 'Pace' }));
+    expect(screen.getByRole('img', { name: /pace measurements/i })).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Pace' }).getAttribute('aria-pressed')).toBe('true');
     fireEvent.click(screen.getByRole('button', { name: 'Power' }));
     expect(screen.getByText(/no measured power channel/i)).toBeTruthy();
     cleanup();
