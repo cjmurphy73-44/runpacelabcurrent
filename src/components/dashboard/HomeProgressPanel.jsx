@@ -3,7 +3,7 @@ import { Link } from "react-router-dom";
 
 /** Fixture-friendly, read-only activity trend. Does not derive physiological load. */
 export function summarizeActivityProgress(workouts = [], today = new Date(), days = 7) {
-  const end = Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), today.getUTCDate());
+  const end = Date.UTC(today.getFullYear(), today.getMonth(), today.getDate());
   const buckets = Array.from({ length: days }, (_, i) => {
     const date = new Date(end - (days - 1 - i) * 86400000).toISOString().slice(0, 10);
     return { date, minutes: 0, sessions: 0 };
@@ -37,7 +37,7 @@ export default function HomeProgressPanel({ workouts = [], today = new Date(), h
         <div>
           <p className="text-xs uppercase tracking-wider text-muted-foreground">Training history</p>
           <h2 id="home-progress-heading" className="text-xl font-heading font-semibold">Your recent activity</h2>
-          <p className="text-sm text-muted-foreground">Recorded duration, not fitness or training load.</p>
+          <p className="text-sm text-muted-foreground">Saved session duration by local calendar date, not fitness or training load.</p>
         </div>
         <div role="group" aria-label="Activity history range" className="inline-flex rounded-lg border border-border p-1">
           {[7, 28].map(value => (
@@ -64,8 +64,24 @@ export default function HomeProgressPanel({ workouts = [], today = new Date(), h
               </div>
             ))}
           </div>
-          {data.missingDuration > 0 && <p role="note" className="text-xs text-muted-foreground">{data.missingDuration} session{data.missingDuration === 1 ? "" : "s"} without verified duration excluded from minutes.</p>}
-          <p className="text-xs text-muted-foreground">Bars show recorded minutes per calendar day. No readiness or performance inference.</p>
+          {data.missingDuration > 0 && <p role="note" className="text-xs text-muted-foreground">{data.missingDuration} session{data.missingDuration === 1 ? "" : "s"} without usable duration excluded from minutes.</p>}
+          <p className="text-xs text-muted-foreground">Bars show saved minutes per local calendar day. No readiness or performance inference.</p>
+          <details className="rounded-lg border border-border p-3">
+            <summary className="min-h-11 cursor-pointer py-2 text-sm font-semibold">View daily activity breakdown</summary>
+            <div className="mt-2 max-h-64 overflow-y-auto">
+              <table className="w-full text-left text-sm">
+                <caption className="sr-only">Daily recorded sessions and known duration for the selected {days}-day period</caption>
+                <thead><tr className="border-b border-border"><th scope="col" className="py-2">Date (local)</th><th scope="col" className="py-2 text-right">Sessions</th><th scope="col" className="py-2 text-right">Known minutes</th></tr></thead>
+                <tbody>{data.buckets.map(bucket => (
+                  <tr key={bucket.date} className="border-b border-border/50">
+                    <th scope="row" className="py-2 font-normal tabular-nums">{bucket.date}</th>
+                    <td className="py-2 text-right tabular-nums">{bucket.sessions}</td>
+                    <td className="py-2 text-right tabular-nums">{Math.round(bucket.minutes)}</td>
+                  </tr>
+                ))}</tbody>
+              </table>
+            </div>
+          </details>
         </>
       ) : <p className="rounded-lg bg-muted/50 p-4 text-sm text-muted-foreground">No saved sessions in this period. Connect a watch or import a workout to begin your history.</p>}
       <Link to="/workouts" className="inline-flex min-h-11 items-center text-sm font-semibold text-primary hover:underline">Review all workouts →</Link>
