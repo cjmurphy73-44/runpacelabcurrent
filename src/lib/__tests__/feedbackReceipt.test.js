@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 import { feedbackWasAccepted } from "../feedbackReceipt";
 
 describe("beta feedback persistence receipt", () => {
@@ -13,7 +14,7 @@ describe("beta feedback persistence receipt", () => {
     }
   });
   it("does not silently copy feedback or display raw backend errors", () => {
-    const source = readFileSync(new URL("../../components/feedback/BetaFeedbackModal.jsx", import.meta.url), "utf8");
+    const source = readFileSync(resolve(process.cwd(), "src/components/feedback/BetaFeedbackModal.jsx"), "utf8");
     expect(source).toContain("feedbackWasAccepted(res)");
     expect(source).not.toContain("navigator.clipboard");
     expect(source).not.toContain("res?.data?.error");
