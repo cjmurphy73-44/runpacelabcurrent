@@ -5,8 +5,15 @@ export function recordingTruncationNotice(stream, maxStoredSamples = 3600) {
   if (stream.length <= maxStoredSamples) return null;
   const first = stream[0]?.time;
   const last = stream[stream.length - 1]?.time;
-  const validTimes = typeof first === 'number' && Number.isFinite(first)
-    && typeof last === 'number' && Number.isFinite(last) && last > first;
+  // A plausible pair of endpoints cannot establish coverage when the middle
+  // contains missing, negative or non-monotonic recording timestamps.
+  let previous = -Infinity;
+  const validTimes = stream.every((sample) => {
+    const time = sample?.time;
+    if (typeof time !== 'number' || !Number.isFinite(time) || time < 0 || time <= previous) return false;
+    previous = time;
+    return true;
+  }) && last > first;
   const coverage = validTimes
     ? `recorded time ${first}s–${last}s`
     : 'recording time span unavailable';
