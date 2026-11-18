@@ -1,0 +1,14 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {auditDailyLoadTimeline as audit} from './load-transition-audit.mjs';
+const row=(day,verifiedLoad=0,summaryLoad=0)=>({day,verifiedLoad,summaryLoad});
+test('independent 42/7 reference arithmetic',()=>{const r=audit([row('2026-01-01',42,1000)]);assert.equal(r.ok,true);assert.equal(r.expected[0].verifiedCtl,1);assert.equal(r.expected[0].verifiedAtl,6);assert.equal(r.expected[0].verifiedTsb,-5)});
+test('summary-only days do not inject verified load',()=>assert.deepEqual(audit([row('2026-01-01',0,500),row('2026-01-02',0,900)]).expected.map(x=>x.verifiedCtl),[0,0]));
+test('flags recorded CTL and TSB mismatches',()=>{const r=audit([{...row('2026-01-01',42),verifiedCtl:8,verifiedTsb:1}]);assert.equal(r.ok,false);assert.ok(r.findings.some(x=>x.field==='verifiedCtl'));assert.ok(r.findings.some(x=>x.field==='verifiedTsb'))});
+test('accepts matching precomputed values',()=>{const x=[row('2026-01-01',42),row('2026-01-02')],e=audit(x).expected;assert.equal(audit(x.map((r,i)=>({...r,...e[i]}))).ok,true)});
+test('rejects missing and duplicate days',()=>{assert.throws(()=>audit([row('2026-01-01'),row('2026-01-03')]),RangeError);assert.throws(()=>audit([row('2026-01-01'),row('2026-01-01')]),RangeError)});
+test('rejects invalid calendar dates',()=>assert.throws(()=>audit([row('2026-02-30')]),RangeError));
+test('rejects nonfinite and negative loads',()=>{assert.throws(()=>audit([row('2026-01-01',NaN)]),TypeError);assert.throws(()=>audit([row('2026-01-01',-1)]),RangeError)});
+test('rejects invalid baselines and tolerance',()=>{assert.throws(()=>audit([],{initialCtl:-1}),RangeError);assert.throws(()=>audit([],{tolerance:Infinity}),TypeError)});
+test('does not mutate inputs',()=>{const x=[row('2026-01-01',42)],old=structuredClone(x);audit(x);assert.deepEqual(x,old)});
+test('bounds timeline size',()=>assert.throws(()=>audit(Array(3661).fill(row('2026-01-01'))),RangeError));
