@@ -37,7 +37,7 @@ describe('public support request category accessibility', () => {
   const html = renderToStaticMarkup(React.createElement(Support));
   it('provides a named category group and one pressed default selection', () => {
     expect(html).toMatch(/role="group"[^>]*aria-label="Support request category"/);
-    const buttons = [...html.matchAll(/<button[^>]*aria-pressed="(true|false)"[^>]*>(.*?)<\\/button>/g)];
+    const buttons = [...html.matchAll(/<button[^>]*aria-pressed="(true|false)"[^>]*>(.*?)<\/button>/g)];
     expect(buttons).toHaveLength(5);
     expect(buttons.filter(([, pressed]) => pressed === 'true')).toHaveLength(1);
     expect(buttons.find(([, pressed]) => pressed === 'true')?.[2]).toBe('Bug report');
