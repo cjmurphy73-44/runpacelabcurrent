@@ -49,7 +49,7 @@
     },
     "structured_steps": {
       "type": "array",
-      "description": "Structured step breakdown (warmup / intervals / cooldown) used by the workout exporter to build a watch-loadable .fit/structured-text workout. Optional \u2014 when absent the exporter synthesises a single main block from prescribed_duration_minutes + prescribed_intensity_zone.",
+      "description": "Structured step breakdown (warmup / intervals / cooldown) used by the workout exporter to build a watch-loadable .fit/structured-text workout. Optional — when absent the exporter synthesises a single main block from prescribed_duration_minutes + prescribed_intensity_zone.",
       "items": {
         "type": "object",
         "properties": {
@@ -112,7 +112,7 @@
         "modified"
       ],
       "default": "pending",
-      "description": "completion outcome: completed (within \u00b15%), partial (<95% of prescribed), excess (>105% of prescribed), skipped (overdue + not performed), modified (auto-replanned by the adaptive re-planning engine)"
+      "description": "completion outcome: completed (within ±5%), partial (<95% of prescribed), excess (>105% of prescribed), skipped (overdue + not performed), modified (auto-replanned by the adaptive re-planning engine)"
     },
     "description": {
       "type": "string",
@@ -132,12 +132,7 @@
     "read": {
       "$or": [
         {
-          "data.athlete_id": "{{user.data.athlete_profile_id}}"
-        },
-        {
-          "data.athlete_id": {
-            "$in": "{{user.data.coached_athletes}}"
-          }
+          "created_by_id": "{{user.id}}"
         },
         {
           "user_condition": {

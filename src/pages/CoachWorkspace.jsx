@@ -7,7 +7,6 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Users, RefreshCw, UserPlus } from "lucide-react";
 import PageShell from "@/components/layout/PageShell";
 import RosterCard from "@/components/coach/RosterCard";
-import AddAthleteDialog from "@/components/coach/AddAthleteDialog";
 import ComparisonTable from "@/components/coach/ComparisonTable";
 import RosterDashboard from "@/components/coach/RosterDashboard";
 import { useCoachAccess } from "@/hooks/useCoachAccess";
@@ -21,9 +20,7 @@ export default function CoachWorkspace() {
   const [profiles, setProfiles] = useState({}); // athlete_profile_id -> AthleteProfile
   const [workouts, setWorkouts] = useState({}); // athlete_profile_id -> WorkoutSession[]
   const [plans, setPlans] = useState({}); // athlete_profile_id -> TrainingPlan
-  const [allProfiles, setAllProfiles] = useState([]); // for the add dialog
   const [loading, setLoading] = useState(true);
-  const [pickerOpen, setPickerOpen] = useState(false);
   const [compareIds, setCompareIds] = useState(new Set());
 
   const loadRoster = useCallback(async () => {
@@ -59,37 +56,16 @@ export default function CoachWorkspace() {
 
   useEffect(() => { loadRoster(); }, [loadRoster]);
 
-  const openPicker = async () => {
-    try {
-      const list = await base44.entities.AthleteProfile.list("-created_date", 200);
-      setAllProfiles(list);
-    } catch (e) {
-      toast({ title: "Failed to load athletes", variant: "destructive" });
-    }
-    setPickerOpen(true);
-  };
-
-  const addAthlete = async (profile) => {
-    try {
-      await base44.entities.CoachAthleteAssignment.create({
-        coach_user_id: user.id,
-        athlete_profile_id: profile.id,
-        athlete_name_snapshot: `${profile.first_name} ${profile.last_name}`,
-        status: "active",
-      });
-      // S5: keep the coach's coached_athletes cache in sync so RLS can scope reads
-      // without a cross-entity join. Merge (de-dup) so repeated adds are idempotent.
-      try {
-        const current = Array.isArray(user.coached_athletes) ? user.coached_athletes : [];
-        const merged = [...new Set([...current, profile.id])];
-        await base44.auth.updateMe({ coached_athletes: merged });
-      } catch (e) { console.warn("updateMe coached_athletes (add) failed:", e); }
-      setPickerOpen(false);
-      toast({ title: `${profile.first_name} ${profile.last_name} added to roster` });
-      loadRoster();
-    } catch (e) {
-      toast({ title: "Failed to add athlete", variant: "destructive" });
-    }
+  // Privacy gate: creating a coach-to-athlete link requires an independently
+  // verified, athlete-consented server-side authorization flow. The previous
+  // client-side selector could write both a CoachAthleteAssignment and the
+  // coach's own coached_athletes access list, which RLS trusts for health data.
+  // No self-service linking is permitted until that flow is proven in staging.
+  const openPicker = () => {
+    toast({
+      title: "Athlete invitations temporarily unavailable",
+      description: "Please contact support to arrange a verified coach connection.",
+    });
   };
 
   const removeAthlete = async (assignment) => {
@@ -172,13 +148,6 @@ export default function CoachWorkspace() {
           />
         </>
       )}
-      <AddAthleteDialog
-        open={pickerOpen}
-        onClose={() => setPickerOpen(false)}
-        profiles={allProfiles}
-        existingIds={assignments.map((a) => a.athlete_profile_id)}
-        onAdd={addAthlete}
-      />
     </PageShell>
   );
 }

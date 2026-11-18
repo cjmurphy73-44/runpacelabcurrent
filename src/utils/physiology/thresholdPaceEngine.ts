@@ -95,7 +95,7 @@ export function deriveRunningThresholdPace(
         // No LTHR, gate by pace proximity to the Daniels T-pace.
         intensityOk = pace >= baseline * (1 - PACE_BAND) && pace <= baseline * (1 + PACE_BAND);
       } else {
-        intensityOk = true; // nothing to gate on, last resort
+        intensityOk = false; // nothing to gate on, last resort
       }
       return intensityOk ? { pace, age } : null;
     })

@@ -11,7 +11,7 @@
 // Computes:
 //   - holistic readiness score + components (HRV/sleep/RHR/TSB blended against
 //     a 14-day rolling baseline)
-//   - VDOT estimate from the athlete's strongest recent qualifying race
+//   - Historical stored VDOT as reference until a verified performance source exists
 //   - Daniels training paces (E/M/T/I/R) from VDOT
 //   - running threshold pace reconciled from recent threshold-intensity runs
 //
@@ -20,15 +20,10 @@
 
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.52';
 import { computeHolisticReadiness, computeBaseline } from '../../shared/readiness.ts';
-import { calculateVDOT, getTrainingPaces, getEquivalentTimes, danielsThresholdMs, formatPaceFromMs } from '../../shared/vdot.ts';
+import { getTrainingPaces, getEquivalentTimes, formatPaceFromMs } from '../../shared/vdot.ts';
 import { deriveRunningThresholdPace } from '../../shared/thresholdPace.ts';
-
-const RACE_DISTANCES_M = {
-  fiveKm: 5000,
-  tenKm: 10000,
-  halfMarathon: 21097.5,
-  marathon: 42195,
-};
+import { classifyRunningCalibration } from '../../shared/runningCalibrationStatus.js';
+import { resolveVdotReference } from '../../shared/runningVdotProvenance.js';
 
 export default async function(req: Request): Promise<Response> {
   try {
@@ -52,13 +47,18 @@ export default async function(req: Request): Promise<Response> {
       .filter({ athlete_id: athlete.id }, '-date', 200)
       .catch(() => []);
 
-    const vdotResult = computeVdotFromSessions(sessions, athlete);
+    const vdotResult = resolveVdotReference(sessions, athlete);
     const thresholdPace = deriveRunningThresholdPace(
       sessions,
       vdotResult.vdot ?? athlete.vdot_estimate ?? null,
       athlete.functional_threshold_pace_ms ?? null,
       athlete.lactate_threshold_hr ?? null,
     );
+
+    // Shared with dashboard: this describes evidence/confidence only. It does
+    // not change stored VDOT or the athlete's threshold baseline.
+    const calibration = classifyRunningCalibration(sessions, thresholdPace.observedRunCount,
+      Date.now(), { historyTruncated: sessions.length >= 200 });
 
     const vdot = vdotResult.vdot ?? athlete.vdot_estimate ?? null;
     let trainingPaces = null;
@@ -75,6 +75,19 @@ export default async function(req: Request): Promise<Response> {
       vdot_source_session_id: vdotResult.source_session_id ?? null,
       vdot_source_date: vdotResult.source_date ?? null,
       vdot_source_sport: vdotResult.source_sport ?? null,
+      vdot_performance_verified: vdotResult.performance_verified,
+      vdot_qualification_reason: vdotResult.qualification_reason,
+      running_calibration: {
+        ...calibration,
+        // Source of the pace estimate, not proof of verified performance.
+        threshold_source: thresholdPace.source,
+        observed_threshold_run_count: thresholdPace.observedRunCount,
+        recent_cross_train_count: thresholdPace.recentCrossTrainCount,
+        history_scope: 'last_200_sessions',
+        history_truncated: sessions.length >= 200,
+        historical_vdot_source: vdotResult.source,
+        historical_vdot_session_id: vdotResult.source_session_id ?? null,
+      },
       training_paces: trainingPaces,
       equivalent_times: equivalentTimes,
       threshold_pace: thresholdPace.paceMs ? {
@@ -156,49 +169,3 @@ function computeReadiness(today, history) {
   return { score, status, baseline, signal_count: signalCount, has_baseline: hasBaseline };
 }
 
-// Find the strongest recent qualifying race effort and compute VDOT from it.
-// Falls back to the stored vdot_estimate if no qualifying session exists.
-function computeVdotFromSessions(sessions, athlete) {
-  const recent = (sessions || []).filter((s) => {
-    if (!s.date) return false;
-    const ageDays = (Date.now() - Date.parse(s.date)) / 86400000;
-    return ageDays <= 180; // last ~6 months
-  });
-
-  let bestVdot = null;
-  let sourceSession = null;
-
-  for (const s of recent) {
-    // VDOT is a running-performance model — only running sessions qualify.
-    // Non-running efforts (cycling, swimming, strength, triathlon, other)
-    // must never influence the running estimate.
-    if (!s.sport || !s.sport.toLowerCase().startsWith('run')) continue;
-    const durS = s.duration_seconds ?? (s.duration_minutes ? s.duration_minutes * 60 : 0);
-    const distM = s.distance_km ? s.distance_km * 1000 : 0;
-    if (!durS || durS < 180 || distM < 1200) continue; // Daniels requires >= 3 min, >= 1200 m
-    try {
-      const vdot = calculateVDOT(durS, distM);
-      if (vdot > 0 && (bestVdot == null || vdot > bestVdot)) {
-        bestVdot = vdot;
-        sourceSession = s;
-      }
-    } catch { /* session doesn't qualify */ }
-  }
-
-  if (bestVdot != null) {
-    return {
-      vdot: bestVdot,
-      source: `From run on ${sourceSession?.date || 'recent date'}`,
-      source_session_id: sourceSession?.id ?? null,
-      source_date: sourceSession?.date ?? null,
-      source_sport: 'running',
-    };
-  }
-  return {
-    vdot: null,
-    source: athlete.vdot_estimate ? 'Stored VDOT' : 'No qualifying run yet',
-    source_session_id: null,
-    source_date: null,
-    source_sport: null,
-  };
-}

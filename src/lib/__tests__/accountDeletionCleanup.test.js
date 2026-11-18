@@ -1,0 +1,322 @@
+import { describe, expect, it, vi } from "vitest";
+import { runAccountEntityCleanup, finalizeAccountDeletion, linkedAthleteCleanup, resolveOwnedAthleteIds, loadOrCreateDeletionRecovery, verifyDeletionRecoveryScope, classifyDeletionRecoveryForReview } from "../../../base44/shared/accountDeletionCleanup.js";
+
+describe("account deletion cleanup executor", () => {
+  it("reports no failures when every entity deletion succeeds", async () => {
+    const remove = vi.fn().mockResolvedValue(undefined);
+    expect(await runAccountEntityCleanup([["WorkoutSession", remove]])).toEqual([]);
+    expect(remove).toHaveBeenCalledOnce();
+  });
+
+  it("attempts remaining entity deletions and returns only failed entity labels", async () => {
+    const removeSession = vi.fn().mockRejectedValue(new Error("secret database details"));
+    const removePlan = vi.fn().mockResolvedValue(undefined);
+    const removeAsset = vi.fn().mockRejectedValue(new Error("private storage path"));
+    const failures = await runAccountEntityCleanup([
+      ["WorkoutSession", removeSession],
+      ["TrainingPlan", removePlan],
+      ["WorkoutAsset", removeAsset],
+    ]);
+    expect(failures).toEqual(["WorkoutSession", "WorkoutAsset"]);
+    expect(JSON.stringify(failures)).not.toMatch(/secret|private storage/);
+    expect(removePlan).toHaveBeenCalledOnce();
+  });
+
+  it("allows idempotent retry after a transient partial failure", async () => {
+    const removeSession = vi.fn().mockRejectedValueOnce(new Error("temporary")).mockResolvedValue(undefined);
+    const removePlan = vi.fn().mockResolvedValue(undefined);
+    const cleanup = [["WorkoutSession", removeSession], ["TrainingPlan", removePlan]];
+    expect(await runAccountEntityCleanup(cleanup)).toEqual(["WorkoutSession"]);
+    expect(await runAccountEntityCleanup(cleanup)).toEqual([]);
+    expect(removePlan).toHaveBeenCalledTimes(2);
+  });
+});
+
+describe("account identity deletion gate", () => {
+  it("never deletes User after any entity cleanup failure", async () => {
+    const deleteUser = vi.fn();
+    const result = await finalizeAccountDeletion([
+      ["WorkoutAsset", vi.fn().mockRejectedValue(new Error("private internal error"))],
+      ["WorkoutSession", vi.fn().mockResolvedValue(undefined)],
+    ], deleteUser);
+    expect(result).toEqual({ success: false, failedEntities: ["WorkoutAsset"] });
+    expect(deleteUser).not.toHaveBeenCalled();
+  });
+
+  it("deletes User exactly once after all cleanup steps succeed", async () => {
+    const deleteUser = vi.fn().mockResolvedValue(undefined);
+    const result = await finalizeAccountDeletion([
+      ["WorkoutAsset", vi.fn().mockResolvedValue(undefined)],
+      ["WorkoutSession", vi.fn().mockResolvedValue(undefined)],
+    ], deleteUser);
+    expect(result).toEqual({ success: true, failedEntities: [] });
+    expect(deleteUser).toHaveBeenCalledOnce();
+  });
+
+  it("does not report success if User deletion fails", async () => {
+    const deleteUser = vi.fn().mockRejectedValue(new Error("identity deletion failed"));
+    await expect(finalizeAccountDeletion([], deleteUser)).rejects.toThrow("identity deletion failed");
+  });
+});
+
+describe("athlete ownership scoped account deletion", () => {
+  it("uses every owned athlete profile even when user link is absent", () => {
+    expect(resolveOwnedAthleteIds({ id: "owner" }, [
+      { id: "athlete-a", created_by_id: "owner" },
+      { id: "athlete-b", created_by_id: "owner" },
+    ])).toEqual(["athlete-a", "athlete-b"]);
+  });
+
+  it("rejects foreign profiles and stale or foreign linked IDs", () => {
+    expect(() => resolveOwnedAthleteIds({ id: "owner" }, [
+      { id: "foreign", created_by_id: "other" },
+    ])).toThrow(/ownership/);
+    expect(() => resolveOwnedAthleteIds({
+      id: "owner", data: { athlete_profile_id: "foreign" },
+    }, [{ id: "mine", created_by_id: "owner" }])).toThrow(/linkage/);
+    expect(() => resolveOwnedAthleteIds({
+      id: "owner", athlete_profile_id: "foreign",
+    }, [])).toThrow(/linkage/);
+  });
+
+  it("deletes service-created records only by verified athlete ID", async () => {
+    const deleteMany = vi.fn().mockResolvedValue(undefined);
+    const entities = new Proxy({}, {
+      get: () => ({ deleteMany }),
+    });
+    const ids = resolveOwnedAthleteIds({
+      id: "owner", athlete_profile_id: "mine",
+    }, [{ id: "mine", created_by_id: "owner" }]);
+    const result = await runAccountEntityCleanup(linkedAthleteCleanup(entities, ids));
+    expect(result).toEqual([]);
+    expect(deleteMany).toHaveBeenCalledWith({ athlete_id: "mine" });
+    for (const [args] of deleteMany.mock.calls) {
+      expect(args).toEqual({ athlete_id: "mine" });
+    }
+    expect(deleteMany.mock.calls.length).toBeGreaterThan(10);
+  });
+
+  it("creates no athlete-wide deletion work for an account without profiles", () => {
+    const ids = resolveOwnedAthleteIds({ id: "owner" }, []);
+    expect(linkedAthleteCleanup({}, ids)).toEqual([]);
+  });
+});
+
+describe("profile retention across partial cleanup", () => {
+  it("does not delete the profile or user if an athlete-scoped step fails", async () => {
+    const events = [];
+    const deleteUser = vi.fn(async () => events.push("user"));
+    const deleteProfile = vi.fn(async () => events.push("profile"));
+    const result = await finalizeAccountDeletion([
+      ["AthleteProfile", deleteProfile],
+      ["WorkoutAssetByAthlete", async () => { events.push("asset"); throw new Error("fail"); }],
+      ["WebhookEventByAthlete", async () => events.push("webhook")],
+    ], deleteUser);
+    expect(result).toEqual({ success: false, failedEntities: ["WorkoutAssetByAthlete"] });
+    expect(events).toEqual(["asset", "webhook"]);
+    expect(deleteProfile).not.toHaveBeenCalled();
+    expect(deleteUser).not.toHaveBeenCalled();
+  });
+
+  it("runs dependent cleanup before profile and user deletion regardless of original ordering", async () => {
+    const events = [];
+    const result = await finalizeAccountDeletion([
+      ["AthleteProfile", async () => events.push("profile")],
+      ["WorkoutAssetByAthlete", async () => events.push("asset")],
+      ["WebhookEventByAthlete", async () => events.push("webhook")],
+    ], async () => events.push("user"));
+    expect(result).toEqual({ success: true, failedEntities: [] });
+    expect(events).toEqual(["asset", "webhook", "profile", "user"]);
+  });
+
+  it("keeps user identity on profile deletion failure", async () => {
+    const deleteUser = vi.fn();
+    const result = await finalizeAccountDeletion([
+      ["WorkoutAssetByAthlete", vi.fn().mockResolvedValue(undefined)],
+      ["AthleteProfile", vi.fn().mockRejectedValue(new Error("fail"))],
+    ], deleteUser);
+    expect(result).toEqual({ success: false, failedEntities: ["AthleteProfile"] });
+    expect(deleteUser).not.toHaveBeenCalled();
+  });
+});
+
+describe("durable deletion recovery scope", () => {
+  it("persists owned profile IDs before deletion and rejects unverified persistence", async () => {
+    const create = vi.fn(async (data) => ({ ...data, id: "journal-1" }));
+    const entities = {
+      AccountDeletionRecovery: { filter: vi.fn().mockResolvedValue([]), create },
+      AthleteProfile: { filter: vi.fn().mockResolvedValue([
+        { id: "mine", created_by_id: "owner" },
+      ]) },
+    };
+    const result = await loadOrCreateDeletionRecovery(entities, {
+      id: "owner", data: { athlete_profile_id: "mine" },
+    });
+    expect(result).toMatchObject({ id: "journal-1", user_id: "owner", athlete_ids: ["mine"] });
+    expect(create).toHaveBeenCalledWith({ user_id: "owner", athlete_ids: ["mine"], state: "prepared" });
+    entities.AccountDeletionRecovery.filter.mockResolvedValue([]);
+    create.mockResolvedValueOnce({ id: "journal-2", user_id: "other", athlete_ids: ["mine"], state: "prepared" });
+    await expect(loadOrCreateDeletionRecovery(entities, { id: "owner" })).rejects.toThrow(/verified/);
+  });
+
+  it("recovers verified IDs when profiles were removed by an earlier partial attempt", async () => {
+    const create = vi.fn();
+    const profiles = vi.fn().mockResolvedValue([]);
+    const entities = {
+      AccountDeletionRecovery: {
+        filter: vi.fn().mockResolvedValue([{
+          id: "journal-1", user_id: "owner", athlete_ids: ["mine"], state: "prepared",
+        }]),
+        create,
+      },
+      AthleteProfile: { filter: profiles },
+    };
+    expect((await loadOrCreateDeletionRecovery(entities, { id: "owner" })).athlete_ids).toEqual(["mine"]);
+    expect(create).not.toHaveBeenCalled();
+    expect(profiles).toHaveBeenCalledWith({ created_by_id: "owner" });
+  });
+
+  it("fails closed for foreign, ambiguous, corrupt or unconfirmed recovery records", async () => {
+    const user = { id: "owner" };
+    const entity = { AccountDeletionRecovery: { filter: vi.fn() } };
+    for (const records of [
+      [{ id: "bad", user_id: "other", athlete_ids: ["foreign"], state: "prepared" }],
+      [{ id: "bad", user_id: "owner", athlete_ids: ["mine", "mine"], state: "prepared" }],
+      [{ id: "bad", user_id: "owner", athlete_ids: ["mine"], state: "user_deleted" }],
+      [{ id: "bad", user_id: "owner", athlete_ids: "mine", state: "prepared" }],
+      [{ id: "one" }, { id: "two" }],
+    ]) {
+      entity.AccountDeletionRecovery.filter.mockResolvedValueOnce(records);
+      await expect(loadOrCreateDeletionRecovery(entity, user)).rejects.toThrow(/manual review/);
+    }
+  });
+
+  it("does not write a recovery record for a foreign-linked profile", async () => {
+    const create = vi.fn();
+    const entities = {
+      AccountDeletionRecovery: { filter: vi.fn().mockResolvedValue([]), create },
+      AthleteProfile: { filter: vi.fn().mockResolvedValue([
+        { id: "mine", created_by_id: "owner" },
+      ]) },
+    };
+    await expect(loadOrCreateDeletionRecovery(entities, {
+      id: "owner", data: { athlete_profile_id: "foreign" },
+    })).rejects.toThrow(/linkage/);
+    expect(create).not.toHaveBeenCalled();
+  });
+});
+
+describe("post-create deletion recovery consistency guard", () => {
+  const expected = { id: "journal-1", user_id: "owner", athlete_ids: ["mine"], state: "prepared" };
+
+  it("accepts exactly one matching persisted journal", async () => {
+    const entities = { AccountDeletionRecovery: { filter: vi.fn().mockResolvedValue([{ ...expected }]) } };
+    await expect(verifyDeletionRecoveryScope(entities, "owner", expected)).resolves.toEqual(expected);
+    expect(entities.AccountDeletionRecovery.filter).toHaveBeenCalledWith({ user_id: "owner" });
+  });
+
+  it("rejects two simultaneous journals for the same user before cleanup", async () => {
+    const entities = { AccountDeletionRecovery: { filter: vi.fn().mockResolvedValue([
+      { ...expected }, { ...expected, id: "journal-2" },
+    ]) } };
+    await expect(verifyDeletionRecoveryScope(entities, "owner", expected)).rejects.toThrow(/manual review/);
+  });
+
+  it("rejects replaced, altered or missing journals before cleanup", async () => {
+    for (const records of [
+      [], [{ ...expected, id: "different" }],
+      [{ ...expected, athlete_ids: ["foreign"] }],
+      [{ ...expected, state: "user_deleted" }],
+      [{ ...expected, athlete_ids: ["mine", "mine"] }],
+    ]) {
+      const entities = { AccountDeletionRecovery: { filter: vi.fn().mockResolvedValue(records) } };
+      await expect(verifyDeletionRecoveryScope(entities, "owner", expected)).rejects.toThrow(/manual review/);
+    }
+  });
+
+  it("rejects a journal for a different authenticated user", async () => {
+    const entities = { AccountDeletionRecovery: { filter: vi.fn() } };
+    await expect(verifyDeletionRecoveryScope(entities, "other", expected)).rejects.toThrow(/manual review/);
+    expect(entities.AccountDeletionRecovery.filter).not.toHaveBeenCalled();
+  });
+});
+
+describe("journal scope reconciliation on retry", () => {
+  const journal = { id: "journal-1", user_id: "owner", athlete_ids: ["mine"], state: "prepared" };
+  const entitiesWith = (profiles) => ({
+    AccountDeletionRecovery: { filter: vi.fn().mockResolvedValue([{ ...journal }]) },
+    AthleteProfile: { filter: vi.fn().mockResolvedValue(profiles) },
+  });
+
+  it("rejects a prepared journal that omits the user's linked profile", async () => {
+    const e = entitiesWith([]);
+    await expect(loadOrCreateDeletionRecovery(e, {
+      id: "owner", data: { athlete_profile_id: "different" },
+    })).rejects.toThrow(/manual review/);
+    expect(e.AthleteProfile.filter).not.toHaveBeenCalled();
+  });
+
+  it("rejects a journal that omits newly created owned profiles", async () => {
+    const e = entitiesWith([
+      { id: "mine", created_by_id: "owner" },
+      { id: "added-later", created_by_id: "owner" },
+    ]);
+    await expect(loadOrCreateDeletionRecovery(e, { id: "owner" }))
+      .rejects.toThrow(/manual review/);
+  });
+
+  it("allows a retry when an owned profile was already removed", async () => {
+    const e = entitiesWith([]);
+    const result = await loadOrCreateDeletionRecovery(e, {
+      id: "owner", data: { athlete_profile_id: "mine" },
+    });
+    expect(result).toEqual(journal);
+  });
+
+  it("rejects foreign or malformed surviving profiles in a filtered response", async () => {
+    for (const profiles of [
+      [{ id: "mine", created_by_id: "other" }],
+      [{ created_by_id: "owner" }],
+    ]) {
+      const e = entitiesWith(profiles);
+      await expect(loadOrCreateDeletionRecovery(e, { id: "owner" }))
+        .rejects.toThrow(/manual review/);
+    }
+  });
+});
+
+describe("privacy-minimized operator deletion journal triage", () => {
+  const valid = { id: "record-123", user_id: "sensitive-user-id", athlete_ids: ["sensitive-athlete-id"], state: "prepared" };
+
+  it("distinguishes an active account from an orphan without authorizing any purge", () => {
+    expect(classifyDeletionRecoveryForReview(valid, true)).toEqual({
+      status: "account_exists_retry_or_investigate", safe_to_purge: false,
+    });
+    expect(classifyDeletionRecoveryForReview(valid, false)).toEqual({
+      status: "orphaned_journal_investigate", safe_to_purge: false,
+    });
+  });
+
+  it("fails closed when user existence is unknown or record is malformed", () => {
+    for (const [record, existence] of [
+      [valid, null],
+      [valid, undefined],
+      [{ ...valid, athlete_ids: ["duplicate", "duplicate"] }, false],
+      [{ ...valid, state: "unknown" }, false],
+      [{ ...valid, athlete_ids: null }, false],
+      [null, false],
+    ]) {
+      expect(classifyDeletionRecoveryForReview(record, existence)).toEqual({
+        status: "manual_review", safe_to_purge: false,
+      });
+    }
+  });
+
+  it("never returns identity, athlete IDs or journal fields to the reviewer", () => {
+    for (const exists of [true, false, null]) {
+      const report = classifyDeletionRecoveryForReview(valid, exists);
+      expect(Object.keys(report).sort()).toEqual(["safe_to_purge", "status"]);
+      expect(JSON.stringify(report)).not.toContain("sensitive-");
+    }
+  });
+});

@@ -183,14 +183,6 @@
           "created_by_id": "{{user.id}}"
         },
         {
-          "id": "{{user.data.athlete_profile_id}}"
-        },
-        {
-          "id": {
-            "$in": "{{user.data.coached_athletes}}"
-          }
-        },
-        {
           "user_condition": {
             "role": "admin"
           }
@@ -201,9 +193,6 @@
       "$or": [
         {
           "created_by_id": "{{user.id}}"
-        },
-        {
-          "id": "{{user.data.athlete_profile_id}}"
         },
         {
           "user_condition": {

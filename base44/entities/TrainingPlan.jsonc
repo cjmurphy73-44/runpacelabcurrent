@@ -26,7 +26,7 @@
     },
     "plan_title": {
       "type": "string",
-      "description": "Human-readable plan title, e.g. 'Sub-17 5K Training Plan \u2014 Race-Anchored 13-Week Block'"
+      "description": "Human-readable plan title, e.g. 'Sub-17 5K Training Plan — Race-Anchored 13-Week Block'"
     },
     "tier": {
       "type": "string",
@@ -294,12 +294,7 @@
     "read": {
       "$or": [
         {
-          "data.athlete_id": "{{user.data.athlete_profile_id}}"
-        },
-        {
-          "data.athlete_id": {
-            "$in": "{{user.data.coached_athletes}}"
-          }
+          "created_by_id": "{{user.id}}"
         },
         {
           "user_condition": {

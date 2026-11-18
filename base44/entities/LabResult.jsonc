@@ -1,7 +1,7 @@
 {
   "name": "LabResult",
   "type": "object",
-  "description": "Periodic lab / blood-panel result normalized into the canonical telemetry layer. One row per metric per date (e.g. ferritin, hemoglobin, lactate-at-threshold, VO2max). Sparse by nature \u2014 feeds the timeline reconciler and AI synthesis alongside wearable/sleep data without being interpolated across days. Scoped under the same athlete RLS pattern as WorkoutSession / DailyMetrics.",
+  "description": "Periodic lab / blood-panel result normalized into the canonical telemetry layer. One row per metric per date (e.g. ferritin, hemoglobin, lactate-at-threshold, VO2max). Sparse by nature — feeds the timeline reconciler and AI synthesis alongside wearable/sleep data without being interpolated across days. Scoped under the same athlete RLS pattern as WorkoutSession / DailyMetrics.",
   "properties": {
     "athlete_id": {
       "type": "string",
@@ -77,12 +77,7 @@
     "read": {
       "$or": [
         {
-          "data.athlete_id": "{{user.data.athlete_profile_id}}"
-        },
-        {
-          "data.athlete_id": {
-            "$in": "{{user.data.coached_athletes}}"
-          }
+          "created_by_id": "{{user.id}}"
         },
         {
           "user_condition": {

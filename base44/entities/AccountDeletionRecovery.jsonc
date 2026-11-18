@@ -1,0 +1,58 @@
+{
+  "name": "AccountDeletionRecovery",
+  "type": "object",
+  "description": "Service-role-only deletion recovery scope. Retains verified athlete IDs until account deletion and recovery-record purge complete. Must never be exposed to athlete or coach SDK reads.",
+  "properties": {
+    "user_id": {
+      "type": "string",
+      "description": "Authenticated User.id whose deletion was requested"
+    },
+    "athlete_ids": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "AthleteProfile IDs checked against created_by_id before destructive deletion"
+    },
+    "state": {
+      "type": "string",
+      "enum": [
+        "prepared",
+        "user_deleted"
+      ],
+      "default": "prepared",
+      "description": "Deletion progress, not proof of uploaded file purging"
+    },
+    "description": {
+      "type": "string",
+      "maxLength": 1000
+    }
+  },
+  "required": [
+    "user_id",
+    "athlete_ids",
+    "state"
+  ],
+  "rls": {
+    "create": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "read": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "update": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "delete": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
+}

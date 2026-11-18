@@ -1,10 +1,12 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.49';
+import { finalizeAccountDeletion, linkedAthleteCleanup, loadOrCreateDeletionRecovery, verifyDeletionRecoveryScope } from '../../shared/accountDeletionCleanup.js';
 
 // Permanently deletes the calling user's account and all owned data.
 // Triggered from the Athlete Settings Danger Zone. There is no client-side
 // deleteMe() in the auth SDK, so this service-role function performs the
 // deletion: it first clears the user's data across all owned entities
-// (best-effort), then deletes the User record itself.
+// before deleting the User record. A cleanup failure keeps the account
+// available for a retry rather than falsely reporting successful deletion.
 export default async function(req) {
   try {
     const base44 = createClientFromRequest(req);
@@ -13,42 +15,54 @@ export default async function(req) {
 
     const e = base44.asServiceRole.entities;
     const owned = { created_by_id: user.id };
+    // A service-role-only recovery record retains verified athlete IDs even if
+    // User deletion fails after AthleteProfile deletion. No record = no cleanup.
+    const recovery = await loadOrCreateDeletionRecovery(e, user);
+    // Fail closed when another request has created/replaced a journal.
+    // This check does not provide transactional concurrency control.
+    await verifyDeletionRecoveryScope(e, user.id, recovery);
+    const athleteIds = recovery.athlete_ids;
 
-    // Best-effort cleanup of the user's data; a failure on one entity must not
-    // block the account deletion itself.
+    // Keep entity labels in failure reports, never record contents or secrets.
     const cleanup = [
-      () => e.WorkoutSession.deleteMany(owned),
-      () => e.WorkoutAsset.deleteMany(owned),
-      () => e.DailyMetrics.deleteMany(owned),
-      () => e.TrainingPlan.deleteMany(owned),
-      () => e.TrainingPlanSession.deleteMany(owned),
-      () => e.CoachMessage.deleteMany(owned),
-      () => e.WorkoutFeedback.deleteMany(owned),
-      () => e.AthleteProfile.deleteMany(owned),
-      () => e.GarminConnection.deleteMany(owned),
-      () => e.StravaConnection.deleteMany(owned),
-      () => e.CorosConnection.deleteMany(owned),
-      () => e.WearableConnection.deleteMany(owned),
-      () => e.CoachAthleteAssignment.deleteMany({ coach_user_id: user.id }),
+      ["WorkoutSession", () => e.WorkoutSession.deleteMany(owned)],
+      ["WorkoutAsset", () => e.WorkoutAsset.deleteMany(owned)],
+      ["DailyMetrics", () => e.DailyMetrics.deleteMany(owned)],
+      ["TrainingPlan", () => e.TrainingPlan.deleteMany(owned)],
+      ["TrainingPlanSession", () => e.TrainingPlanSession.deleteMany(owned)],
+      ["CoachMessage", () => e.CoachMessage.deleteMany(owned)],
+      ["WorkoutFeedback", () => e.WorkoutFeedback.deleteMany(owned)],
+      ["AthleteProfile", () => e.AthleteProfile.deleteMany(owned)],
+      ["GarminConnection", () => e.GarminConnection.deleteMany(owned)],
+      ["StravaConnection", () => e.StravaConnection.deleteMany(owned)],
+      ["CorosConnection", () => e.CorosConnection.deleteMany(owned)],
+      ["WearableConnection", () => e.WearableConnection.deleteMany(owned)],
+      ["CoachAthleteAssignment", () => e.CoachAthleteAssignment.deleteMany({ coach_user_id: user.id })],
       // Also remove roster entries where THIS user is the athlete, so coaches
       // don't keep a dangling reference to a deleted profile.
-      ...(user.data?.athlete_profile_id ? [() => e.CoachAthleteAssignment.deleteMany({ athlete_profile_id: user.data.athlete_profile_id })] : []),
-      () => e.Subscription.deleteMany({ user_id: user.id }),
-      () => e.LabResult.deleteMany(owned),
-      () => e.BetaFeedback.deleteMany(owned),
-      // WebhookEvent rows are written by service-role sync functions, so created_by_id
-      // never points at the athlete; match on athlete_id instead or deletion leaves them.
-      ...(user.data?.athlete_profile_id ? [() => e.WebhookEvent.deleteMany({ athlete_id: user.data.athlete_profile_id })] : []),
+      ...athleteIds.map((athleteId) => ["CoachAthleteAssignmentByAthlete", () => e.CoachAthleteAssignment.deleteMany({ athlete_profile_id: athleteId })]),
+      ["Subscription", () => e.Subscription.deleteMany({ user_id: user.id })],
+      ["LabResult", () => e.LabResult.deleteMany(owned)],
+      ["BetaFeedback", () => e.BetaFeedback.deleteMany(owned)],
+      // Also remove service-created records with athlete_id but no matching creator.
+      // Scope only to profiles verified as owned by the authenticated user.
+      ...linkedAthleteCleanup(e, athleteIds),
     ];
-    for (const del of cleanup) {
-      try { await del(); } catch (err) { /* best-effort; continue */ }
+    const result = await finalizeAccountDeletion(cleanup, () => e.User.delete(user.id));
+    if (!result.success) {
+      // Do not remove the identity needed to retry incomplete cleanup.
+      return Response.json({
+        success: false,
+        error: 'Account deletion is incomplete. Your account remains active; please retry or contact support.',
+        failed_entities: result.failedEntities,
+      }, { status: 500 });
     }
 
-    // Finally, delete the user account record itself.
-    await base44.asServiceRole.entities.User.delete(user.id);
-
+    // Remove the recovery record only after User deletion succeeds. A failed
+    // purge leaves a service-only record requiring operator reconciliation.
+    await e.AccountDeletionRecovery.delete(recovery.id);
     return Response.json({ success: true });
   } catch (error) {
-    return Response.json({ error: error.message }, { status: 500 });
+    return Response.json({ error: 'Account deletion could not be completed. Please retry or contact support.' }, { status: 500 });
   }
 }
