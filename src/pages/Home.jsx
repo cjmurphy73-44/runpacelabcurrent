@@ -234,6 +234,7 @@ export default function Home() {
             key={athlete.id}
             athlete={athlete}
             workouts={workouts}
+            runningHistory={loadTimelineWorkouts}
             onWorkoutChanged={() => loadAthleteData(athlete.id)}
           />
           <div className="space-y-8">
