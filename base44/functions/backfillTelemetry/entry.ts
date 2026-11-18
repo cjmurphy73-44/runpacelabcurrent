@@ -179,10 +179,12 @@ async function loadSessions(base44, athlete_id) {
 }
 
 async function processSession(base44, athlete, session, restHr, maxHr) {
-  const assets = await base44.asServiceRole.entities.WorkoutAsset.filter({ session_id: session.id }).catch(() => []);
+  const assets = await base44.asServiceRole.entities.WorkoutAsset.filter({ athlete_id: athlete.id, session_id: session.id }).catch(() => []);
   const sources = [];
   for (const a of Array.isArray(assets) ? assets : []) {
-    if (a?.file_url) sources.push({ file_url: a.file_url, file_name: a.file_name || '', file_type: a.file_type });
+    if (a?.athlete_id === athlete.id && a?.session_id === session.id && a?.file_url) {
+      sources.push({ file_url: a.file_url, file_name: a.file_name || '', file_type: a.file_type });
+    }
   }
   if (session.raw_file_url && !sources.some((s) => s.file_url === session.raw_file_url)) {
     const name = nameFromUrl(session.raw_file_url, session.source_format);
