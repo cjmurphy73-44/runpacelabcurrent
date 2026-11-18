@@ -26,6 +26,9 @@ describe('workout review provenance and charts', () => {
     expect(series.some(p => p.value === 0)).toBe(true);
     expect(original.length).toBe(7201);
   });
+  it('derives pace only from positive measured speed and keeps stops missing', () => {
+    expect(chartSeries([{ time: 0, speed: 4 }, { time: 1, speed: 0 }, { time: 2, speed: null }], 'pace').map(p => p.value)).toEqual([4.17, null, null]);
+  });
   it('never invents absent heart-rate values', () => {
     expect(chartSeries([{ time: 0, heart_rate: null }, { time: 1, heart_rate: 145 }], 'heart_rate').map(p => p.value)).toEqual([null,145]);
   });
