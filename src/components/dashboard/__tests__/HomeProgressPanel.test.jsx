@@ -26,6 +26,16 @@ describe("Home activity progress (synthetic only)", () => {
     const result = summarizeActivityProgress(workouts, today, 28);
     expect(result.sessions).toBe(5);
     expect(result.minutes).toBe(135);
+    expect(result.buckets).toHaveLength(28);
+    expect(result.buckets[0].date).toBe("2026-10-22");
+  });
+  it("keeps the selected window independent of history truncation warnings", () => {
+    const seven = summarizeActivityProgress(workouts, today, 7);
+    const twentyEight = summarizeActivityProgress(workouts, today, 28);
+    expect(seven.sessions).toBe(4);
+    expect(twentyEight.sessions).toBe(5);
+    expect(seven.buckets).toHaveLength(7);
+    expect(twentyEight.buckets).toHaveLength(28);
   });
   it("renders accessible range controls and truthful missing-duration explanation", () => {
     const html = renderToStaticMarkup(<MemoryRouter><HomeProgressPanel workouts={workouts} today={today} /></MemoryRouter>);
