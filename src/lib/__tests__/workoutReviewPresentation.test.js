@@ -14,6 +14,12 @@ describe('workout review provenance and charts', () => {
     expect(result.state).toBe('partial');
     expect(result.coverage).toBe(50);
   });
+  it('does not call delayed or gapped streams full-duration recordings', () => {
+    const delayed = sample(7201).map(p => ({ ...p, time: p.time + 30 }));
+    expect(recordingPresentation({ duration_seconds: 7230, streams: delayed }).state).toBe('partial');
+    const gapped = sample(7201).map((p, i) => ({ ...p, time: i < 3600 ? p.time : p.time + 30 }));
+    expect(recordingPresentation({ duration_seconds: 7230, streams: gapped }).state).toBe('partial');
+  });
   it('does not graph summary-shaped or out-of-order samples', () => {
     expect(recordingPresentation({ duration_seconds: 3600, streams: [{ time: 0, heart_rate: 120 }] }).state).toBe('summary');
     expect(recordingPresentation({ duration_seconds: 3600, streams: [{ time: 2, heart_rate: 120 }, { time: 1, heart_rate: 121 }] }).state).toBe('summary');
