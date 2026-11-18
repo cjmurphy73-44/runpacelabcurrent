@@ -28,7 +28,7 @@ function mount(workouts = [workout]) {
   return render(
     <MemoryRouter initialEntries={["/app"]}>
       <Routes>
-        <Route path="/app" element={<HomeTrainingWorkspace athlete={athlete} workouts={workouts} />} />
+        <Route path="/app" element={<HomeTrainingWorkspace athlete={athlete} workouts={workouts} runningHistory={workouts} />} />
         {["plan", "recovery", "workouts", "settings"].map((path) => <Route key={path} path={`/${path}`} element={<h1>{path} destination</h1>} />)}
       </Routes>
     </MemoryRouter>
@@ -71,6 +71,8 @@ describe("Home daily training workspace", () => {
     expect(screen.getByRole("heading", { name: "What the data says" })).toBeTruthy();
     expect(screen.getByText("Running capability")).toBeTruthy();
     expect(screen.getByText("Current pace unverified")).toBeTruthy();
+    expect(screen.getByText(/Last recorded run was/)).toBeTruthy();
+    expect(screen.getByText("Rides · 42 days")).toBeTruthy();
     expect(screen.getAllByRole("link", { name: /Today.s plan/ })).toHaveLength(1);
     expect(screen.getByRole("link", { name: /Explore race-based paces/ })).toBeTruthy();
     expect(base44.functions.invoke).not.toHaveBeenCalled();
