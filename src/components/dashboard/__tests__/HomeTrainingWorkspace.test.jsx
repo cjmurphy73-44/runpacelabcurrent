@@ -59,10 +59,22 @@ describe("Home daily training workspace", () => {
     expect(await screen.findByRole("heading", { name: "running" })).toBeTruthy();
     expect(screen.getByText("40 min")).toBeTruthy();
     expect(screen.queryByText("Existing readiness score")).toBeNull();
-    fireEvent.click(screen.getByRole("link", { name: /View training plan/ }));
+    fireEvent.click(screen.getByRole("link", { name: /Today.s plan/ }));
     expect(screen.getByRole("heading", { name: "plan destination" })).toBeTruthy();
   });
 
+
+  it("shows a real running context and retains one primary plan link on mobile", async () => {
+    const oldRun = { ...workout, id: "historical-run", date: "2026-09-20", sport: "running", distance_km: 8 };
+    mount([workout, oldRun]);
+    await screen.findByRole("heading", { name: "running" });
+    expect(screen.getByRole("heading", { name: "What the data says" })).toBeTruthy();
+    expect(screen.getByRole("heading", { name: /Running capability/ })).toBeTruthy();
+    expect(screen.getByText("Current pace unverified")).toBeTruthy();
+    expect(screen.getAllByRole("link", { name: /Today.s plan/ })).toHaveLength(1);
+    expect(screen.getByRole("link", { name: /Explore race-based paces/ })).toBeTruthy();
+    expect(base44.functions.invoke).not.toHaveBeenCalled();
+  });
   it("switches to readiness in place and links to recovery", async () => {
     mount();
     await screen.findByRole("heading", { name: "running" });
