@@ -16,12 +16,13 @@ export function recordingPresentation(workout) {
   };
 }
 export function chartSeries(points, key, limit = 240) {
-  if (!Array.isArray(points) || !['heart_rate','speed','power'].includes(key)) return [];
+  if (!Array.isArray(points) || !['heart_rate','speed','power','pace'].includes(key)) return [];
   const step = Math.max(1, Math.ceil(points.length / limit));
   const selected = points.filter((_, i) => i % step === 0 || i === points.length - 1);
   return selected.map(p => {
-    const value = p[key];
+    const value = key === 'pace' ? p.speed : p[key];
+    const measured = Number.isFinite(value) && (key !== 'heart_rate' || value > 0) && value >= 0;
     return { minute: Math.round(p.time / 60 * 10) / 10,
-      value: Number.isFinite(value) && (key !== 'heart_rate' || value > 0) && value >= 0 ? value : null };
+      value: measured ? (key === 'pace' ? (value > 0 ? Math.round((1000 / value / 60) * 100) / 100 : null) : value) : null };
   });
 }
