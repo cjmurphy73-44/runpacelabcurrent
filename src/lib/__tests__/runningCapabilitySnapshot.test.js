@@ -43,11 +43,14 @@ describe('athlete-facing running capability after injury or cross training', () 
   it('renders on Home as a read-only panel with navigation and history honesty', () => {
     const home = readFileSync(resolve(process.cwd(),'src/pages/Home.jsx'),'utf8');
     const ui = readFileSync(resolve(process.cwd(),'src/components/dashboard/RunningCapabilityPanel.jsx'),'utf8');
-    expect(home).toContain('<RunningCapabilityPanel athlete={athlete} workouts={loadTimelineWorkouts} />');
+    const workspace = readFileSync(resolve(process.cwd(),'src/components/dashboard/HomeTrainingWorkspace.jsx'),'utf8');
+    expect(home).toContain('runningHistory={loadTimelineWorkouts}');
+    expect(workspace).toContain('<RunningCapabilityPanel athlete={athlete} workouts={runningHistory} showActions={false} />');
     expect(ui).toContain('Current pace unverified');
     expect(ui).toContain('Historical reference');
     expect(ui).toContain('Only a limited activity window');
     expect(ui).toContain('to="/vdot"');
+    expect(ui).toContain('showActions ? (');
     expect(ui).toContain('to="/plan"');
     expect(ui).not.toMatch(/AthleteProfile\.update|updateAthleteProfile|auth\.updateMe/);
   });
