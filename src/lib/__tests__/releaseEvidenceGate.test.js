@@ -11,6 +11,24 @@ const valid = () => ({
     evidenceUrl: "https://github.com/cjmurphy73-44/runpacelabcurrent/actions/runs/123",
     verifiedAt: "2026-11-19T00:00:00Z",
   }])),
+  it.each([
+    "https://github.com/another-owner/another-repo/actions/runs/123",
+    "https://github.com/cjmurphy73-44/runpacelabcurrent.evil.example/actions/runs/123",
+    "https://github.com/cjmurphy73-44/runpacelabcurrent/issues/1",
+    "https://github.com/cjmurphy73-44/runpacelabcurrent/actions/runs/123?token=secret",
+    "https://random-preview.vercel.app/looks-good",
+    "https://vercel.com/other/path",
+    "https://github.com@evil.example/cjmurphy73-44/runpacelabcurrent/actions/runs/123",
+  ])("rejects unrelated or ambiguous evidence URL %s", url => {
+    const input = valid();
+    input.gates.exactHeadCi.evidenceUrl = url;
+    expect(evaluateReleaseEvidence(input).blockers).toContain("exactHeadCi: trusted evidence link missing");
+  });
+  it("accepts correctly scoped deployment record links for human review only", () => {
+    const input = valid();
+    input.gates.sourceMapping.evidenceUrl = "https://vercel.com/team/project/deployments/dpl_123";
+    expect(evaluateReleaseEvidence(input).readyForReview).toBe(true);
+  });
 });
 
 describe("offline release review evidence gate", () => {
