@@ -23,6 +23,7 @@ import { matchingCorosRecordForBackfill } from '../../shared/corosActivityIdenti
 import { garminConfig, refreshGarminToken } from '../../shared/garminAuth.ts';
 import { corosAccessToken, queryCorosRecords, downloadCorosFit } from '../../shared/corosMcp.ts';
 import { recordingTruncationNotice } from '../../shared/recordingTruncationNotice.ts';
+import { providerForBackfill } from '../../shared/backfillProviderGate.ts';
 
 const BATCH_SIZE = 25;
 const MAX_STREAM_SAMPLES = 3600;
@@ -200,7 +201,9 @@ async function processSession(base44, athlete, session, restHr, maxHr) {
 
   let fromProvider = false;
   if (payloads.length === 0) {
-    for (const refetch of [garminFileFor, corosFileFor]) {
+    const provider = providerForBackfill(session);
+    const refetchers = provider === 'garmin' ? [garminFileFor] : provider === 'coros' ? [corosFileFor] : [];
+    for (const refetch of refetchers) {
       const provider = await refetch(base44, athlete, session).catch(() => null);
       if (provider && isUsableTelemetry(provider.stream, durationSeconds)) {
         payloads.push(provider);
