@@ -11,6 +11,9 @@ const valid = () => ({
     evidenceUrl: "https://github.com/cjmurphy73-44/runpacelabcurrent/actions/runs/123",
     verifiedAt: "2026-11-19T00:00:00Z",
   }])),
+});
+
+describe("scoped evidence URLs", () => {
   it.each([
     "https://github.com/another-owner/another-repo/actions/runs/123",
     "https://github.com/cjmurphy73-44/runpacelabcurrent.evil.example/actions/runs/123",
