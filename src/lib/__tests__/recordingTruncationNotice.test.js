@@ -24,6 +24,18 @@ describe('COROS original FIT truncation acknowledgement', () => {
   it('does not invent a time range for malformed input', () => {
     expect(recordingTruncationNotice([{ time: null }, { time: undefined }], 1)).toContain('time span unavailable');
   });
+  it('does not claim complete recording coverage from plausible endpoints with corrupt interior times', () => {
+    const valid = Array.from({ length: 3601 }, (_, time) => ({ time }));
+    for (const corrupt of [null, -2, Infinity, 1.5, 9999]) {
+      const samples = valid.map((sample) => ({ ...sample }));
+      samples[1800].time = corrupt;
+      const notice = recordingTruncationNotice(samples);
+      expect(notice).toContain('3601 samples');
+      expect(notice).toContain('recording time span unavailable');
+      expect(notice).not.toContain('recorded time 0s–3600s');
+    }
+    expect(recordingTruncationNotice(valid)).toContain('recorded time 0s–3600s');
+  });
   it('rejects unsupported storage bounds without creating a false warning', () => {
     expect(recordingTruncationNotice([{ time: 0 }, { time: 1 }], 0)).toBeNull();
     expect(recordingTruncationNotice(null)).toBeNull();
