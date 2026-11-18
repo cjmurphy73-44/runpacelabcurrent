@@ -41,6 +41,7 @@ import FirstDataPanel from "@/components/onboarding/FirstDataPanel";
 import PlannedActualReconciliation from "@/components/dashboard/PlannedActualReconciliation";
 import CoachBriefing from "@/components/dashboard/CoachBriefing";
 import PhysiologyStrip from "@/components/dashboard/PhysiologyStrip";
+import RunningCapabilityPanel from "@/components/dashboard/RunningCapabilityPanel";
 import TodayFocusLine from "@/components/dashboard/TodayFocusLine";
 import WearableSyncBar from "@/components/dashboard/WearableSyncBar";
 import AnomalyAlertBanner from "@/components/dashboard/AnomalyAlertBanner";
@@ -242,6 +243,7 @@ export default function Home() {
           <WidgetBoundary name="Today's focus"><TodayFocusLine athlete={athlete} /></WidgetBoundary>
           <WidgetBoundary name="Wearable sync"><WearableSyncBar onSynced={() => loadAthleteData(athlete.id)} /></WidgetBoundary>
           <WidgetBoundary name="Physiology strip"><PhysiologyStrip athlete={athlete} /></WidgetBoundary>
+          <WidgetBoundary name="Running capability"><RunningCapabilityPanel athlete={athlete} workouts={loadTimelineWorkouts} /></WidgetBoundary>
           <WidgetBoundary name="Calibration meter"><CalibrationMeter athlete={athlete} athleteId={athlete.id} /></WidgetBoundary>
           <WidgetBoundary name="Today's session"><TodaySessionCard athleteId={athlete.id} /></WidgetBoundary>
           <WidgetBoundary name="Weekly volume"><WeeklyVolumeLine athleteId={athlete.id} /></WidgetBoundary>
