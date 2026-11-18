@@ -7,6 +7,7 @@ import PublicFooter from "@/components/layout/PublicFooter";
 export default function LegalLayout({ title, updated, children }) {
   return (
     <div className="min-h-screen bg-background">
+      <a href="#legal-content" className="sr-only focus:not-sr-only focus:fixed focus:top-3 focus:left-3 focus:z-50 focus:rounded-md focus:bg-background focus:px-4 focus:py-2 focus:text-foreground focus:ring-2 focus:ring-primary">Skip to legal content</a>
       <header className="border-b border-border bg-background">
         <div className="max-w-3xl mx-auto px-4 py-4 flex items-center justify-between">
           <Link to="/landing" className="font-heading font-bold">TrainPaceLab</Link>
@@ -15,7 +16,7 @@ export default function LegalLayout({ title, updated, children }) {
           </Button>
         </div>
       </header>
-      <main className="max-w-3xl mx-auto px-4 py-12">
+      <main id="legal-content" tabIndex={-1} className="max-w-3xl mx-auto px-4 py-12">
         <h1 className="font-heading text-3xl font-bold">{title}</h1>
         {updated && <p className="mt-1 text-xs text-muted-foreground">Last updated: {updated}</p>}
         <div className="mt-8 space-y-6 text-sm leading-relaxed text-muted-foreground [&_h2]:text-foreground [&_h2]:font-heading [&_h2]:font-semibold [&_h2]:text-lg [&_h2]:mt-8 [&_ul]:list-disc [&_ul]:pl-5 [&_ul]:space-y-1 [&_a]:text-primary [&_a]:underline">
