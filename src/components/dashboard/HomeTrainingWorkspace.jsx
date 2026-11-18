@@ -9,6 +9,7 @@ import TodaySessionCard from "@/components/dashboard/TodaySessionCard";
 import DashboardGreeting from "@/components/dashboard/DashboardGreeting";
 import ReadinessScoreCard from "@/components/dashboard/ReadinessScoreCard";
 import TodayDecisionSummary from "@/components/dashboard/TodayDecisionSummary";
+import HomeProgressPanel from "@/components/dashboard/HomeProgressPanel";
 import CoachHoldCard from "@/components/dashboard/CoachHoldCard";
 import WorkoutDetailModal from "@/components/workout/WorkoutDetailModal";
 import { useCoachInjurySignal } from "@/hooks/useCoachInjurySignal";
@@ -21,7 +22,7 @@ function CurrentCoachStatus({ athleteId }) {
   return <CoachHoldCard injury={injury} hideWhenNone />;
 }
 
-export default function HomeTrainingWorkspace({ athlete, workouts = [], onWorkoutChanged }) {
+export default function HomeTrainingWorkspace({ athlete, workouts = [], progressWorkouts = workouts, progressHistoryLimited = false, onWorkoutChanged }) {
   const [tab, setTab] = useState("today");
   const latest = [...workouts].sort((a, b) => (b.date || "").localeCompare(a.date || ""))[0];
 
@@ -102,6 +103,7 @@ export default function HomeTrainingWorkspace({ athlete, workouts = [], onWorkou
           </Button>
         </TabsContent>
       </Tabs>
+      <WidgetBoundary name="Activity progress"><HomeProgressPanel workouts={progressWorkouts} historyLimited={progressHistoryLimited} /></WidgetBoundary>
     </section>
   );
 }
