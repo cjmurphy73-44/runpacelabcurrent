@@ -47,8 +47,14 @@ export function computeHolisticReadiness(
   baseline?: BaselineInput,
   tsb?: number | null
 ): ReadinessResult {
+  const validHrv = typeof current.hrvMs === 'number' && Number.isFinite(current.hrvMs) && current.hrvMs > 0;
+  const validSleep = typeof current.sleepScore === 'number' && Number.isFinite(current.sleepScore) && current.sleepScore >= 0 && current.sleepScore <= 100;
+  const validRhr = typeof current.restingHr === 'number' && Number.isFinite(current.restingHr) && current.restingHr > 0;
+  const validTsb = typeof tsb === 'number' && Number.isFinite(tsb);
+  const validHrvBaseline = baseline != null && typeof baseline.hrvMean === 'number' && Number.isFinite(baseline.hrvMean) && baseline.hrvMean > 0 && typeof baseline.hrvStdDev === 'number' && Number.isFinite(baseline.hrvStdDev) && baseline.hrvStdDev > 0;
+  const validRhrBaseline = baseline != null && typeof baseline.restingHrMean === 'number' && Number.isFinite(baseline.restingHrMean) && baseline.restingHrMean > 0;
   let hrvComponent = 70; // neutral fallback
-  let sleepComponent = current.sleepScore != null ? Math.max(0, Math.min(100, current.sleepScore)) : 70;
+  let sleepComponent = validSleep ? current.sleepScore! : 70;
   let rhrComponent = 70;
   let tsbComponent = 70;
 
@@ -58,39 +64,39 @@ export function computeHolisticReadiness(
   let validCount = 0;
 
   // 1. HRV Z-Score Normalization
-  if (current.hrvMs != null && baseline?.hrvMean != null && baseline.hrvStdDev != null && baseline.hrvStdDev > 0) {
-    hrvZScore = (current.hrvMs - baseline.hrvMean) / baseline.hrvStdDev;
+  if (validHrv && validHrvBaseline) {
+    hrvZScore = (current.hrvMs! - baseline!.hrvMean!) / baseline!.hrvStdDev!;
     // Map Z-score (-2 to +2) to 0-100 score (Z=0 -> 70, Z=+2 -> 100, Z=-2 -> 40)
     hrvComponent = Math.max(0, Math.min(100, 70 + hrvZScore * 15));
     validCount++;
-  } else if (current.hrvMs != null) {
+  } else if (validHrv) {
     // Fallback if no baseline: absolute scale (e.g., 20ms to 100ms mapped to 30-100)
-    hrvComponent = Math.max(20, Math.min(100, 30 + (current.hrvMs / 100) * 70));
+    hrvComponent = Math.max(20, Math.min(100, 30 + (current.hrvMs! / 100) * 70));
     validCount++;
   }
 
   // 2. Sleep Score Direct Scaling
-  if (current.sleepScore != null) {
-    sleepComponent = Math.max(0, Math.min(100, current.sleepScore));
+  if (validSleep) {
+    sleepComponent = Math.max(0, Math.min(100, current.sleepScore!));
     validCount++;
   }
 
   // 3. Resting HR Delta Penalty
-  if (current.restingHr != null && baseline?.restingHrMean != null) {
-    rhrDelta = current.restingHr - baseline.restingHrMean;
+  if (validRhr && validRhrBaseline) {
+    rhrDelta = current.restingHr! - baseline!.restingHrMean!;
     // Elevated RHR is bad (+bpm -> penalty). Each bpm above mean subtracts 5 points from 70.
     rhrComponent = Math.max(0, Math.min(100, 70 - rhrDelta * 5));
     validCount++;
-  } else if (current.restingHr != null) {
+  } else if (validRhr) {
     // Fallback based on absolute RHR (lower is better, e.g., 40-80 bpm)
-    rhrComponent = Math.max(0, Math.min(100, 100 - (current.restingHr - 40) * 1.5));
+    rhrComponent = Math.max(0, Math.min(100, 100 - (current.restingHr! - 40) * 1.5));
     validCount++;
   }
 
   // 4. Form (TSB) Modifier (-30 to +30 TSB mapped to 30-100)
-  if (tsb != null) {
+  if (validTsb) {
     // TSB around 0 to +15 is optimal fresh. TSB < -20 is high fatigue.
-    const clampedTsb = Math.max(-30, Math.min(30, tsb));
+    const clampedTsb = Math.max(-30, Math.min(30, tsb!));
     tsbComponent = Math.max(0, Math.min(100, 70 + (clampedTsb / 30) * 30));
     validCount++;
   }
@@ -121,7 +127,7 @@ export function computeHolisticReadiness(
       details: {
         hrvZScore,
         restingHrDelta: rhrDelta,
-        tsb: tsb ?? undefined,
+        tsb: validTsb ? tsb! : undefined,
       },
     };
   }
@@ -150,7 +156,7 @@ export function computeHolisticReadiness(
     details: {
       hrvZScore,
       restingHrDelta: rhrDelta,
-      tsb: tsb ?? undefined,
+      tsb: validTsb ? tsb! : undefined,
     },
   };
 }

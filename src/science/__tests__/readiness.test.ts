@@ -38,4 +38,44 @@ describe('computeHolisticReadiness', () => {
     expect(result.score).toBeNull();
     expect(result.validSignalCount).toBe(0);
   });
+  it('rejects NaN, infinity, negative physiological values and invalid TSB rather than fabricating readiness', () => {
+    const result = computeHolisticReadiness(
+      { hrvMs: Number.NaN, sleepScore: Number.POSITIVE_INFINITY, restingHr: -4 },
+      { hrvMean: 60, hrvStdDev: 5, restingHrMean: 55 },
+      Number.NEGATIVE_INFINITY
+    );
+    expect(result.score).toBeNull();
+    expect(result.status).toBe('Insufficient Data');
+    expect(result.validSignalCount).toBe(0);
+    expect(result.details.tsb).toBeUndefined();
+  });
+
+  it('uses valid sleep while excluding invalid HRV, resting HR and TSB', () => {
+    const result = computeHolisticReadiness(
+      { hrvMs: -1, sleepScore: 80, restingHr: Number.NaN },
+      { hrvMean: 60, hrvStdDev: 5, restingHrMean: 55 },
+      Number.POSITIVE_INFINITY
+    );
+    expect(result.validSignalCount).toBe(1);
+    expect(result.score).not.toBeNull();
+    expect(Number.isFinite(result.score)).toBe(true);
+  });
+
+  it('falls back safely when baselines are nonfinite or physiologically invalid', () => {
+    const result = computeHolisticReadiness(
+      { hrvMs: 60, restingHr: 55 },
+      { hrvMean: Number.NaN, hrvStdDev: 0, restingHrMean: Number.POSITIVE_INFINITY }
+    );
+    expect(result.validSignalCount).toBe(2);
+    expect(result.details.hrvZScore).toBeUndefined();
+    expect(result.details.restingHrDelta).toBeUndefined();
+    expect(Number.isFinite(result.score)).toBe(true);
+  });
+
+  it('does not count out-of-range sleep scores as valid measurements', () => {
+    const result = computeHolisticReadiness({ sleepScore: 130 });
+    expect(result.score).toBeNull();
+    expect(result.validSignalCount).toBe(0);
+  });
+
 });
