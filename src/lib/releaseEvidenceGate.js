@@ -27,8 +27,10 @@ function isScopedEvidenceUrl(value) {
   } catch { return false; }
 }
 
-export function evaluateReleaseEvidence(candidate) {
+export function evaluateReleaseEvidence(candidate, now = Date.now()) {
   const blockers = [];
+  const reviewTime = typeof now === "number" && Number.isFinite(now) ? now : NaN;
+  const MAX_EVIDENCE_AGE_MS = 30 * 24 * 60 * 60 * 1000;
   if (!candidate || typeof candidate !== "object" || Array.isArray(candidate)) {
     return { readyForReview: false, blockers: ["candidate: missing or malformed"] };
   }
@@ -49,6 +51,11 @@ export function evaluateReleaseEvidence(candidate) {
     }
     if (typeof item.verifiedAt !== "string" || !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$/.test(item.verifiedAt) || !Number.isFinite(Date.parse(item.verifiedAt))) {
       blockers.push(`${gate}: UTC verification timestamp missing`);
+    } else {
+      const verified = Date.parse(item.verifiedAt);
+      if (!Number.isFinite(reviewTime) || verified > reviewTime || reviewTime - verified > MAX_EVIDENCE_AGE_MS || new Date(verified).toISOString().replace(".000Z", "Z") !== item.verifiedAt) {
+        blockers.push(`${gate}: stale, future or invalid verification time`);
+      }
     }
     if (item.gitSha !== candidate.gitSha) blockers.push(`${gate}: evidence does not match exact head`);
   }
