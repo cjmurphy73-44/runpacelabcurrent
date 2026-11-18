@@ -7,7 +7,7 @@ import { paceTextFromSpeed, runningCapabilitySnapshot } from "@/lib/runningCapab
  * Athlete-facing explanation of historical running metrics after interruptions.
  * No VDOT writes, threshold edits, injury diagnosis or auto-created training.
  */
-export default function RunningCapabilityPanel({ athlete, workouts = [] }) {
+export default function RunningCapabilityPanel({ athlete, workouts = [], showActions = true }) {
   const snapshot = useMemo(() => runningCapabilitySnapshot(workouts), [workouts]);
   const historicalPace = paceTextFromSpeed(athlete?.functional_threshold_pace_ms);
   const hasHistorical = historicalPace || (Number.isFinite(athlete?.vdot_estimate) && athlete.vdot_estimate > 0);
@@ -59,14 +59,20 @@ export default function RunningCapabilityPanel({ athlete, workouts = [] }) {
                 : "There is not enough verified running performance evidence to estimate a new threshold."}
         </p>
       </div>
-      <div className="flex flex-col sm:flex-row gap-2">
-        <Link to="/vdot" className="inline-flex min-h-11 items-center justify-center gap-2 rounded-md bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground hover:bg-primary/90">
-          <Gauge className="h-4 w-4" /> Explore race-based paces <ArrowRight className="h-4 w-4" />
+      {showActions ? (
+        <div className="flex flex-col sm:flex-row gap-2">
+          <Link to="/vdot" className="inline-flex min-h-11 items-center justify-center gap-2 rounded-md bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground hover:bg-primary/90">
+            <Gauge className="h-4 w-4" /> Explore race-based paces <ArrowRight className="h-4 w-4" />
+          </Link>
+          <Link to="/plan" className="inline-flex min-h-11 items-center justify-center rounded-md border border-border px-4 py-2 text-sm font-medium hover:bg-muted">
+            Review training plan
+          </Link>
+        </div>
+      ) : (
+        <Link to="/vdot" className="inline-flex min-h-11 items-center gap-2 text-sm font-medium text-primary underline-offset-4 hover:underline">
+          Explore race-based paces <ArrowRight aria-hidden="true" className="h-4 w-4" />
         </Link>
-        <Link to="/plan" className="inline-flex min-h-11 items-center justify-center rounded-md border border-border px-4 py-2 text-sm font-medium hover:bg-muted">
-          Review training plan
-        </Link>
-      </div>
+      )}
       {hasHistorical && <p className="text-xs text-muted-foreground">Historical values are preserved. Neither this panel nor a recent easy run changes your stored VDOT or threshold.</p>}
     </section>
   );
