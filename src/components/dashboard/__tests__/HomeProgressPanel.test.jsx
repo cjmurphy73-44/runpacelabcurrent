@@ -4,7 +4,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { MemoryRouter } from "react-router-dom";
 import HomeProgressPanel, { summarizeActivityProgress } from "../HomeProgressPanel";
 
-const today = new Date("2026-11-18T12:00:00Z");
+const today = new Date(2026, 10, 18, 12, 0, 0);
 const workouts = [
   { date: "2026-11-18", duration_minutes: 45 },
   { date: "2026-11-17", duration_minutes: 60 },
@@ -21,6 +21,11 @@ describe("Home activity progress (synthetic only)", () => {
     expect(result.missingDuration).toBe(2);
     expect(result.buckets).toHaveLength(7);
     expect(result.buckets.at(-1)).toMatchObject({ date: "2026-11-18", sessions: 2, minutes: 45 });
+  });
+  it("uses the athlete browser local calendar at midnight, not the UTC date", () => {
+    const localMidnight = new Date(2026, 10, 19, 0, 5, 0);
+    const result = summarizeActivityProgress([{ date: "2026-11-19", duration_minutes: 25 }], localMidnight, 7);
+    expect(result.buckets.at(-1)).toMatchObject({ date: "2026-11-19", sessions: 1, minutes: 25 });
   });
   it("includes older activity only in the selected 28-day window", () => {
     const result = summarizeActivityProgress(workouts, today, 28);
@@ -41,8 +46,8 @@ describe("Home activity progress (synthetic only)", () => {
     const html = renderToStaticMarkup(<MemoryRouter><HomeProgressPanel workouts={workouts} today={today} /></MemoryRouter>);
     expect(html).toContain('aria-label="Activity history range"');
     expect(html).toContain('aria-pressed="true"');
-    expect(html).toContain("2 sessions without verified duration");
-    expect(html).toContain("Recorded duration, not fitness or training load.");
+    expect(html).toContain("2 sessions without usable duration");
+    expect(html).toContain("Saved session duration by local calendar date, not fitness or training load.");
     expect(html).toContain("Review all workouts");
   });
   it("exposes the same daily records as a semantic table for keyboard and screen reader users", () => {
@@ -52,7 +57,7 @@ describe("Home activity progress (synthetic only)", () => {
     expect(html).toContain("<table");
     expect(html).toContain('scope="col"');
     expect(html).toContain('scope="row"');
-    expect(html).toContain("Date (UTC)");
+    expect(html).toContain("Date (local)");
     expect(html).toContain("2026-11-17");
     expect(html).toContain("Known minutes");
   });
