@@ -10,5 +10,5 @@ export function recordingTruncationNotice(stream, maxStoredSamples = 3600) {
   const coverage = validTimes
     ? `recorded time ${first}s–${last}s`
     : 'recording time span unavailable';
-  return `Source recording has ${stream.length} samples (${coverage}); the workout detail payload is limited to the first ${maxStoredSamples} samples. Full-recording display is not available yet; computed metrics may use the original FIT.`;
+  return `Source recording has ${stream.length} samples (${coverage}); the workout detail payload is limited to the first ${maxStoredSamples} samples. Full-recording display is not available yet; computed metrics may use the full source recording.`;
 }
