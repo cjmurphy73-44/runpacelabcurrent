@@ -45,6 +45,17 @@ describe("Home activity progress (synthetic only)", () => {
     expect(html).toContain("Recorded duration, not fitness or training load.");
     expect(html).toContain("Review all workouts");
   });
+  it("exposes the same daily records as a semantic table for keyboard and screen reader users", () => {
+    const html = renderToStaticMarkup(<MemoryRouter><HomeProgressPanel workouts={workouts} today={today} /></MemoryRouter>);
+    expect(html).toContain("<details");
+    expect(html).toContain("View daily activity breakdown");
+    expect(html).toContain("<table");
+    expect(html).toContain('scope="col"');
+    expect(html).toContain('scope="row"');
+    expect(html).toContain("Date (UTC)");
+    expect(html).toContain("2026-11-17");
+    expect(html).toContain("Known minutes");
+  });
   it("discloses when the backend query caps history", () => {
     const html = renderToStaticMarkup(<MemoryRouter><HomeProgressPanel workouts={workouts} today={today} historyLimited /></MemoryRouter>);
     expect(html).toContain("Older sessions may be missing from this comparison.");
