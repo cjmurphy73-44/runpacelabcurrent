@@ -51,8 +51,8 @@ export function computeHolisticReadiness(
   const validSleep = typeof current.sleepScore === 'number' && Number.isFinite(current.sleepScore) && current.sleepScore >= 0 && current.sleepScore <= 100;
   const validRhr = typeof current.restingHr === 'number' && Number.isFinite(current.restingHr) && current.restingHr > 0;
   const validTsb = typeof tsb === 'number' && Number.isFinite(tsb);
-  const validHrvBaseline = baseline != null && Number.isFinite(baseline.hrvMean) && baseline.hrvMean > 0 && Number.isFinite(baseline.hrvStdDev) && baseline.hrvStdDev > 0;
-  const validRhrBaseline = baseline != null && Number.isFinite(baseline.restingHrMean) && baseline.restingHrMean > 0;
+  const validHrvBaseline = baseline != null && typeof baseline.hrvMean === 'number' && Number.isFinite(baseline.hrvMean) && baseline.hrvMean > 0 && typeof baseline.hrvStdDev === 'number' && Number.isFinite(baseline.hrvStdDev) && baseline.hrvStdDev > 0;
+  const validRhrBaseline = baseline != null && typeof baseline.restingHrMean === 'number' && Number.isFinite(baseline.restingHrMean) && baseline.restingHrMean > 0;
   let hrvComponent = 70; // neutral fallback
   let sleepComponent = validSleep ? current.sleepScore! : 70;
   let rhrComponent = 70;
