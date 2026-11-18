@@ -4,12 +4,14 @@ export function recordingPresentation(workout) {
   const duration = Number(workout?.duration_seconds) || Number(workout?.duration_minutes) * 60 || 0;
   const valid = points.length >= 2 && points.every((p, i) => Number.isFinite(p?.time) && (i === 0 || p.time > points[i - 1].time));
   const span = valid ? points[points.length - 1].time - points[0].time : 0;
+  const startsAtBeginning = valid && points[0].time >= 0 && points[0].time <= 5;
+  const maxGap = valid ? Math.max(...points.slice(1).map((p, i) => p.time - points[i].time)) : Infinity;
   const coverage = duration > 0 && valid ? Math.min(100, Math.round(100 * span / duration)) : null;
   const dense = valid && points.length >= 60 && span / (points.length - 1) <= 5;
   const measured = dense && points.filter(p => (Number.isFinite(p.heart_rate) && p.heart_rate > 0) || (Number.isFinite(p.power) && p.power >= 0)).length >= points.length / 2;
-  const state = !measured ? 'summary' : coverage !== null && coverage < 90 ? 'partial' : 'recorded';
+  const state = !measured ? 'summary' : coverage === null || coverage < 99 || !startsAtBeginning || maxGap > 5 ? 'partial' : 'recorded';
   return {
-    state, count: points.length, coverage, span, duration,
+    state, count: points.length, coverage, span, duration, startsAtBeginning, maxGap,
     // Full original FIT preservation is not proven by a complete-looking persisted stream.
     label: state === 'recorded' ? 'Measured recording · original FIT retention unverified' : state === 'partial' ? 'Partial measured recording' : 'Summary / unverified recording',
     points: measured ? points : [],
