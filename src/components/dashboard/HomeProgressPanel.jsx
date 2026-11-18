@@ -11,7 +11,21 @@ export function summarizeActivityProgress(workouts = [], today = new Date(), day
   const byDate = new Map(buckets.map(bucket => [bucket.date, bucket]));
   let missingDuration = 0;
   for (const workout of Array.isArray(workouts) ? workouts : []) {
-    const key = typeof workout?.date === "string" ? workout.date.slice(0, 10) : "";
+    // Date-only records are calendar dates; timestamps represent instants.
+    // Convert instants to the browser-local day before bucketing.
+    const rawDate = workout?.date;
+    let key = "";
+    if (typeof rawDate === "string" && /^\d{4}-\d{2}-\d{2}$/.test(rawDate)) {
+      key = rawDate;
+    } else if (typeof rawDate === "string" && /(?:Z|[+-]\d{2}:?\d{2})$/.test(rawDate)) {
+      const instant = new Date(rawDate);
+      if (Number.isFinite(instant.getTime())) {
+        const y = instant.getFullYear();
+        const m = String(instant.getMonth() + 1).padStart(2, "0");
+        const d = String(instant.getDate()).padStart(2, "0");
+        key = y + "-" + m + "-" + d;
+      }
+    }
     const bucket = byDate.get(key);
     if (!bucket || !/^\d{4}-\d{2}-\d{2}$/.test(key)) continue;
     bucket.sessions++;
