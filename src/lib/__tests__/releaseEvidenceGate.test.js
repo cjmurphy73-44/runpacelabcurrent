@@ -30,7 +30,7 @@ describe("scoped evidence URLs", () => {
   it("accepts correctly scoped deployment record links for human review only", () => {
     const input = valid();
     input.gates.sourceMapping.evidenceUrl = "https://vercel.com/team/project/deployments/dpl_123";
-    expect(evaluateReleaseEvidence(input).readyForReview).toBe(true);
+    expect(evaluateReleaseEvidence(input, Date.parse("2026-11-19T01:00:00Z")).readyForReview).toBe(true);
   });
 });
 
@@ -41,7 +41,7 @@ describe("offline release review evidence gate", () => {
     }
   });
   it("accepts complete synthetic exact-head evidence only for review, not deployment", () => {
-    expect(evaluateReleaseEvidence(valid())).toEqual({ readyForReview: true, blockers: [] });
+    expect(evaluateReleaseEvidence(valid(), Date.parse("2026-11-19T01:00:00Z"))).toEqual({ readyForReview: true, blockers: [] });
   });
   it.each(REQUIRED_GATES)("fails closed when %s is unknown", gate => {
     const input = valid();
@@ -64,5 +64,17 @@ describe("offline release review evidence gate", () => {
     input.releaseHold = false;
     input.gitSha = "abc123";
     expect(evaluateReleaseEvidence(input).readyForReview).toBe(false);
+  });
+});
+
+describe("verification recency", () => {
+  const reviewTime = Date.parse("2026-11-19T01:00:00Z");
+  it.each(["2026-12-01T00:00:00Z", "2026-09-01T00:00:00Z", "2026-11-31T00:00:00Z"])("rejects future, stale or impossible timestamp %s", timestamp => {
+    const input = valid();
+    input.gates.exactHeadCi.verifiedAt = timestamp;
+    expect(evaluateReleaseEvidence(input, reviewTime).blockers).toContain("exactHeadCi: stale, future or invalid verification time");
+  });
+  it("accepts fresh evidence at the specified review time", () => {
+    expect(evaluateReleaseEvidence(valid(), reviewTime).readyForReview).toBe(true);
   });
 });
