@@ -12,6 +12,7 @@ import { getSyncLookbackDays } from '../../shared/syncLookback.ts';
 import { parseFitWithLaps, summarizeStream } from '../../shared/workoutParsers.ts';
 import { isUsableTelemetry, storageStream, MAX_STREAM_SAMPLES } from '../../shared/streamValidity.ts';
 import { persistCorosBatches } from '../../shared/corosBatchPersistence.ts';
+import { recordingTruncationNotice } from '../../shared/recordingTruncationNotice.ts';
 import { corosActivityId, isDuplicateCorosSession } from '../../shared/corosActivityIdentity.ts';
 import {
   corosAccessToken, fetchWithTimeout, mcpPost, mcpToolCall,
@@ -586,6 +587,9 @@ async function syncHistoricalFor(athlete: any, accessToken: string, base44, look
       if (!applyFitTelemetry(payload, fit, athlete)) {
         summary_only++;
         error_messages.push('Original COROS FIT was unavailable or did not contain usable telemetry.');
+      } else {
+        const notice = recordingTruncationNotice(fit?.stream, MAX_STREAM_SAMPLES);
+        if (notice) error_messages.push(notice);
       }
     } catch (e) {
       summary_only++;

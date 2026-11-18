@@ -18,8 +18,13 @@ import { resolveSessionLoad } from '../../shared/loadModel.ts';
 import { recomputeCTLATLTSB } from '../../shared/ctlRecalc.ts';
 import { assertSafeFileUrl } from '../../shared/urlGuard.ts';
 import { isUsableTelemetry } from '../../shared/streamValidity.ts';
+import { isBackfillCandidate } from '../../shared/backfillCandidates.ts';
+import { matchingCorosRecordForBackfill } from '../../shared/corosActivityIdentity.ts';
 import { garminConfig, refreshGarminToken } from '../../shared/garminAuth.ts';
 import { corosAccessToken, queryCorosRecords, downloadCorosFit } from '../../shared/corosMcp.ts';
+import { recordingTruncationNotice } from '../../shared/recordingTruncationNotice.ts';
+import { providerForBackfill } from '../../shared/backfillProviderGate.ts';
+import { eligibleBackfillAssets } from '../../shared/backfillAssetScope.ts';
 
 const BATCH_SIZE = 25;
 const MAX_STREAM_SAMPLES = 3600;
@@ -30,18 +35,9 @@ function storageStream(stream) {
   }));
 }
 
-function hasUsableStream(session) {
-  return Array.isArray(session.streams) && session.streams.length > 10;
-}
-
-// A session needs work when it holds a stale synthetic zone split to clear, or when it
-// has no per-second stream but a raw file to refetch. A summary-only session with no
-// attached file can never gain zones, so it is not re-scanned on every run.
-function isCandidate(session) {
-  if (session.zone_method === 'average' || session.zone_method === 'laps') return true;
-  if (hasUsableStream(session)) return false;
-  return Boolean(session.raw_file_url);
-}
+// Include identifiable COROS summary sessions: the provider can still retain the
+// original FIT even when no raw file URL was saved with the session.
+const isCandidate = isBackfillCandidate;
 
 function typeFromName(name) {
   const n = String(name || '').toLowerCase();
@@ -158,16 +154,11 @@ async function corosFileFor(base44, athlete, session) {
   let records;
   try { records = await queryCorosRecords(accessToken, fmt(from), fmt(to)); } catch { return null; }
 
-  const targetMinutes = Number(session.duration_minutes) || 0;
-  const candidates = records.filter((r) => r.label_id && r.date === day && (!r.sport || r.sport === session.sport));
-  if (!candidates.length) return null;
-  // A day can hold several sessions and the report duration is rounded, so the closest
-  // duration wins rather than requiring an exact match.
-  const best = candidates.reduce((a, b) =>
-    Math.abs((a.duration_seconds || 0) / 60 - targetMinutes) <= Math.abs((b.duration_seconds || 0) / 60 - targetMinutes) ? a : b);
-  if (Math.abs((best.duration_seconds || 0) / 60 - targetMinutes) > 5) return null;
-
-  try { return await downloadCorosFit(accessToken, best.label_id, best.sport_type); } catch { return null; }
+  // A nearest-duration match can silently assign another same-day workout's
+  // telemetry. Historical sessions without exact identity stay summary-only.
+  const match = matchingCorosRecordForBackfill(session, records);
+  if (!match) return null;
+  try { return await downloadCorosFit(accessToken, match.label_id, match.sport_type); } catch { return null; }
 }
 
 function sortKey(s) {
@@ -189,10 +180,10 @@ async function loadSessions(base44, athlete_id) {
 }
 
 async function processSession(base44, athlete, session, restHr, maxHr) {
-  const assets = await base44.asServiceRole.entities.WorkoutAsset.filter({ session_id: session.id }).catch(() => []);
+  const assets = await base44.asServiceRole.entities.WorkoutAsset.filter({ athlete_id: athlete.id, session_id: session.id }).catch(() => []);
   const sources = [];
-  for (const a of Array.isArray(assets) ? assets : []) {
-    if (a?.file_url) sources.push({ file_url: a.file_url, file_name: a.file_name || '', file_type: a.file_type });
+  for (const a of eligibleBackfillAssets(assets, athlete.id, session.id)) {
+    sources.push({ file_url: a.file_url, file_name: a.file_name || '', file_type: a.file_type });
   }
   if (session.raw_file_url && !sources.some((s) => s.file_url === session.raw_file_url)) {
     const name = nameFromUrl(session.raw_file_url, session.source_format);
@@ -211,7 +202,9 @@ async function processSession(base44, athlete, session, restHr, maxHr) {
 
   let fromProvider = false;
   if (payloads.length === 0) {
-    for (const refetch of [garminFileFor, corosFileFor]) {
+    const provider = providerForBackfill(session);
+    const refetchers = provider === 'garmin' ? [garminFileFor] : provider === 'coros' ? [corosFileFor] : [];
+    for (const refetch of refetchers) {
       const provider = await refetch(base44, athlete, session).catch(() => null);
       if (provider && isUsableTelemetry(provider.stream, durationSeconds)) {
         payloads.push(provider);
@@ -285,7 +278,8 @@ async function processSession(base44, athlete, session, restHr, maxHr) {
     }
   }
 
-  return { outcome: 'recovered', updated: true, update, fromProvider };
+  return { outcome: 'recovered', updated: true, update, fromProvider,
+    recording_notice: recordingTruncationNotice(masterStream, MAX_STREAM_SAMPLES) };
 }
 
 async function handlePreview(base44) {
@@ -332,6 +326,7 @@ async function handleRun(base44, athlete_id, cursor) {
   let failed = 0;
   let touched = false;
   const errors = [];
+  const recording_notices = [];
 
   for (const session of chunk) {
     try {
@@ -339,6 +334,7 @@ async function handleRun(base44, athlete_id, cursor) {
       if (res.update && res.updated) {
         await base44.asServiceRole.entities.WorkoutSession.update(session.id, res.update);
         touched = true;
+        if (res.recording_notice) recording_notices.push({ session_id: session.id, notice: res.recording_notice });
       }
       if (res.outcome === 'recovered') recovered++;
       else summaryOnly++;
@@ -364,6 +360,7 @@ async function handleRun(base44, athlete_id, cursor) {
     streams_recovered: recovered,
     summary_only: summaryOnly,
     failed,
+    recording_notices,
     has_more: candidates.length > chunk.length,
     next_cursor: last ? { date: last.date, id: last.id } : null,
     recalculated: recalculated ? { ctl: recalculated.ctl, atl: recalculated.atl, tsb: recalculated.tsb } : null,

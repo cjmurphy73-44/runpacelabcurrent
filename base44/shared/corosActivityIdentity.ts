@@ -34,3 +34,18 @@ export function isDuplicateCorosSession(
     && Math.abs((existing.duration_minutes || 0) - (candidate.duration_minutes || 0)) < 1
     && Math.abs((existing.distance_km || 0) - (candidate.distance_km || 0)) < 0.1;
 }
+
+// Historical recovery must never attach a same-day neighbour's FIT recording.
+// Reject legacy sessions with no exact provider ID rather than guessing by duration.
+export function matchingCorosRecordForBackfill(
+  session: { provider_activity_id?: string; source_provider?: string; date?: string },
+  records: Array<{ label_id?: unknown; sport_type?: unknown; date?: string }> | null | undefined,
+) {
+  if (session?.source_provider !== 'coros' || !session.provider_activity_id || !Array.isArray(records)) return null;
+  const matches = records.filter((record) =>
+    record.date === session.date
+    && corosActivityId(record.label_id, record.sport_type) === session.provider_activity_id,
+  );
+  // Duplicate provider records are ambiguous; do not download any.
+  return matches.length === 1 ? matches[0] : null;
+}
