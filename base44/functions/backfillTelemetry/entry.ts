@@ -24,6 +24,7 @@ import { garminConfig, refreshGarminToken } from '../../shared/garminAuth.ts';
 import { corosAccessToken, queryCorosRecords, downloadCorosFit } from '../../shared/corosMcp.ts';
 import { recordingTruncationNotice } from '../../shared/recordingTruncationNotice.ts';
 import { providerForBackfill } from '../../shared/backfillProviderGate.ts';
+import { eligibleBackfillAssets } from '../../shared/backfillAssetScope.ts';
 
 const BATCH_SIZE = 25;
 const MAX_STREAM_SAMPLES = 3600;
@@ -181,10 +182,8 @@ async function loadSessions(base44, athlete_id) {
 async function processSession(base44, athlete, session, restHr, maxHr) {
   const assets = await base44.asServiceRole.entities.WorkoutAsset.filter({ athlete_id: athlete.id, session_id: session.id }).catch(() => []);
   const sources = [];
-  for (const a of Array.isArray(assets) ? assets : []) {
-    if (a?.athlete_id === athlete.id && a?.session_id === session.id && a?.file_url) {
-      sources.push({ file_url: a.file_url, file_name: a.file_name || '', file_type: a.file_type });
-    }
+  for (const a of eligibleBackfillAssets(assets, athlete.id, session.id)) {
+    sources.push({ file_url: a.file_url, file_name: a.file_name || '', file_type: a.file_type });
   }
   if (session.raw_file_url && !sources.some((s) => s.file_url === session.raw_file_url)) {
     const name = nameFromUrl(session.raw_file_url, session.source_format);
