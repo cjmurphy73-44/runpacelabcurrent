@@ -5,7 +5,7 @@ import { recordingPresentation, chartSeries } from '@/lib/workoutReviewPresentat
 
 const channels = [
   { key: 'heart_rate', title: 'Heart rate', unit: 'bpm' },
-  { key: 'speed', title: 'Speed', unit: 'm/s' },
+  { key: 'pace', title: 'Pace', unit: 'min/km' },
   { key: 'power', title: 'Power', unit: 'W' },
 ];
 
