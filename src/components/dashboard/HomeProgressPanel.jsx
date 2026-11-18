@@ -2,7 +2,7 @@ import React, { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 
 /** Fixture-friendly, read-only activity trend. Does not derive physiological load. */
-export function summarizeActivityProgress(workouts = [], today = new Date(), days = 7) {
+export function summarizeActivityProgress(workouts = [], today = new Date(), historyLimited = false, days = 7) {
   const end = Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), today.getUTCDate());
   const buckets = Array.from({ length: days }, (_, i) => {
     const date = new Date(end - (days - 1 - i) * 86400000).toISOString().slice(0, 10);
@@ -53,6 +53,7 @@ export default function HomeProgressPanel({ workouts = [], today = new Date() })
         <div className="rounded-lg bg-muted/50 p-3"><p className="text-xs text-muted-foreground">Recorded sessions</p><p className="text-2xl font-semibold tabular-nums">{data.sessions}</p></div>
         <div className="rounded-lg bg-muted/50 p-3"><p className="text-xs text-muted-foreground">Known duration</p><p className="text-2xl font-semibold tabular-nums">{Math.round(data.minutes)} <span className="text-sm font-normal">min</span></p></div>
       </div>
+      {historyLimited && <p role="note" className="rounded-lg bg-muted/50 p-3 text-xs text-muted-foreground">Showing available recent workout records only. Older sessions may be missing from this comparison.</p>}
       {data.sessions ? (
         <>
           <div role="img" aria-label={`Daily recorded duration over ${days} days. ${data.sessions} sessions, ${Math.round(data.minutes)} known minutes.`}
