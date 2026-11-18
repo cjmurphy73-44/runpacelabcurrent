@@ -18,7 +18,8 @@ describe('COROS original FIT truncation acknowledgement', () => {
     const samples = Array.from({ length: 3601 }, (_, time) => ({ time }));
     const notice = recordingTruncationNotice(samples);
     expect(notice).toContain('Source recording has 3601 samples');
-    expect(notice).not.toMatch(/Original FIT|archived|successfully saved/);
+    expect(notice).toContain('computed metrics may use the full source recording');
+    expect(notice).not.toMatch(/Original FIT|original FIT|archived|successfully saved/);
   });
   it('does not invent a time range for malformed input', () => {
     expect(recordingTruncationNotice([{ time: null }, { time: undefined }], 1)).toContain('time span unavailable');
