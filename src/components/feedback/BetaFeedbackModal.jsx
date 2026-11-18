@@ -18,7 +18,7 @@ import { feedbackWasAccepted } from "@/lib/feedbackReceipt";
 
 // Persistent beta feedback reporter. Stores each submission in the BetaFeedback
 // entity so the team can triage from the Admin page instead of relying on an
-// email inbox. Falls back to clipboard copy if the entity write fails.
+// email inbox. Failed writes preserve the draft for a deliberate retry.
 export default function BetaFeedbackModal({ open, onClose }) {
   const { toast } = useToast();
   const [email, setEmail] = useState("");
