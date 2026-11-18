@@ -235,6 +235,7 @@ export default function Home() {
             athlete={athlete}
             workouts={workouts}
             runningHistory={loadTimelineWorkouts}
+            historyLimited={loadTimelineWorkouts.length >= 60}
             onWorkoutChanged={() => loadAthleteData(athlete.id)}
           />
           <div className="space-y-8">
