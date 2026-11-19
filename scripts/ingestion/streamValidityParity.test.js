@@ -30,4 +30,9 @@ describe('verified telemetry gate, synthetic channel coverage', () => {
     expect(agrees(recording(() => ({ heart_rate: 135 })), 500)).toBe(false));
   it('rejects repeated timestamps', () =>
     expect(agrees(recording(() => ({ heart_rate: 135, time: 0 })))).toBe(false));
+  it('rejects numeric-looking summary strings in both backend and frontend', () =>
+    expect(agrees(recording(() => ({ heart_rate: '135', power: '180' })))).toBe(false));
+  it('accepts measured numeric HR despite an invalid string power channel', () =>
+    expect(agrees(recording(() => ({ heart_rate: 135, power: '180' })))).toBe(true));
+
 });
