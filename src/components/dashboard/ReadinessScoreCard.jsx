@@ -29,27 +29,24 @@ export default function ReadinessScoreCard() {
   // score loads. Kept as a fallback so the card never goes blank.
   const localHolistic = useMemo(() => {
     if (!today) return null;
-    const hrvBase = biometricTelemetry
-      .map((r) => r.hrv_ms).filter((v) => typeof v === "number" && v > 0);
-    const rhrBase = biometricTelemetry
-      .map((r) => r.resting_hr).filter((v) => typeof v === "number" && v > 0);
-    const sleepBase = biometricTelemetry
-      .map((r) => r.sleep_score).filter((v) => typeof v === "number" && v > 0);
+    const valid = (v) => typeof v === "number" && Number.isFinite(v) && v > 0;
+    const hrvBase = biometricTelemetry.map((r) => r.hrv_ms).filter(valid);
+    const rhrBase = biometricTelemetry.map((r) => r.resting_hr).filter(valid);
+    const mean = (values) => values.length ? values.reduce((sum, value) => sum + value, 0) / values.length : null;
+    const hrvMean = mean(hrvBase);
+    const hrvStdDev = hrvBase.length >= 2
+      ? Math.sqrt(hrvBase.reduce((sum, value) => sum + (value - hrvMean) ** 2, 0) / hrvBase.length)
+      : null;
     return computeHolisticReadiness(
       {
-        hrv: today.hrv,
-        sleep_score: today.sleep_score,
-        sleep_duration_hours: today.sleep_duration_hours,
-        resting_hr: today.resting_hr,
-        body_battery: today.body_battery,
-        stress_score: today.stress_score,
-        tsb: today.calculated_tsb,
+        hrvMs: today.hrv,
+        sleepScore: today.sleep_score,
+        restingHr: today.resting_hr,
+        stressScore: today.stress_score,
+        bodyBattery: today.body_battery,
       },
-      {
-        hrv: hrvBase.length ? hrvBase.reduce((a, b) => a + b, 0) / hrvBase.length : null,
-        resting_hr: rhrBase.length ? rhrBase.reduce((a, b) => a + b, 0) / rhrBase.length : null,
-        sleep_score: sleepBase.length ? sleepBase.reduce((a, b) => a + b, 0) / sleepBase.length : null,
-      }
+      { hrvMean, hrvStdDev, restingHrMean: mean(rhrBase) },
+      today.calculated_tsb
     );
   }, [today, biometricTelemetry]);
 
@@ -58,6 +55,7 @@ export default function ReadinessScoreCard() {
   // result when available; the local value renders instantly in the meantime.
   useEffect(() => {
     let cancelled = false;
+    setServerReadiness(null);
     base44.functions.invoke("physiologyCompute", {})
       .then((res) => {
         if (cancelled) return;
@@ -73,9 +71,9 @@ export default function ReadinessScoreCard() {
   // the card never shows a contradictory number after the server says no data.
   // Before the server responds, the local computation is the instant fallback.
   const serverResponded = serverReadiness != null;
-  const score = serverResponded
-    ? (serverReadiness.score ?? null)
-    : (localHolistic?.score ?? today?.readiness_score ?? null);
+  const candidateScore = serverResponded ? serverReadiness.score : localHolistic?.score;
+  const score = typeof candidateScore === "number" && Number.isFinite(candidateScore) && candidateScore >= 0 && candidateScore <= 100
+    ? candidateScore : null;
   const serverSignalCount = serverReadiness?.signal_count ?? null;
 
   const providerScore = today?.provider_readiness_score ?? null;
