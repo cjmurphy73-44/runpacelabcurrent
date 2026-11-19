@@ -12,3 +12,15 @@ test('rejects invalid timestamp ordering',()=>expect(()=>describe({...full,store
 test('rejects nonfinite duration',()=>expect(()=>describe({...full,durationSeconds:NaN})).toThrow(RangeError));
 test('rejects fractional or unsafe counts',()=>expect(()=>describe({...full,totalSamples:1.5})).toThrow(RangeError));
 test('does not mutate source',()=>{const x={...full};const before={...x};describe(x);expect(x).toEqual(before)});
+
+test('refuses full recording claim when only 80 percent of workout duration is represented',()=>{
+ const x={...full,totalSamples:4000,storedSamples:4000,lastTime:3999,storedLastTime:3999,durationSeconds:5000};
+ const result=describe(x);
+ expect(result.durationCoverage).toBeCloseTo(3999/5000);
+ expect(result.complete).toBe(false);
+ expect(result.canClaimFullRecording).toBe(false);
+});
+test('accepts boundary-complete recording with one-second sampling endpoint difference',()=>{
+ const result=describe({...full,durationSeconds:5040});
+ expect(result.complete).toBe(true);
+});
