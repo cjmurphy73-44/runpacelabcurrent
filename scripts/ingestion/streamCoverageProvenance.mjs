@@ -17,7 +17,8 @@ export function describeStreamCoverage({totalSamples,storedSamples,firstTime,las
  else if(storedFirstTime!=null||storedLastTime!=null)throw new RangeError('empty stored stream cannot have timestamps');
  const sampleComplete=hasFull&&storedSamples===totalSamples;
  const spanComplete=hasFull&&hasStored&&storedFirstTime===firstTime&&storedLastTime===lastTime;
- const durationComplete=durationSeconds>0&&hasStored&&(storedLastTime-storedFirstTime)>=durationSeconds*0.6;
+ // Full-recording claims require near-total duration coverage; 60% is only a stream-eligibility floor.
+ const durationComplete=durationSeconds>0&&hasStored&&(storedLastTime-storedFirstTime)>=durationSeconds*0.95;
  const complete=sampleComplete&&spanComplete&&durationComplete;
  return Object.freeze({
   totalSamples,storedSamples,fullSpanSeconds:hasFull?lastTime-firstTime:null,
