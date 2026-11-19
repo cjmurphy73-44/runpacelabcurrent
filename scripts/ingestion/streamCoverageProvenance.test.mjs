@@ -1,0 +1,14 @@
+import {test,expect} from 'vitest';
+import {describeStreamCoverage as describe} from './streamCoverageProvenance.mjs';
+const full={totalSamples:5040,storedSamples:5040,firstTime:0,lastTime:5039,storedFirstTime:0,storedLastTime:5039,durationSeconds:5040};
+test('full 84-minute stream is complete',()=>{const r=describe(full);expect(r.complete).toBe(true);expect(r.sampleCoverage).toBe(1)});
+test('3600 sample prefix of 84-minute stream is partial',()=>{const r=describe({...full,storedSamples:3600,storedLastTime:3599});expect(r.canClaimFullRecording).toBe(false);expect(r.sampleCoverage).toBeCloseTo(3600/5040)});
+test('missing persisted stream is not persisted',()=>expect(describe({...full,storedSamples:0,storedFirstTime:null,storedLastTime:null}).quality).toBe('not_persisted'));
+test('empty recording is not full',()=>expect(describe({totalSamples:0,storedSamples:0,firstTime:null,lastTime:null,storedFirstTime:null,storedLastTime:null,durationSeconds:0}).quality).toBe('no_recording'));
+test('rejects false full sample count with shortened time span',()=>expect(describe({...full,storedLastTime:3600}).complete).toBe(false));
+test('rejects insufficient duration coverage even with identical sample counts',()=>expect(describe({...full,durationSeconds:10000}).complete).toBe(false));
+test('rejects stored count exceeding full',()=>expect(()=>describe({...full,storedSamples:5041})).toThrow(RangeError));
+test('rejects invalid timestamp ordering',()=>expect(()=>describe({...full,storedFirstTime:6000})).toThrow(RangeError));
+test('rejects nonfinite duration',()=>expect(()=>describe({...full,durationSeconds:NaN})).toThrow(RangeError));
+test('rejects fractional or unsafe counts',()=>expect(()=>describe({...full,totalSamples:1.5})).toThrow(RangeError));
+test('does not mutate source',()=>{const x={...full};const before={...x};describe(x);expect(x).toEqual(before)});
