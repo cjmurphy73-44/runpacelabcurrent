@@ -11,3 +11,9 @@ test('reject fractional customers and months',()=>{expect(()=>forecast({...input
 test('does not mutate assumptions',()=>{const old=structuredClone(input);forecast(input);expect(input).toEqual(old)});
 test('zero customers means zero revenue',()=>expect(forecast({...input,openingCustomers:0,monthlyAcquisition:0}).rows[0].revenue).toBe(0));
 test('zero ending cash not considered negative',()=>expect(forecast({...input,startingCash:0,openingCustomers:0,monthlyAcquisition:0,fixedMonthlyCost:0}).firstNegativeCashMonth).toBeNull());
+
+test('reject overflowing revenue',()=>expect(()=>forecast({...input,pricePerCustomer:1e308})).toThrow(RangeError));
+test('reject unsafe customer counts',()=>expect(()=>forecast({...input,openingCustomers:Number.MAX_SAFE_INTEGER,monthlyAcquisition:2})).toThrow(RangeError));
+test('reject unsafe cent precision for initial cash',()=>expect(()=>forecast({...input,startingCash:1e16})).toThrow(RangeError));
+test('reject overflow from cash accumulation',()=>expect(()=>forecast({...input,startingCash:Number.MAX_SAFE_INTEGER/100-10,monthlyAcquisition:0,openingCustomers:10,pricePerCustomer:100})).toThrow(RangeError));
+test('reject nonfinite payback',()=>expect(()=>forecast({...input,acquisitionCostPerCustomer:1e308,monthlyAcquisition:0})).toThrow(RangeError));
