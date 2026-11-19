@@ -22,9 +22,14 @@ export function isUsableTelemetry(stream, durationSeconds) {
   if (span < 60 || span / (stream.length - 1) > 5) return false;
   const duration = Number(durationSeconds) || 0;
   if (duration > 0 && (span < duration * 0.6 || span > duration * 1.5 + 300)) return false;
-  const withHr = stream.filter((p) => typeof p.heart_rate === 'number' && p.heart_rate > 0).length;
-  const withPower = stream.filter((p) => typeof p.power === 'number' && p.power > 0).length;
-  return withHr >= stream.length * 0.5 || withPower >= stream.length * 0.5;
+  // Count recorded samples once when either channel is measured. A device may
+  // switch between HR and power mid-session; requiring 50% in one channel
+  // incorrectly rejects a dense recording that the frontend correctly accepts.
+  const measured = stream.filter((p) =>
+    (typeof p.heart_rate === 'number' && Number.isFinite(p.heart_rate) && p.heart_rate > 0) ||
+    (typeof p.power === 'number' && Number.isFinite(p.power) && p.power > 0)
+  ).length;
+  return measured >= stream.length * 0.5;
 }
 
 // The persisted stream shape (WorkoutSession.streams). Preserve directly measured
