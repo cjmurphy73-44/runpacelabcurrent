@@ -12,7 +12,7 @@ describe('Home uses the athlete browser-local calendar for date-only activity', 
     expect(localCalendarAge('2026-11-20', now)).toBeNull();
   });
 
-  it('treats today's date-only record and local-day timestamp as today in Brisbane', () => {
+  it("treats today’s date-only record and local-day timestamp as today in Brisbane", () => {
     const script = `import { localCalendarAge } from './src/lib/localActivityDay.js';
 import { runningCapabilitySnapshot } from './src/lib/runningCapabilitySnapshot.js';
 import { buildTodayDecision } from './src/lib/todayDecisionSummary.js';
