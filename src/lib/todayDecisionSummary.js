@@ -1,14 +1,18 @@
+import { localCalendarAge } from './localActivityDay.js';
+
 /**
  * Deterministic presentation for the existing Today workspace.
  * A recovery score or training-load balance is never medical clearance.
  * Session load and sport classification are retained as recorded, not inferred.
  */
 export function buildTodayDecision({ dailyMetrics = [], workouts = [], athlete = {}, now = Date.now() } = {}) {
-  const sortedMetrics = [...(Array.isArray(dailyMetrics) ? dailyMetrics : [])]
-    .filter((m) => m && Number.isFinite(Date.parse(m.date)))
-    .sort((a,b) => Date.parse(b.date)-Date.parse(a.date));
-  const latestMetric = sortedMetrics[0] || null;
-  const ageDays = latestMetric ? Math.floor((now - Date.parse(latestMetric.date)) / 86400000) : null;
+  const metrics = (Array.isArray(dailyMetrics) ? dailyMetrics : [])
+    .map((metric) => ({ metric, age: localCalendarAge(metric?.date, now) }))
+    .filter(({ age }) => age !== null)
+    .sort((a, b) => a.age - b.age);
+  const latest = metrics[0] || null;
+  const latestMetric = latest?.metric ?? null;
+  const ageDays = latest?.age ?? null;
   const timely = ageDays !== null && ageDays >= 0 && ageDays <= 2;
   const score = timely && typeof latestMetric.readiness_score === 'number'
     && Number.isFinite(latestMetric.readiness_score)
@@ -36,9 +40,10 @@ export function buildTodayDecision({ dailyMetrics = [], workouts = [], athlete =
       : `Form ${tsb >= 0 ? '+' : ''}${Math.round(tsb)}: training-load balance, not medical clearance.`;
 
   const rows = (Array.isArray(workouts) ? workouts : [])
-    .filter((w) => w && Number.isFinite(Date.parse(w.date)))
-    .sort((a,b) => Date.parse(b.date)-Date.parse(a.date));
-  const last = rows[0] || null;
+    .map((workout) => ({ workout, age: localCalendarAge(workout?.date, now) }))
+    .filter(({ age }) => age !== null)
+    .sort((a, b) => a.age - b.age);
+  const last = rows[0]?.workout ?? null;
   const sport = last && typeof last.sport === 'string' ? last.sport.toLowerCase() : null;
   const lastWorkout = !last
     ? { title: 'No recorded workout', detail: 'Sync your watch or import a workout to see your last session.', recorded: false }
