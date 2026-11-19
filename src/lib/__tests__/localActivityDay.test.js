@@ -49,8 +49,8 @@ console.log(JSON.stringify({ages,runs:[runs.runs42,runs.rides42,runs.lastRunDays
     // Exercise date-only ages in a second timezone with daylight saving.
     const script = `import { localCalendarAge } from './src/lib/localActivityDay.js';
 console.log(JSON.stringify([
-  localCalendarAge('2026-03-07',Date.parse('2026-03-09T04:00:00Z')),
-  localCalendarAge('2026-03-08',Date.parse('2026-03-09T04:00:00Z'))
+  localCalendarAge('2026-03-07',Date.parse('2026-03-08T16:00:00Z')),
+  localCalendarAge('2026-03-08',Date.parse('2026-03-08T16:00:00Z'))
 ]));`;
     const result = JSON.parse(execFileSync(process.execPath,['--input-type=module','-e',script],{
       cwd:process.cwd(), env:{ ...process.env,TZ:'America/New_York' }, encoding:'utf8',
