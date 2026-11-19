@@ -1,3 +1,5 @@
+import { localCalendarAge } from './localActivityDay.js';
+
 /**
  * Read-only running-specific context for Home.
  * Recorded activities are not evidence of a race, a threshold test or an injury.
@@ -6,18 +8,19 @@
 export function runningCapabilitySnapshot(sessions, now = Date.now(), limit = 60) {
   const rows = Array.isArray(sessions) ? sessions : [];
   const truncated = rows.length >= limit;
-  const valid = rows.filter((s) => {
-    const d = Date.parse(s?.date);
-    return typeof s?.sport === 'string' && Number.isFinite(d) && d <= now && d >= 0;
-  });
-  const isRunning = (s) => s.sport.toLowerCase().startsWith('run');
-  const isCycling = (s) => s.sport.toLowerCase().startsWith('cycl');
-  const recent = valid.filter((s) => now - Date.parse(s.date) <= 42 * 86400000);
-  const runs = recent.filter(isRunning);
-  const rides = recent.filter(isCycling);
-  const previousRuns = valid.filter(isRunning).sort((a,b) => Date.parse(b.date)-Date.parse(a.date));
+  const valid = rows
+    .filter((session) => typeof session?.sport === 'string')
+    .map((session) => ({ session, age: localCalendarAge(session.date, now) }))
+    .filter(({ age }) => age !== null);
+  const isRunning = (session) => session.sport.toLowerCase().startsWith('run');
+  const isCycling = (session) => session.sport.toLowerCase().startsWith('cycl');
+  const recent = valid.filter(({ age }) => age <= 42);
+  const runs = recent.filter(({ session }) => isRunning(session));
+  const rides = recent.filter(({ session }) => isCycling(session));
+  const previousRuns = valid.filter(({ session }) => isRunning(session))
+    .sort((a, b) => a.age - b.age);
   const mostRecentRun = previousRuns[0] || null;
-  const lastRunDays = mostRecentRun ? Math.floor((now-Date.parse(mostRecentRun.date))/86400000) : null;
+  const lastRunDays = mostRecentRun?.age ?? null;
   let status = 'unverified', title = 'Current running pace needs verification';
   if (truncated) {
     status = 'limited_history'; title = 'Activity history is limited';
@@ -30,7 +33,7 @@ export function runningCapabilitySnapshot(sessions, now = Date.now(), limit = 60
   }
   return {
     status, title, runs42: runs.length, rides42: rides.length,
-    lastRunDate: mostRecentRun?.date || null, lastRunDays,
+    lastRunDate: mostRecentRun?.session.date || null, lastRunDays,
     truncated, historyCount: rows.length,
     confidence: 'unverified',
   };
