@@ -1,0 +1,13 @@
+import { test, expect } from 'vitest';
+import {auditDailyLoadTimeline as audit} from './load-transition-audit.mjs';
+const row=(day,verifiedLoad=0,summaryLoad=0)=>({day,verifiedLoad,summaryLoad});
+test('independent 42/7 reference arithmetic',()=>{const r=audit([row('2026-01-01',42,1000)]);expect(r.ok).toBe(true);expect(r.expected[0].verifiedCtl).toBe(1);expect(r.expected[0].verifiedAtl).toBe(6);expect(r.expected[0].verifiedTsb).toBe(-5)});
+test('summary-only days do not inject verified load',()=>expect(audit([row('2026-01-01',0,500),row('2026-01-02',0,900)]).expected.map(x=>x.verifiedCtl)).toEqual([0,0]));
+test('flags recorded CTL and TSB mismatches',()=>{const r=audit([{...row('2026-01-01',42),verifiedCtl:8,verifiedTsb:1}]);expect(r.ok).toBe(false);expect(r.findings.some(x=>x.field==='verifiedCtl')).toBe(true);expect(r.findings.some(x=>x.field==='verifiedTsb')).toBe(true)});
+test('accepts matching precomputed values',()=>{const x=[row('2026-01-01',42),row('2026-01-02')],e=audit(x).expected;expect(audit(x.map((r,i)=>({...r,...e[i]}))).ok).toBe(true)});
+test('rejects missing and duplicate days',()=>{expect(()=>audit([row('2026-01-01'),row('2026-01-03')])).toThrow(RangeError);expect(()=>audit([row('2026-01-01'),row('2026-01-01')])).toThrow(RangeError)});
+test('rejects invalid calendar dates',()=>expect(()=>audit([row('2026-02-30')])).toThrow(RangeError));
+test('rejects nonfinite and negative loads',()=>{expect(()=>audit([row('2026-01-01',NaN)])).toThrow(TypeError);expect(()=>audit([row('2026-01-01',-1)])).toThrow(RangeError)});
+test('rejects invalid baselines and tolerance',()=>{expect(()=>audit([],{initialCtl:-1})).toThrow(RangeError);expect(()=>audit([],{tolerance:Infinity})).toThrow(TypeError)});
+test('does not mutate inputs',()=>{const x=[row('2026-01-01',42)],old=structuredClone(x);audit(x);expect(x).toEqual(old)});
+test('bounds timeline size',()=>expect(()=>audit(Array(3661).fill(row('2026-01-01')))).toThrow(RangeError));
