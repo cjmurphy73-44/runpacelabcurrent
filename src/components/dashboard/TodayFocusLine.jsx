@@ -1,6 +1,8 @@
 import React, { useMemo } from "react";
 import { Target } from "lucide-react";
 import { useFitness } from "@/context/FitnessContext";
+import { useCoachInjurySignal } from "@/hooks/useCoachInjurySignal";
+import { planCommitBlockReason } from "@/lib/planCommitGate";
 
 // One-line "what to do today", derived only from data already on the dashboard
 // (latest readiness score + current form/TSB). No new calculations or network calls.
@@ -26,12 +28,19 @@ function buildFocus(readiness, tsb) {
 
 export default function TodayFocusLine({ athlete }) {
   const { dailyMetrics } = useFitness() || {};
+  const coachStatus = useCoachInjurySignal(athlete?.id);
   const readiness = useMemo(() => {
     if (!dailyMetrics?.length) return null;
     const latest = [...dailyMetrics].sort((a, b) => (b.date || "").localeCompare(a.date || ""))[0];
     return latest?.readiness_score ?? null;
   }, [dailyMetrics]);
 
+  // Training-load balance is not clearance to train during a coach hold.
+  // Unknown coach status must never produce affirmative training advice.
+  const coachBlock = planCommitBlockReason(coachStatus);
+  if (coachBlock) {
+    return <p role="status" className="text-sm text-muted-foreground">{coachBlock}</p>;
+  }
   const focus = buildFocus(readiness, athlete?.current_tsb);
   if (!focus) return null;
 
