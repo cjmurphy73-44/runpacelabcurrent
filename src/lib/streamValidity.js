@@ -14,9 +14,12 @@ export function hasVerifiedStreams(session) {
     const time = Number(point?.time);
     if (!Number.isFinite(time) || time <= previous) return false;
     previous = time;
-    const hr = Number(point?.heart_rate);
-    const power = Number(point?.power);
-    if ((Number.isFinite(hr) && hr > 0) || (Number.isFinite(power) && power > 0)) {
+    // Require actual finite numeric measurements, matching the backend gate.
+    // Numeric-looking strings from summaries are not verified sensor samples.
+    const hr = point?.heart_rate;
+    const power = point?.power;
+    if ((typeof hr === 'number' && Number.isFinite(hr) && hr > 0) ||
+        (typeof power === 'number' && Number.isFinite(power) && power > 0)) {
       measured += 1;
     }
   }
