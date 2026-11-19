@@ -1,0 +1,8 @@
+# COM-001: hypothetical AUD unit-economics and runway model
+This is a **scenario calculator**, not a report of TrainPaceLab finances, customers, CAC, retention or revenue. All inputs must be provided by a reviewer as labelled assumptions; no actual values are embedded. No Stripe integration, customer data, API calls, transactions or billing operations.
+
+Inputs: starting cash, opening paying customers, price per customer per month, monthly acquisitions, monthly churn fraction, per-customer variable cost, monthly fixed cost, acquisition cost per new customer, horizon (1–60 months). All currency AUD. Monthly sequence: churn from opening customers, acquire new customers, recognize hypothetical full-month revenue on ending customers, subtract variable costs, acquisition costs and fixed costs, then update cash. Whole-person churn uses nearest-integer rounding. This is intentionally simplified; no taxes, GST, refunds, plan mix, deferred revenue, proration, payment fees, annual contracts, discounting, financing or seasonality. Simple payback is CAC divided by monthly contribution, and null when contribution is nonpositive; **not** LTV. A negative-cash month is a scenario warning, not a forecast of real insolvency.
+
+Run: `npm test -- scripts/commercial/forecast.test.mjs`. Synthetic tests validate cash reconciliation, churn, zero revenue, nonfinite inputs, bounds and immutability. No production wiring. Do not publish numerical projections without separately evidenced inputs, sensitivity analysis and commercial approval.
+
+Acceptance: exact-head CI passes, and owner reviews assumptions and model limitations. Release HOLD; no merge/deploy without approval.
