@@ -6,5 +6,15 @@
       "release/**": true,
       "**": false
     }
-  }
+  },
+  "rewrites": [
+    {
+      "source": "/:page(login|register|forgot-password|reset-password|landing|support|terms|privacy|refund|welcome|app|coach|recovery|predict|pbs|calendar|kanban|physiology|vdot|weather|zones|analytics|workouts|plan|settings|import|subscribe|roster|admin|operations|guide)",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/workouts/:id",
+      "destination": "/index.html"
+    }
+  ]
 }
