@@ -13,7 +13,7 @@ const EDITABLE_FIELDS = new Set([
   'avg_hr', 'max_hr', 'avg_power', 'avg_cadence',
 ]);
 
-const VALID_SPORTS = new Set(['running', 'cycling', 'swimming', 'strength', 'triathlon', 'other']);
+const VALID_SPORTS = new Set(['running', 'walking', 'cycling', 'swimming', 'strength', 'triathlon', 'other']);
 
 export default async function(req: Request): Promise<Response> {
   try {
@@ -47,6 +47,7 @@ export default async function(req: Request): Promise<Response> {
       if (feedback.length) {
         await base44.asServiceRole.entities.WorkoutFeedback.deleteMany({ id: { $in: feedback.map((f) => f.id) } });
       }
+      await base44.asServiceRole.entities.CorosRecordingArchive.deleteMany({ session_id: workout_id, athlete_id: session.athlete_id });
       await base44.entities.WorkoutSession.delete(workout_id);
       await recomputeCTLATLTSB(base44, session.athlete_id).catch((e: any) =>
         console.warn('editWorkout: recalc after delete failed', e?.message));

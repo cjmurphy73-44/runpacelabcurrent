@@ -19,6 +19,7 @@ Deno.serve(async (req) => {
     await Promise.all([
       e.WorkoutSession.deleteMany({ athlete_id }),
       e.WorkoutAsset.deleteMany({ athlete_id }),
+      e.CorosRecordingArchive.deleteMany({ athlete_id }),
       e.DailyMetrics.deleteMany({ athlete_id }),
       e.TrainingPlan.deleteMany({ athlete_id }),
       e.TrainingPlanSession.deleteMany({ athlete_id }),

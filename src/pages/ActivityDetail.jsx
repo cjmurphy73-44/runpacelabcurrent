@@ -4,6 +4,7 @@ import { base44 } from "@/api/base44Client";
 import { downloadWorkoutFile } from "@/services/workoutExport";
 import { useSubscription } from "@/hooks/useSubscription";
 import RecordingIntervals from "@/components/workout/RecordingIntervals";
+import CorosOriginalRecording from "@/components/workout/CorosOriginalRecording";
 import FeatureGate from "@/components/billing/FeatureGate";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -324,13 +325,16 @@ export default function ActivityDetail() {
         </section>
       )}
 
+      {workout.source_provider === "coros" && workout.provider_activity_id
+        ? <CorosOriginalRecording key={workout.id} workout={workout} />
+        : <RecordingIntervals workout={workout} />}
+
       <section className="space-y-4">
         <SectionHeading
           title="AI post-workout insight"
           description="AI analysis of this workout and your available training data."
           icon={Sparkles}
         />
-        <RecordingIntervals workout={workout} />
         <Card className={`border-l-4 ${isFailed ? "border-l-rose-400" : style ? style.ring : "border-l-transparent"}`}>
           <CardHeader className="flex flex-row items-center justify-between space-y-0">
             <CardTitle className="text-base">Coach feedback</CardTitle>
