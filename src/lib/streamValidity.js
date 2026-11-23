@@ -23,6 +23,9 @@ export function hasVerifiedStreams(session) {
 
   const span = Number(stream[stream.length - 1].time) - Number(stream[0].time);
   if (span < 60 || !Number.isFinite(span)) return false;
+  // Legacy COROS writers kept only the first 3,600 samples on WorkoutSession.
+  // A recording at the cap with materially less elapsed time is a partial stream.
+  if (session.source_provider === 'coros' && stream.length === 3600 && durationSeconds - span > 5) return false;
   // Reject sparse points spread across an activity. They are not a dense stream.
   if (span / (stream.length - 1) > 5) return false;
   if (durationSeconds > 0 && (span < durationSeconds * 0.6 || span > durationSeconds * 1.5 + 300)) return false;

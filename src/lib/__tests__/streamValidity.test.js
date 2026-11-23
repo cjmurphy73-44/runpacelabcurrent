@@ -34,6 +34,12 @@ describe("verified telemetry gate", () => {
     expect(hasVerifiedStreams({ duration_seconds: 3600, streams: stream() })).toBe(false);
   });
 
+  it("rejects a capped COROS prefix while accepting a full hour at the same sample count", () => {
+    const session = { source_provider: 'coros', streams: stream(3600) };
+    expect(hasVerifiedStreams({ ...session, duration_seconds: 84 * 60 })).toBe(false);
+    expect(hasVerifiedStreams({ ...session, duration_seconds: 3600 })).toBe(true);
+  });
+
   it("rejects invalid timestamps rather than claiming measured time in zone", () => {
     const bad = stream();
     bad[7].time = "invalid";
