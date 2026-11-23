@@ -88,8 +88,8 @@ export default function Landing() {
     <div className="min-h-screen bg-background text-foreground">
       {/* Header */}
       <header className="sticky top-0 z-30 border-b border-border bg-background/85 backdrop-blur pt-safe">
-        <div className="max-w-6xl mx-auto flex items-center justify-between px-4 py-3">
-          <Link to="/" className="flex items-center gap-2 font-heading font-bold text-lg">
+        <div className="max-w-6xl mx-auto flex flex-wrap items-center justify-between gap-y-1 px-4 py-3">
+          <Link to="/" className="flex items-center gap-1.5 font-heading font-bold text-base sm:gap-2 sm:text-lg">
             <Activity className="w-5 h-5 text-primary" />
             <span>TrainPaceLab</span>
           </Link>
@@ -102,7 +102,7 @@ export default function Landing() {
                 <Link to="/login">Sign in</Link>
               </Button>
             )}
-            <Button asChild size="sm" className="font-bold min-h-11 px-3 sm:px-4">
+            <Button asChild size="sm" className="font-bold min-h-11 px-2 sm:px-4">
               <Link to={cta.to}>{cta.label}</Link>
             </Button>
           </nav>
