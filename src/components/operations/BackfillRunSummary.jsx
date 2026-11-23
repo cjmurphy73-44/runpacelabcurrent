@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 const TILES = [
   { key: "sessions", label: "Sessions scanned" },
   { key: "recovered", label: "Streams recovered" },
+  { key: "metrics_refreshed", label: "Metrics refreshed without inline stream" },
   { key: "summary_only", label: "Summary retained" },
   { key: "failed", label: "Failed" },
 ];
@@ -32,7 +33,7 @@ export default function BackfillRunSummary({ totals, athletes }) {
               <div className="min-w-0">
                 <p className="text-sm font-medium truncate">{a.name}</p>
                 <p className="text-xs text-muted-foreground">
-                  {a.recovered} recovered · {a.summary_only} summary
+                  {a.recovered} recovered · {a.metrics_refreshed} metrics refreshed · {a.summary_only} summary
                 </p>
               </div>
               {a.ctl !== undefined && a.ctl !== null && (

@@ -5,10 +5,11 @@ import { assertSafeFileUrl } from '../../shared/urlGuard.ts';
 import { assertOwnsAthlete } from '../../shared/ownership.ts';
 import { reportError } from '../../shared/errorReport.ts';
 import { resolveSessionLoad } from '../../shared/loadModel.ts';
+import { inlineWorkoutStream } from '../../shared/streamValidity.ts';
+import { parseCsv } from '../../shared/workoutParsers.ts';
 
 const GARMIN_EPOCH_OFFSET_SEC = 631065600; // seconds between Unix epoch and FIT/Garmin epoch (1989-12-31)
 const VALID_SPORTS = ['running', 'cycling', 'swimming', 'strength', 'triathlon', 'other'];
-const MAX_STREAM_SAMPLES = 3600;
 const WARMUP_SECONDS = 300;
 const MIN_DECOUPLING_DURATION_MIN = 45;
 
@@ -158,86 +159,6 @@ function tryParseSummaryCsv(text) {
   return rows.length > 0 ? rows : null;
 }
 
-function parseCsv(text) {
-  const lines = text.split(/\r?\n/).filter((l) => l.trim().length > 0);
-  if (lines.length < 2) return null;
-  const headers = lines[0].split(',').map((h) => h.trim().toLowerCase());
-  const idx = (names) => {
-    for (const n of names) {
-      const i = headers.indexOf(n);
-      if (i !== -1) return i;
-    }
-    return -1;
-  };
-  const hrIdx = idx(['heart_rate', 'hr', 'heartrate']);
-  const powerIdx = idx(['power', 'watts']);
-  const cadenceIdx = idx(['cadence', 'rpm']);
-  const distIdx = idx(['distance', 'distance_m', 'distance_km']);
-  const timeIdx = idx(['timestamp', 'time', 'elapsed_time']);
-  const altIdx = idx(['altitude', 'elevation', 'ele']);
-  const speedIdx = idx(['speed', 'speed_ms', 'velocity']);
-
-  const stream = [];
-  let firstTime = null;
-
-  for (let i = 1; i < lines.length; i++) {
-    const cols = lines[i].split(',');
-    const point = { time: null, heart_rate: null, altitude: null, distance: null, cadence: null, speed: null };
-
-    if (timeIdx !== -1) {
-      const raw = cols[timeIdx];
-      let t = Date.parse(raw);
-      if (isNaN(t)) {
-        const n = parseFloat(raw);
-        t = isNaN(n) ? null : n * 1000;
-      }
-      if (t !== null) {
-        if (firstTime === null) firstTime = t;
-        point.time = (t - firstTime) / 1000;
-      }
-    }
-    if (point.time === null) point.time = i - 1;
-
-    if (hrIdx !== -1) { const v = parseFloat(cols[hrIdx]); if (!isNaN(v)) point.heart_rate = v; }
-    if (powerIdx !== -1) { const v = parseFloat(cols[powerIdx]); if (!isNaN(v)) point.power = v; }
-    if (cadenceIdx !== -1) { const v = parseFloat(cols[cadenceIdx]); if (!isNaN(v)) point.cadence = v; }
-    if (distIdx !== -1) { const v = parseFloat(cols[distIdx]); if (!isNaN(v)) point.distance = v; }
-    if (altIdx !== -1) { const v = parseFloat(cols[altIdx]); if (!isNaN(v)) point.altitude = v; }
-    if (speedIdx !== -1) { const v = parseFloat(cols[speedIdx]); if (!isNaN(v)) point.speed = v; }
-
-    stream.push(point);
-  }
-
-  let hrSum = 0, hrCount = 0, hrMax = 0;
-  let powerSum = 0, powerCount = 0;
-  let cadenceSum = 0, cadenceCount = 0;
-  let maxDistance = 0;
-  for (const p of stream) {
-    if (typeof p.heart_rate === 'number') { hrSum += p.heart_rate; hrCount++; hrMax = Math.max(hrMax, p.heart_rate); }
-    if (typeof p.power === 'number') { powerSum += p.power; powerCount++; }
-    if (typeof p.cadence === 'number') { cadenceSum += p.cadence; cadenceCount++; }
-    if (typeof p.distance === 'number') maxDistance = Math.max(maxDistance, p.distance);
-  }
-  const durationSeconds = stream.length > 1 ? stream[stream.length - 1].time - stream[0].time : 0;
-  let distanceKm = maxDistance;
-  if (distanceKm > 1000) distanceKm = distanceKm / 1000;
-
-  const derivedDate = firstTime !== null ? new Date(firstTime).toISOString().slice(0, 10) : null;
-
-  const summary = {
-    avg_hr: hrCount ? Math.round(hrSum / hrCount) : null,
-    max_hr: hrMax || null,
-    avg_power: powerCount ? Math.round(powerSum / powerCount) : null,
-    avg_cadence: cadenceCount ? Math.round(cadenceSum / cadenceCount) : null,
-    distance_km: distanceKm ? Math.round(distanceKm * 100) / 100 : null,
-    duration_minutes: durationSeconds ? Math.round((durationSeconds / 60) * 100) / 100 : null,
-    duration_seconds: durationSeconds ? Math.round(durationSeconds) : 0,
-    derived_date: derivedDate,
-  };
-
-  return { summary, stream };
-}
-
 // Helper to parse FIT file via fit-file-parser (already initialized)
 // Hand-rolled decoder decodeFitRecords is deprecated and not called.
 
@@ -316,9 +237,14 @@ function parseFit(buffer) {
     }
   }
   const startInstant = session?.start_time instanceof Date ? session.start_time
-    : (records[0]?.timestamp instanceof Date ? records[0].timestamp : new Date());
-  const localStart = new Date(startInstant.getTime() + tzOffsetMs);
-  const derivedDate = localStart.toISOString().slice(0, 10);
+    : (records[0]?.timestamp instanceof Date ? records[0].timestamp : null);
+  const localStart = startInstant ? new Date(startInstant.getTime() + tzOffsetMs) : null;
+  const derivedDate = localStart && Number.isFinite(localStart.getTime()) ? localStart.toISOString().slice(0, 10) : null;
+
+  const firstRecordTime = records.find((record) => Number.isFinite(record.timestamp?.getTime?.()))?.timestamp;
+  const stream = records
+    .filter((record) => Number.isFinite(record.timestamp?.getTime?.()))
+    .map((record) => ({ ...record, time: (record.timestamp.getTime() - firstRecordTime.getTime()) / 1000 }));
 
   const summary = {
     avg_hr: avgHr,
@@ -329,7 +255,7 @@ function parseFit(buffer) {
     derived_date: derivedDate,
   };
 
-  return { summary, stream: records };
+  return { summary, stream };
 }
 
 Deno.serve(async (req) => {
@@ -589,9 +515,7 @@ Deno.serve(async (req) => {
           load_coverage_pct: loadCoverage,
           efficiency_factor: efficiency_factor ?? undefined,
           aerobic_decoupling: aerobic_decoupling ?? undefined,
-          streams: stream.length <= MAX_STREAM_SAMPLES ? stream.map((p) => ({
-            time: p.time, heart_rate: p.heart_rate, altitude: p.altitude, distance: p.distance, cadence: p.cadence, speed: p.speed,
-          })) : undefined,
+          streams: inlineWorkoutStream(stream),
         };
         const sanitizedSession = TelemetryParser.sanitize(newSession);
         if (!sanitizedSession) { errors.push({ file_name, error: 'Sanitization rejected invalid session (date/duration out of range)' }); continue; }

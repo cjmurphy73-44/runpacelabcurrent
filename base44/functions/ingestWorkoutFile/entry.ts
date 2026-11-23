@@ -10,7 +10,7 @@ import { assertSafeFileUrl } from '../../shared/urlGuard.ts';
 import { assertOwnsAthlete } from '../../shared/ownership.ts';
 import { reportError } from '../../shared/errorReport.ts';
 import { checkImportAllowance } from '../../shared/importLimit.ts';
-import { MAX_STREAM_SAMPLES, storageStream } from '../../shared/streamValidity.ts';
+import { inlineWorkoutStream } from '../../shared/streamValidity.ts';
 
 Deno.serve(async (req) => {
   try {
@@ -235,8 +235,8 @@ Deno.serve(async (req) => {
       // Refresh laps from the reconciled set (keep existing if none reconciled).
       if (masterLaps.length > 0) update.laps = masterLaps;
 
-      // Refresh the stored master stream when it fits the cap.
-      if (masterStream.length > 0 && masterStream.length <= MAX_STREAM_SAMPLES) update.streams = storageStream(masterStream);
+      // Invalidate the old inline cache when the reconciled stream no longer fits.
+      if (masterStream.length > 0) Object.assign(update, { streams: inlineWorkoutStream(masterStream) ?? [] });
 
       // Backfill only previously-null summary metrics from the reconciled stream — never
       // overwrite values the athlete already has, and never touch session_trimp/session_tss.
@@ -352,7 +352,7 @@ Deno.serve(async (req) => {
       zone_bounds_bpm: zoneResult.zone_bounds_bpm,
       ...energy,
       laps: (parsedLaps && parsedLaps.length > 0) ? parsedLaps : undefined,
-      streams: stream.length <= MAX_STREAM_SAMPLES ? storageStream(stream) : undefined,
+      streams: inlineWorkoutStream(stream),
     });
 
     // Bind the first asset row to the new session.

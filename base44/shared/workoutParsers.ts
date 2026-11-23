@@ -240,21 +240,25 @@ export function parseCsv(text) {
 
   const stream = [];
   let firstTime = null;
+  let derivedDate = null;
 
   for (let i = 1; i < lines.length; i++) {
     const cols = lines[i].split(',');
     const point = { time: null, heart_rate: null, altitude: null, distance: null, cadence: null, speed: null, power: null };
 
     if (timeIdx !== -1) {
-      const raw = cols[timeIdx];
-      let t = Date.parse(raw);
-      if (isNaN(t)) {
-        const n = parseFloat(raw);
-        t = isNaN(n) ? null : n * 1000;
-      }
-      if (t !== null) {
-        if (firstTime === null) firstTime = t;
-        point.time = (t - firstTime) / 1000;
+      const raw = cols[timeIdx]?.trim();
+      const numeric = raw ? Number(raw) : NaN;
+      const milliseconds = Number.isFinite(numeric) ? numeric * 1000 : Date.parse(raw);
+      if (Number.isFinite(milliseconds)) {
+        if (firstTime === null) {
+          firstTime = milliseconds;
+          if (!Number.isFinite(numeric) || numeric >= 1_000_000_000) {
+            const date = new Date(milliseconds);
+            if (Number.isFinite(date.getTime())) derivedDate = date.toISOString().slice(0, 10);
+          }
+        }
+        point.time = (milliseconds - firstTime) / 1000;
       }
     }
     if (point.time === null) point.time = i - 1; // fallback: assume 1Hz sampling
@@ -291,6 +295,7 @@ export function parseCsv(text) {
     distance_km: distanceKm ? Math.round(distanceKm * 100) / 100 : null,
     duration_minutes: durationSeconds ? Math.round((durationSeconds / 60) * 100) / 100 : null,
     duration_seconds: durationSeconds ? Math.round(durationSeconds) : 0,
+    derived_date: derivedDate,
   };
 
   return { summary, stream, laps: [] };

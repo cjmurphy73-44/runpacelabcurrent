@@ -41,3 +41,10 @@ export function storageStream(stream) {
     power: typeof p.power === 'number' && Number.isFinite(p.power) && p.power >= 0 && p.power <= 2500 ? p.power : null,
   }));
 }
+
+// The inline field is a cache of the full parsed stream. Oversize recordings
+// must be retained at their source instead of persisting a misleading prefix.
+export function inlineWorkoutStream(stream) {
+  if (stream.length === 0 || stream.length > MAX_STREAM_SAMPLES) return undefined;
+  return storageStream(stream);
+}

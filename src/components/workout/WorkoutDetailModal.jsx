@@ -129,8 +129,8 @@ export default function WorkoutDetailModal({ workout, athlete, children, onChang
         <div className="pt-3 border-t border-border/50">
           {savedRecording?.partial && (
             <div role="status" className="mb-3 rounded-md border border-warning/40 bg-warning/10 p-3 text-xs space-y-1">
-              <p className="font-semibold">Partial recording available for detailed analysis</p>
-              <p>Only approximately {savedRecording.percent}% of this workout's elapsed time is represented by stored, consecutive samples ({savedRecording.sampleCount} points). Interval metrics below describe the saved segment, not the full ride.</p>
+              <p className="font-semibold">Partial recording stored</p>
+              <p>Only approximately {savedRecording.percent}% of this workout's elapsed time is represented by stored, consecutive samples ({savedRecording.sampleCount} points). Saved samples may be insufficient for interval analysis.</p>
               <p>Whole-session summaries may have been calculated from the original file at import. This notice does not establish whether the full original recording is still accessible.</p>
             </div>
           )}

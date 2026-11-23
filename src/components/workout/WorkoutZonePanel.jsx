@@ -23,18 +23,17 @@ export default function WorkoutZonePanel({ workout, athlete }) {
         <div className="flex items-center justify-between gap-2 flex-wrap">
           <h4 className="text-xs font-semibold text-muted-foreground">Time in zone</h4>
           <Badge variant="outline" className="text-[10px] font-normal">
-            Summary only
+            Recording unavailable
           </Badge>
         </div>
         <p className="flex items-start gap-1.5 text-[11px] text-muted-foreground">
           <Info className="w-3 h-3 mt-0.5 shrink-0" />
           <span>
-            This session has no per-second stream, so it has no zone distribution and is
-            excluded from zone analytics.{" "}
+            The saved samples do not cover enough of this session for zone analytics.{" "}
             <Link to="/import" className="text-primary hover:underline">
               Import the .fit or .tcx file
             </Link>{" "}
-            to recover genuine time in zone.
+            if you have the original recording.
           </span>
         </p>
       </div>

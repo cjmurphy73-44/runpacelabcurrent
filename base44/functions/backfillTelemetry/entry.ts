@@ -17,30 +17,22 @@ import { calcTrimp } from '../../shared/physiology.ts';
 import { resolveSessionLoad } from '../../shared/loadModel.ts';
 import { recomputeCTLATLTSB } from '../../shared/ctlRecalc.ts';
 import { assertSafeFileUrl } from '../../shared/urlGuard.ts';
-import { isUsableTelemetry } from '../../shared/streamValidity.ts';
+import { inlineWorkoutStream, isUsableTelemetry, MAX_STREAM_SAMPLES } from '../../shared/streamValidity.ts';
 import { garminConfig, refreshGarminToken } from '../../shared/garminAuth.ts';
 import { corosAccessToken, queryCorosRecords, downloadCorosFit } from '../../shared/corosMcp.ts';
+import { corosActivityId } from '../../shared/corosActivityIdentity.ts';
 
 const BATCH_SIZE = 25;
-const MAX_STREAM_SAMPLES = 3600;
 
-function storageStream(stream) {
-  return stream.map((p) => ({
-    time: p.time, heart_rate: p.heart_rate, altitude: p.altitude, distance: p.distance, cadence: p.cadence, speed: p.speed,
-  }));
-}
-
-function hasUsableStream(session) {
-  return Array.isArray(session.streams) && session.streams.length > 10;
-}
-
-// A session needs work when it holds a stale synthetic zone split to clear, or when it
-// has no per-second stream but a raw file to refetch. A summary-only session with no
-// attached file can never gain zones, so it is not re-scanned on every run.
 function isCandidate(session) {
   if (session.zone_method === 'average' || session.zone_method === 'laps') return true;
-  if (hasUsableStream(session)) return false;
-  return Boolean(session.raw_file_url);
+  const stream = session.streams;
+  const duration = Number(session.duration_seconds) || Number(session.duration_minutes) * 60;
+  const cappedPrefix = stream?.length === MAX_STREAM_SAMPLES
+    && duration - (stream.at(-1)?.time - stream[0]?.time) > 5;
+  if (isUsableTelemetry(stream, duration) && !cappedPrefix) return false;
+  return Boolean(session.raw_file_url
+    || (session.provider_activity_id && ['garmin', 'coros'].includes(session.source_provider)));
 }
 
 function typeFromName(name) {
@@ -98,6 +90,7 @@ async function parseDownloadedFile(url) {
 // account still exposes one for that date. COROS exposes summary records only through
 // its MCP interface, so it has no file to refetch and is reported as summary-only.
 async function garminFileFor(base44, athlete, session) {
+  if (session.source_provider !== 'garmin' || !session.provider_activity_id) return null;
   const conns = await base44.asServiceRole.entities.GarminConnection.filter({ athlete_id: athlete.id });
   const conn = conns.find((c) => c.status === 'connected' && c.access_token);
   if (!conn) return null;
@@ -115,13 +108,9 @@ async function garminFileFor(base44, athlete, session) {
   if (!res.ok) return null;
   const data = await res.json();
   const list = Array.isArray(data) ? data : (data.activities || data.items || data.data || []);
-  const target = Number(session.duration_minutes) || 0;
-
-  const match = list.find((a) => {
-    const d = a.date || (a.start_time ? String(a.start_time).slice(0, 10) : null) || (a.timestamp ? String(a.timestamp).slice(0, 10) : null);
-    if (d !== session.date) return false;
-    const secs = Number(a.duration_seconds ?? a.duration ?? a.elapsed_time ?? 0);
-    return Math.abs(secs / 60 - target) < 1.5;
+  const match = list.find((activity) => {
+    const id = activity.activity_id ?? activity.summaryId ?? activity.id;
+    return id != null && String(id) === session.provider_activity_id;
   });
   if (!match) return null;
 
@@ -142,6 +131,7 @@ async function garminFileFor(base44, athlete, session) {
 // second-by-second telemetry lives. Sessions whose recording no longer exists stay
 // summary-only.
 async function corosFileFor(base44, athlete, session) {
+  if (session.source_provider !== 'coros' || !session.provider_activity_id) return null;
   const conns = await base44.asServiceRole.entities.CorosConnection.filter({ athlete_id: athlete.id });
   const conn = conns.find((c) => c.access_token && c.status !== 'disconnected');
   if (!conn) return null;
@@ -158,16 +148,10 @@ async function corosFileFor(base44, athlete, session) {
   let records;
   try { records = await queryCorosRecords(accessToken, fmt(from), fmt(to)); } catch { return null; }
 
-  const targetMinutes = Number(session.duration_minutes) || 0;
-  const candidates = records.filter((r) => r.label_id && r.date === day && (!r.sport || r.sport === session.sport));
-  if (!candidates.length) return null;
-  // A day can hold several sessions and the report duration is rounded, so the closest
-  // duration wins rather than requiring an exact match.
-  const best = candidates.reduce((a, b) =>
-    Math.abs((a.duration_seconds || 0) / 60 - targetMinutes) <= Math.abs((b.duration_seconds || 0) / 60 - targetMinutes) ? a : b);
-  if (Math.abs((best.duration_seconds || 0) / 60 - targetMinutes) > 5) return null;
-
-  try { return await downloadCorosFit(accessToken, best.label_id, best.sport_type); } catch { return null; }
+  const match = records.find((record) =>
+    corosActivityId(record.label_id, record.sport_type) === session.provider_activity_id);
+  if (!match) return null;
+  try { return await downloadCorosFit(accessToken, match.label_id, match.sport_type); } catch { return null; }
 }
 
 function sortKey(s) {
@@ -222,15 +206,14 @@ async function processSession(base44, athlete, session, restHr, maxHr) {
   }
 
   if (payloads.length === 0) {
-    // Nothing full to recover. The session keeps its stored summary metrics, but it
-    // never receives a zone distribution: zones require a real per-second stream, so
-    // any previously estimated split is cleared instead of refreshed.
+    // A failed read leaves recorded zone totals intact. Clear only legacy
+    // distributions estimated from the session-average heart rate.
     const update: any = {};
     if (!session.session_trimp && !session.session_tss && session.avg_hr) {
       update.session_trimp = calcTrimp(durationMinutes, session.avg_hr, restHr, maxHr, athlete.sex);
       update.load_source = 'summary';
     }
-    if (session.zone_method && session.zone_method !== 'none') {
+    if (session.zone_method === 'average') {
       update.zone_seconds = [0, 0, 0, 0, 0];
       update.zone_method = 'none';
     }
@@ -249,8 +232,9 @@ async function processSession(base44, athlete, session, restHr, maxHr) {
   });
   const physio = recomputePhysiology(masterStream, session.sport, durationMinutes, avgHr);
 
+  const inlineStream = inlineWorkoutStream(masterStream);
   const update: any = {
-    streams: storageStream(masterStream.slice(0, MAX_STREAM_SAMPLES)),
+    streams: inlineStream ?? (fromProvider ? undefined : []),
     zone_seconds: zones.zone_seconds,
     zone_method: zones.zone_method,
     zone_bounds_bpm: zones.zone_bounds_bpm,
@@ -285,7 +269,7 @@ async function processSession(base44, athlete, session, restHr, maxHr) {
     }
   }
 
-  return { outcome: 'recovered', updated: true, update, fromProvider };
+  return { outcome: inlineStream ? 'recovered' : 'metrics_refreshed', updated: true, update };
 }
 
 async function handlePreview(base44) {
@@ -329,6 +313,7 @@ async function handleRun(base44, athlete_id, cursor) {
   const chunk = candidates.slice(0, BATCH_SIZE);
   let recovered = 0;
   let summaryOnly = 0;
+  let metricsRefreshed = 0;
   let failed = 0;
   let touched = false;
   const errors = [];
@@ -341,6 +326,7 @@ async function handleRun(base44, athlete_id, cursor) {
         touched = true;
       }
       if (res.outcome === 'recovered') recovered++;
+      else if (res.outcome === 'metrics_refreshed') metricsRefreshed++;
       else summaryOnly++;
     } catch (e) {
       failed++;
@@ -362,6 +348,7 @@ async function handleRun(base44, athlete_id, cursor) {
     success: true,
     sessions_scanned: chunk.length,
     streams_recovered: recovered,
+    metrics_refreshed: metricsRefreshed,
     summary_only: summaryOnly,
     failed,
     has_more: candidates.length > chunk.length,
