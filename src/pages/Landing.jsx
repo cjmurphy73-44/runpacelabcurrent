@@ -138,7 +138,7 @@ export default function Landing() {
                 <span className="flex items-center gap-1.5"><Ban className="w-3.5 h-3.5 text-primary" />Your training data stays yours</span>
               </div>
             </div>
-            <div className="relative">
+            <div className="relative min-w-0">
               <ProductPreview />
             </div>
           </div>

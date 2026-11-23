@@ -50,16 +50,16 @@ export default function ProductPreview() {
         </div>
         <div className="rounded-md border border-border p-3">
           <p className="text-xs text-muted-foreground mb-2">Fitness vs Fatigue, 8 weeks</p>
-          <div className="h-28">
+          <div className="h-28 min-w-0">
             <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={TREND} margin={{ top: 4, right: 4, bottom: 0, left: -28 }}>
+              <AreaChart data={TREND} margin={{ top: 4, right: 9, bottom: 0, left: 9 }}>
                 <defs>
                   <linearGradient id="gFit" x1="0" y1="0" x2="0" y2="1">
                     <stop offset="0%" stopColor="hsl(var(--primary))" stopOpacity={0.35} />
                     <stop offset="100%" stopColor="hsl(var(--primary))" stopOpacity={0} />
                   </linearGradient>
                 </defs>
-                <XAxis dataKey="d" tick={{ fontSize: 10 }} axisLine={false} tickLine={false} />
+                <XAxis dataKey="d" interval={0} tick={{ fontSize: 10 }} axisLine={false} tickLine={false} />
                 <Tooltip contentStyle={{ fontSize: 11, borderRadius: 6 }} />
                 <Area type="monotone" dataKey="fitness" stroke="hsl(var(--primary))" strokeWidth={2} fill="url(#gFit)" />
                 <Area type="monotone" dataKey="fatigue" stroke="hsl(var(--muted-foreground))" strokeWidth={1.5} fill="none" strokeDasharray="3 3" />
