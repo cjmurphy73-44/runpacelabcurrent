@@ -24,10 +24,13 @@ export default function Imports() {
   const { user } = useAuth();
   const [athlete, setAthlete] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [loadFailed, setLoadFailed] = useState(false);
   const [manualOpen, setManualOpen] = useState(false);
 
   useEffect(() => {
     (async () => {
+      setLoading(true);
+      setLoadFailed(false);
       try {
         const res = await base44.functions.invoke("fetchAthleteProfile", {});
         const profile = res.data?.athlete || null;
@@ -35,6 +38,7 @@ export default function Imports() {
         setAthlete(profile);
       } catch {
         setAthlete(null);
+        setLoadFailed(true);
       }
       setLoading(false);
     })();
@@ -44,6 +48,15 @@ export default function Imports() {
     return (
       <div className="flex justify-center py-20 text-muted-foreground">
         <Loader2 className="w-5 h-5 animate-spin mr-2" /> Loading…
+      </div>
+    );
+  }
+
+  if (loadFailed) {
+    return (
+      <div role="status" className="mx-auto max-w-xl space-y-3 py-8">
+        <p>Could not load your athlete profile for imports.</p>
+        <Button variant="outline" onClick={() => window.location.reload()}>Retry</Button>
       </div>
     );
   }

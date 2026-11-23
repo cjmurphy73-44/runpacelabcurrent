@@ -368,7 +368,6 @@ Deno.serve(async (req) => {
     });
 
     await base44.functions.invoke('calculateDailyTRIMP', { athlete_id, date });
-    await base44.functions.invoke('postWorkoutAIEvaluation', { athlete_id, workout_session_id: session.id });
 
     // Deterministic state handed back to the caller (and recomputed identically
     // inside the AI evaluation before any prose is written).

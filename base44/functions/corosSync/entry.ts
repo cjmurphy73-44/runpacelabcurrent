@@ -421,7 +421,7 @@ async function refreshIfNeeded(conn, base44, force = false): Promise<string> {
 function applyFitTelemetry(payload: any, fit: any, athlete: any): boolean {
   if (!fit?.stream?.length) return false;
   const measured = summarizeStream(fit.stream);
-  if (!isUsableTelemetry(fit.stream, measured.duration_seconds)) return false;
+  if (!isUsableTelemetry(fit.stream, payload.duration_seconds || measured.duration_seconds)) return false;
   const restHr = athlete.resting_hr || 60;
   const maxHr = athlete.max_heart_rate || payload.max_hr || measured.max_hr || 190;
   const durationSeconds = measured.duration_seconds || payload.duration_seconds;
@@ -566,10 +566,21 @@ async function syncHistoricalFor(athlete: any, accessToken: string, base44, look
 
   let duplicates = 0;
   const toCreate = [];
+  const recoverable = new Map();
   for (const mapped of mappedRecords) {
     const sameDay = existingByDate.get(mapped.date) || [];
     const isDuplicate = (s) => isDuplicateCorosSession(s, mapped);
-    if (sameDay.some(isDuplicate) || toCreate.some((s) => s.date === mapped.date && isDuplicate(s))) { duplicates++; continue; }
+    const existing = sameDay.find(isDuplicate);
+    if (existing || toCreate.some((s) => s.date === mapped.date && isDuplicate(s))) {
+      duplicates++;
+      if (existing?.source_provider === 'coros'
+        && mapped.provider_activity_id
+        && existing.provider_activity_id === mapped.provider_activity_id
+        && !existing.streams?.length && fileKeys.has(mapped)) {
+        recoverable.set(existing.id, { existing, mapped });
+      }
+      continue;
+    }
     toCreate.push(mapped);
   }
   // The sport record is a summary. COROS also keeps the original activity file, and only
@@ -593,13 +604,32 @@ async function syncHistoricalFor(athlete: any, accessToken: string, base44, look
       console.warn('COROS FIT ingest failed:', (e as Error).message);
     }
   }
+  // Retry a bounded set of already imported summaries when the identity is exact.
+  // Oversize recordings need durable full-file storage before they can be upgraded here.
+  let recordings_recovered = 0;
+  const recoveredDates = new Set<string>();
+  if (toCreate.length === 0) {
+    for (const { existing, mapped } of [...recoverable.values()].slice(0, 5)) {
+      const key = fileKeys.get(mapped);
+      try {
+        const fit = await downloadCorosFit(accessToken, key.labelId, key.sportType);
+        const patch = { duration_seconds: existing.duration_seconds || mapped.duration_seconds, max_hr: existing.max_hr };
+        if (!fit || fit.stream.length > MAX_STREAM_SAMPLES || !applyFitTelemetry(patch, fit, athlete)) continue;
+        await base44.asServiceRole.entities.WorkoutSession.update(existing.id, patch);
+        recordings_recovered++;
+        recoveredDates.add(existing.date);
+      } catch {
+        error_messages.push('An existing COROS workout could not be upgraded from its original FIT.');
+      }
+    }
+  }
   const write = await persistCorosBatches(
     toCreate,
     (batch) => base44.asServiceRole.entities.WorkoutSession.bulkCreate(batch),
   );
   error_messages.push(...write.errors);
   // Recompute load only for sessions the persistence API actually confirmed.
-  for (const d of write.persisted_dates) {
+  for (const d of new Set([...write.persisted_dates, ...recoveredDates])) {
     try { await base44.asServiceRole.functions.invoke('calculateDailyTRIMP', { athlete_id: athlete.id, date: d }); }
     catch {
       error_messages.push('Daily load recomputation failed; sessions remain saved.');
@@ -608,7 +638,7 @@ async function syncHistoricalFor(athlete: any, accessToken: string, base44, look
   errors += write.failed + write.uncertain;
   return {
     imported: write.imported, errors, records_found: records.length, duplicates,
-    summary_only, write_uncertain: write.uncertain, error_messages,
+    summary_only, recordings_recovered, write_uncertain: write.uncertain, error_messages,
   };
 }
 

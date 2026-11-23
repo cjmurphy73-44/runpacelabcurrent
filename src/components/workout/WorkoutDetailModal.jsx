@@ -1,4 +1,5 @@
 import React, { useMemo, useState } from "react";
+import { Link } from "react-router-dom";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import {
   AlertDialog,
@@ -175,6 +176,7 @@ export default function WorkoutDetailModal({ workout, athlete, children, onChang
         </div>
 
         <div className="flex items-center justify-end gap-2 pt-2 border-t border-border/50">
+          <Button asChild variant="outline" size="sm"><Link to={`/workouts/${workout.id}`}>Workout analysis & coach insights</Link></Button>
           <Button variant="outline" size="sm" onClick={() => setEditing(true)}>
             <Pencil className="w-4 h-4" /> Edit
           </Button>

@@ -18,6 +18,7 @@ import { useToast } from "@/components/ui/use-toast";
 // log a workout and immediately see the CTL/ATL/TSB engine respond.
 const SPORTS = [
   { value: "running", label: "Run" },
+  { value: "walking", label: "Walking" },
   { value: "cycling", label: "Bike" },
   { value: "swimming", label: "Swim" },
   { value: "triathlon", label: "Multisport" },

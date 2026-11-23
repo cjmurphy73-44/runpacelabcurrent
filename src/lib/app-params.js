@@ -1,4 +1,4 @@
-// src/lib/app-params.js
+import { getAccessToken } from "@base44/sdk";
 
 function getAppParamValue(name, { defaultValue = null, removeFromUrl = false, persistToLocalStorage = false } = {}) {
   const windowObj = typeof window !== 'undefined' ? window : null;
@@ -71,7 +71,7 @@ export function getAppParams() {
   return {
     appId: resolvedAppId,
     serverUrl: configuredAppBaseUrl?.replace(/\/+$/, '') || '',
-    token: getAppParamValue("access_token", { removeFromUrl: true }),
+    token: getAccessToken() || getAppParamValue("access_token", { removeFromUrl: true }),
     fromUrl: getAppParamValue("from_url", { defaultValue: windowObj.location?.href || '/' }),
     functionsVersion: getAppParamValue("functions_version", { defaultValue: "", persistToLocalStorage: true }),
     appBaseUrl: configuredAppBaseUrl || (configuredAppId

@@ -27,6 +27,11 @@ describe('Base44 deployment targeting', () => {
     expect(window.location.search).toBe('');
   });
 
+  it('restores the session saved by email login or OTP verification after a reload', () => {
+    window.localStorage.setItem('base44_access_token', 'sdk-session');
+    expect(getAppParams().token).toBe('sdk-session');
+  });
+
   it('keeps legacy environment names and ignores a cached URL for explicitly configured apps', () => {
     vi.stubEnv('VITE_APP_ID', 'legacy-app');
     window.localStorage.setItem('app_base_url', 'https://production.example');

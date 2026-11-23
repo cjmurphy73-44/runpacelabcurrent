@@ -9,7 +9,7 @@ import { inlineWorkoutStream } from '../../shared/streamValidity.ts';
 import { parseCsv } from '../../shared/workoutParsers.ts';
 
 const GARMIN_EPOCH_OFFSET_SEC = 631065600; // seconds between Unix epoch and FIT/Garmin epoch (1989-12-31)
-const VALID_SPORTS = ['running', 'cycling', 'swimming', 'strength', 'triathlon', 'other'];
+const VALID_SPORTS = ['running', 'walking', 'cycling', 'swimming', 'strength', 'triathlon', 'other'];
 const WARMUP_SECONDS = 300;
 const MIN_DECOUPLING_DURATION_MIN = 45;
 
@@ -28,6 +28,7 @@ function normalizeSportValue(raw) {
   if (!raw) return null;
   const s = String(raw).trim().toLowerCase();
   if (!s) return null;
+  if (/walk/.test(s)) return 'walking';
   if (/run/.test(s)) return 'running';
   if (/(bike|cycl|ride|mtb)/.test(s)) return 'cycling';
   if (/swim/.test(s)) return 'swimming';

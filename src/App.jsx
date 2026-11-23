@@ -33,6 +33,7 @@ const Vdot = lazy(() => import('@/pages/Vdot'));
 const WeatherAdjust = lazy(() => import('@/pages/WeatherAdjust'));
 const Zones = lazy(() => import('@/pages/Zones'));
 const AdvancedAnalytics = lazy(() => import('@/pages/AdvancedAnalytics'));
+const ActivityDetail = lazy(() => import('@/pages/ActivityDetail'));
 const Workouts = lazy(() => import('@/pages/Workouts'));
 const TrainingPlan = lazy(() => import('@/pages/TrainingPlan'));
 const AthleteSettings = lazy(() => import('@/pages/AthleteSettings'));
@@ -78,6 +79,7 @@ export default function App() {
               <Route path="/zones" element={<Zones />} />
               <Route path="/analytics" element={<AdvancedAnalytics />} />
               <Route path="/workouts" element={<Workouts />} />
+              <Route path="/workouts/:id" element={<ActivityDetail />} />
               <Route path="/plan" element={<TrainingPlan />} />
               <Route path="/settings" element={<AthleteSettings />} />
               <Route path="/import" element={<Imports />} />

@@ -5,7 +5,7 @@
 
 import fitParser from 'npm:fit-file-parser';
 
-export const VALID_SPORTS = ['running', 'cycling', 'swimming', 'strength', 'triathlon', 'other'];
+export const VALID_SPORTS = ['running', 'walking', 'cycling', 'swimming', 'strength', 'triathlon', 'other'];
 
 // Banister's HR-based TRIMP (sex-weighted exponential), the primary session stress metric.
 export function calcTrimp(durationMin, avgHr, restHr, maxHr, sex) {
@@ -21,6 +21,7 @@ export function calcTrimp(durationMin, avgHr, restHr, maxHr, sex) {
 export function normalizeSport(raw) {
   if (!raw) return 'running';
   const s = String(raw).trim().toLowerCase();
+  if (/walk/.test(s)) return 'walking';
   if (/run/.test(s)) return 'running';
   if (/(bike|cycl|ride|mtb)/.test(s)) return 'cycling';
   if (/swim/.test(s)) return 'swimming';

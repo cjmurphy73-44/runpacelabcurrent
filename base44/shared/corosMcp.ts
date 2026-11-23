@@ -136,6 +136,7 @@ export function extractRecords(result: any): any[] {
 }
 
 export function corosSportCodeToSport(code: number | null, name: string): string {
+  if (/walk/i.test(name || "")) return 'walking';
   if (code != null) {
     if (code >= 100 && code <= 106) return 'running';
     if (code >= 200 && code <= 299) return 'cycling';

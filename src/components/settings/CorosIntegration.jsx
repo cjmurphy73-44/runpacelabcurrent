@@ -61,7 +61,9 @@ export default function CorosIntegration({ athleteId }) {
       const res = await base44.functions.invoke("corosSync", { action: "sync_historical" });
       const data = res.data || res;
       const parts = [`Imported ${data.imported ?? 0} of ${data.records_found ?? 0} found`];
-      if (data.duplicates) parts.push(`${data.duplicates} already up to date`);
+      if (data.duplicates) parts.push(`${data.duplicates} existing workouts`);
+      if (data.recordings_recovered) parts.push(`${data.recordings_recovered} recordings recovered`);
+      if (data.summary_only) parts.push(`${data.summary_only} new summaries without usable recordings`);
       if (data.errors) parts.push(`${data.errors} skipped`);
       setInfo(parts.join(" · ") + ".");
       loadStatus();

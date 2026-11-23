@@ -28,6 +28,7 @@ import { UploadCloud, Check, Download } from "lucide-react";
 
 const SPORTS = [
   { value: "running", label: "Run" },
+  { value: "walking", label: "Walking" },
   { value: "cycling", label: "Bike" },
   { value: "swimming", label: "Swim" },
   { value: "triathlon", label: "Multisport" },
@@ -85,6 +86,7 @@ export default function WorkoutLogWizard({ open, onClose, athleteId, onSaved }) 
     setSaving(true);
     try {
       let result;
+      let refreshFailed = false;
       if (file) {
         const { file_url } = await base44.integrations.Core.UploadFile({ file });
         const res = await base44.functions.invoke("ingestWorkoutFile", {
@@ -95,7 +97,10 @@ export default function WorkoutLogWizard({ open, onClose, athleteId, onSaved }) 
           date,
         });
         result = res.data;
-        if (result?.error) throw new Error(result.error);
+        if (!result?.success) throw new Error(result?.error || "Import was not confirmed.");
+        result = result.workout_session ?? (result.workout_session_id
+          ? await base44.entities.WorkoutSession.get(result.workout_session_id).catch(() => null)
+          : null);
       } else {
         const payload = {
           athlete_id: athleteId,
@@ -112,19 +117,19 @@ export default function WorkoutLogWizard({ open, onClose, athleteId, onSaved }) 
         try {
           await base44.functions.invoke("recalculateCTLATLTSB", { athlete_id: athleteId });
         } catch {
-          /* non-fatal */
+          refreshFailed = true;
         }
         result = { duration_minutes: dur, session_tss: estimatedTss };
       }
       setSaved({
         date,
         sport,
-        duration: file ? result.duration_minutes : dur,
-        distance: dist,
-        tss: result.session_tss ?? estimatedTss,
+        duration: result?.duration_minutes,
+        distance: file ? result?.distance_km : dist,
+        tss: result?.session_tss,
         file: file?.name,
       });
-      toast({ title: "Workout saved", description: "Fitness refreshed." });
+      toast({ title: "Workout saved", description: refreshFailed ? "Training load could not be refreshed yet." : undefined });
       onSaved?.();
     } catch (err) {
       toast({
@@ -144,9 +149,9 @@ export default function WorkoutLogWizard({ open, onClose, athleteId, onSaved }) 
       `Title:    ${title || "(untitled)"}`,
       `Date:     ${saved.date}`,
       `Sport:    ${saved.sport}`,
-      `Duration: ${saved.duration} min`,
+      saved.duration != null ? `Duration: ${saved.duration} min` : null,
       saved.distance ? `Distance: ${saved.distance} km` : null,
-      `Est. TSS: ${saved.tss}`,
+      saved.tss != null ? `Est. TSS: ${saved.tss}` : null,
       saved.file ? `File:     ${saved.file}` : "File:     (manual entry)",
       "",
       `Logged at ${new Date().toLocaleString()}`,
@@ -209,11 +214,11 @@ export default function WorkoutLogWizard({ open, onClose, athleteId, onSaved }) 
               </div>
               <div>
                 <div className="text-xs text-muted-foreground">Duration</div>
-                <div className="tabular-nums">{saved.duration} min</div>
+                <div className="tabular-nums">{saved.duration == null ? "—" : `${saved.duration} min`}</div>
               </div>
               <div>
                 <div className="text-xs text-muted-foreground">Est. TSS</div>
-                <div className="tabular-nums">{saved.tss}</div>
+                <div className="tabular-nums">{saved.tss ?? "—"}</div>
               </div>
             </div>
             <DialogFooter>

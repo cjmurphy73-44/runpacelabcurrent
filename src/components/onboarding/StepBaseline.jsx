@@ -90,7 +90,7 @@ export default function StepBaseline({ form, set, setForm, derived, eff, overrid
             <Select value={form.raceDistance} onValueChange={(v) => setForm((f) => ({ ...f, raceDistance: v }))}>
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
-                {RACE_DISTANCES.map((d) => <SelectItem key={d.key} value={d.key}>{d.label}</SelectItem>)}
+                {RACE_DISTANCES.map((d) => <SelectItem key={d.value} value={String(d.value)}>{d.label}</SelectItem>)}
               </SelectContent>
             </Select>
           </div>

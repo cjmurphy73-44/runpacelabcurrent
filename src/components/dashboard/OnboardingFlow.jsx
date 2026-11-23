@@ -3,7 +3,7 @@ import { base44 } from "@/api/base44Client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Sparkles, ArrowLeft, ArrowRight, ShieldCheck } from "lucide-react";
-import { deriveOnboardingProfile, RACE_DISTANCES } from "@/science/daniels";
+import { estimateMaxHr, estimateLthr, RACE_DISTANCES } from "@/science/daniels";
 import { deriveNoviceBaseline } from "@/science/noviceBaseline";
 import { useAuth } from "@/lib/AuthContext";
 import { TIER_CONSTS } from "@/lib/trainingTiers";
@@ -24,10 +24,11 @@ export default function OnboardingFlow({ onCreated }) {
   const { user } = useAuth();
   const [form, setForm] = useState({
     first_name: "", last_name: "", sex: "male", dob: "", age: "",
-    raceDistance: "5k", raceMinutes: "", raceSeconds: "", weeklyMileage: "", tier: "moderate",
+    raceDistance: "5000", raceMinutes: "", raceSeconds: "", weeklyMileage: "", tier: "moderate",
     noviceMode: false, easyDistance: "", easyMinutes: "", effort: "easy",
     wearables: [],
   });
+  const [raceBaseline, setRaceBaseline] = useState(null);
   const [overrides, setOverrides] = useState({});
   const [step, setStep] = useState(0);
   const [saving, setSaving] = useState(false);
@@ -54,19 +55,8 @@ export default function OnboardingFlow({ onCreated }) {
         });
       } catch { return null; }
     }
-    const dist = RACE_DISTANCES.find((d) => d.key === form.raceDistance);
-    const t = Number(form.raceMinutes) * 60 + Number(form.raceSeconds);
-    if (!dist || !t || t < 180) return null;
-    try {
-      return deriveOnboardingProfile({
-        raceDistanceMeters: dist.meters,
-        raceTimeSeconds: t,
-        age,
-        sex: form.sex,
-        weeklyMileageKm: Number(form.weeklyMileage) || 0,
-      });
-    } catch { return null; }
-  }, [form]);
+    return raceBaseline;
+  }, [form, raceBaseline]);
 
   const eff = (field) => (overrides[field] != null && overrides[field] !== "" ? overrides[field] : derived?.[field]);
 
@@ -74,21 +64,47 @@ export default function OnboardingFlow({ onCreated }) {
     ? "Add an easy run (distance + time) or weekly mileage to estimate a baseline."
     : "Add a recent race result so we can derive your baseline.";
 
-  const goNext = () => {
+  const goNext = async () => {
+    const age = form.age ? Number(form.age) : ageFromDob(form.dob);
     if (step === 0 && (!form.first_name.trim() || !form.last_name.trim())) {
       setError("Add your first and last name to continue.");
       return;
     }
-    if (step === 1 && !derived) {
-      setError(baselineHint);
+    if (!Number.isFinite(age) || age <= 0 || age > 120) {
+      setError("Enter a valid age or date of birth.");
       return;
     }
     setError("");
+    if (step === 1 && form.noviceMode && !derived) {
+      setError(baselineHint);
+      return;
+    }
+    if (step === 1 && !form.noviceMode) {
+      const distanceMeters = Number(form.raceDistance);
+      const timeSeconds = Number(form.raceMinutes) * 60 + Number(form.raceSeconds);
+      if (!RACE_DISTANCES.some(({ value }) => value === distanceMeters) || timeSeconds < 180) {
+        setError(baselineHint);
+        return;
+      }
+      setSaving(true);
+      try {
+        const { data } = await base44.functions.invoke("calculateVDOT", { distanceMeters, timeSeconds });
+        if (!Number.isFinite(data?.vdot) || data.vdot <= 0) throw new Error("Invalid baseline");
+        const maxHr = estimateMaxHr(age);
+        setRaceBaseline({ ...data, maxHr, lactateThresholdHr: estimateLthr(maxHr) });
+      } catch {
+        setError("Could not calculate your race baseline. Check the result and try again.");
+        return;
+      } finally {
+        setSaving(false);
+      }
+    }
     setStep((s) => Math.min(LAST_STEP, s + 1));
   };
 
   const goBack = () => {
     setError("");
+    setRaceBaseline(null);
     setStep((s) => Math.max(0, s - 1));
   };
 
@@ -106,7 +122,7 @@ export default function OnboardingFlow({ onCreated }) {
       const existing = user?.id ? await base44.entities.AthleteProfile.filter({ created_by_id: user.id }, "-updated_date", 50) : [];
       const owned = existing.find((p) => p.created_by_id === user?.id) || existing[0];
       if (owned) {
-        try { await base44.auth.updateMe({ athlete_profile_id: owned.id }); } catch (e) { console.warn("updateMe athlete_profile_id failed:", e); }
+        await base44.auth.updateMe({ athlete_profile_id: owned.id });
         try { base44.analytics.track({ eventName: "onboarding_complete", properties: { mode: "relink" } }); } catch {}
         onCreated(owned);
         return;
@@ -127,10 +143,10 @@ export default function OnboardingFlow({ onCreated }) {
       });
       // S5: stamp this profile's id onto the owning user so health-data RLS can scope reads.
       // Must happen immediately after profile creation so the dashboard never renders blank.
-      try { await base44.auth.updateMe({ athlete_profile_id: profile.id }); } catch (e) { console.warn("updateMe athlete_profile_id failed:", e); }
+      await base44.auth.updateMe({ athlete_profile_id: profile.id });
       try { base44.analytics.track({ eventName: "onboarding_complete", properties: { mode: "new", tier: form.tier } }); } catch {}
       onCreated(profile);
-    } catch (e) { setError(e?.response?.data?.error || "Could not create profile."); }
+    } catch (e) { setError(e?.response?.data?.error || "Could not finish setting up your profile. Try again."); }
     finally { setSaving(false); }
   };
 
@@ -169,7 +185,7 @@ export default function OnboardingFlow({ onCreated }) {
                 {!saving && <ArrowRight className="w-4 h-4" />}
               </Button>
             ) : (
-              <Button type="button" className="flex-1" onClick={goNext}>
+              <Button type="button" className="flex-1" onClick={goNext} disabled={saving}>
                 Continue <ArrowRight className="w-4 h-4" />
               </Button>
             )}
