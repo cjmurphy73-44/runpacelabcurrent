@@ -62,7 +62,7 @@ When you use `base44 dev`, the command injects the local Base44 values for you, 
 
 ## Publish Your Changes
 
-The published Base44 app serves `trainpacelab.com`. A GitHub merge and its Vercel deployment are separate from the Base44 release. Verify the reviewed source SHA, the built Base44 checkpoint, the private staging behaviour and the rollback checkpoint before using Publish in the Base44 dashboard. Follow the [release procedure](docs/WORKOUT_BACKEND_RELEASE.md) for the backend and permission cutover.
+The published Base44 app serves `trainpacelab.com`. Merge through GitHub's protected `main`, pull the reviewed commit into the Base44 app, then verify the built Base44 checkpoint, private staging behaviour and rollback checkpoint before publishing. Automatic Vercel builds are limited to designated `release/` branches. Follow the [release procedure](docs/WORKOUT_BACKEND_RELEASE.md) for the backend and permission cutover.
 
 ```bash
 base44 dashboard open

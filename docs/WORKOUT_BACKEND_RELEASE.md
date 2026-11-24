@@ -1,6 +1,6 @@
 # TrainPaceLab workout backend release
 
-Deploy the Base44 resources and frontend from the same reviewed candidate. The production `trainpacelab.com` domain is served by the published Base44 app `6a504ebe6a5a6d1be058226c`. Verify the live HTML and asset fingerprints before a cutover. A GitHub merge can trigger an independent Vercel build. A Vercel deployment is required only if that project serves the intended domain.
+Deploy the Base44 resources and frontend from the same reviewed candidate. The production `trainpacelab.com` domain is served by the published Base44 app `6a504ebe6a5a6d1be058226c`. Verify the live HTML and asset fingerprints before a cutover. Pull the protected GitHub `main` merge into Base44 and verify the publication checkpoint. Automatic Vercel builds are limited to designated `release/` branches.
 
 ## Contracts to preserve
 

@@ -22,14 +22,14 @@ function permitsDeployment(branch) {
   return matching.length === 0 || matching.some(([, enabled]) => enabled === true);
 }
 
-describe("Vercel Git deployment quota policy", () => {
-  it("keeps the reviewed production branch enabled and refuses global disabling", () => {
+describe("Vercel Git deployment policy", () => {
+  it("keeps the Base44 production merge on main from starting a Vercel build", () => {
     expect(policy).toEqual({
-      main: true,
+      main: false,
       "release/**": true,
       "**": false,
     });
-    expect(permitsDeployment("main")).toBe(true);
+    expect(permitsDeployment("main")).toBe(false);
   });
 
   it.each([
