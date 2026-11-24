@@ -1,73 +1,70 @@
 import React from "react";
-import { Card, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { AreaChart, Area, ResponsiveContainer, XAxis, Tooltip } from "recharts";
-import { Activity, HeartPulse, Gauge } from "lucide-react";
 
 const TREND = [
-  { d: "W1", fitness: 28, fatigue: 22 },
-  { d: "W2", fitness: 32, fatigue: 30 },
-  { d: "W3", fitness: 36, fatigue: 27 },
-  { d: "W4", fitness: 41, fatigue: 34 },
-  { d: "W5", fitness: 45, fatigue: 31 },
-  { d: "W6", fitness: 49, fatigue: 29 },
-  { d: "W7", fitness: 54, fatigue: 33 },
-  { d: "W8", fitness: 58, fatigue: 30 },
+  [28, 22], [32, 30], [36, 27], [41, 34],
+  [45, 31], [49, 29], [54, 33], [58, 30],
 ];
 
 const STATS = [
-  { label: "Fitness", value: "58", unit: "CTL", icon: Activity, tone: "text-primary" },
-  { label: "Form", value: "+28", unit: "TSB", icon: Gauge, tone: "text-success" },
-  { label: "Readiness", value: "82", unit: "/100", icon: HeartPulse, tone: "text-accent-foreground" },
+  { label: "Fitness", value: "58", unit: "CTL" },
+  { label: "Form", value: "+28", unit: "TSB" },
+  { label: "Readiness", value: "82", unit: "/ 100" },
 ];
 
 export default function ProductPreview() {
   return (
-    <div className="rounded-lg border border-border bg-card shadow-xl overflow-hidden" aria-label="Illustrative dashboard preview using example data">
-      <div className="p-5 space-y-4">
-        <p className="text-xs font-medium text-muted-foreground">Illustrative preview · Example data, not a live athlete</p>
-        <div className="flex items-center justify-between">
-          <div>
-            <p className="text-xs text-muted-foreground uppercase tracking-wider">Today</p>
-            <p className="font-heading font-semibold text-lg">Tuesday, Quality session</p>
-          </div>
-          <Badge className="bg-success/15 text-success border border-success/30">Ready</Badge>
-        </div>
-        <div className="grid grid-cols-3 gap-3">
-          {STATS.map((s) => (
-            <Card key={s.label} className="border-border">
-              <CardContent className="p-3">
-                <div className="flex items-center gap-1.5 text-muted-foreground">
-                  <s.icon className="w-3.5 h-3.5" />
-                  <span className="text-[11px] uppercase tracking-wide">{s.label}</span>
-                </div>
-                <p className="mt-1.5 text-2xl font-bold font-heading">
-                  {s.value} <span className="text-xs font-normal text-muted-foreground">{s.unit}</span>
-                </p>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-        <div className="rounded-md border border-border p-3">
-          <p className="text-xs text-muted-foreground mb-2">Fitness vs Fatigue, 8 weeks</p>
-          <div className="h-28 min-w-0">
-            <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={TREND} margin={{ top: 4, right: 9, bottom: 0, left: 9 }}>
-                <defs>
-                  <linearGradient id="gFit" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="hsl(var(--primary))" stopOpacity={0.35} />
-                    <stop offset="100%" stopColor="hsl(var(--primary))" stopOpacity={0} />
-                  </linearGradient>
-                </defs>
-                <XAxis dataKey="d" interval={0} tick={{ fontSize: 10 }} axisLine={false} tickLine={false} />
-                <Tooltip contentStyle={{ fontSize: 11, borderRadius: 6 }} />
-                <Area type="monotone" dataKey="fitness" stroke="hsl(var(--primary))" strokeWidth={2} fill="url(#gFit)" />
-                <Area type="monotone" dataKey="fatigue" stroke="hsl(var(--muted-foreground))" strokeWidth={1.5} fill="none" strokeDasharray="3 3" />
-              </AreaChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
+    <section aria-label="Example athlete dashboard" className="min-w-0 overflow-hidden rounded-2xl border border-border bg-card text-card-foreground shadow-2xl shadow-primary/10">
+      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border px-4 py-3 sm:px-6">
+        <h2 className="font-heading text-sm font-semibold">Athlete dashboard</h2>
+        <p className="text-xs text-muted-foreground">Example data</p>
       </div>
-    </div>
+      <div className="space-y-5 p-4 sm:p-6">
+        <div>
+          <p className="text-xs font-medium text-muted-foreground">Today’s session</p>
+          <p className="mt-1 font-heading text-xl font-semibold">Threshold intervals</p>
+        </div>
+        <dl className="grid grid-cols-3 gap-2 sm:gap-3">
+          {STATS.map(({ label, value, unit }) => (
+            <div key={label} className="min-w-0 rounded-lg border border-border bg-muted/30 p-2.5 sm:p-3">
+              <dt className="text-xs font-medium text-muted-foreground">{label}</dt>
+              <dd className="mt-1 flex flex-wrap items-baseline gap-x-1">
+                <span className="font-heading text-2xl font-bold tabular-nums sm:text-3xl">{value}</span>
+                <span className="text-[11px] text-muted-foreground">{unit}</span>
+              </dd>
+            </div>
+          ))}
+        </dl>
+        <figure className="rounded-lg border border-border p-3 sm:p-4">
+          <figcaption className="flex flex-wrap items-baseline justify-between gap-2">
+            <span className="text-sm font-semibold">Fitness and fatigue</span>
+            <span className="text-xs text-muted-foreground">8 weeks</span>
+          </figcaption>
+          <div className="my-3 flex flex-wrap gap-4 text-xs text-muted-foreground">
+            <span className="flex items-center gap-1.5"><i className="h-2 w-2 rounded-sm bg-primary" aria-hidden="true" /> Fitness</span>
+            <span className="flex items-center gap-1.5"><i className="h-2 w-2 rounded-sm bg-muted-foreground/50" aria-hidden="true" /> Fatigue</span>
+          </div>
+          <div aria-hidden="true" className="grid grid-cols-8 gap-1 sm:gap-2">
+            {TREND.map(([fitness, fatigue], index) => (
+              <div key={index} className="min-w-0">
+                <div className="flex h-24 items-end justify-center gap-0.5 border-b border-border sm:h-32 sm:gap-1">
+                  <span className="w-[38%] max-w-5 rounded-t-sm bg-primary" style={{ height: `${fitness / 60 * 100}%` }} />
+                  <span className="w-[38%] max-w-5 rounded-t-sm bg-muted-foreground/50" style={{ height: `${fatigue / 60 * 100}%` }} />
+                </div>
+                <p className="mt-1.5 text-center text-[10px] tabular-nums text-muted-foreground">W{index + 1}</p>
+              </div>
+            ))}
+          </div>
+          <table className="sr-only">
+            <caption>Example weekly fitness and fatigue values</caption>
+            <thead><tr><th scope="col">Week</th><th scope="col">Fitness</th><th scope="col">Fatigue</th></tr></thead>
+            <tbody>
+              {TREND.map(([fitness, fatigue], index) => (
+                <tr key={index}><th scope="row">{index + 1}</th><td>{fitness}</td><td>{fatigue}</td></tr>
+              ))}
+            </tbody>
+          </table>
+        </figure>
+      </div>
+    </section>
   );
 }
