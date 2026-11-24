@@ -14,12 +14,14 @@ export default function CorosOriginalRecording({ workout }) {
     setError("");
     try {
       const { data } = await base44.functions.invoke("corosRecording", {
-        action: "recover_recording", workout_id: workout.id,
+        action: "recover_recording", workout_id: workout.id, response_mode: "analysis",
       });
-      if (data?.status !== "verified" || !Array.isArray(data.streams) || data.streams.length !== data.sample_count) {
+      const hasAnalysis = Array.isArray(data?.analysis?.windows?.[300]) && Array.isArray(data.analysis.windows[600]);
+      const hasSamples = Array.isArray(data?.streams) && data.streams.length === data.sample_count;
+      if (data?.status !== "verified" || (!hasAnalysis && !hasSamples)) {
         throw new Error("The original COROS recording is unavailable.");
       }
-      setResult({ ...workout, streams: data.streams });
+      setResult(data);
     } catch (err) {
       setError(err?.response?.data?.error || err?.data?.error || err?.message || "Could not load the original recording.");
     } finally {
@@ -27,7 +29,8 @@ export default function CorosOriginalRecording({ workout }) {
     }
   }
 
-  const coverage = result ? recordingCoverage(result) : null;
+  const analyzedWorkout = result?.streams ? { ...workout, streams: result.streams } : workout;
+  const coverage = result?.analysis?.coverage ?? (result?.streams ? recordingCoverage(analyzedWorkout) : null);
   const roundedCoverage = coverage && coverage.savedSeconds !== coverage.totalSeconds ? "≈" : "";
   return (
     <section aria-label="Original COROS recording" className="space-y-3">
@@ -42,7 +45,7 @@ export default function CorosOriginalRecording({ workout }) {
           Original FIT verified · {coverage.sampleCount.toLocaleString()} samples · {roundedCoverage}{coverage.percent}% elapsed-time coverage
         </p>
       )}
-      <RecordingIntervals workout={result ?? workout} />
+      <RecordingIntervals workout={analyzedWorkout} windowsByDuration={result?.analysis?.windows} />
     </section>
   );
 }

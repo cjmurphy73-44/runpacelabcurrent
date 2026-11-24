@@ -6,10 +6,11 @@ import { env } from './oauth.ts';
 import { assertOwnsAthlete } from './ownership.ts';
 import { isUsableTelemetry, storageStream } from './streamValidity.ts';
 import { parseFitWithLaps } from './workoutParsers.ts';
+import { summarizeRecordingCoverage, summarizeRecordingWindows } from './recordingWindows.js';
 
 const MAX_ARCHIVED_SAMPLE_COUNT = 28800;
 
-export async function handleCorosRecording(base44, workoutId: unknown, recover: boolean) {
+export async function handleCorosRecording(base44, workoutId: unknown, recover: boolean, analysisOnly = false) {
   const user = await base44.auth.me().catch(() => null);
   if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
   if (typeof workoutId !== 'string' || !workoutId.trim()) {
@@ -52,10 +53,20 @@ export async function handleCorosRecording(base44, workoutId: unknown, recover: 
     if (!decoded || decoded.stream.length > MAX_ARCHIVED_SAMPLE_COUNT || !isUsableTelemetry(decoded.stream, expectedDuration)) {
       return Response.json({ error: 'Archived FIT does not contain a usable recording.' }, { status: 422 });
     }
-    return Response.json({
-      status: 'verified', streams: storageStream(decoded.stream), sample_count: decoded.stream.length,
-      recording_sha256: await hashCorosRecording(bytes),
-    }, { headers: { 'Cache-Control': 'private, no-store' } });
+    const recording = {
+      status: 'verified', sample_count: decoded.stream.length, recording_sha256: await hashCorosRecording(bytes),
+    };
+    const payload = analysisOnly ? {
+      ...recording,
+      analysis: {
+        coverage: summarizeRecordingCoverage({ ...workout, streams: decoded.stream }),
+        windows: {
+          300: summarizeRecordingWindows(decoded.stream, 300),
+          600: summarizeRecordingWindows(decoded.stream, 600),
+        },
+      },
+    } : { ...recording, streams: storageStream(decoded.stream) };
+    return Response.json(payload, { headers: { 'Cache-Control': 'private, no-store' } });
   } catch {
     return Response.json({ error: 'The original COROS recording could not be verified or retrieved.' }, { status: 502 });
   }

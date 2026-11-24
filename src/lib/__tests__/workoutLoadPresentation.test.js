@@ -14,6 +14,12 @@ describe("workout load provenance", () => {
     });
   });
 
+  it("shows saved stress when HR impulse is absent", () => {
+    expect(workoutLoadPresentation({ session_trimp: 0, session_tss: 72 })).toEqual({
+      label: "Training stress estimate", amount: "72 TSS", measured: false,
+    });
+  });
+
   it("does not turn missing load into a misleading zero measurement", () => {
     expect(workoutLoadPresentation({ load_source: "none" }).amount).toBe("Load unavailable");
     expect(workoutLoadPresentation({ session_trimp: 0, load_source: "stream" }).amount).toBe("Load unavailable");

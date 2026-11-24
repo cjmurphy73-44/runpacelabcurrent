@@ -98,7 +98,7 @@ try {
   assert.equal(coros.source_provider, 'coros');
   assert.match(coros.provider_activity_id, /^\d+:\d+$/);
   assert.ok(await denied(() => other.functions.invoke('corosRecording', { action: 'read_recording', workout_id: id })));
-  const invoke = async action => (await athlete.functions.invoke('corosRecording', { action, workout_id: id })).data;
+  const invoke = async (action, response_mode) => (await athlete.functions.invoke('corosRecording', { action, workout_id: id, response_mode })).data;
   const retrieved = await invoke('recover_recording');
   assert.equal(retrieved.status, 'verified');
   assert.equal(retrieved.recording_sha256, expectedSha256);
@@ -106,6 +106,11 @@ try {
   assert.equal(retrieved.streams.length, expectedCount);
   assert.equal(retrieved.streams.at(-1)?.time, expectedEnd);
   assert.deepEqual(await invoke('read_recording'), retrieved);
+  const analysis = await invoke('read_recording', 'analysis');
+  assert.equal(analysis.recording_sha256, expectedSha256);
+  assert.equal(analysis.analysis.coverage.sampleCount, expectedCount);
+  assert.ok(analysis.analysis.windows[600].length > 0);
+  assert.equal(analysis.streams, undefined);
   verified.push(check);
 } catch (error) {
   // Provider and SDK messages can contain sensitive request details.

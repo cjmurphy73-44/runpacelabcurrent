@@ -7,5 +7,7 @@ Deno.serve(async (request) => {
   if (action !== 'read_recording' && action !== 'recover_recording') {
     return Response.json({ error: 'Unknown recording action' }, { status: 400 });
   }
-  return handleCorosRecording(createClientFromRequest(request), body.workout_id, action === 'recover_recording');
+  return handleCorosRecording(
+    createClientFromRequest(request), body.workout_id, action === 'recover_recording', body.response_mode === 'analysis',
+  );
 });
