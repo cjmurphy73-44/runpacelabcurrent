@@ -172,7 +172,7 @@ export default function TrainingKanban() {
   const addSession = async () => {
     setSaving(true);
     try {
-      await base44.entities.TrainingPlanSession.create({
+      await base44.functions.invoke("createTrainingPlanSession", {
         training_plan_id: plan.id,
         athlete_id: athlete.id,
         date: newS.date,

@@ -42,6 +42,10 @@
       "type": "string",
       "maxLength": 1000,
       "description": "Optional freeform description (up to 1000 characters) that makes this record text-searchable for AI-assisted discovery."
+    },
+    "submitted_by_user_id": {
+      "type": "string",
+      "description": "Set by the feedback handler from the authenticated user."
     }
   },
   "required": [
@@ -56,6 +60,9 @@
     },
     "read": {
       "$or": [
+        {
+          "data.submitted_by_user_id": "{{user.id}}"
+        },
         {
           "created_by_id": "{{user.id}}"
         },

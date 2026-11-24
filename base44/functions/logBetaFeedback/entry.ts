@@ -26,10 +26,10 @@ Deno.serve(async (req: Request) => {
     }
     const feedback = base44.asServiceRole.entities.BetaFeedback;
     const since = new Date(Date.now() - hour).toISOString();
-    const recent = await feedback.filter({ created_by_id: user.id, created_date: { $gte: since } }, '-created_date', 5, 0, ['id']);
+    const recent = await feedback.filter({ submitted_by_user_id: user.id, created_date: { $gte: since } }, '-created_date', 5, 0, ['id']);
     if (recent.length >= 5) return Response.json({ error: 'Too many feedback submissions' }, { status: 429 });
     const record = await feedback.create({
-      created_by_id: user.id, feedback_type, message: message.trim(), contact_email: contact_email?.trim(), route,
+      submitted_by_user_id: user.id, feedback_type, message: message.trim(), contact_email: contact_email?.trim(), route,
     });
     return Response.json({ success: true, id: record.id });
   } catch {

@@ -65,6 +65,7 @@ function fixture(user, grant) {
     TrainingPlanSession: {
       get: vi.fn(async () => ({ id: 'session-fixture', athlete_id: athleteId, status: 'completed' })),
       filter: vi.fn(async () => []),
+      create: vi.fn(async row => ({ ...row, id: 'new-session-fixture' })),
       bulkCreate: vi.fn(async () => ({})),
       bulkUpdate: vi.fn(async () => ({})),
     },
@@ -140,7 +141,7 @@ describe('public endpoint protections', () => {
     expect((await invoke('logBetaFeedback', base44, { feedback_type: 'bug', message: {} })).status).toBe(400);
     expect((await invoke('logBetaFeedback', base44, { feedback_type: 'bug', message: 'é'.repeat(9000) })).status).toBe(400);
     expect((await invoke('logBetaFeedback', base44, { feedback_type: 'billing', message: 'A question', created_by_id: 'other' })).status).toBe(200);
-    expect(feedback.create).toHaveBeenCalledWith(expect.objectContaining({ created_by_id: owner.id, feedback_type: 'billing' }));
+    expect(feedback.create).toHaveBeenCalledWith(expect.objectContaining({ submitted_by_user_id: owner.id, feedback_type: 'billing' }));
     feedback.filter.mockResolvedValue(Array.from({ length: 5 }, () => ({})));
     expect((await invoke('logBetaFeedback', base44, { feedback_type: 'bug', message: 'rate limit' })).status).toBe(429);
     expect(feedback.create).toHaveBeenCalledTimes(1);
@@ -151,4 +152,18 @@ describe('public endpoint protections', () => {
     expect((await invoke('logErrorToAirtable', base44, { message: 'Error: fixture crash' })).status).toBe(200);
     expect(base44.asServiceRole.connectors.getConnection).not.toHaveBeenCalled();
   });
+});
+
+it('creates a manual session only for the authorized active plan and derives its athlete', async () => {
+  const payload = { training_plan_id: draft.id, date: day, sport: 'running', prescribed_duration_minutes: 20, athlete_id: 'ignored' };
+  for (const [user, expected] of [[unrelated, 404], [owner, 200]]) {
+    const base44 = fixture(user);
+    const { TrainingPlan, TrainingPlanSession } = base44.asServiceRole.entities;
+    TrainingPlan.get.mockResolvedValue({ ...draft, status: 'active' });
+    expect((await invoke('createTrainingPlanSession', base44, payload)).status).toBe(expected);
+    if (expected === 404) expect(TrainingPlanSession.create).not.toHaveBeenCalled();
+    else expect(TrainingPlanSession.create).toHaveBeenCalledWith(expect.objectContaining({
+      athlete_id: athleteId, training_plan_id: draft.id, status: 'pending',
+    }));
+  }
 });

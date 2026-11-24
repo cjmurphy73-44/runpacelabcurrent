@@ -4,7 +4,14 @@
   "properties": {
     "athlete_id": {
       "type": "string",
-      "description": "References AthleteProfile.id"
+      "description": "References AthleteProfile.id",
+      "rls": {
+        "write": {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      }
     },
     "status": {
       "type": "string",
@@ -289,14 +296,9 @@
   ],
   "rls": {
     "create": {
-      "$and": [
-        {
-          "created_by_id": "{{user.id}}"
-        },
-        {
-          "data.athlete_id": "{{user.data.verified_athlete_profile_id}}"
-        }
-      ]
+      "user_condition": {
+        "role": "admin"
+      }
     },
     "read": {
       "$or": [
@@ -313,14 +315,7 @@
     "update": {
       "$or": [
         {
-          "$and": [
-            {
-              "created_by_id": "{{user.id}}"
-            },
-            {
-              "data.athlete_id": "{{user.data.verified_athlete_profile_id}}"
-            }
-          ]
+          "data.athlete_id": "{{user.data.verified_athlete_profile_id}}"
         },
         {
           "user_condition": {
@@ -332,14 +327,7 @@
     "delete": {
       "$or": [
         {
-          "$and": [
-            {
-              "created_by_id": "{{user.id}}"
-            },
-            {
-              "data.athlete_id": "{{user.data.verified_athlete_profile_id}}"
-            }
-          ]
+          "data.athlete_id": "{{user.data.verified_athlete_profile_id}}"
         },
         {
           "user_condition": {
