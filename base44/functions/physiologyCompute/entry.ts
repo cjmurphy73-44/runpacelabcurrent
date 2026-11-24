@@ -22,6 +22,8 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.52';
 import { computeHolisticReadiness, computeBaseline } from '../../shared/readiness.ts';
 import { calculateVDOT, getTrainingPaces, getEquivalentTimes, danielsThresholdMs, formatPaceFromMs } from '../../shared/vdot.ts';
 import { deriveRunningThresholdPace } from '../../shared/thresholdPace.ts';
+import { getOwnedAthlete } from '../../shared/ownership.ts';
+import { countRecoverySignals } from '../../shared/readinessEvidence.ts';
 
 const RACE_DISTANCES_M = {
   fiveKm: 5000,
@@ -91,15 +93,6 @@ export default async function(req: Request): Promise<Response> {
   }
 }
 
-// Resolve the athlete profile owned by the caller. Admins still need a profile
-// of their own to compute against — this is a personal compute, not admin-wide.
-async function getOwnedAthlete(base44, userId) {
-  const profiles = await base44.asServiceRole.entities.AthleteProfile
-    .filter({ created_by_id: userId }, '-created_date', 1)
-    .catch(() => []);
-  return profiles[0] || null;
-}
-
 // Holistic readiness from today's signals + 14-day rolling baseline.
 function computeReadiness(today, history) {
   const hrvBase = computeBaseline(history, 'hrv', 14);
@@ -124,7 +117,9 @@ function computeReadiness(today, history) {
     sleep_duration_hours: sleepDurBase,
   };
 
-  const score = computeHolisticReadiness(signals, baseline);
+  const recoverySignalCount = countRecoverySignals(signals, baseline);
+  const score = recoverySignalCount > 0 ? computeHolisticReadiness(signals, baseline) : null;
+  const hasBaseline = [hrvBase, rhrBase, sleepBase, sleepDurBase].some(value => value != null);
 
   // Insufficient data: the engine had no valid signals to compute from.
   // Return an explicit null score so the UI shows insufficient-data rather
@@ -135,17 +130,11 @@ function computeReadiness(today, history) {
       status: 'Insufficient Data',
       baseline,
       signal_count: 0,
-      has_baseline: hrvBase != null || rhrBase != null || sleepBase != null,
+      has_baseline: hasBaseline,
     };
   }
 
-  // Count how many signals actually contributed (not defaults).
-  const signalCount = [
-    signals.hrv, signals.sleep_score, signals.sleep_duration_hours,
-    signals.resting_hr, signals.body_battery, signals.stress_score, signals.tsb,
-  ].filter((v) => v != null && Number.isFinite(v)).length;
-
-  const hasBaseline = hrvBase != null || rhrBase != null || sleepBase != null;
+  const signalCount = recoverySignalCount + Number(typeof signals.tsb === 'number' && Number.isFinite(signals.tsb));
 
   let status = 'Moderate';
   if (score >= 85) status = 'Optimal';
