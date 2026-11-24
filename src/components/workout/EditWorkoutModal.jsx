@@ -16,6 +16,7 @@ import { useToast } from "@/components/ui/use-toast";
 
 const SPORTS = [
   { value: "running", label: "Run" },
+  { value: "walking", label: "Walking" },
   { value: "cycling", label: "Bike" },
   { value: "swimming", label: "Swim" },
   { value: "strength", label: "Strength" },

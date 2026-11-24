@@ -170,7 +170,7 @@ export default function AnomalyAlertBanner({ athleteId, maxHr }) {
     try {
       const today = localISO(new Date());
       if (alert.actionKind === "rest") {
-        await base44.entities.TrainingPlanSession.create({
+        await base44.functions.invoke("createTrainingPlanSession", {
           training_plan_id: plan.id,
           athlete_id: athleteId,
           date: today,
@@ -181,7 +181,7 @@ export default function AnomalyAlertBanner({ athleteId, maxHr }) {
           status: "pending",
         });
       } else {
-        await base44.entities.TrainingPlanSession.create({
+        await base44.functions.invoke("createTrainingPlanSession", {
           training_plan_id: plan.id,
           athlete_id: athleteId,
           date: today,

@@ -56,13 +56,13 @@ VITE_BASE44_APP_BASE_URL=https://your-app.base44.app
 
 `VITE_BASE44_APP_ID` identifies the Base44 app.
 
-`VITE_BASE44_APP_BASE_URL` tells the Base44 Vite plugin where to send local `/api` requests. Point it at your deployed Base44 app URL when you want the local frontend to use the hosted backend.
+`VITE_BASE44_APP_BASE_URL` sets the Base44 SDK API origin and app URL. Set both variables to the intended Base44 app when building for staging. The legacy names `VITE_APP_ID` and `VITE_APP_BASE_URL` remain supported. Without a configured backend URL, the SDK makes same-origin API requests.
 
 When you use `base44 dev`, the command injects the local Base44 values for you, so `.env.local` is mainly needed for frontend-only workflows.
 
 ## Publish Your Changes
 
-**Publishing is currently blocked by the Base44 checkpoint/source SHA mismatch.** Do not deploy a checkpoint carrying stale `3f386d4` just because a newer GitHub PR merged. Do not bypass protected `main` to make the Builder sync green. Once the integration is repaired, verify the source SHA, checkpoint and staging preview before using Publish in the Base44 dashboard:
+The published Base44 app serves `trainpacelab.com`. Merge through GitHub's protected `main`, pull the reviewed commit into the Base44 app, then verify the built Base44 checkpoint, private staging behaviour and rollback checkpoint before publishing. Automatic Vercel builds are limited to designated `release/` branches. Follow the [release procedure](docs/WORKOUT_BACKEND_RELEASE.md) for the backend and permission cutover.
 
 ```bash
 base44 dashboard open

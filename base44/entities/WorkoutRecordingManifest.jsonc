@@ -68,12 +68,7 @@
     "read": {
       "$or": [
         {
-          "data.athlete_id": "{{user.data.athlete_profile_id}}"
-        },
-        {
-          "data.athlete_id": {
-            "$in": "{{user.data.coached_athletes}}"
-          }
+          "data.athlete_id": "{{user.data.verified_athlete_profile_id}}"
         },
         {
           "user_condition": {

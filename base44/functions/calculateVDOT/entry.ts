@@ -1,25 +1,11 @@
 // base44/functions/calculateVDOT/entry.ts
 // Secure backend endpoint for Jack Daniels VDOT calculations (S6 IP Protection)
 
-import { createClientFromRequest } from 'npm:@base44/runtime';
+import { calculateVDOT, danielsThresholdMs, formatPaceFromMs } from '../../shared/vdot.ts';
 
-function calculateVDOT(timeSeconds: number, distanceMeters: number): number {
-  if (timeSeconds <= 0 || distanceMeters <= 0) {
-    throw new Error('Time and distance must be positive numbers');
-  }
-  if (timeSeconds < 180 || distanceMeters < 1200) {
-    throw new Error('VDOT requires >= 180 s and >= 1200 m');
-  }
-  const timeMinutes = timeSeconds / 60;
-  const v = distanceMeters / timeMinutes;
-  const vo2Cost = -4.6 + 0.182258 * v + 0.000104 * Math.pow(v, 2);
-  const pct = 0.8 + 0.1894393 * Math.exp(-0.012778 * timeMinutes) + 0.2989558 * Math.exp(-0.1932605 * timeMinutes);
-  return Number((vo2Cost / pct).toFixed(2));
-}
+declare const Deno: { serve(handler: (req: Request) => Promise<Response>): unknown };
 
-export default async function (req: Request) {
-  const base44 = createClientFromRequest(req);
-  
+export default async function calculateRaceBaseline(req: Request) {
   if (req.method !== 'POST') {
     return new Response(JSON.stringify({ error: 'Method not allowed' }), {
       status: 405,
@@ -29,9 +15,9 @@ export default async function (req: Request) {
 
   try {
     const body = await req.json();
-    const { timeSeconds, distanceMeters, action = 'calculate' } = body;
+    const { timeSeconds, distanceMeters } = body;
 
-    if (!timeSeconds || !distanceMeters) {
+    if (!Number.isFinite(timeSeconds) || !Number.isFinite(distanceMeters)) {
       return new Response(JSON.stringify({ error: 'Missing timeSeconds or distanceMeters' }), {
         status: 400,
         headers: { 'Content-Type': 'application/json' },
@@ -40,10 +26,8 @@ export default async function (req: Request) {
 
     const vdot = calculateVDOT(timeSeconds, distanceMeters);
 
-    return new Response(JSON.stringify({ vdot }), {
-      status: 200,
-      headers: { 'Content-Type': 'application/json' },
-    });
+    const thresholdPaceMs = danielsThresholdMs(vdot);
+    return Response.json({ vdot, thresholdPaceMs, thresholdPaceFormatted: formatPaceFromMs(thresholdPaceMs) });
   } catch (err: any) {
     return new Response(JSON.stringify({ error: err.message || 'Internal server error' }), {
       status: 500,
@@ -51,3 +35,5 @@ export default async function (req: Request) {
     });
   }
 }
+
+if (typeof Deno !== 'undefined') Deno.serve(calculateRaceBaseline);

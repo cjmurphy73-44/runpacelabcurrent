@@ -8,10 +8,10 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
 import { recomputeCTLATLTSB } from '../../shared/ctlRecalc.ts';
 import { assertOwnsAthlete } from '../../shared/ownership.ts';
 
-export default async function (req: Request) {
+Deno.serve(async function (req: Request) {
   try {
     const base44 = createClientFromRequest(req);
-    const user = await base44.auth.me();
+    const user = await base44.auth.me().catch(() => null);
     if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
 
     const { athlete_id } = await req.json().catch(() => ({}));
@@ -26,4 +26,4 @@ export default async function (req: Request) {
   } catch (error) {
     return Response.json({ error: error.message }, { status: 500 });
   }
-}
+});

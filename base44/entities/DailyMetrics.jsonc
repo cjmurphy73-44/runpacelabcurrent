@@ -27,7 +27,7 @@
       "type": "number",
       "default": 0,
       "minimum": 0,
-      "description": "Portion of total_trimp contributed by sessions whose load was estimated from their average heart rate (load_source 'summary'). total_trimp = verified_trimp + summary_trimp."
+      "description": "Portion of aggregate load estimated from average heart rate or a legacy session score when measured TRIMP is unavailable. total_trimp = verified_trimp + summary_trimp, subject to rounding."
     },
     "calculated_ctl": {
       "type": "number",
@@ -168,17 +168,19 @@
   ],
   "rls": {
     "create": {
-      "created_by_id": "{{user.id}}"
+      "$and": [
+        {
+          "created_by_id": "{{user.id}}"
+        },
+        {
+          "data.athlete_id": "{{user.data.verified_athlete_profile_id}}"
+        }
+      ]
     },
     "read": {
       "$or": [
         {
-          "data.athlete_id": "{{user.data.athlete_profile_id}}"
-        },
-        {
-          "data.athlete_id": {
-            "$in": "{{user.data.coached_athletes}}"
-          }
+          "data.athlete_id": "{{user.data.verified_athlete_profile_id}}"
         },
         {
           "user_condition": {
@@ -190,7 +192,14 @@
     "update": {
       "$or": [
         {
-          "created_by_id": "{{user.id}}"
+          "$and": [
+            {
+              "created_by_id": "{{user.id}}"
+            },
+            {
+              "data.athlete_id": "{{user.data.verified_athlete_profile_id}}"
+            }
+          ]
         },
         {
           "user_condition": {
@@ -202,7 +211,14 @@
     "delete": {
       "$or": [
         {
-          "created_by_id": "{{user.id}}"
+          "$and": [
+            {
+              "created_by_id": "{{user.id}}"
+            },
+            {
+              "data.athlete_id": "{{user.data.verified_athlete_profile_id}}"
+            }
+          ]
         },
         {
           "user_condition": {

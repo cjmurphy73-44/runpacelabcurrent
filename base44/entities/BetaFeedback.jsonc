@@ -8,7 +8,9 @@
       "enum": [
         "bug",
         "idea",
-        "other"
+        "other",
+        "billing",
+        "account"
       ],
       "default": "bug",
       "description": "Category of feedback: a bug report, a product idea, or something else"
@@ -40,6 +42,10 @@
       "type": "string",
       "maxLength": 1000,
       "description": "Optional freeform description (up to 1000 characters) that makes this record text-searchable for AI-assisted discovery."
+    },
+    "submitted_by_user_id": {
+      "type": "string",
+      "description": "Set by the feedback handler from the authenticated user."
     }
   },
   "required": [
@@ -48,10 +54,15 @@
   ],
   "rls": {
     "create": {
-      "created_by_id": "{{user.id}}"
+      "user_condition": {
+        "role": "admin"
+      }
     },
     "read": {
       "$or": [
+        {
+          "data.submitted_by_user_id": "{{user.id}}"
+        },
         {
           "created_by_id": "{{user.id}}"
         },

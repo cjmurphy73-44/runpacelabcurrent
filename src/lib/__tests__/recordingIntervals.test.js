@@ -24,6 +24,16 @@ describe("verified time-based recording intervals", () => {
     expect(rows[0]).toMatchObject({ distanceKm: null, avgSpeedKmh: null });
     expect(rows[0].avgHr).toBeGreaterThan(0);
   });
+  it("preserves measured zero power and leaves incomplete power windows unavailable", () => {
+    const workout = syntheticWorkout();
+    workout.streams = workout.streams.map(point => ({
+      ...point, power: point.time <= 600 ? 0 : point.time > 1150 ? 250 : null,
+    }));
+    const rows = recordingIntervals(workout);
+    expect(rows[0].avgPowerWatts).toBe(0);
+    expect(rows[1].avgPowerWatts).toBeNull();
+  });
+
   it("rejects summary or sparse telemetry and unsupported windows", () => {
     expect(recordingIntervals({ duration_seconds: 3600, streams: [{ time: 0, heart_rate: 150 }] })).toEqual([]);
     expect(recordingIntervals(syntheticWorkout(), 700)).toEqual([]);

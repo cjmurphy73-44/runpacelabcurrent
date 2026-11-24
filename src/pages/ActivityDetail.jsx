@@ -3,6 +3,8 @@ import { useParams, Link } from "react-router-dom";
 import { base44 } from "@/api/base44Client";
 import { downloadWorkoutFile } from "@/services/workoutExport";
 import { useSubscription } from "@/hooks/useSubscription";
+import RecordingIntervals from "@/components/workout/RecordingIntervals";
+import CorosOriginalRecording from "@/components/workout/CorosOriginalRecording";
 import FeatureGate from "@/components/billing/FeatureGate";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -11,6 +13,8 @@ import { Input } from "@/components/ui/input";
 import PageShell from "@/components/layout/PageShell";
 import SectionHeading from "@/components/layout/SectionHeading";
 import { ArrowLeft, Sparkles, Activity as ActivityIcon, Clock, MapPin, HeartPulse, Gauge, RotateCw, AlertCircle, Files, Layers, CalendarDays, Pencil, Check, X, Loader2, Download, TrendingDown } from "lucide-react";
+import { workoutLoadPresentation } from "@/lib/workoutLoadPresentation";
+import { aerobicDecouplingInterpretation, efficiencyFactorInterpretation } from "@/lib/workoutInterpretation";
 import { AuditBadge } from "@/components/ui/AuditBadge";
 
 // Intensity → dynamic color tokens used across the insight card.
@@ -37,18 +41,29 @@ const STATUS_STYLES = {
 
 function fmtOffset(sec) {
   if (sec == null || isNaN(sec)) return "—";
-  const m = Math.floor(sec / 60);
-  const s = Math.round(sec % 60);
+  const rounded = Math.round(sec);
+  const m = Math.floor(rounded / 60);
+  const s = rounded % 60;
   return `${m}:${String(s).padStart(2, "0")}`;
 }
 
 export default function ActivityDetail() {
   const { id } = useParams();
+  return <WorkoutActivity key={id} id={id} />;
+}
+
+function WorkoutActivity({ id }) {
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
+  const [loadAttempt, setLoadAttempt] = useState(0);
   const [workout, setWorkout] = useState(null);
+  const [coachView, setCoachView] = useState(false);
   const [feedback, setFeedback] = useState(null);
-  const [assets, setAssets] = useState([]);
+  const [assets, setAssets] = useState(null);
+  const [assetError, setAssetError] = useState(false);
+  const [feedbackLoading, setFeedbackLoading] = useState(true);
   const [retrying, setRetrying] = useState(false);
+  const [insightError, setInsightError] = useState("");
   const [editingDate, setEditingDate] = useState(false);
   const [dateDraft, setDateDraft] = useState("");
   const [patching, setPatching] = useState(false);
@@ -57,46 +72,81 @@ export default function ActivityDetail() {
   const { plan } = useSubscription();
 
   useEffect(() => {
-    let unsubscribe = null;
-    (async () => {
+    let active = true;
+    let unsubscribe;
+    setLoading(true);
+    setLoadError(false);
+    const ifActive = update => { if (active) update(); };
+    const loadWorkout = async () => {
       try {
-        const w = await base44.entities.WorkoutSession.get(id);
-        setWorkout(w);
-        if (w.training_plan_session_id) {
-          try { setPlanSession(await base44.entities.TrainingPlanSession.get(w.training_plan_session_id)); } catch { setPlanSession(null); }
-        }
-        const rows = await base44.entities.WorkoutFeedback.filter({ workout_id: id }, "-created_date", 5);
-        setFeedback(rows[0] || null);
+        return { workout: await base44.entities.WorkoutSession.get(id) };
+      } catch (error) {
+        const status = error?.response?.status ?? error?.status;
+        if (status !== 404 && status !== 403) throw error;
         try {
-          const a = await base44.entities.WorkoutAsset.filter({ session_id: id }, "uploaded_at", 50);
-          setAssets(Array.isArray(a) ? a : []);
-        } catch (e) { /* assets optional */ }
-      } catch (e) {
-        console.error("ActivityDetail load failed", e);
-      } finally {
-        setLoading(false);
+          const { data } = await base44.functions.invoke("manageCoachRoster", { action: "workout", workout_id: id });
+          return { ...data, readOnly: true };
+        } catch (coachError) {
+          if ((coachError?.response?.status ?? coachError?.status) === 402) throw error;
+          throw coachError;
+        }
       }
+    };
+    loadWorkout().then(({ workout, readOnly, feedback: coachFeedback }) => {
+      if (!active) return;
+      setWorkout(workout);
+      setLoading(false);
+      if (!workout) return;
+      if (readOnly) {
+        setCoachView(true);
+        setFeedback(coachFeedback);
+        setFeedbackLoading(false);
+        setAssets([]);
+        return;
+      }
+
+      if (workout.training_plan_session_id) {
+        base44.entities.TrainingPlanSession.get(workout.training_plan_session_id)
+          .then(session => ifActive(() => setPlanSession(session)))
+          .catch(() => {});
+      }
+      base44.entities.WorkoutFeedback.filter({ workout_id: id }, "-created_date", 1)
+        .then(rows => ifActive(() => setFeedback(current => current ?? rows[0] ?? null)))
+        .catch(() => ifActive(() => setInsightError("Saved coach insights could not be loaded.")))
+        .finally(() => ifActive(() => setFeedbackLoading(false)));
+      base44.entities.WorkoutAsset.filter({ session_id: id }, "uploaded_at", 50)
+        .then(rows => ifActive(() => setAssets(rows)))
+        .catch(() => ifActive(() => setAssetError(true)));
+
       try {
-        unsubscribe = base44.entities.WorkoutFeedback.subscribe((event) => {
+        unsubscribe = base44.entities.WorkoutFeedback.subscribe(event => {
           if (event?.data?.workout_id === id && (event.type === "create" || event.type === "update")) {
-            setFeedback(event.data);
+            ifActive(() => setFeedback(event.data));
           }
         });
-      } catch (e) { /* subscribe optional */ }
-    })();
-    return () => { if (typeof unsubscribe === "function") unsubscribe(); };
-  }, [id]);
+      } catch { /* Live feedback is optional. */ }
+    }).catch(error => ifActive(() => {
+      const status = error?.response?.status ?? error?.status;
+      setLoadError(status !== 404);
+      setLoading(false);
+    }));
+    return () => {
+      active = false;
+      if (typeof unsubscribe === "function") unsubscribe();
+    };
+  }, [id, loadAttempt]);
 
-  if (loading) return <div className="text-center py-20 text-muted-foreground">Loading activity…</div>;
+  if (loading) return <div role="status" className="text-center py-20 text-muted-foreground">Loading activity…</div>;
 
   if (!workout) {
     return (
       <PageShell maxWidth="max-w-2xl">
         <Card>
           <CardContent className="pt-8 text-center space-y-3">
-            <p className="text-muted-foreground">This activity could not be found.</p>
+            <p className="text-muted-foreground">{loadError ? "Could not load this workout." : "This activity could not be found."}</p>
+            {loadError && <Button onClick={() => setLoadAttempt(attempt => attempt + 1)}>Retry</Button>}
             <Button asChild variant="outline">
-              <Link to="/"><ArrowLeft className="w-4 h-4" /> Back to dashboard</Link>
+              <Link to="/workouts"><ArrowLeft className="w-4 h-4" /> Back to workouts</Link>
             </Button>
           </CardContent>
         </Card>
@@ -110,12 +160,18 @@ export default function ActivityDetail() {
   const handleRetry = async () => {
     if (!workout?.athlete_id || retrying) return;
     setRetrying(true);
+    setInsightError("");
     try {
-      await base44.functions.invoke("postWorkoutAIEvaluation", { workout_id: id, athlete_id: workout.athlete_id });
-      const rows = await base44.entities.WorkoutFeedback.filter({ workout_id: id }, "-created_date", 5);
-      setFeedback(rows[0] || null);
+      const { data } = await base44.functions.invoke("postWorkoutAIEvaluation", { workout_id: id, athlete_id: workout.athlete_id });
+      if (data?.feedback?.workout_id === id) {
+        setFeedback(data.feedback);
+      } else {
+        const rows = await base44.entities.WorkoutFeedback.filter({ workout_id: id }, "-created_date", 1);
+        if (!rows[0]) throw new Error("No feedback received.");
+        setFeedback(rows[0]);
+      }
     } catch (e) {
-      console.error("retry postWorkoutAIEvaluation failed", e);
+      setInsightError("Could not generate insights. Try again.");
     } finally {
       setRetrying(false);
     }
@@ -126,10 +182,12 @@ export default function ActivityDetail() {
     setPatching(true);
     setPatchMsg(null);
     try {
-      const updated = await base44.entities.WorkoutSession.update(workout.id, { date: dateDraft });
-      setWorkout(updated);
-      try { await base44.functions.invoke("recalculateCTLATLTSB", { athlete_id: workout.athlete_id }); } catch (e) { console.warn("recalc after date patch failed", e); }
-      setPatchMsg({ ok: true, text: "Date updated, load metrics recalculated." });
+      const { data } = await base44.functions.invoke("editWorkoutSession", {
+        workout_id: workout.id, action: "update", updates: { date: dateDraft },
+      });
+      if (!data?.workout) throw new Error("Workout update was not confirmed.");
+      setWorkout(data.workout);
+      setPatchMsg({ ok: true, text: "Date updated." });
       setEditingDate(false);
     } catch (e) {
       setPatchMsg({ ok: false, text: e?.response?.data?.error || "Could not update date." });
@@ -138,11 +196,12 @@ export default function ActivityDetail() {
     }
   };
 
+  const load = workoutLoadPresentation(workout);
   const summary = [
     { icon: Clock, label: "Duration", value: workout.duration_minutes ? `${workout.duration_minutes} min` : "—" },
     { icon: MapPin, label: "Distance", value: workout.distance_km ? `${workout.distance_km} km` : "—" },
     { icon: HeartPulse, label: "Avg HR", value: workout.avg_hr ? `${workout.avg_hr} bpm` : "—" },
-    { icon: Gauge, label: "TRIMP", value: workout.session_trimp ? workout.session_trimp.toFixed(0) : "—" },
+    { icon: Gauge, label: "Training load", value: load.amount, detail: load.amount === "Load unavailable" ? null : load.label },
   ];
 
   const title = workout.sport
@@ -150,13 +209,13 @@ export default function ActivityDetail() {
     : "Activity";
 
   const laps = Array.isArray(workout.laps) ? workout.laps : [];
-  const sortedAssets = [...assets].sort((a, b) => (SOURCE_PRIORITY_UI[b.file_type] || 0) - (SOURCE_PRIORITY_UI[a.file_type] || 0) || (a.uploaded_at || "").localeCompare(b.uploaded_at || ""));
+  const sortedAssets = [...(Array.isArray(assets) ? assets : [])].sort((a, b) => (SOURCE_PRIORITY_UI[b.file_type] || 0) - (SOURCE_PRIORITY_UI[a.file_type] || 0) || (a.uploaded_at || "").localeCompare(b.uploaded_at || ""));
 
   return (
     <PageShell maxWidth="max-w-3xl">
       <div className="mb-2">
-        <Link to="/" className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
-          <ArrowLeft className="w-4 h-4" /> Dashboard
+        <Link to="/workouts" className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
+          <ArrowLeft className="w-4 h-4" /> Workouts
         </Link>
       </div>
 
@@ -181,6 +240,7 @@ export default function ActivityDetail() {
                   <s.icon className="w-3.5 h-3.5" />{s.label}
                 </div>
                 <div className="text-lg font-heading font-semibold">{s.value}</div>
+                {s.detail && <div className="text-xs text-muted-foreground">{s.detail}</div>}
               </div>
             ))}
           </CardContent>
@@ -203,7 +263,7 @@ export default function ActivityDetail() {
             ) : (
               <>
                 <span className="text-sm font-mono tabular-nums">{workout.date || "—"}</span>
-                <Button size="sm" variant="outline" onClick={() => { setDateDraft(workout.date || ""); setEditingDate(true); }} className="gap-1.5">
+                <Button size="sm" variant="outline" disabled={coachView} onClick={() => { setDateDraft(workout.date || ""); setEditingDate(true); }} className="gap-1.5">
                   <Pencil className="w-3.5 h-3.5" /> Correct date
                 </Button>
               </>
@@ -228,14 +288,16 @@ export default function ActivityDetail() {
               <div className="space-y-1">
                 <div className="text-xs text-muted-foreground">Efficiency Factor</div>
                 <div className="text-lg font-heading font-semibold tabular-nums">
-                  {workout.efficiency_factor != null ? workout.efficiency_factor.toFixed(2) : "—"}
+                  {workout.efficiency_factor != null ? Number(workout.efficiency_factor).toFixed(2) : "—"}
                 </div>
+                <p className="text-xs text-muted-foreground">{efficiencyFactorInterpretation(workout.efficiency_factor, workout.sport)}</p>
               </div>
               <div className="space-y-1">
                 <div className="text-xs text-muted-foreground">Aerobic Decoupling (Pa:HR)</div>
                 <div className="text-lg font-heading font-semibold tabular-nums">
-                  {workout.aerobic_decoupling != null ? `${workout.aerobic_decoupling.toFixed(1)}%` : "—"}
+                  {workout.aerobic_decoupling != null ? `${Number(workout.aerobic_decoupling).toFixed(1)}%` : "—"}
                 </div>
+                <p className="text-xs text-muted-foreground">{aerobicDecouplingInterpretation(workout.aerobic_decoupling)}</p>
               </div>
             </CardContent>
           </Card>
@@ -245,13 +307,17 @@ export default function ActivityDetail() {
       <section className="space-y-4">
         <SectionHeading
           title="Attached files"
-          description="Every raw source format bound to this session, streams and laps are reconciled under strict priority (FIT > TCX > CSV)."
+          description="Source files used for this workout."
           icon={Files}
         />
         <Card>
           <CardContent className="pt-6">
-            {sortedAssets.length === 0 ? (
-              <p className="text-sm text-muted-foreground">No raw files are recorded for this session.</p>
+            {assetError ? (
+              <p className="text-sm text-muted-foreground">Attached files could not be loaded.</p>
+            ) : assets === null ? (
+              <p role="status" className="text-sm text-muted-foreground">Loading attached files…</p>
+            ) : sortedAssets.length === 0 ? (
+              <p className="text-sm text-muted-foreground">No files attached to this workout.</p>
             ) : (
               <ul className="divide-y divide-border">
                 {sortedAssets.map((a) => {
@@ -314,10 +380,14 @@ export default function ActivityDetail() {
         </section>
       )}
 
+      {!coachView && workout.source_provider === "coros" && workout.provider_activity_id
+        ? <CorosOriginalRecording key={workout.id} workout={workout} />
+        : <RecordingIntervals workout={workout} />}
+
       <section className="space-y-4">
         <SectionHeading
           title="AI post-workout insight"
-          description="Generated by your coach moments after this session landed."
+          description="AI analysis of this workout and your available training data."
           icon={Sparkles}
         />
         <Card className={`border-l-4 ${isFailed ? "border-l-rose-400" : style ? style.ring : "border-l-transparent"}`}>
@@ -332,6 +402,7 @@ export default function ActivityDetail() {
             ) : null}
           </CardHeader>
           <CardContent className="space-y-4">
+            {insightError && <p role="alert" className="text-sm text-destructive">{insightError}</p>}
             {style && !isFailed && (
               <div className="h-1.5 w-full rounded-full bg-muted overflow-hidden">
                 <div
@@ -347,7 +418,7 @@ export default function ActivityDetail() {
                     <AlertCircle className="w-4 h-4 mt-0.5 shrink-0" />
                     <span>{feedback.feedback}</span>
                   </p>
-                  <Button size="sm" variant="outline" onClick={handleRetry} disabled={retrying} className="gap-1.5">
+                  <Button size="sm" variant="outline" onClick={handleRetry} disabled={retrying || coachView} className="gap-1.5">
                     <RotateCw className={`w-3.5 h-3.5 ${retrying ? "animate-spin" : ""}`} />
                     {retrying ? "Retrying…" : "Retry"}
                   </Button>
@@ -367,11 +438,12 @@ export default function ActivityDetail() {
                 )}
               </>
               )
+            ) : feedbackLoading ? (
+              <p role="status" className="text-sm text-muted-foreground">Checking for coach insights…</p>
             ) : (
-              <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <Sparkles className="w-4 h-4 animate-pulse" />
-                Your coach is analysing this session, insights will appear here automatically.
-              </div>
+              <Button size="sm" variant="outline" onClick={handleRetry} disabled={retrying || coachView}>
+                {retrying ? "Generating insights…" : "Generate coach insights"}
+              </Button>
             )}
           </CardContent>
         </Card>

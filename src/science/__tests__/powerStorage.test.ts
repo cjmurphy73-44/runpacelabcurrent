@@ -1,5 +1,6 @@
+import { parseCsv } from '../../../base44/shared/workoutParsers';
 import { describe, expect, it } from 'vitest';
-import { storageStream, isUsableTelemetry } from '../../../base44/shared/streamValidity';
+import { inlineWorkoutStream, MAX_STREAM_SAMPLES, storageStream, isUsableTelemetry } from '../../../base44/shared/streamValidity';
 
 describe('measured cycling power sample retention', () => {
   it('preserves real power and zero-watt coasting without synthesizing missing values', () => {
@@ -27,4 +28,20 @@ describe('measured cycling power sample retention', () => {
     expect(isUsableTelemetry(samples, 100)).toBe(true);
     expect(storageStream(samples).filter(p => p.power === 0)).toHaveLength(50);
   });
+});
+
+it('stores the entire recording at the inline limit and leaves longer recordings at their source', () => {
+  const samples = Array.from({ length: MAX_STREAM_SAMPLES }, (_, time) => ({ time, power: 150 }));
+  expect(inlineWorkoutStream(samples)).toHaveLength(MAX_STREAM_SAMPLES);
+  expect(inlineWorkoutStream(samples)?.at(-1)).toMatchObject({ time: MAX_STREAM_SAMPLES - 1, power: 150 });
+  expect(inlineWorkoutStream([...samples, { time: MAX_STREAM_SAMPLES, power: 150 }])).toBeUndefined();
+  expect(inlineWorkoutStream([])).toBeUndefined();
+});
+
+it('uses elapsed CSV seconds without converting numeric samples into calendar dates', () => {
+  const parsed = parseCsv('time,power\n0,180\n1,0\n60,185');
+  expect(parsed?.stream.map(point => point.time)).toEqual([0, 1, 60]);
+  expect(parsed?.summary).toMatchObject({ duration_seconds: 60, derived_date: null });
+  const dated = parseCsv('timestamp,power\n2026-11-20T09:00:00Z,180\n2026-11-20T09:01:00Z,185');
+  expect(dated?.summary).toMatchObject({ duration_seconds: 60, derived_date: '2026-11-20' });
 });

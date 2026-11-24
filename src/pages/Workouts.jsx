@@ -20,6 +20,7 @@ import { Loader2, Plus, Activity, ArrowRight, Upload } from "lucide-react";
 const SPORTS = [
   { value: "all", label: "All sports" },
   { value: "running", label: "Running" },
+  { value: "walking", label: "Walking" },
   { value: "cycling", label: "Cycling" },
   { value: "swimming", label: "Swimming" },
   { value: "strength", label: "Strength" },

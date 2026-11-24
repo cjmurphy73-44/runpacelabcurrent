@@ -54,6 +54,7 @@ export default function Home() {
   const [profileExists, setProfileExists] = useState(false);
   const [loadError, setLoadError] = useState(false);
   const [workouts, setWorkouts] = useState([]);
+  const [refreshIssue, setRefreshIssue] = useState(false);
   const [messages, setMessages] = useState([]);
   const [loadTimelineWorkouts, setLoadTimelineWorkouts] = useState([]);
   const [plannedWorkouts, setPlannedWorkouts] = useState([]);
@@ -66,37 +67,43 @@ export default function Home() {
   const { user, redirectToLogin } = useAuth();
 
   const loadAthleteData = useCallback(async (athleteId) => {
-    const [freshAthlete, recentWorkouts, messageRows, planSessions] = await Promise.all([
+    const [freshAthlete, recentWorkouts, [messageResult, planResult]] = await Promise.all([
       base44.entities.AthleteProfile.get(athleteId),
       base44.entities.WorkoutSession.filter({ athlete_id: athleteId }, "-date", 60),
-      base44.entities.CoachMessage.filter({ athlete_id: athleteId }, "-created_date", 10),
-      base44.entities.TrainingPlanSession.filter({ athlete_id: athleteId }, "-date", 60),
+      Promise.allSettled([
+        base44.entities.CoachMessage.filter({ athlete_id: athleteId }, "-created_date", 10),
+        base44.entities.TrainingPlanSession.filter({ athlete_id: athleteId }, "-date", 60),
+      ]),
     ]);
     setAthlete(freshAthlete);
     setWorkouts(recentWorkouts.slice(0, 10));
-    setMessages(messageRows);
+    if (messageResult.status === "fulfilled") setMessages(messageResult.value);
+    setRefreshIssue(messageResult.status === "rejected" || planResult.status === "rejected");
     setLoadTimelineWorkouts(recentWorkouts);
+    if (planResult.status !== "fulfilled") return;
     const todayKey = new Date().toISOString().split("T")[0];
     const in7Days = new Date();
     in7Days.setDate(in7Days.getDate() + 7);
     const in7DaysKey = in7Days.toISOString().split("T")[0];
-    setPlannedWorkouts(planSessions.filter((p) => p.date >= todayKey && p.date <= in7DaysKey));
+    setPlannedWorkouts(planResult.value.filter((p) => p.date >= todayKey && p.date <= in7DaysKey));
   }, []);
+
+  const refreshDashboard = async (athleteId) => {
+    try {
+      await loadAthleteData(athleteId);
+    } catch {
+      setRefreshIssue(true);
+    }
+  };
 
   useEffect(() => {
     let cancelled = false;
     (async () => {
       try {
         if (!user) return; // signed-out, show the sign-in prompt below
-        // Prefer the profile explicitly linked on the user (fetch it directly by ID:
-        // a filter by created_by_id misses profiles created under a different identity,
-        // e.g. an earlier auth account or a service-role backend function, which is
-        // exactly why a Gmail re-login "lost" an existing profile full of data).
-        // RLS read allows id == user.data.athlete_profile_id, so this succeeds even
-        // when created_by_id doesn't match the current user. Fall back to the most
-        // recently updated owned profile only when no link is set.
+        // Prefer the server-verified profile, then look up profiles owned by this user.
         let profile = null;
-        const linkedId = user.data?.athlete_profile_id;
+        const linkedId = user.data?.verified_athlete_profile_id ?? user.verified_athlete_profile_id;
         if (linkedId) {
           try {
             profile = await base44.entities.AthleteProfile.get(linkedId);
@@ -206,7 +213,7 @@ export default function Home() {
     }
     return (
       <div className="py-8">
-        <OnboardingFlow onCreated={(profile) => { setProfileExists(true); setAthlete(profile); }} />
+        <OnboardingFlow onCreated={(profile) => { setProfileExists(true); setAthlete(profile); refreshDashboard(profile.id); }} />
       </div>
     );
   }
@@ -216,6 +223,12 @@ export default function Home() {
   return (
     <FitnessProvider athleteId={athlete.id}>
       <PageShell maxWidth="max-w-7xl">
+        {refreshIssue && (
+          <div role="status" className="mb-4 flex flex-wrap items-center justify-between gap-2 rounded-md border p-3 text-sm">
+            Some dashboard data could not be refreshed.
+            <Button size="sm" variant="outline" onClick={() => refreshDashboard(athlete.id)}>Retry refresh</Button>
+          </div>
+        )}
         <WidgetBoundary name="Connection health"><ConnectionHealthBanner /></WidgetBoundary>
         {isEmpty ? (
           <section className="space-y-6">
@@ -227,7 +240,7 @@ export default function Home() {
             <FirstDataPanel
               athlete={athlete}
               onAddManual={() => setManualOpen(true)}
-              onRefresh={() => loadAthleteData(athlete.id)}
+              onRefresh={() => refreshDashboard(athlete.id)}
             />
           </section>
         ) : (
@@ -240,7 +253,7 @@ export default function Home() {
         <section className="space-y-4">
           <SectionHeading index="01" title="Today's snapshot" description="Your form, readiness and prescribed session for today." icon={Sun} />
           <WidgetBoundary name="Today's focus"><TodayFocusLine athlete={athlete} /></WidgetBoundary>
-          <WidgetBoundary name="Wearable sync"><WearableSyncBar onSynced={() => loadAthleteData(athlete.id)} /></WidgetBoundary>
+          <WidgetBoundary name="Wearable sync"><WearableSyncBar onSynced={() => refreshDashboard(athlete.id)} /></WidgetBoundary>
           <WidgetBoundary name="Physiology strip"><PhysiologyStrip athlete={athlete} /></WidgetBoundary>
           <WidgetBoundary name="Calibration meter"><CalibrationMeter athlete={athlete} athleteId={athlete.id} /></WidgetBoundary>
           <WidgetBoundary name="Today's session"><TodaySessionCard athleteId={athlete.id} /></WidgetBoundary>
@@ -272,8 +285,8 @@ export default function Home() {
             }
           />
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <WidgetBoundary name="Quick import"><OcrDropzone athleteId={athlete.id} onSaved={() => { trackWorkoutIngested(); loadAthleteData(athlete.id); }} /></WidgetBoundary>
-            <WidgetBoundary name="Recent workouts"><RecentWorkouts workouts={workouts} athlete={athlete} onChanged={() => loadAthleteData(athlete.id)} /></WidgetBoundary>
+            <WidgetBoundary name="Quick import"><OcrDropzone athleteId={athlete.id} onSaved={() => { trackWorkoutIngested(); refreshDashboard(athlete.id); }} /></WidgetBoundary>
+            <WidgetBoundary name="Recent workouts"><RecentWorkouts workouts={workouts} athlete={athlete} onChanged={() => refreshDashboard(athlete.id)} /></WidgetBoundary>
           </div>
         </section>
 
@@ -368,7 +381,7 @@ export default function Home() {
         open={manualOpen}
         onClose={() => setManualOpen(false)}
         athleteId={athlete.id}
-        onSaved={() => { trackWorkoutIngested(); loadAthleteData(athlete.id); }}
+        onSaved={() => { trackWorkoutIngested(); refreshDashboard(athlete.id); }}
       />
     </FitnessProvider>
   );

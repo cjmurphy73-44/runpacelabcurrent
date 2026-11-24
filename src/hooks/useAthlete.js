@@ -2,14 +2,9 @@ import { useEffect, useState } from "react";
 import { base44 } from "@/api/base44Client";
 import { useServices } from "@/services/providers/ServiceContext";
 import { useAuth } from "@/lib/AuthContext";
+import { ensureProfileLinked } from "@/lib/profileLinkage";
 
-// Resolves the signed-in user's athlete profile using the same precedence as
-// the dashboard: the profile explicitly linked on the user record
-// (user.data.athlete_profile_id) first, RLS allows that read even when
-// created_by_id doesn't match, then a fallback to the most recently updated
-// profile owned by this user. Exposes `error` so callers can distinguish a
-// confirmed-missing profile (onboarding needed) from a transient lookup
-// failure (retry / link to settings).
+// Resolve the verified profile, with a fallback to profiles owned by this user.
 export function useAthlete() {
   const { athleteProfileRepo } = useServices();
   const { user } = useAuth();
@@ -26,7 +21,7 @@ export function useAthlete() {
       }
       try {
         let profile = null;
-        const linkedId = user.data?.athlete_profile_id;
+        const linkedId = user.data?.verified_athlete_profile_id ?? user.verified_athlete_profile_id;
         if (linkedId) {
           try {
             profile = await base44.entities.AthleteProfile.get(linkedId);
@@ -43,6 +38,7 @@ export function useAthlete() {
           );
           profile = profiles?.length > 0 ? profiles[0] : null;
         }
+        if (profile) await ensureProfileLinked(user, profile);
         if (active) setAthlete(profile);
       } catch (err) {
         console.error("useAthlete profile lookup failed:", err);

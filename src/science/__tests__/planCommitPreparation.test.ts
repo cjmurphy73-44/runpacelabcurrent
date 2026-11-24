@@ -53,4 +53,80 @@ describe('safe plan commit preparation', () => {
       status: 'pending',
     }]);
   });
+
+  it('normalizes sport labels and strength intensity returned by hosted plan generation', () => {
+    const ride = draft.weekly_plans[0].days[0];
+    const result = prepareDraftPlanCommit({
+      ...draft,
+      weekly_plans: [{
+        week_number: 1,
+        days: [
+          { ...ride, sport: ' Running ', prescribed_intensity_zone: 'Z2' },
+          { ...ride, date: '2026-11-17', sport: 'Strength', prescribed_intensity_zone: 'N/A' },
+          { ...ride, date: '2026-11-18', session_type: 'REST', prescribed_intensity_zone: 'N/A' },
+        ],
+      }],
+    });
+    expect(result.valid).toBe(true);
+    expect(result.sessions).toHaveLength(2);
+    expect(result.sessions[0]).toMatchObject({ sport: 'running', prescribed_intensity_zone: 'Z2' });
+    expect(result.sessions[1]).toMatchObject({ sport: 'strength', prescribed_intensity_zone: '' });
+    const invalid = prepareDraftPlanCommit({
+      ...draft,
+      weekly_plans: [{ week_number: 1, days: [{ ...ride, sport: 'Running', prescribed_intensity_zone: 'N/A' }] }],
+    });
+    expect(invalid.valid).toBe(false);
+  });
+});
+
+describe('schedule replacement', () => {
+  it('keeps the current active plan and calendar intact when the replacement write fails', async () => {
+    const { commitDraftPlan } = await import('../../../base44/shared/commitDraftPlan');
+    const calls: string[] = [];
+    const response = await commitDraftPlan({
+      entities: {
+        TrainingPlan: {
+          filter: async () => { calls.push('read active'); return []; },
+          update: async () => { calls.push('promote'); },
+          bulkUpdate: async () => { calls.push('archive'); },
+        },
+        TrainingPlanSession: {
+          filter: async () => [],
+          bulkCreate: async () => { calls.push('create new'); throw new Error('unavailable'); },
+          delete: async () => { calls.push('delete pending'); },
+        },
+      },
+    }, draft);
+    expect(response.status).toBe(502);
+    expect(calls).toEqual(['create new']);
+  });
+
+  it('verifies the replacement before retiring pending sessions for the old plan', async () => {
+    const { commitDraftPlan } = await import('../../../base44/shared/commitDraftPlan');
+    const calls: string[] = [];
+    const saved: any[] = [];
+    const response = await commitDraftPlan({
+      entities: {
+        TrainingPlan: {
+          filter: async () => [{ id: 'old-plan' }],
+          update: async () => { calls.push('promote'); return { id: draft.id, status: 'active' }; },
+          bulkUpdate: async () => { calls.push('archive old'); },
+          get: async () => ({ status: 'archived' }),
+        },
+        TrainingPlanSession: {
+          filter: async query => {
+            if (query.status === 'pending') {
+              expect(query.training_plan_id).toEqual({ $in: ['old-plan'] });
+              return [{ id: 'old-pending', date: '2099-01-01' }];
+            }
+            return saved;
+          },
+          bulkCreate: async rows => { calls.push('create new'); saved.push(...rows); },
+          delete: async id => { calls.push(`remove ${id}`); },
+        },
+      },
+    }, draft);
+    expect(await response.json()).toMatchObject({ success: true, previous_schedule_retired: true });
+    expect(calls).toEqual(['create new', 'promote', 'archive old', 'remove old-pending']);
+  });
 });

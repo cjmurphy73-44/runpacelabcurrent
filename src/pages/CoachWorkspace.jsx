@@ -16,7 +16,7 @@ import FeatureGate from "@/components/billing/FeatureGate";
 export default function CoachWorkspace() {
   const { user } = useAuth();
   const { toast } = useToast();
-  const { canUseCoachWorkspace, plan } = useCoachAccess();
+  const { canUseCoachWorkspace, plan, loading: accessLoading } = useCoachAccess();
   const [assignments, setAssignments] = useState([]);
   const [profiles, setProfiles] = useState({}); // athlete_profile_id -> AthleteProfile
   const [workouts, setWorkouts] = useState({}); // athlete_profile_id -> WorkoutSession[]
@@ -27,39 +27,25 @@ export default function CoachWorkspace() {
   const [compareIds, setCompareIds] = useState(new Set());
 
   const loadRoster = useCallback(async () => {
-    if (!user?.id) return;
+    if (!user?.id || accessLoading || !canUseCoachWorkspace) return;
     setLoading(true);
     try {
-      const filter = user.role === "admin" ? { status: "active" } : { coach_user_id: user.id, status: "active" };
-      const list = await base44.entities.CoachAthleteAssignment.filter(filter, "-created_date", 200);
-      setAssignments(list);
-      const ids = list.map((a) => a.athlete_profile_id);
-      const [pMap, wMap, plMap] = [{}, {}, {}];
-      await Promise.all(ids.map(async (id) => {
-        try {
-          const [p, ws, pl] = await Promise.all([
-            base44.entities.AthleteProfile.get(id),
-            base44.entities.WorkoutSession.filter({ athlete_id: id }, "-date", 10),
-            base44.entities.TrainingPlan.filter({ athlete_id: id, status: "active" }, "-start_date", 1),
-          ]);
-          pMap[id] = p;
-          wMap[id] = ws;
-          plMap[id] = pl[0];
-        } catch (e) { /* missing profile */ }
-      }));
-      setProfiles(pMap);
-      setWorkouts(wMap);
-      setPlans(plMap);
+      const { data } = await base44.functions.invoke("manageCoachRoster", { action: "list" });
+      setAssignments(data.assignments);
+      setProfiles(data.profiles);
+      setWorkouts(data.workouts);
+      setPlans(data.plans);
     } catch (e) {
       toast({ title: "Failed to load roster", variant: "destructive" });
     } finally {
       setLoading(false);
     }
-  }, [user]);
+  }, [user, accessLoading, canUseCoachWorkspace, toast]);
 
   useEffect(() => { loadRoster(); }, [loadRoster]);
 
   const openPicker = async () => {
+    if (user?.role !== "admin") return;
     try {
       const list = await base44.entities.AthleteProfile.list("-created_date", 200);
       setAllProfiles(list);
@@ -71,19 +57,11 @@ export default function CoachWorkspace() {
 
   const addAthlete = async (profile) => {
     try {
-      await base44.entities.CoachAthleteAssignment.create({
+      await base44.functions.invoke("manageCoachRoster", {
+        action: "assign",
         coach_user_id: user.id,
-        athlete_profile_id: profile.id,
-        athlete_name_snapshot: `${profile.first_name} ${profile.last_name}`,
-        status: "active",
+        athlete_id: profile.id,
       });
-      // S5: keep the coach's coached_athletes cache in sync so RLS can scope reads
-      // without a cross-entity join. Merge (de-dup) so repeated adds are idempotent.
-      try {
-        const current = Array.isArray(user.coached_athletes) ? user.coached_athletes : [];
-        const merged = [...new Set([...current, profile.id])];
-        await base44.auth.updateMe({ coached_athletes: merged });
-      } catch (e) { console.warn("updateMe coached_athletes (add) failed:", e); }
       setPickerOpen(false);
       toast({ title: `${profile.first_name} ${profile.last_name} added to roster` });
       loadRoster();
@@ -94,14 +72,7 @@ export default function CoachWorkspace() {
 
   const removeAthlete = async (assignment) => {
     try {
-      await base44.entities.CoachAthleteAssignment.update(assignment.id, { status: "archived" });
-      // S5: drop the archived athlete from the coach's coached_athletes cache so RLS
-      // stops exposing their data the moment they leave the roster.
-      try {
-        const current = Array.isArray(user.coached_athletes) ? user.coached_athletes : [];
-        const filtered = current.filter((id) => id !== assignment.athlete_profile_id);
-        await base44.auth.updateMe({ coached_athletes: filtered });
-      } catch (e) { console.warn("updateMe coached_athletes (remove) failed:", e); }
+      await base44.functions.invoke("manageCoachRoster", { action: "revoke", assignment_id: assignment.id });
       setCompareIds((s) => { const n = new Set(s); n.delete(assignment.athlete_profile_id); return n; });
       toast({ title: "Removed from roster" });
       loadRoster();
@@ -133,7 +104,7 @@ export default function CoachWorkspace() {
       action={
         <div className="flex gap-2">
           <Button variant="outline" size="sm" onClick={loadRoster} disabled={loading}><RefreshCw className={`w-4 h-4 ${loading ? "animate-spin" : ""}`} />Refresh</Button>
-          <Button size="sm" onClick={openPicker}><UserPlus className="w-4 h-4" />Add athlete</Button>
+          {user?.role === "admin" && <Button size="sm" onClick={openPicker}><UserPlus className="w-4 h-4" />Add athlete</Button>}
         </div>
       }
     >
@@ -143,8 +114,8 @@ export default function CoachWorkspace() {
         <Card><CardContent className="py-16 text-center">
           <Users className="w-10 h-10 text-muted-foreground/40 mx-auto mb-3" />
           <p className="font-medium">Your roster is empty</p>
-          <p className="text-sm text-muted-foreground mb-4">Add athletes to track their fitness, compare signatures, and monitor plan progress.</p>
-          <Button size="sm" onClick={openPicker}><UserPlus className="w-4 h-4" />Add your first athlete</Button>
+          <p className="text-sm text-muted-foreground mb-4">Athletes appear here after an administrator verifies the assignment.</p>
+          {user?.role === "admin" && <Button size="sm" onClick={openPicker}><UserPlus className="w-4 h-4" />Add your first athlete</Button>}
         </CardContent></Card>
       ) : (
         <>

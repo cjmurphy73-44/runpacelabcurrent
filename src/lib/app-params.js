@@ -1,4 +1,4 @@
-// src/lib/app-params.js
+import { getAccessToken } from "@base44/sdk";
 
 function getAppParamValue(name, { defaultValue = null, removeFromUrl = false, persistToLocalStorage = false } = {}) {
   const windowObj = typeof window !== 'undefined' ? window : null;
@@ -57,37 +57,35 @@ function getAppParamValue(name, { defaultValue = null, removeFromUrl = false, pe
 // would otherwise initialise with appId=null and every entity call 404s
 // ("Invalid id value -> Object not found"). This id is fixed for this app.
 const PUBLISHED_APP_ID = "6a504ebe6a5a6d1be058226c";
+const STAGING_APP_ID = "6aefe9d09e2788fc8591c758";
+const hostedAppIds = new Map([
+  ['trainpacelab.com', PUBLISHED_APP_ID],
+  ['www.trainpacelab.com', PUBLISHED_APP_ID],
+  ['trainpacelab.base44.app', PUBLISHED_APP_ID],
+  ['train-pace-lab-copy-8591c758.base44.app', STAGING_APP_ID],
+]);
 
 export function getAppParams() {
   const windowObj = typeof window !== 'undefined' ? window : {};
-  const envAppId = typeof import.meta !== 'undefined' ? (import.meta.env?.VITE_APP_ID || PUBLISHED_APP_ID) : PUBLISHED_APP_ID;
+  const configuredAppId = import.meta.env?.VITE_BASE44_APP_ID || import.meta.env?.VITE_APP_ID;
+  const configuredAppBaseUrl = import.meta.env?.VITE_BASE44_APP_BASE_URL || import.meta.env?.VITE_APP_BASE_URL;
+  const hostedAppId = hostedAppIds.get(windowObj.location?.hostname);
 
-  // Resolve app_id with stale-storage guard: the URL value (present on normal
-  // page loads) is authoritative; if absent (post-OAuth redirect), fall back to
-  // localStorage, but ONLY if it matches this app's known id, a stale value
-  // left by a different Base44 app in the same browser would otherwise init the
-  // SDK with the wrong appId and 404 every entity call. Final fallback is the
-  // hardcoded published id so the client can never initialise with appId=null.
-  let resolvedAppId = null;
-  if (windowObj?.location) {
-    const urlAppId = new URLSearchParams(windowObj.location.search).get("app_id");
-    if (urlAppId) {
-      resolvedAppId = urlAppId;
-      try { if (!windowObj.localStorage?.getItem("app_id")) windowObj.localStorage?.setItem("app_id", urlAppId); } catch {}
-    } else {
-      let stored = null;
-      try { stored = windowObj.localStorage?.getItem("app_id"); } catch {}
-      resolvedAppId = stored === PUBLISHED_APP_ID ? stored : envAppId;
-    }
-  }
-  if (!resolvedAppId) resolvedAppId = envAppId;
+  // Hosted builds with an explicit app ID stay pinned across OAuth redirects.
+  // Builder bootstraps can still supply an app ID when the build is unconfigured.
+  const urlAppId = windowObj.location ? new URLSearchParams(windowObj.location.search).get('app_id') : null;
+  const resolvedAppId = hostedAppId || configuredAppId || urlAppId || PUBLISHED_APP_ID;
+  const baseUrl = hostedAppId ? windowObj.location.origin : configuredAppBaseUrl;
 
   return {
     appId: resolvedAppId,
-    token: getAppParamValue("access_token", { removeFromUrl: true }),
+    serverUrl: baseUrl?.replace(/\/+$/, '') || '',
+    token: getAccessToken() || getAppParamValue("access_token", { removeFromUrl: true }),
     fromUrl: getAppParamValue("from_url", { defaultValue: windowObj.location?.href || '/' }),
-    functionsVersion: getAppParamValue("functions_version", { defaultValue: "", persistToLocalStorage: true }),
-    appBaseUrl: getAppParamValue("app_base_url", { defaultValue: typeof import.meta !== 'undefined' ? import.meta.env?.VITE_APP_BASE_URL : "", persistToLocalStorage: true }),
+    functionsVersion: hostedAppId ? '' : getAppParamValue("functions_version", { defaultValue: "", persistToLocalStorage: true }),
+    appBaseUrl: baseUrl || (configuredAppId
+      ? ''
+      : getAppParamValue("app_base_url", { defaultValue: "", persistToLocalStorage: true })),
   };
 }
 

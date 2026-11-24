@@ -1,4 +1,5 @@
 // base44/functions/generateTrainingPlan/entry.ts
+import { getAuthorizedAthlete, isRecordId } from '../../shared/ownership.ts';
 // Server-side, plan-gated training-plan generation. The frontend FeatureGate only hides
 // the button; without this server-side check a free-tier user could call the function
 // directly via the SDK and burn a long Core InvokeLLM run + plan write. Generates a
@@ -9,16 +10,21 @@ import { assertPaidPlan } from '../../shared/planGate.ts';
 import { claimRateLimit } from '../../shared/rateLimit.ts';
 import { getTrainingPaces, getEquivalentTimes, formatPaceFromMs } from '../../shared/vdot.ts';
 import { deriveRunningThresholdPace } from '../../shared/thresholdPace.ts';
-import { validatePlanStructure } from '../../shared/planValidation.ts';
+import { PLAN_INTENSITY_ZONES, PLAN_SPORTS, validatePlanStructure } from '../../shared/planValidation.ts';
 import { reportError } from '../../shared/errorReport.ts';
 
 Deno.serve(async (req) => {
   try {
     const base44 = createClientFromRequest(req);
-    const user = await base44.auth.me();
+    const user = await base44.auth.me().catch(() => null);
     if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
 
-    // Server-side subscription enforcement (the hard boundary).
+    const { athlete_id, race_goals, long_term_goal } = (await req.json().catch(() => null)) ?? {};
+    if (!isRecordId(athlete_id)) return Response.json({ error: 'athlete_id is required' }, { status: 400 });
+
+    const athlete = await getAuthorizedAthlete(base44, user, athlete_id);
+    if (!athlete) return Response.json({ error: 'Athlete profile not found' }, { status: 404 });
+
     const gate = await assertPaidPlan(base44, user);
     if (!gate.ok) return Response.json({ error: 'Plan generation requires a Pro plan.', plan: gate.plan }, { status: 402 });
 
@@ -28,18 +34,12 @@ Deno.serve(async (req) => {
       return Response.json({ error: 'Rate limit reached for plan generation. Try again later.' }, { status: 429 });
     }
 
-    const { athlete_id, race_goals, long_term_goal } = await req.json().catch(() => ({}));
-    if (!athlete_id) return Response.json({ error: 'athlete_id is required' }, { status: 400 });
-
-    const athlete = await base44.entities.AthleteProfile.get(athlete_id);
-    if (!athlete) return Response.json({ error: 'Athlete profile not found' }, { status: 404 });
-
-    const recentSessions = await base44.entities.WorkoutSession.filter({ athlete_id }, '-date', 500);
+    const recentSessions = await base44.asServiceRole.entities.WorkoutSession.filter({ athlete_id }, '-date', 500);
     // Baseline-test enrichment is optional, the PhysiologicalBaselines entity may not be
     // configured for this app, so a missing schema shouldn't fail the whole plan generation.
     let latestBaseline = null;
     try {
-      const baselines = await base44.entities.PhysiologicalBaselines.filter({ athlete_id }, '-recorded_date', 1);
+      const baselines = await base44.asServiceRole.entities.PhysiologicalBaselines.filter({ athlete_id }, '-recorded_date', 1);
       latestBaseline = baselines[0] || null;
     } catch (_e) {
       latestBaseline = null;
@@ -125,7 +125,7 @@ STRUCTURE REQUIRED (keep prose tight, this is a working plan, not an essay):
 4. pace_zones, Z1 Recovery through Z5 VO2max (+ rep pace if relevant), each with pace range, HR range, purpose, derived from THIS athlete's own LT1/LT2/VDOT/max HR.
 5. prehab_routine, a daily 8-10 minute injury-prevention routine targeting the athlete's injury_history (if none, a sensible general running prehab routine). Brief "why" for each exercise.
 6. macrocycle, one row per week: phase name, key session, deload flag (deload before/after race weeks and periodically).
-7. weekly_plans, one entry per week: theme, totals (one string e.g. "~55km / ~5h30 / ~320 TSS"), and all 7 days filled using the exact dates given. Each day: session_type, sport, title, prescribed_duration_minutes, prescribed_intensity_zone (e.g. "Z2","Z4","Rest"), and a concise description with concrete HR/pace targets and structure (warm-up/main/cool-down). Taper weeks reduce volume ~30-40%. Race weeks include race-week scheduling and a short race-day pacing strategy in that day's description.
+7. weekly_plans, one entry per week: theme, totals (one string e.g. "~55km / ~5h30 / ~320 TSS"), and all 7 days filled using the exact dates given. Each day: session_type, sport (lowercase), title, prescribed_duration_minutes, prescribed_intensity_zone (e.g. "Z2", "Z4", "rest", or "" for strength), and a concise description with concrete HR/pace targets and structure (warm-up/main/cool-down). Taper weeks reduce volume ~30-40%. Race weeks include race-week scheduling and a short race-day pacing strategy in that day's description.
 8. nutrition_system, fueling by session type (before/during/after) with CHO/protein grams where relevant.
 9. hrv_framework, table mapping HRV/resting-HR deviations to specific training adjustments.
 10. injury_audit_questions, short weekly self-check checklist tailored to this athlete's injury history.
@@ -189,10 +189,10 @@ ${needsPhase2Note ? `12. phase2_note, since the true goal horizon (${totalWeeks}
                       date: { type: 'string' },
                       day_name: { type: 'string' },
                       session_type: { type: 'string' },
-                      sport: { type: 'string' },
+                      sport: { type: 'string', enum: PLAN_SPORTS },
                       title: { type: 'string' },
                       prescribed_duration_minutes: { type: 'number' },
-                      prescribed_intensity_zone: { type: 'string' },
+                      prescribed_intensity_zone: { type: 'string', enum: PLAN_INTENSITY_ZONES },
                       description: { type: 'string' },
                     },
                   },
@@ -232,8 +232,12 @@ ${needsPhase2Note ? `12. phase2_note, since the true goal horizon (${totalWeeks}
     // materializes TrainingPlanSession rows and flips the status to active).
     const startDate = weekDates[0]?.start_date || toDateStr(today);
     const endDate = weekDates[weekDates.length - 1]?.end_date || toDateStr(today);
-    const trainingPlan = await base44.entities.TrainingPlan.create({
+    if (!(await getAuthorizedAthlete(base44, user, athlete_id))) {
+      return Response.json({ error: 'Athlete profile not found' }, { status: 404 });
+    }
+    const trainingPlan = await base44.asServiceRole.entities.TrainingPlan.create({
       athlete_id,
+      created_by_id: athlete.created_by_id,
       status: 'draft',
       start_date: startDate,
       end_date: endDate,
@@ -256,6 +260,6 @@ ${needsPhase2Note ? `12. phase2_note, since the true goal horizon (${totalWeeks}
     return Response.json({ success: true, training_plan: trainingPlan });
   } catch (error) {
     try { await reportError(base44, { source: 'generateTrainingPlan', message: error.message, stack: error.stack, severity: 'High' }); } catch {}
-    return Response.json({ error: error.message || 'Internal server error' }, { status: 500 });
+    return Response.json({ error: 'Could not generate training plan' }, { status: 500 });
   }
 });

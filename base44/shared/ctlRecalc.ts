@@ -7,8 +7,20 @@ const DAY_MS = 86400000;
 
 import { calculateFitnessFatigueOde } from './fitnessFatigueOde.ts';
 
+async function readAthleteHistory(entity: any, athlete_id: string, fields: string[]) {
+  const records: any[] = [];
+  const pageSize = 500;
+  for (let skip = 0; ; skip += pageSize) {
+    const page = await entity.filter({ athlete_id }, 'id', pageSize, skip, fields);
+    records.push(...page);
+    if (page.length < pageSize) return records;
+  }
+}
+
 export async function recomputeCTLATLTSB(base44: any, athlete_id: string) {
-  const athlete = await base44.asServiceRole.entities.AthleteProfile.get(athlete_id).catch(() => null);
+  const { AthleteProfile, DailyMetrics, WorkoutSession } = base44.asServiceRole.entities;
+  const athlete = await AthleteProfile.get(athlete_id);
+  if (!athlete) throw new Error('Athlete profile not found');
 
   let timeConstantCTL = 42;
   let timeConstantATL = 7;
@@ -28,7 +40,10 @@ export async function recomputeCTLATLTSB(base44: any, athlete_id: string) {
   const ctlAlpha = 2 / (timeConstantCTL + 1);
   const atlAlpha = 2 / (timeConstantATL + 1);
 
-  const sessions = await base44.asServiceRole.entities.WorkoutSession.filter({ athlete_id });
+  const [sessions, existing] = await Promise.all([
+    readAthleteHistory(WorkoutSession, athlete_id, ['id', 'date', 'session_trimp', 'session_tss', 'load_source']),
+    readAthleteHistory(DailyMetrics, athlete_id, ['id', 'date']),
+  ]);
   const trimpByDate: Record<string, number> = {};
   // Load is counted once per day, but kept split by provenance so the verified (measured
   // from a per-second stream) and summary (average-HR estimate) contributions never mix
@@ -44,20 +59,24 @@ export async function recomputeCTLATLTSB(base44: any, athlete_id: string) {
   }
   const workoutDates = Object.keys(trimpByDate).sort();
 
-  const existing = await base44.asServiceRole.entities.DailyMetrics.filter({ athlete_id });
   const existingByDate: Record<string, string> = {};
   for (const m of existing) existingByDate[m.date] = m.id;
 
+  const emptyDay = {
+    total_trimp: 0, verified_trimp: 0, summary_trimp: 0,
+    calculated_ctl: 0, calculated_atl: 0, calculated_tsb: 0,
+    ode_fitness: 0, ode_fatigue: 0, ode_form: 0,
+  };
   if (workoutDates.length === 0) {
     const ids = existing.map((m) => m.id);
     for (let i = 0; i < ids.length; i += 500) {
-      await base44.asServiceRole.entities.DailyMetrics.bulkUpdate(
-        ids.slice(i, i + 500).map((id) => ({ id, calculated_ctl: 0, calculated_atl: 0, calculated_tsb: 0 })),
+      await DailyMetrics.bulkUpdate(
+        ids.slice(i, i + 500).map((id) => ({ id, ...emptyDay })),
       );
     }
-    await base44.asServiceRole.entities.AthleteProfile.update(athlete_id, {
+    await AthleteProfile.update(athlete_id, {
       current_ctl: 0, current_atl: 0, current_tsb: 0, last_data_sync: new Date().toISOString(),
-    }).catch((e: any) => console.warn('recalc: failed to zero profile', e?.message));
+    });
     return { success: true, ctl: 0, atl: 0, tsb: 0 };
   }
 
@@ -89,7 +108,7 @@ export async function recomputeCTLATLTSB(base44: any, athlete_id: string) {
   let ctl: number | null = null;
   let currentATL: number | null = null;
   const cursor2 = new Date(start);
-  const updates: any[] = [];
+  const updates: any[] = existing.filter((m) => m.date < workoutDates[0]).map((m) => ({ id: m.id, ...emptyDay }));
   const creates: any[] = [];
 
   while (cursor2 <= end) {
@@ -115,34 +134,32 @@ export async function recomputeCTLATLTSB(base44: any, athlete_id: string) {
         ode_fatigue: ode?.fatigue ?? 0,
         ode_form: ode?.form ?? 0,
       };
-      if (trimpByDate[iso] !== undefined) {
-        payload.total_trimp = Math.round(trimpByDate[iso] * 100) / 100;
-        payload.verified_trimp = Math.round((verifiedByDate[iso] || 0) * 100) / 100;
-        payload.summary_trimp = Math.round((summaryByDate[iso] || 0) * 100) / 100;
-      }
+      payload.total_trimp = Math.round(load * 100) / 100;
+      payload.verified_trimp = Math.round((verifiedByDate[iso] || 0) * 100) / 100;
+      payload.summary_trimp = Math.round((summaryByDate[iso] || 0) * 100) / 100;
       if (existingByDate[iso]) updates.push({ id: existingByDate[iso], ...payload });
-      else creates.push({ athlete_id, date: iso, ...payload });
+      else creates.push({ athlete_id, date: iso, created_by_id: athlete.created_by_id, ...payload });
     }
     cursor2.setTime(cursor2.getTime() + DAY_MS);
   }
 
   for (let i = 0; i < updates.length; i += 500) {
-    await base44.asServiceRole.entities.DailyMetrics.bulkUpdate(updates.slice(i, i + 500));
+    await DailyMetrics.bulkUpdate(updates.slice(i, i + 500));
   }
   for (let i = 0; i < creates.length; i += 500) {
-    await base44.asServiceRole.entities.DailyMetrics.bulkCreate(creates.slice(i, i + 500));
+    await DailyMetrics.bulkCreate(creates.slice(i, i + 500));
   }
 
   const finalCtl = Math.round(ctl * 10) / 10;
   const finalAtl = Math.round(currentATL * 10) / 10;
   const finalTsb = Math.round((ctl - currentATL) * 10) / 10;
 
-  await base44.asServiceRole.entities.AthleteProfile.update(athlete_id, {
+  await AthleteProfile.update(athlete_id, {
     current_ctl: finalCtl,
     current_atl: finalAtl,
     current_tsb: finalTsb,
     last_data_sync: new Date().toISOString(),
-  }).catch((e: any) => console.warn('recalc: failed to sync profile snapshot', e?.message));
+  });
 
   return { success: true, ctl: finalCtl, atl: finalAtl, tsb: finalTsb };
 }

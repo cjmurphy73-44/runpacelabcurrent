@@ -9,7 +9,7 @@ import { DatabaseZap, Loader2, AlertCircle, CheckCircle2 } from "lucide-react";
 
 const MAX_CHUNKS_PER_ATHLETE = 40;
 
-const EMPTY_TOTALS = { sessions: 0, recovered: 0, summary_only: 0, failed: 0 };
+const EMPTY_TOTALS = { sessions: 0, recovered: 0, metrics_refreshed: 0, summary_only: 0, failed: 0 };
 
 export default function TelemetryBackfillPanel() {
   const [phase, setPhase] = useState("idle"); // idle | scanning | ready | running | done
@@ -50,7 +50,7 @@ export default function TelemetryBackfillPanel() {
         let hasMore = true;
         let guard = 0;
         let cursor = null;
-        const row = { athlete_id: a.athlete_id, name: a.name, recovered: 0, summary_only: 0 };
+        const row = { athlete_id: a.athlete_id, name: a.name, recovered: 0, metrics_refreshed: 0, summary_only: 0 };
 
         while (hasMore && guard < MAX_CHUNKS_PER_ATHLETE) {
           const res = await base44.functions.invoke("backfillTelemetry", {
@@ -62,9 +62,11 @@ export default function TelemetryBackfillPanel() {
           cursor = d.next_cursor || cursor;
           running.sessions += d.sessions_scanned || 0;
           running.recovered += d.streams_recovered || 0;
+          running.metrics_refreshed += d.metrics_refreshed || 0;
           running.summary_only += d.summary_only || 0;
           running.failed += d.failed || 0;
           row.recovered += d.streams_recovered || 0;
+          row.metrics_refreshed += d.metrics_refreshed || 0;
           row.summary_only += d.summary_only || 0;
           if (d.recalculated) {
             row.ctl = d.recalculated.ctl;

@@ -10,17 +10,22 @@ import { assertSafeFileUrl } from '../../shared/urlGuard.ts';
 import { assertOwnsAthlete } from '../../shared/ownership.ts';
 import { reportError } from '../../shared/errorReport.ts';
 import { checkImportAllowance } from '../../shared/importLimit.ts';
-import { MAX_STREAM_SAMPLES, storageStream } from '../../shared/streamValidity.ts';
+import { isWorkoutSport } from '../../shared/workoutSports.ts';
+import { inlineWorkoutStream } from '../../shared/streamValidity.ts';
+import { recomputeCTLATLTSB } from '../../shared/ctlRecalc.ts';
 
 Deno.serve(async (req) => {
+  const base44 = createClientFromRequest(req);
   try {
-    const base44 = createClientFromRequest(req);
-    const user = await base44.auth.me();
+    const user = await base44.auth.me().catch(() => null);
     if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
 
     const { athlete_id, file_url, file_name, sport, date } = await req.json();
     if (!athlete_id || !file_url || !file_name || !date) {
       return Response.json({ error: 'athlete_id, file_url, file_name and date are required' }, { status: 400 });
+    }
+    if (sport && !isWorkoutSport(sport)) {
+      return Response.json({ error: 'Invalid workout sport' }, { status: 400 });
     }
     if (new Date(date) > new Date()) {
       return Response.json({ error: 'date cannot be in the future' }, { status: 400 });
@@ -100,31 +105,11 @@ Deno.serve(async (req) => {
         const created = await base44.entities.WorkoutSession.bulkCreate(sessionsToCreate);
         const affectedDates = [...new Set(created.map((s) => s.date))];
 
-        const allSessions = await base44.entities.WorkoutSession.filter({ athlete_id });
-        const trimpByDate = {};
-        for (const s of allSessions) {
-          if (!affectedDates.includes(s.date)) continue;
-          trimpByDate[s.date] = (trimpByDate[s.date] || 0) + (s.session_trimp || s.session_tss || 0);
-        }
-        const allMetrics = await base44.entities.DailyMetrics.filter({ athlete_id });
-        const metricsByDate = {};
-        for (const m of allMetrics) metricsByDate[m.date] = m;
-
-        const metricsToUpdate = [];
-        const metricsToCreate = [];
-        for (const d of affectedDates) {
-          const totalTrimp = Math.round((trimpByDate[d] || 0) * 100) / 100;
-          if (metricsByDate[d]) {
-            metricsToUpdate.push({ id: metricsByDate[d].id, total_trimp: totalTrimp });
-          } else {
-            metricsToCreate.push({ athlete_id, date: d, total_trimp: totalTrimp });
-          }
-        }
-        if (metricsToUpdate.length > 0) await base44.entities.DailyMetrics.bulkUpdate(metricsToUpdate);
-        if (metricsToCreate.length > 0) await base44.entities.DailyMetrics.bulkCreate(metricsToCreate);
-
-        await base44.functions.invoke('recalculateCTLATLTSB', { athlete_id });
-        return Response.json({ success: true, imported_sessions_count: created.length, skipped_duplicates: skippedDuplicates, affected_dates: affectedDates });
+        const load = await recomputeCTLATLTSB(base44, athlete_id).catch(() => null);
+        return Response.json({
+          success: true, imported_sessions_count: created.length, skipped_duplicates: skippedDuplicates,
+          affected_dates: affectedDates, training_load_refreshed: load?.success === true,
+        });
       }
 
       parsedResult = parseCsv(text);
@@ -235,8 +220,8 @@ Deno.serve(async (req) => {
       // Refresh laps from the reconciled set (keep existing if none reconciled).
       if (masterLaps.length > 0) update.laps = masterLaps;
 
-      // Refresh the stored master stream when it fits the cap.
-      if (masterStream.length > 0 && masterStream.length <= MAX_STREAM_SAMPLES) update.streams = storageStream(masterStream);
+      // Invalidate the old inline cache when the reconciled stream no longer fits.
+      if (masterStream.length > 0) Object.assign(update, { streams: inlineWorkoutStream(masterStream) ?? [] });
 
       // Backfill only previously-null summary metrics from the reconciled stream — never
       // overwrite values the athlete already has, and never touch session_trimp/session_tss.
@@ -247,12 +232,15 @@ Deno.serve(async (req) => {
       if (!match.avg_cadence && ms?.avg_cadence) update.avg_cadence = ms.avg_cadence;
       if (!match.distance_km && ms?.distance_km) update.distance_km = ms.distance_km;
 
-      await base44.entities.WorkoutSession.update(match.id, update);
+      const updatedSession = await base44.entities.WorkoutSession.update(match.id, update);
 
       // ZERO-DELTA LOAD GUARD: deliberately do NOT invoke calculateDailyTRIMP or
       // recalculateCTLATLTSB — the session's training load was already counted on the
       // first asset. Attaching a second format enriches the stream/laps only.
-      return Response.json({ success: true, attached: true, workout_session_id: match.id });
+      return Response.json({
+        success: true, attached: true, workout_session_id: match.id, workout_session: updatedSession,
+        duration_minutes: match.duration_minutes, session_tss: match.session_tss,
+      });
     }
 
     // First-upload path: create the session + its first WorkoutAsset, then count load once.
@@ -352,29 +340,36 @@ Deno.serve(async (req) => {
       zone_bounds_bpm: zoneResult.zone_bounds_bpm,
       ...energy,
       laps: (parsedLaps && parsedLaps.length > 0) ? parsedLaps : undefined,
-      streams: stream.length <= MAX_STREAM_SAMPLES ? storageStream(stream) : undefined,
+      streams: inlineWorkoutStream(stream),
     });
 
-    // Bind the first asset row to the new session.
-    await base44.entities.WorkoutAsset.create({
-      session_id: session.id,
-      athlete_id,
-      file_url,
-      file_name,
-      file_type: fileType,
-      source_priority: SOURCE_PRIORITY[fileType],
-      parsing_status: 'parsed',
-      uploaded_at: new Date().toISOString(),
-    });
-
-    await base44.functions.invoke('calculateDailyTRIMP', { athlete_id, date });
-    await base44.functions.invoke('postWorkoutAIEvaluation', { athlete_id, workout_session_id: session.id });
+    // The session already carries raw_file_url. A later attachment or load
+    // refresh can recover independently if the downstream operation failed.
+    const [asset, load] = await Promise.allSettled([
+      base44.entities.WorkoutAsset.create({
+        session_id: session.id,
+        athlete_id,
+        file_url,
+        file_name,
+        file_type: fileType,
+        source_priority: SOURCE_PRIORITY[fileType],
+        parsing_status: 'parsed',
+        uploaded_at: new Date().toISOString(),
+      }),
+      recomputeCTLATLTSB(base44, athlete_id),
+    ]);
 
     // Deterministic state handed back to the caller (and recomputed identically
     // inside the AI evaluation before any prose is written).
     const stateSummary = await buildAthleteStateSummary(base44, session).catch(() => null);
 
-    return Response.json({ success: true, workout_session: session, attached: false, athlete_state_summary: stateSummary });
+    return Response.json({
+      success: true, workout_session: session, workout_session_id: session.id,
+      duration_minutes: session.duration_minutes, session_tss: session.session_tss,
+      attached: false, athlete_state_summary: stateSummary,
+      asset_registered: asset.status === 'fulfilled' && Boolean(asset.value?.id),
+      training_load_refreshed: load.status === 'fulfilled' && load.value.success,
+    });
   } catch (error) {
     try { await reportError(base44, { source: 'ingestWorkoutFile', message: error.message, stack: error.stack, severity: 'High' }); } catch {}
     return Response.json({ error: error.message }, { status: 500 });

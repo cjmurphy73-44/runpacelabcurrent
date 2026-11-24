@@ -10,19 +10,19 @@
 // anything is written. When validation fails the caller returns a clear,
 // recoverable error without partially applying changes.
 
-const SUPPORTED_SPORTS = ['running', 'cycling', 'swimming', 'strength', 'triathlon', 'other'];
+export const PLAN_SPORTS = ['running', 'cycling', 'swimming', 'strength', 'triathlon', 'other'];
+export const PLAN_INTENSITY_ZONES = ['rest', 'recovery', 'easy', 'tempo', 'threshold', 'interval', 'long', 'race', 'Z1', 'Z2', 'Z3', 'Z4', 'Z5', ''];
 const MAX_DURATION_MIN = 600; // 10 h — anything beyond is implausible for a single session
 
 function isSupportedSport(sport: any): boolean {
   if (!sport || typeof sport !== 'string') return false;
-  return SUPPORTED_SPORTS.includes(sport);
+  return PLAN_SPORTS.includes(sport);
 }
 
 function isSupportedZone(zone: any): boolean {
-  if (!zone || typeof zone !== 'string') return true; // empty zone allowed (rest days)
-  const z = zone.trim();
-  if (['rest', 'recovery', 'easy', 'tempo', 'threshold', 'interval', 'long', 'race'].includes(z.toLowerCase())) return true;
-  return /^z[1-5]$/i.test(z);
+  if (!zone) return true;
+  if (typeof zone !== 'string') return false;
+  return PLAN_INTENSITY_ZONES.some(value => value.toLowerCase() === zone.trim().toLowerCase());
 }
 
 function isValidDuration(d: any): boolean {
@@ -85,26 +85,35 @@ export function validatePlanStructure(plan: any, expectedWeekDates: any[] | null
       } else if (expectedDateSet.size > 0 && !expectedDateSet.has(day.date)) {
         errors.push(`Week ${wi + 1} day ${di + 1}: date "${day.date}" not in expected calendar`);
       }
-      const sport = day.sport || 'running';
+      const sport = typeof day.sport === 'string' && day.sport
+        ? day.sport.trim().toLowerCase()
+        : day.sport || 'running';
       if (!isSupportedSport(sport)) {
         errors.push(`Week ${wi + 1} day ${di + 1}: unsupported sport "${sport}"`);
       }
-      const isRest = (day.session_type || '').toLowerCase() === 'rest';
+      const sessionType = typeof day.session_type === 'string' ? day.session_type.trim().toLowerCase() : '';
+      const isRest = sessionType === 'rest';
       if (!isRest && !isValidDuration(day.prescribed_duration_minutes)) {
         errors.push(`Week ${wi + 1} day ${di + 1}: invalid duration ${day.prescribed_duration_minutes}`);
       }
-      if (day.prescribed_intensity_zone && !isSupportedZone(day.prescribed_intensity_zone)) {
-        errors.push(`Week ${wi + 1} day ${di + 1}: unsupported zone "${day.prescribed_intensity_zone}"`);
+      const inputZone = typeof day.prescribed_intensity_zone === 'string'
+        ? day.prescribed_intensity_zone.trim()
+        : day.prescribed_intensity_zone;
+      const zone = (isRest || sport === 'strength') && typeof inputZone === 'string' && inputZone.toLowerCase() === 'n/a'
+        ? ''
+        : inputZone;
+      if (zone && !isSupportedZone(zone)) {
+        errors.push(`Week ${wi + 1} day ${di + 1}: unsupported zone "${zone}"`);
       }
       sanitizedDays.push({
         date: day.date,
         day_name: day.day_name || '',
-        session_type: day.session_type || 'rest',
+        session_type: sessionType || 'rest',
         sport: isSupportedSport(sport) ? sport : 'running',
         title: day.title || '',
         prescribed_duration_minutes: isValidDuration(day.prescribed_duration_minutes)
           ? Math.round(day.prescribed_duration_minutes) : 0,
-        prescribed_intensity_zone: day.prescribed_intensity_zone || '',
+        prescribed_intensity_zone: zone || '',
         description: day.description || '',
       });
     }

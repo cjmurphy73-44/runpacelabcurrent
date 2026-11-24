@@ -1,0 +1,87 @@
+{
+  "name": "CorosRecordingArchive",
+  "type": "object",
+  "description": "Private immutable parts of the original COROS FIT, published by a verified manifest for an isolated attempt. Athletes access recordings through the authorized backend function.",
+  "properties": {
+    "athlete_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "session_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "provider_activity_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "owner_user_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "attempt_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "kind": {
+      "type": "string",
+      "enum": [
+        "part",
+        "manifest"
+      ]
+    },
+    "part_index": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 85
+    },
+    "data_b64": {
+      "type": "string",
+      "maxLength": 32768
+    },
+    "byte_count": {
+      "type": "integer",
+      "minimum": 14,
+      "maximum": 2097152
+    },
+    "part_count": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 86
+    },
+    "sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    }
+  },
+  "required": [
+    "athlete_id",
+    "session_id",
+    "provider_activity_id",
+    "owner_user_id",
+    "attempt_id",
+    "kind"
+  ],
+  "rls": {
+    "create": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "read": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "update": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "delete": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
+}

@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useCallback } from "react";
 import { base44 } from "@/api/base44Client";
+import { ensureProfileLinked } from "@/lib/profileLinkage";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 import { Sparkles, ShieldAlert } from "lucide-react";
@@ -21,6 +22,7 @@ export default function TrainingPlan() {
   const [committing, setCommitting] = useState(false);
   const [loadError, setLoadError] = useState(false);
   const [commitError, setCommitError] = useState(null);
+  const [retirementIncomplete, setRetirementIncomplete] = useState(false);
   const injury = useCoachInjurySignal(athlete?.id);
 
   const load = useCallback(async () => {
@@ -29,11 +31,8 @@ export default function TrainingPlan() {
     try {
       const user = await base44.auth.me();
       if (!user) { setLoading(false); return; }
-      // Same precedence as the dashboard: the profile linked on the user record first,
-      // then the most recently updated owned profile. Keeps the plan journey working
-      // even when the profile was created under a different identity.
       let activeAthlete = null;
-      const linkedId = user.data?.athlete_profile_id;
+      const linkedId = user.data?.verified_athlete_profile_id ?? user.verified_athlete_profile_id;
       if (linkedId) {
         try { activeAthlete = await base44.entities.AthleteProfile.get(linkedId); }
         catch (err) { console.warn("Linked athlete_profile_id not resolvable:", err); activeAthlete = null; }
@@ -43,6 +42,7 @@ export default function TrainingPlan() {
         activeAthlete = profiles[0] || null;
       }
       if (activeAthlete) {
+        await ensureProfileLinked(user, activeAthlete);
         setAthlete(activeAthlete);
         const [drafts, activePlans] = await Promise.all([
           base44.entities.TrainingPlan.filter({ athlete_id: activeAthlete.id, status: "draft" }, "-created_date", 1).catch(() => []),
@@ -67,7 +67,9 @@ export default function TrainingPlan() {
     setCommitError(null);
     try {
       const res = await base44.functions.invoke("commitTrainingPlan", { plan_id: plan.id });
-      if (res.data?.training_plan) setPlan(res.data.training_plan);
+      if (!res.data?.training_plan) throw new Error("Plan activation was not confirmed.");
+      setPlan(res.data.training_plan);
+      setRetirementIncomplete(res.data.previous_schedule_retired === false);
     } catch (e) {
       console.error("Commit failed", e);
       setCommitError(e?.message || "Couldn't commit the plan. Please try again.");
@@ -160,6 +162,12 @@ export default function TrainingPlan() {
         <div className="flex justify-end">
           <Button variant="outline" size="sm" onClick={() => setShowGenerator(true)}>Generate New Plan</Button>
         </div>
+      )}
+      {retirementIncomplete && (
+        <Alert>
+          <AlertTitle>Your new plan is active</AlertTitle>
+          <AlertDescription>Some previous sessions may still appear in your calendar.</AlertDescription>
+        </Alert>
       )}
       <section aria-labelledby="current-coaching-status" className="space-y-2">
         <h2

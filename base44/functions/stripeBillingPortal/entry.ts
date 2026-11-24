@@ -4,18 +4,18 @@
 // Resolves the customer id from the caller's Subscription record (provisioned by
 // stripeWebhook) — never trusts a client-supplied customer id.
 
-import { secrets } from "base44:runtime";
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.44';
 import { reportError } from '../../shared/errorReport.ts';
+import { stripeEnvironment } from '../../shared/stripeEnvironment.ts';
 
 export default async function(req) {
   let base44;
   try {
     base44 = createClientFromRequest(req);
-    const user = await base44.auth.me();
+    const user = await base44.auth.me().catch(() => null);
     if (!user) return Response.json({ error: "Authentication required." }, { status: 401 });
 
-    const apiKey = secrets.get("STRIPE_SECRET_KEY");
+    const { apiKey, origin } = stripeEnvironment();
     if (!apiKey) return Response.json({ error: "Billing not configured." }, { status: 500 });
 
     // Resolve the caller's stored subscription to find their Stripe customer id.
@@ -26,11 +26,6 @@ export default async function(req) {
       return Response.json({ error: "No active billing account found. If you just subscribed, refresh in a moment." }, { status: 404 });
     }
 
-    const origin = req.headers.get("X-Base44-App-Url")?.replace(/\/+$/, "");
-    if (!origin) {
-      console.error("stripeBillingPortal: missing X-Base44-App-Url header");
-      return Response.json({ error: "Could not determine the app URL for the billing portal." }, { status: 400 });
-    }
     const params = new URLSearchParams();
     params.append("customer", customerId);
     params.append("return_url", `${origin}/subscribe`);
