@@ -53,6 +53,30 @@ describe('safe plan commit preparation', () => {
       status: 'pending',
     }]);
   });
+
+  it('normalizes sport labels and strength intensity returned by hosted plan generation', () => {
+    const ride = draft.weekly_plans[0].days[0];
+    const result = prepareDraftPlanCommit({
+      ...draft,
+      weekly_plans: [{
+        week_number: 1,
+        days: [
+          { ...ride, sport: ' Running ', prescribed_intensity_zone: 'Z2' },
+          { ...ride, date: '2026-11-17', sport: 'Strength', prescribed_intensity_zone: 'N/A' },
+          { ...ride, date: '2026-11-18', session_type: 'REST', prescribed_intensity_zone: 'N/A' },
+        ],
+      }],
+    });
+    expect(result.valid).toBe(true);
+    expect(result.sessions).toHaveLength(2);
+    expect(result.sessions[0]).toMatchObject({ sport: 'running', prescribed_intensity_zone: 'Z2' });
+    expect(result.sessions[1]).toMatchObject({ sport: 'strength', prescribed_intensity_zone: '' });
+    const invalid = prepareDraftPlanCommit({
+      ...draft,
+      weekly_plans: [{ week_number: 1, days: [{ ...ride, sport: 'Running', prescribed_intensity_zone: 'N/A' }] }],
+    });
+    expect(invalid.valid).toBe(false);
+  });
 });
 
 describe('schedule replacement', () => {

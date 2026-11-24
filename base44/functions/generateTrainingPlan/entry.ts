@@ -9,7 +9,7 @@ import { assertPaidPlan } from '../../shared/planGate.ts';
 import { claimRateLimit } from '../../shared/rateLimit.ts';
 import { getTrainingPaces, getEquivalentTimes, formatPaceFromMs } from '../../shared/vdot.ts';
 import { deriveRunningThresholdPace } from '../../shared/thresholdPace.ts';
-import { validatePlanStructure } from '../../shared/planValidation.ts';
+import { PLAN_INTENSITY_ZONES, PLAN_SPORTS, validatePlanStructure } from '../../shared/planValidation.ts';
 import { reportError } from '../../shared/errorReport.ts';
 
 Deno.serve(async (req) => {
@@ -125,7 +125,7 @@ STRUCTURE REQUIRED (keep prose tight, this is a working plan, not an essay):
 4. pace_zones, Z1 Recovery through Z5 VO2max (+ rep pace if relevant), each with pace range, HR range, purpose, derived from THIS athlete's own LT1/LT2/VDOT/max HR.
 5. prehab_routine, a daily 8-10 minute injury-prevention routine targeting the athlete's injury_history (if none, a sensible general running prehab routine). Brief "why" for each exercise.
 6. macrocycle, one row per week: phase name, key session, deload flag (deload before/after race weeks and periodically).
-7. weekly_plans, one entry per week: theme, totals (one string e.g. "~55km / ~5h30 / ~320 TSS"), and all 7 days filled using the exact dates given. Each day: session_type, sport, title, prescribed_duration_minutes, prescribed_intensity_zone (e.g. "Z2","Z4","Rest"), and a concise description with concrete HR/pace targets and structure (warm-up/main/cool-down). Taper weeks reduce volume ~30-40%. Race weeks include race-week scheduling and a short race-day pacing strategy in that day's description.
+7. weekly_plans, one entry per week: theme, totals (one string e.g. "~55km / ~5h30 / ~320 TSS"), and all 7 days filled using the exact dates given. Each day: session_type, sport (lowercase), title, prescribed_duration_minutes, prescribed_intensity_zone (e.g. "Z2", "Z4", "rest", or "" for strength), and a concise description with concrete HR/pace targets and structure (warm-up/main/cool-down). Taper weeks reduce volume ~30-40%. Race weeks include race-week scheduling and a short race-day pacing strategy in that day's description.
 8. nutrition_system, fueling by session type (before/during/after) with CHO/protein grams where relevant.
 9. hrv_framework, table mapping HRV/resting-HR deviations to specific training adjustments.
 10. injury_audit_questions, short weekly self-check checklist tailored to this athlete's injury history.
@@ -189,10 +189,10 @@ ${needsPhase2Note ? `12. phase2_note, since the true goal horizon (${totalWeeks}
                       date: { type: 'string' },
                       day_name: { type: 'string' },
                       session_type: { type: 'string' },
-                      sport: { type: 'string' },
+                      sport: { type: 'string', enum: PLAN_SPORTS },
                       title: { type: 'string' },
                       prescribed_duration_minutes: { type: 'number' },
-                      prescribed_intensity_zone: { type: 'string' },
+                      prescribed_intensity_zone: { type: 'string', enum: PLAN_INTENSITY_ZONES },
                       description: { type: 'string' },
                     },
                   },
