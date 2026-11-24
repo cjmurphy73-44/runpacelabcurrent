@@ -3,7 +3,6 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useFitness } from "@/context/FitnessContext";
 import RecoverySourceBadge from "@/components/dashboard/RecoverySourceBadge";
-import { computeHolisticReadiness } from "@/science/readiness";
 import { base44 } from "@/api/base44Client";
 import { TrendingUp, TrendingDown, Minus, ShieldCheck } from "lucide-react";
 
@@ -17,65 +16,32 @@ function classify(score) {
 }
 
 export default function ReadinessScoreCard() {
-  const { biometricTelemetry, dailyMetrics } = useFitness();
+  const { dailyMetrics } = useFitness();
   const [serverReadiness, setServerReadiness] = useState(null);
+  const [loadFailed, setLoadFailed] = useState(false);
 
   const today = useMemo(() => {
     const sorted = [...dailyMetrics].sort((a, b) => b.date.localeCompare(a.date));
     return sorted[0] || null;
   }, [dailyMetrics]);
 
-  // Instant local computation, displayed immediately while the server-authoritative
-  // score loads. Kept as a fallback so the card never goes blank.
-  const localHolistic = useMemo(() => {
-    if (!today) return null;
-    const hrvBase = biometricTelemetry
-      .map((r) => r.hrv_ms).filter((v) => typeof v === "number" && v > 0);
-    const rhrBase = biometricTelemetry
-      .map((r) => r.resting_hr).filter((v) => typeof v === "number" && v > 0);
-    const sleepBase = biometricTelemetry
-      .map((r) => r.sleep_score).filter((v) => typeof v === "number" && v > 0);
-    return computeHolisticReadiness(
-      {
-        hrv: today.hrv,
-        sleep_score: today.sleep_score,
-        sleep_duration_hours: today.sleep_duration_hours,
-        resting_hr: today.resting_hr,
-        body_battery: today.body_battery,
-        stress_score: today.stress_score,
-        tsb: today.calculated_tsb,
-      },
-      {
-        hrv: hrvBase.length ? hrvBase.reduce((a, b) => a + b, 0) / hrvBase.length : null,
-        resting_hr: rhrBase.length ? rhrBase.reduce((a, b) => a + b, 0) / rhrBase.length : null,
-        sleep_score: sleepBase.length ? sleepBase.reduce((a, b) => a + b, 0) / sleepBase.length : null,
-      }
-    );
-  }, [today, biometricTelemetry]);
-
-  // S6: fetch the server-authoritative readiness score (proprietary formula runs
-  // behind the backend function, not shipped to the browser). Prefers the server
-  // result when available; the local value renders instantly in the meantime.
   useEffect(() => {
     let cancelled = false;
+    setServerReadiness(null);
+    setLoadFailed(false);
     base44.functions.invoke("physiologyCompute", {})
       .then((res) => {
         if (cancelled) return;
         const data = res?.data ?? res;
         if (data?.readiness) setServerReadiness(data.readiness);
+        else setLoadFailed(true);
       })
-      .catch(() => { /* keep local fallback */ });
+      .catch(() => { if (!cancelled) setLoadFailed(true); });
     return () => { cancelled = true; };
-  }, [today?.id]);
+  }, [today?.id, today?.updated_date]);
 
-  // Server verdict is authoritative once it arrives, including a null score
-  // meaning "Insufficient Data", which overrides any stale stored value so
-  // the card never shows a contradictory number after the server says no data.
-  // Before the server responds, the local computation is the instant fallback.
   const serverResponded = serverReadiness != null;
-  const score = serverResponded
-    ? (serverReadiness.score ?? null)
-    : (localHolistic?.score ?? today?.readiness_score ?? null);
+  const score = serverReadiness?.score ?? null;
   const serverSignalCount = serverReadiness?.signal_count ?? null;
 
   const providerScore = today?.provider_readiness_score ?? null;
@@ -97,10 +63,10 @@ export default function ReadinessScoreCard() {
       <CardContent className="space-y-3">
         {score == null ? (
           <div className="space-y-2">
-            <Badge variant="secondary">No data yet</Badge>
-            <p className="text-xs text-muted-foreground">
-              Connect Garmin or COROS to auto-ingest overnight HRV, sleep, and resting HR, or log today's metrics manually.
-            </p>
+            <Badge variant="secondary">{loadFailed ? "Readiness unavailable" : serverResponded ? "Recovery data needed" : "Loading readiness"}</Badge>
+            {serverResponded && (
+              <p className="text-xs text-muted-foreground">Add recovery measurements to see readiness. Workout history still shows your training load and form.</p>
+            )}
           </div>
         ) : (
           <>

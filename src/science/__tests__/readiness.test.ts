@@ -1,5 +1,18 @@
 import { describe, it, expect } from 'vitest';
 import { computeHolisticReadiness } from '../readiness';
+import { countRecoverySignals } from '../../../base44/shared/readinessEvidence';
+
+describe('readiness evidence', () => {
+  it('requires a usable recovery measurement beyond training form', () => {
+    expect(countRecoverySignals({ tsb: -30 }, {})).toBe(0);
+    expect(countRecoverySignals({ tsb: -4, hrv: 60, resting_hr: 55 }, {})).toBe(0);
+    expect(countRecoverySignals({ tsb: -4, hrv: 60 }, { hrv: 50 })).toBe(1);
+  });
+
+  it('counts sleep once and checks device score bounds', () => {
+    expect(countRecoverySignals({ sleep_score: 70, sleep_duration_hours: 7.5, body_battery: 0, stress_score: 101 }, {})).toBe(2);
+  });
+});
 
 describe('computeHolisticReadiness', () => {
   it('calculates optimal readiness when metrics exceed baseline and TSB is positive', () => {
