@@ -1,35 +1,35 @@
-import { secrets } from "base44:runtime";
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
 import { reportError } from '../../shared/errorReport.ts';
+import { stripeEnvironment, stripeSecret } from '../../shared/stripeEnvironment.ts';
 
 const PRICE_BY_PLAN = { pro: "PRO_PRICE_ID", unlimited: "UNLIMITED_PRICE_ID", coach_pro: "COACH_PRO_PRICE_ID" };
 
 export default async function(req) {
+  let base44;
   try {
     // Resolve the authenticated caller so subscriptions can never be attributed
     // to an arbitrary or nonexistent account. The frontend Subscribe page is
     // behind AppLayout (auth-gated), so the caller's session is expected here.
-    const base44 = createClientFromRequest(req);
-    const user = await base44.auth.me();
+    base44 = createClientFromRequest(req);
+    const user = await base44.auth.me().catch(() => null);
     if (!user) return Response.json({ error: "Authentication required to start checkout." }, { status: 401 });
 
-    const body = await req.json();
+    const body = await req.json().catch(() => null);
+    const { appId, apiKey, origin, liveCheckout, webhookSecret } = stripeEnvironment();
+    const available = Boolean(liveCheckout && apiKey && webhookSecret && stripeSecret('PRO_PRICE_ID'));
+    if (body?.action === 'status') return Response.json({ available });
+    if (!available) return Response.json({ error: 'Paid upgrades are temporarily unavailable. You can continue on the free plan.' }, { status: 503 });
+
     const { plan } = body || {};
-    const priceSecret = PRICE_BY_PLAN[plan];
+    const priceSecret = Object.hasOwn(PRICE_BY_PLAN, plan) ? PRICE_BY_PLAN[plan] : null;
     if (!priceSecret) return Response.json({ error: "Invalid plan" }, { status: 400 });
 
-    const priceId = secrets.get(priceSecret);
-    const apiKey = secrets.get("STRIPE_SECRET_KEY");
-    if (!priceId || !apiKey) {
+    const priceId = stripeSecret(priceSecret);
+    if (!priceId) {
       console.error("stripeCheckout missing config", { hasPrice: !!priceId, hasKey: !!apiKey });
       return Response.json({ error: "Billing not configured" }, { status: 500 });
     }
 
-    const origin = req.headers.get("X-Base44-App-Url")?.replace(/\/+$/, "");
-    if (!origin) {
-      console.error("stripeCheckout: missing X-Base44-App-Url header");
-      return Response.json({ error: "Could not determine the app URL for checkout." }, { status: 400 });
-    }
     const params = new URLSearchParams();
     // fixed_by_ui (Checkout Studio) parameters
     params.append("ui_mode", "hosted");
@@ -48,7 +48,6 @@ export default async function(req) {
     params.append("client_reference_id", user.id);
     params.append("success_url", `${origin}/welcome?plan=${plan}`);
     params.append("cancel_url", `${origin}/subscribe?status=canceled`);
-    const appId = Deno.env.get("BASE44_APP_ID") || "";
     params.append("metadata[base44_app_id]", appId);
     params.append("metadata[plan]", plan);
     params.append("metadata[user_id]", user.id);

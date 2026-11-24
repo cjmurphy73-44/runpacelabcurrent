@@ -13,6 +13,8 @@ Deno.serve(async function(req) {
 
     const e = base44.asServiceRole.entities;
     const owned = { created_by_id: user.id };
+    const profiles = await e.AthleteProfile.filter(owned, 'id', 100, 0, ['id', 'created_by_id']);
+    const athleteIds = profiles.filter(profile => profile.created_by_id === user.id).map(profile => profile.id);
     await e.CorosRecordingArchive.deleteMany({ owner_user_id: user.id });
 
     // Best-effort cleanup of the user's data; a failure on one entity must not
@@ -33,14 +35,14 @@ Deno.serve(async function(req) {
       () => e.CoachAthleteAssignment.deleteMany({ coach_user_id: user.id }),
       // Also remove roster entries where THIS user is the athlete, so coaches
       // don't keep a dangling reference to a deleted profile.
-      ...(user.data?.athlete_profile_id ? [() => e.CoachAthleteAssignment.deleteMany({ athlete_profile_id: user.data.athlete_profile_id })] : []),
+      ...athleteIds.map(athleteId => () => e.CoachAthleteAssignment.deleteMany({ athlete_profile_id: athleteId })),
       () => e.Subscription.deleteMany({ user_id: user.id }),
       () => e.LabResult.deleteMany(owned),
       () => e.BetaFeedback.deleteMany(owned),
       () => e.BetaFeedback.deleteMany({ submitted_by_user_id: user.id }),
       // WebhookEvent rows are written by service-role sync functions, so created_by_id
       // never points at the athlete; match on athlete_id instead or deletion leaves them.
-      ...(user.data?.athlete_profile_id ? [() => e.WebhookEvent.deleteMany({ athlete_id: user.data.athlete_profile_id })] : []),
+      ...athleteIds.map(athleteId => () => e.WebhookEvent.deleteMany({ athlete_id: athleteId })),
     ];
     for (const del of cleanup) {
       try { await del(); } catch (err) { /* best-effort; continue */ }

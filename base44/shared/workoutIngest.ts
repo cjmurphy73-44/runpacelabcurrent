@@ -6,6 +6,7 @@
 import fitParser from 'npm:fit-file-parser';
 
 export { VALID_WORKOUT_SPORTS as VALID_SPORTS } from './workoutSports.ts';
+export { getOwnedAthlete } from './ownership.ts';
 
 // Banister's HR-based TRIMP (sex-weighted exponential), the primary session stress metric.
 export function calcTrimp(durationMin, avgHr, restHr, maxHr, sex) {
@@ -34,18 +35,6 @@ export function normalizeSport(raw) {
 export function selfUrl(req) {
   const u = new URL(req.url);
   return u.origin + u.pathname;
-}
-
-export async function getOwnedAthlete(base44, userId) {
-  if (!userId) return null;
-  const me = await base44.asServiceRole.entities.User.get(userId).catch(() => null);
-  const linkedId = me?.data?.athlete_profile_id || me?.athlete_profile_id || null;
-  if (linkedId) {
-    const linked = await base44.asServiceRole.entities.AthleteProfile.get(linkedId).catch(() => null);
-    if (linked) return linked;
-  }
-  const athletes = await base44.asServiceRole.entities.AthleteProfile.filter({ created_by_id: userId }, '-updated_date', 50);
-  return athletes[0] || null;
 }
 
 // Enhanced FIT parser that returns both session summary and per-second time-series streams

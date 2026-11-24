@@ -4,12 +4,26 @@ import { getAppParams } from '../app-params';
 const productionAppId = '6a504ebe6a5a6d1be058226c';
 
 afterEach(() => {
+  vi.unstubAllGlobals();
   vi.unstubAllEnvs();
   window.localStorage.clear();
   window.history.replaceState(null, '', '/');
 });
 
 describe('Base44 deployment targeting', () => {
+  it('pins the published site to its own app and functions regardless of editor bootstrap data', () => {
+    vi.stubEnv('VITE_BASE44_APP_ID', 'wrong-app');
+    vi.stubEnv('VITE_BASE44_APP_BASE_URL', 'https://wrong.example');
+    const native = window;
+    vi.stubGlobal('window', {
+      ...native,
+      localStorage: native.localStorage,
+      location: new URL('https://trainpacelab.com/?app_id=wrong&app_base_url=https://wrong.example&functions_version=old'),
+    });
+    expect(getAppParams()).toMatchObject({
+      appId: productionAppId, appBaseUrl: 'https://trainpacelab.com', serverUrl: 'https://trainpacelab.com', functionsVersion: '',
+    });
+  });
   it('pins a configured staging build through a stale production bootstrap and OAuth callback', () => {
     vi.stubEnv('VITE_BASE44_APP_ID', 'staging-app');
     vi.stubEnv('VITE_BASE44_APP_BASE_URL', 'https://staging.example');

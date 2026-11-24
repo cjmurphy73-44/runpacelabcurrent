@@ -5,27 +5,19 @@
 // and sets metadata[mode]=test so stripeWebhook can distinguish test events
 // from live ones. Live checkout (stripeCheckout) remains untouched.
 
-import { secrets } from "base44:runtime";
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
+import { stripeEnvironment, stripeSecret } from '../../shared/stripeEnvironment.ts';
 
 export default async function(req) {
   try {
     const base44 = createClientFromRequest(req);
-    const user = await base44.auth.me();
+    const user = await base44.auth.me().catch(() => null);
     if (!user) return Response.json({ error: "Authentication required to start test checkout." }, { status: 401 });
 
-    const apiKey = secrets.get("STRIPE_TEST_SECRET_KEY");
-    const priceId = secrets.get("STRIPE_TEST_PRO_PRICE_ID"); // dedicated test-mode price — live price IDs can't be used with a test key
-    if (!apiKey || !priceId) {
-      console.error("stripeTestCheckout missing config", { hasKey: !!apiKey, hasPrice: !!priceId });
-      return Response.json({ error: "Test billing not configured (STRIPE_TEST_SECRET_KEY and STRIPE_TEST_PRO_PRICE_ID required)" }, { status: 500 });
-    }
-
-    const origin = req.headers.get("X-Base44-App-Url")?.replace(/\/+$/, "");
-    if (!origin) {
-      console.error("stripeTestCheckout: missing X-Base44-App-Url header");
-      return Response.json({ error: "Could not determine the app URL for checkout." }, { status: 400 });
-    }
+    const { appId, apiKey, origin, test, webhookSecret } = stripeEnvironment();
+    if (!test) return Response.json({ error: 'Test checkout is only available on private staging.' }, { status: 404 });
+    const priceId = stripeSecret('STRIPE_TEST_PRO_PRICE_ID');
+    if (!apiKey || !priceId || !webhookSecret) return Response.json({ error: 'Test billing is not configured.' }, { status: 503 });
     const params = new URLSearchParams();
     params.append("ui_mode", "hosted");
     params.append("mode", "subscription");
@@ -34,7 +26,6 @@ export default async function(req) {
     params.append("client_reference_id", user.id);
     params.append("success_url", `${origin}/welcome?plan=pro&mode=test`);
     params.append("cancel_url", `${origin}/subscribe?status=canceled&mode=test`);
-    const appId = Deno.env.get("BASE44_APP_ID") || "";
     params.append("metadata[base44_app_id]", appId);
     params.append("metadata[plan]", "pro");
     params.append("metadata[user_id]", user.id);

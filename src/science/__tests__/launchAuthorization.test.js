@@ -1,6 +1,7 @@
 import { build } from 'esbuild';
 import { runInNewContext } from 'node:vm';
 import { describe, expect, it, vi } from 'vitest';
+import { getOwnedAthlete } from '../../../base44/shared/ownership.ts';
 
 const athleteId = 'athlete-fixture';
 const owner = { id: 'owner-fixture', role: 'user' };
@@ -19,6 +20,21 @@ const draft = {
   weekly_plans: [{ week_number: 1, days: [{ date: day, sport: 'running', session_type: 'rest' }] }],
 };
 const bundles = new Map();
+
+it('resolves a wearable profile using persisted ownership and a reviewed administrator mapping', async () => {
+  const archivedProfile = { id: athleteId, created_by_id: 'system-fixture' };
+  const get = vi.fn(async () => archivedProfile);
+  const user = { id: owner.id, role: 'user', athlete_profile_id: athleteId };
+  const User = { get: vi.fn(async () => user) };
+  const base44 = { asServiceRole: { entities: { User, AthleteProfile: { get, filter: vi.fn(async () => []) } } } };
+
+  expect(await getOwnedAthlete(base44, owner.id)).toBeNull();
+  expect(get).not.toHaveBeenCalled();
+  User.get.mockResolvedValue({ ...user, verified_athlete_profile_id: athleteId });
+  expect(await getOwnedAthlete(base44, owner.id)).toBeNull();
+  User.get.mockResolvedValue({ ...user, role: 'admin', verified_athlete_profile_id: athleteId });
+  expect(await getOwnedAthlete(base44, owner.id)).toEqual(archivedProfile);
+});
 
 async function invoke(name, base44, body) {
   if (!bundles.has(name)) {

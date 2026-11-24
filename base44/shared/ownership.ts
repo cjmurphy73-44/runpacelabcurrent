@@ -14,6 +14,19 @@ export function isRecordId(value: unknown): value is string {
   return typeof value === 'string' && /^[A-Za-z0-9_-]{1,128}$/.test(value);
 }
 
+export async function getOwnedAthlete(base44: any, userId: string) {
+  if (!userId) return null;
+  const entities = base44.asServiceRole.entities;
+  const user = await entities.User.get(userId).catch(() => null);
+  const verifiedId = user?.data?.verified_athlete_profile_id ?? user?.verified_athlete_profile_id;
+  if (isRecordId(verifiedId)) {
+    const profile = await entities.AthleteProfile.get(verifiedId).catch(() => null);
+    if (profile && (profile.created_by_id === userId || user?.role === 'admin')) return profile;
+  }
+  const profiles = await entities.AthleteProfile.filter({ created_by_id: userId }, '-updated_date', 1);
+  return profiles.find((profile: any) => profile.created_by_id === userId) ?? null;
+}
+
 // Only persisted ownership and reviewed assignments grant access. RLS cache
 // fields on User and legacy coach-created roster rows are not proof of consent.
 export async function getAuthorizedAthlete(base44: any, user: any, athleteId: unknown) {

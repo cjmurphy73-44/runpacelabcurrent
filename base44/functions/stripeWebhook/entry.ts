@@ -1,30 +1,26 @@
 import { createClientFromRequest } from "npm:@base44/sdk@0.8.44";
-import { secrets } from "base44:runtime";
 import { constantTimeEqual } from "../../shared/crypto.ts";
 import { reportError } from "../../shared/errorReport.ts";
+import { stripeEnvironment, stripeSecret } from "../../shared/stripeEnvironment.ts";
 
 async function verifySignature(body, sigHeader, secret) {
   if (!sigHeader || !secret) return { ok: false };
-  const parts = Object.fromEntries(
-    sigHeader.split(",").map((p) => {
-      const [k, ...rest] = p.split("=");
-      return [k, rest.join("=")];
-    })
-  );
-  const t = parts.t;
-  const v1 = parts.v1;
-  if (!t || !v1) return { ok: false };
-  if (Math.abs(Math.floor(Date.now() / 1000) - parseInt(t, 10)) > 300) return { ok: false };
+  const parts = new URLSearchParams(sigHeader.replaceAll(",", "&"));
+  const t = parts.get("t");
+  const signatures = parts.getAll("v1");
+  if (!t || !/^\d+$/.test(t) || !signatures.length) return { ok: false };
+  if (Math.abs(Math.floor(Date.now() / 1000) - Number(t)) > 300) return { ok: false };
   const enc = new TextEncoder();
   const key = await crypto.subtle.importKey("raw", enc.encode(secret), { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
   const sigBuf = await crypto.subtle.sign("HMAC", key, enc.encode(`${t}.${body}`));
   const computed = [...new Uint8Array(sigBuf)].map((b) => b.toString(16).padStart(2, "0")).join("");
-  return { ok: constantTimeEqual(computed, v1) };
+  return { ok: signatures.some(signature => constantTimeEqual(computed, signature)) };
 }
 
 function planFromPrice(sub, priceIds) {
   const priceId = sub?.items?.data?.[0]?.price?.id;
-  if (priceId && (priceId === priceIds.pro || priceId === priceIds.testPro)) return "pro";
+  if (!priceId) return null;
+  if (priceId === priceIds.pro) return "pro";
   if (priceId === priceIds.unlimited) return "unlimited";
   if (priceId === priceIds.coach_pro) return "coach_pro";
   if (priceId === priceIds.team) return "coach_pro"; // legacy Team → Coach Pro
@@ -39,6 +35,7 @@ function periodEndIso(sub) {
 }
 
 async function getSubscription(apiKey, subId) {
+  if (typeof subId !== 'string' || !/^sub_[a-zA-Z0-9]+$/.test(subId)) return null;
   const r = await fetch(`https://api.stripe.com/v1/subscriptions/${subId}`, {
     headers: { Authorization: `Bearer ${apiKey}`, "Stripe-Version": "2025-10-29.clover" },
   });
@@ -52,33 +49,26 @@ export default async function(req) {
     const body = await req.text();
     const sigHeader = req.headers.get("stripe-signature");
 
-    // Try both live and test webhook secrets. Stripe test events have a different
-    // signing secret than live ones, and event.livemode tells us which API key to
-    // use for subscription retrieval. Try live first, then test.
-    const liveSecret = secrets.get("STRIPE_WEBHOOK_SECRET");
-    const testSecret = secrets.get("STRIPE_TEST_WEBHOOK_SECRET");
-
-    let verifyLive = liveSecret ? await verifySignature(body, sigHeader, liveSecret) : { ok: false };
-    let verifyTest = testSecret ? await verifySignature(body, sigHeader, testSecret) : { ok: false };
-
-    if (!verifyLive.ok && !verifyTest.ok) {
+    const { appId, test, apiKey, webhookSecret } = stripeEnvironment();
+    if (!(await verifySignature(body, sigHeader, webhookSecret)).ok) {
       return Response.json({ error: "Invalid signature" }, { status: 400 });
     }
-
     const event = JSON.parse(body);
-    const isTestMode = !event.livemode || verifyTest.ok;
-    const apiKey = isTestMode ? (secrets.get("STRIPE_TEST_SECRET_KEY") || secrets.get("STRIPE_SECRET_KEY")) : secrets.get("STRIPE_SECRET_KEY");
+    if (event.livemode !== !test) return Response.json({ error: 'Stripe mode mismatch' }, { status: 400 });
+    if (!apiKey) return Response.json({ error: 'Billing is not configured' }, { status: 503 });
 
     const sr = base44.asServiceRole;
     // Only Pro is sold today. Unlimited / Coach Pro / legacy Team prices are optional and
     // must never break the webhook when their secrets aren't defined.
-    const optionalSecret = (name) => { try { return secrets.get(name) || null; } catch { return null; } };
-    const priceIds = { pro: secrets.get("PRO_PRICE_ID"), unlimited: optionalSecret("UNLIMITED_PRICE_ID"), coach_pro: optionalSecret("COACH_PRO_PRICE_ID"), team: optionalSecret("TEAM_PRICE_ID"), testPro: optionalSecret("STRIPE_TEST_PRO_PRICE_ID") };
+    const priceIds = test ? { pro: stripeSecret('STRIPE_TEST_PRO_PRICE_ID') } : {
+      pro: stripeSecret('PRO_PRICE_ID'), unlimited: stripeSecret('UNLIMITED_PRICE_ID'),
+      coach_pro: stripeSecret('COACH_PRO_PRICE_ID'), team: stripeSecret('TEAM_PRICE_ID'),
+    };
 
     // Event-id idempotency: Stripe retries events. Key on the Stripe event id so a
     // retried event is processed exactly once — independent of the subscription-level
     // dedup below.
-    const eventId = `stripe:${event.id}`;
+    const eventId = test ? `stripe:test:${event.id}` : `stripe:${event.id}`;
     try {
       const seen = await sr.entities.WebhookEvent.filter({ event_id: eventId });
       if (seen.length > 0) return Response.json({ received: true, duplicate: true });
@@ -114,24 +104,31 @@ export default async function(req) {
     if (isCheckoutEvent) {
       const s = event.data.object;
       const userId = s.client_reference_id;
-      if (!userId) {
+      if (!userId || s.metadata?.user_id !== userId || s.metadata?.base44_app_id !== appId) {
         await logEvent("ack_only");
-        return Response.json({ received: true, error: "No client_reference_id on session" });
+        return Response.json({ received: true, ignored: 'checkout_account_metadata' });
       }
 
       // Never grant on an unpaid session — wait for the confirmed payment event.
-      const paid = s.payment_status === "paid" || s.payment_status === "no_payment_required";
+      const paid = s.payment_status === "paid";
       if (!paid) {
         await logEvent("ack_only");
         return Response.json({ received: true, pending: s.payment_status || "unknown" });
       }
 
       const sub = await getSubscription(apiKey, s.subscription);
-      const plan = sub ? planFromPrice(sub, priceIds) : null;
+      if (!sub) return Response.json({ error: 'Could not retrieve Stripe subscription' }, { status: 503 });
+      if (sub.livemode !== event.livemode || sub.customer !== s.customer || sub.metadata?.user_id !== userId || sub.metadata?.base44_app_id !== appId) {
+        return Response.json({ received: true, ignored: 'subscription_account_metadata' });
+      }
+      if (sub.status !== 'active' && sub.status !== 'trialing') {
+        return Response.json({ received: true, pending: sub.status });
+      }
+      const plan = planFromPrice(sub, priceIds);
       // Do NOT default to "pro" — if we can't identify the price, reject so the
       // issue is visible instead of silently granting the wrong plan.
       if (!plan) {
-        console.error("stripeWebhook: could not resolve plan from subscription", { subId: s.subscription, mode: isTestMode ? "test" : "live" });
+        console.error("stripeWebhook: could not resolve plan from subscription", { subId: s.subscription, mode: test ? "test" : "live" });
         await logEvent("ack_only");
         return Response.json({ received: true, error: "Could not resolve plan from subscription price" });
       }
@@ -141,8 +138,8 @@ export default async function(req) {
       const price = sub?.items?.data?.[0]?.price;
       const expected = Number(price?.unit_amount);
       const charged = Number(s.amount_total);
-      const currencyMismatch = !!(s.currency && price?.currency && s.currency !== price.currency);
-      const amountMismatch = Number.isFinite(expected) && expected > 0 && (!Number.isFinite(charged) || charged > expected);
+      const currencyMismatch = !s.currency || s.currency !== price?.currency;
+      const amountMismatch = !Number.isSafeInteger(expected) || expected <= 0 || charged !== expected;
       if (currencyMismatch || amountMismatch) {
         console.error("stripeWebhook: amount/currency mismatch — not provisioning", {
           sessionId: s.id, charged, expected, currency: s.currency, priceCurrency: price?.currency,
@@ -153,28 +150,6 @@ export default async function(req) {
 
       const periodEnd = periodEndIso(sub);
       await provision(userId, plan, "active", s.customer, s.subscription, periodEnd);
-      await logEvent("created");
-    } else if (event.type === "customer.subscription.created") {
-      // Fallback provisioning path: when checkout.session.completed is not
-      // delivered (or arrives out of order), customer.subscription.created
-      // still fires and carries the same metadata[plan] + metadata[user_id].
-      const sub = event.data.object;
-      const userId = sub.metadata?.user_id;
-      const plan = planFromPrice(sub, priceIds);
-      if (!userId || !plan) {
-        await logEvent("ack_only");
-        return Response.json({ received: true, error: "Missing user_id or plan in subscription metadata" });
-      }
-      // A subscription can exist before payment settles (incomplete / unpaid / past_due).
-      // This path only mirrors a live subscription; the paid checkout event is what grants
-      // access for delayed payment methods, so nothing is provisioned here until it's live.
-      if (sub.status !== "active" && sub.status !== "trialing") {
-        await logEvent("ack_only");
-        return Response.json({ received: true, pending: sub.status });
-      }
-      const status = sub.status === "active" || sub.status === "trialing" ? "active" : sub.status === "past_due" ? "past_due" : "canceled";
-      const periodEnd = periodEndIso(sub);
-      await provision(userId, plan, status, sub.customer, sub.id, periodEnd);
       await logEvent("created");
     } else if (event.type === "customer.subscription.updated") {
       const sub = event.data.object;

@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
+import { useQuery } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
 import { useAuth } from "@/lib/AuthContext";
 import { useSubscription } from "@/hooks/useSubscription";
@@ -23,6 +24,13 @@ export default function Subscribe() {
   const [redeeming, setRedeeming] = useState(false);
 
   const [portalBusy, setPortalBusy] = useState(false);
+  const checkout = useQuery({
+    queryKey: ["stripe-checkout-availability", user?.id],
+    enabled: Boolean(user?.id),
+    queryFn: async () => (await base44.functions.invoke("stripeCheckout", { action: "status" }))?.data?.available === true,
+    staleTime: 60_000,
+    retry: false,
+  });
 
   React.useEffect(() => {
     const notice = billingReturnNotice(params.get("status"));
@@ -54,10 +62,11 @@ export default function Subscribe() {
   };
 
   const subscribe = async (tier) => {
+    if (!checkout.data) return;
     // Stripe Checkout must open as a top-level page. When framed (builder
     // preview), open a new tab synchronously before awaiting the session so
     // popup blockers keep the user activation; when top-level, navigate the
-    // current page. Never disable checkout based on iframe/publish state.
+    // current page.
     const isFramed = window.self !== window.top;
     const checkoutTab = isFramed ? window.open("", "_blank") : null;
     if (isFramed && !checkoutTab) {
@@ -68,7 +77,7 @@ export default function Subscribe() {
     setBusy(tier);
     try {
       base44.analytics.track({ eventName: "checkout_started", properties: { plan: tier } });
-      const res = await base44.functions.invoke("stripeCheckout", { plan: tier, user_id: user?.id });
+      const res = await base44.functions.invoke("stripeCheckout", { plan: tier });
       const url = res?.data?.url;
       if (!url) throw new Error("No checkout URL returned");
       if (checkoutTab) checkoutTab.location.replace(url);
@@ -104,7 +113,7 @@ export default function Subscribe() {
   };
 
   return (
-    <PageShell title="Plans & billing" description="Upgrade to unlock unlimited sync, adaptive re-planning, and structured workout export.">
+    <PageShell title="Plans & billing" description="Compare plans and manage your subscription.">
       <div className="flex items-center gap-2 mb-2 flex-wrap">
         <Badge variant={isPro ? "default" : "outline"}>Current plan: {PLAN_DETAILS[currentPlan]?.label ?? "Free"}</Badge>
         {isPro && (
@@ -114,6 +123,9 @@ export default function Subscribe() {
           </Button>
         )}
       </div>
+      {checkout.isFetched && !checkout.data && (
+        <p role="status" className="mb-3 text-sm text-muted-foreground">Paid upgrades are temporarily unavailable. You can continue using your current plan.</p>
+      )}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4 items-start">
         {PLAN_TIERS.map((tier) => {
           const d = PLAN_DETAILS[tier];
@@ -151,8 +163,8 @@ export default function Subscribe() {
                 ) : d.comingSoon ? (
                   <Button variant="outline" className="w-full" disabled>Coming Soon</Button>
                 ) : (
-                  <Button className="w-full" disabled={isCurrent || busy !== null} onClick={() => subscribe(tier)}>
-                    {busy === tier ? "Redirecting…" : isCurrent ? "Current plan" : `Upgrade to ${d.label}`}
+                  <Button className="w-full" disabled={isCurrent || busy !== null || !checkout.data} onClick={() => subscribe(tier)}>
+                    {busy === tier ? "Redirecting…" : isCurrent ? "Current plan" : checkout.data ? `Upgrade to ${d.label}` : checkout.isFetching ? "Checking availability…" : "Upgrades paused"}
                   </Button>
                 )}
               </CardContent>
