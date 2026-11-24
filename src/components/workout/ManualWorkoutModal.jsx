@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { base44 } from "@/api/base44Client";
+import { saveManualWorkout } from "@/services/manualWorkout";
 import {
   Dialog,
   DialogContent,
@@ -56,30 +56,15 @@ export default function ManualWorkoutModal({ open, onClose, athleteId, onSaved }
     }
     setSaving(true);
     try {
-      const payload = {
-        athlete_id: athleteId,
-        date,
-        sport,
-        duration_minutes: dur,
-        duration_seconds: dur * 60,
-        source_format: "csv",
-        session_trimp: 0,
-        session_tss: estimatedTss,
-      };
-      if (distance) payload.distance_km = Number(distance);
-      await base44.entities.WorkoutSession.create(payload);
-
-      // Recompute the EWMA model and persist CTL/ATL/TSB so the dashboard updates instantly.
-      try {
-        await base44.functions.invoke("recalculateCTLATLTSB", { athlete_id: athleteId });
-      } catch (recalcErr) {
-        // Non-fatal: the local banner recomputes from workouts regardless.
-        console.warn("recalculateCTLATLTSB failed", recalcErr);
-      }
-
+      const result = await saveManualWorkout({
+        athlete_id: athleteId, date, sport, duration_minutes: dur,
+        distance_km: distance === "" ? undefined : Number(distance), rpe: Number(rpe),
+      });
       toast({
         title: "Workout saved",
-        description: `Logged ${dur} min · est. TSS ${estimatedTss}. Fitness refreshed.`,
+        description: result.training_load_refreshed
+          ? `Logged ${dur} min · est. TSS ${estimatedTss}.`
+          : "Training load could not be refreshed yet.",
       });
       onSaved?.();
       reset();

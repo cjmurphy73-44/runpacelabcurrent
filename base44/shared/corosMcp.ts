@@ -14,7 +14,6 @@
 import { env } from './oauth.ts';
 import { parseFitWithLaps } from './workoutParsers.ts';
 import { assertSafeFileUrl } from './urlGuard.ts';
-import { isCompleteCorosFit, MAX_COROS_FIT_BYTES } from './corosRecordingArchive.ts';
 import { fitUrlsFromText } from './corosFitUrls.ts';
 export { fitUrlsFromText } from './corosFitUrls.ts';
 
@@ -215,28 +214,7 @@ export async function queryCorosRecords(accessToken: string, startDate: string, 
 // on the next. Only the https URLs on COROS storage are used.
 // Download and parse one activity's original FIT file. Returns null when COROS has no
 // file for the activity or the file does not decode — the caller then keeps the summary.
-async function readOriginalFit(response: Response) {
-  const reader = response.body?.getReader();
-  if (!reader) return null;
-  const buffer = new Uint8Array(MAX_COROS_FIT_BYTES);
-  let length = 0;
-  try {
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) return buffer.slice(0, length);
-      if (length + value.byteLength > buffer.length) {
-        await reader.cancel();
-        return null;
-      }
-      buffer.set(value, length);
-      length += value.byteLength;
-    }
-  } finally {
-    reader.releaseLock();
-  }
-}
-
-export async function downloadCorosFit(accessToken: string, labelId: string | number, sportType: number | string | null, retainOriginal = false): Promise<{ fileType: string; stream: any[]; laps: any[]; original?: Uint8Array<ArrayBuffer> } | null> {
+export async function downloadCorosFit(accessToken: string, labelId: string | number, sportType: number | string | null): Promise<{ fileType: string; stream: any[]; laps: any[] } | null> {
   if (!labelId) return null;
   let urls: string[] = [];
   try {
@@ -251,20 +229,17 @@ export async function downloadCorosFit(accessToken: string, labelId: string | nu
     return null;
   }
 
-  for (const url of retainOriginal ? urls.slice(0, 3) : urls) {
+  for (const url of urls) {
     if (!assertSafeFileUrl(url).ok) continue;
     try {
-      const res = retainOriginal
-        ? await fetch(url, { signal: AbortSignal.timeout(30_000), redirect: 'error' })
-        : await fetchWithTimeout(url, {}, 30000);
+      const res = await fetchWithTimeout(url, {}, 30000);
       if (!res.ok) continue;
-      const buf = retainOriginal ? await readOriginalFit(res) : new Uint8Array(await res.arrayBuffer());
-      if (!buf || (retainOriginal && !isCompleteCorosFit(buf))) continue;
+      const buf = new Uint8Array(await res.arrayBuffer());
       // FIT header: bytes 8..12 spell ".FIT"; anything else is not a decodable activity file.
       const isFit = buf.length > 14 && buf[8] === 0x2e && buf[9] === 0x46 && buf[10] === 0x49 && buf[11] === 0x54;
       if (!isFit) continue;
       const parsed = parseFitWithLaps(buf);
-      if (parsed?.stream?.length) return { fileType: 'fit', stream: parsed.stream, laps: parsed.laps || [], ...(retainOriginal ? { original: buf } : {}) };
+      if (parsed?.stream?.length) return { fileType: 'fit', stream: parsed.stream, laps: parsed.laps || [] };
     } catch (e) {
       console.warn('COROS FIT download failed:', (e as Error).message);
     }

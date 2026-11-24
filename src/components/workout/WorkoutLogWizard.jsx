@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { base44 } from "@/api/base44Client";
+import { saveManualWorkout } from "@/services/manualWorkout";
 import {
   Dialog,
   DialogContent,
@@ -97,29 +98,18 @@ export default function WorkoutLogWizard({ open, onClose, athleteId, onSaved }) 
           date,
         });
         result = res.data;
+        refreshFailed = result?.training_load_refreshed === false;
         if (!result?.success) throw new Error(result?.error || "Import was not confirmed.");
         result = result.workout_session ?? (result.workout_session_id
           ? await base44.entities.WorkoutSession.get(result.workout_session_id).catch(() => null)
           : null);
       } else {
-        const payload = {
-          athlete_id: athleteId,
-          date,
-          sport,
-          duration_minutes: dur,
-          duration_seconds: dur * 60,
-          source_format: "csv",
-          session_trimp: 0,
-          session_tss: estimatedTss,
-        };
-        if (dist) payload.distance_km = dist;
-        await base44.entities.WorkoutSession.create(payload);
-        try {
-          await base44.functions.invoke("recalculateCTLATLTSB", { athlete_id: athleteId });
-        } catch {
-          refreshFailed = true;
-        }
-        result = { duration_minutes: dur, session_tss: estimatedTss };
+        const savedWorkout = await saveManualWorkout({
+          athlete_id: athleteId, date, sport, duration_minutes: dur,
+          distance_km: distance === "" ? undefined : Number(distance), rpe: Number(rpe),
+        });
+        result = savedWorkout.workout_session;
+        refreshFailed = !savedWorkout.training_load_refreshed;
       }
       setSaved({
         date,

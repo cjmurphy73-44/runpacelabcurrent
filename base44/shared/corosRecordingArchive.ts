@@ -32,7 +32,7 @@ function sameScope(row: any, scope: Scope) {
     row.provider_activity_id === scope.provider_activity_id;
 }
 
-async function digest(bytes: Uint8Array<ArrayBuffer>) {
+export async function hashCorosRecording(bytes: Uint8Array<ArrayBuffer>) {
   const hash = await crypto.subtle.digest('SHA-256', bytes);
   return Array.from(new Uint8Array(hash), (value) => value.toString(16).padStart(2, '0')).join('');
 }
@@ -57,7 +57,7 @@ async function readParts(store: ArchiveStore, scope: Scope, manifest: Manifest) 
     if (decoded.length !== size) throw new Error('Invalid COROS archive part size');
     for (let i = 0; i < size; i++) bytes[offset + i] = decoded.charCodeAt(i);
   }
-  if (!isCompleteCorosFit(bytes) || await digest(bytes) !== sha256) throw new Error('COROS archive checksum mismatch');
+  if (!isCompleteCorosFit(bytes) || await hashCorosRecording(bytes) !== sha256) throw new Error('COROS archive checksum mismatch');
   return bytes;
 }
 
@@ -81,7 +81,7 @@ export async function saveCorosArchive(
   }
   const attempt_id = crypto.randomUUID();
   const manifest = {
-    attempt_id, byte_count: bytes.length, part_count: Math.ceil(bytes.length / PART_BYTES), sha256: await digest(bytes),
+    attempt_id, byte_count: bytes.length, part_count: Math.ceil(bytes.length / PART_BYTES), sha256: await hashCorosRecording(bytes),
   };
   const rows = Array.from({ length: manifest.part_count }, (_, part_index) => ({
     ...scope, owner_user_id: ownerUserId, attempt_id, part_index, kind: 'part',

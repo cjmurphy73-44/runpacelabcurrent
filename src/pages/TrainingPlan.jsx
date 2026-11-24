@@ -21,6 +21,7 @@ export default function TrainingPlan() {
   const [committing, setCommitting] = useState(false);
   const [loadError, setLoadError] = useState(false);
   const [commitError, setCommitError] = useState(null);
+  const [retirementIncomplete, setRetirementIncomplete] = useState(false);
   const injury = useCoachInjurySignal(athlete?.id);
 
   const load = useCallback(async () => {
@@ -67,7 +68,9 @@ export default function TrainingPlan() {
     setCommitError(null);
     try {
       const res = await base44.functions.invoke("commitTrainingPlan", { plan_id: plan.id });
-      if (res.data?.training_plan) setPlan(res.data.training_plan);
+      if (!res.data?.training_plan) throw new Error("Plan activation was not confirmed.");
+      setPlan(res.data.training_plan);
+      setRetirementIncomplete(res.data.previous_schedule_retired === false);
     } catch (e) {
       console.error("Commit failed", e);
       setCommitError(e?.message || "Couldn't commit the plan. Please try again.");
@@ -160,6 +163,12 @@ export default function TrainingPlan() {
         <div className="flex justify-end">
           <Button variant="outline" size="sm" onClick={() => setShowGenerator(true)}>Generate New Plan</Button>
         </div>
+      )}
+      {retirementIncomplete && (
+        <Alert>
+          <AlertTitle>Your new plan is active</AlertTitle>
+          <AlertDescription>Some previous sessions may still appear in your calendar.</AlertDescription>
+        </Alert>
       )}
       <section aria-labelledby="current-coaching-status" className="space-y-2">
         <h2

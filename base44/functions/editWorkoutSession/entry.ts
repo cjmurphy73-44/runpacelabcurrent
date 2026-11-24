@@ -6,6 +6,7 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.52';
 import { assertOwnsAthlete } from '../../shared/ownership.ts';
 import { recomputeCTLATLTSB } from '../../shared/ctlRecalc.ts';
+import { isWorkoutSport } from '../../shared/workoutSports.ts';
 import { resolveSessionLoad } from '../../shared/loadModel.ts';
 
 const EDITABLE_FIELDS = new Set([
@@ -13,7 +14,7 @@ const EDITABLE_FIELDS = new Set([
   'avg_hr', 'max_hr', 'avg_power', 'avg_cadence',
 ]);
 
-const VALID_SPORTS = new Set(['running', 'walking', 'cycling', 'swimming', 'strength', 'triathlon', 'other']);
+
 
 export default async function(req: Request): Promise<Response> {
   try {
@@ -61,7 +62,7 @@ export default async function(req: Request): Promise<Response> {
     for (const [k, v] of Object.entries(updates)) {
       if (!EDITABLE_FIELDS.has(k)) continue;
       if (v === undefined || v === null || v === '') continue;
-      if (k === 'sport' && !VALID_SPORTS.has(v)) {
+      if (k === 'sport' && !isWorkoutSport(v)) {
         return Response.json({ error: 'Invalid sport' }, { status: 400 });
       }
       if (k === 'date') {

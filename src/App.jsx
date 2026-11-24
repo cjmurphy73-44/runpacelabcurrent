@@ -80,6 +80,7 @@ export default function App() {
               <Route path="/analytics" element={<AdvancedAnalytics />} />
               <Route path="/workouts" element={<Workouts />} />
               <Route path="/workouts/:id" element={<ActivityDetail />} />
+              <Route path="/activity/:id" element={<ActivityDetail />} />
               <Route path="/plan" element={<TrainingPlan />} />
               <Route path="/settings" element={<AthleteSettings />} />
               <Route path="/import" element={<Imports />} />

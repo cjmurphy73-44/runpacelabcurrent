@@ -13,7 +13,7 @@ export default function CorosOriginalRecording({ workout }) {
     setLoading(true);
     setError("");
     try {
-      const { data } = await base44.functions.invoke("corosSync", {
+      const { data } = await base44.functions.invoke("corosRecording", {
         action: "recover_recording", workout_id: workout.id,
       });
       if (data?.status !== "verified" || !Array.isArray(data.streams) || data.streams.length !== data.sample_count) {

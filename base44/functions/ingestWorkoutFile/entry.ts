@@ -10,17 +10,21 @@ import { assertSafeFileUrl } from '../../shared/urlGuard.ts';
 import { assertOwnsAthlete } from '../../shared/ownership.ts';
 import { reportError } from '../../shared/errorReport.ts';
 import { checkImportAllowance } from '../../shared/importLimit.ts';
+import { isWorkoutSport } from '../../shared/workoutSports.ts';
 import { inlineWorkoutStream } from '../../shared/streamValidity.ts';
 
 Deno.serve(async (req) => {
+  const base44 = createClientFromRequest(req);
   try {
-    const base44 = createClientFromRequest(req);
-    const user = await base44.auth.me();
+    const user = await base44.auth.me().catch(() => null);
     if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
 
     const { athlete_id, file_url, file_name, sport, date } = await req.json();
     if (!athlete_id || !file_url || !file_name || !date) {
       return Response.json({ error: 'athlete_id, file_url, file_name and date are required' }, { status: 400 });
+    }
+    if (sport && !isWorkoutSport(sport)) {
+      return Response.json({ error: 'Invalid workout sport' }, { status: 400 });
     }
     if (new Date(date) > new Date()) {
       return Response.json({ error: 'date cannot be in the future' }, { status: 400 });
@@ -247,12 +251,15 @@ Deno.serve(async (req) => {
       if (!match.avg_cadence && ms?.avg_cadence) update.avg_cadence = ms.avg_cadence;
       if (!match.distance_km && ms?.distance_km) update.distance_km = ms.distance_km;
 
-      await base44.entities.WorkoutSession.update(match.id, update);
+      const updatedSession = await base44.entities.WorkoutSession.update(match.id, update);
 
       // ZERO-DELTA LOAD GUARD: deliberately do NOT invoke calculateDailyTRIMP or
       // recalculateCTLATLTSB — the session's training load was already counted on the
       // first asset. Attaching a second format enriches the stream/laps only.
-      return Response.json({ success: true, attached: true, workout_session_id: match.id });
+      return Response.json({
+        success: true, attached: true, workout_session_id: match.id, workout_session: updatedSession,
+        duration_minutes: match.duration_minutes, session_tss: match.session_tss,
+      });
     }
 
     // First-upload path: create the session + its first WorkoutAsset, then count load once.
@@ -355,25 +362,33 @@ Deno.serve(async (req) => {
       streams: inlineWorkoutStream(stream),
     });
 
-    // Bind the first asset row to the new session.
-    await base44.entities.WorkoutAsset.create({
-      session_id: session.id,
-      athlete_id,
-      file_url,
-      file_name,
-      file_type: fileType,
-      source_priority: SOURCE_PRIORITY[fileType],
-      parsing_status: 'parsed',
-      uploaded_at: new Date().toISOString(),
-    });
-
-    await base44.functions.invoke('calculateDailyTRIMP', { athlete_id, date });
+    // The session already carries raw_file_url. A later attachment or load
+    // refresh can recover independently if the downstream operation failed.
+    const [asset, load] = await Promise.allSettled([
+      base44.entities.WorkoutAsset.create({
+        session_id: session.id,
+        athlete_id,
+        file_url,
+        file_name,
+        file_type: fileType,
+        source_priority: SOURCE_PRIORITY[fileType],
+        parsing_status: 'parsed',
+        uploaded_at: new Date().toISOString(),
+      }),
+      base44.functions.invoke('calculateDailyTRIMP', { athlete_id, date }),
+    ]);
 
     // Deterministic state handed back to the caller (and recomputed identically
     // inside the AI evaluation before any prose is written).
     const stateSummary = await buildAthleteStateSummary(base44, session).catch(() => null);
 
-    return Response.json({ success: true, workout_session: session, attached: false, athlete_state_summary: stateSummary });
+    return Response.json({
+      success: true, workout_session: session, workout_session_id: session.id,
+      duration_minutes: session.duration_minutes, session_tss: session.session_tss,
+      attached: false, athlete_state_summary: stateSummary,
+      asset_registered: asset.status === 'fulfilled' && Boolean(asset.value?.id),
+      training_load_refreshed: load.status === 'fulfilled' && load.value?.data?.success === true,
+    });
   } catch (error) {
     try { await reportError(base44, { source: 'ingestWorkoutFile', message: error.message, stack: error.stack, severity: 'High' }); } catch {}
     return Response.json({ error: error.message }, { status: 500 });

@@ -54,3 +54,55 @@ describe('safe plan commit preparation', () => {
     }]);
   });
 });
+
+describe('schedule replacement', () => {
+  it('keeps the current active plan and calendar intact when the replacement write fails', async () => {
+    const { commitDraftPlan } = await import('../../../base44/shared/commitDraftPlan');
+    const calls: string[] = [];
+    const response = await commitDraftPlan({
+      entities: {
+        TrainingPlan: {
+          filter: async () => { calls.push('read active'); return []; },
+          update: async () => { calls.push('promote'); },
+          bulkUpdate: async () => { calls.push('archive'); },
+        },
+        TrainingPlanSession: {
+          filter: async () => [],
+          bulkCreate: async () => { calls.push('create new'); throw new Error('unavailable'); },
+          delete: async () => { calls.push('delete pending'); },
+        },
+      },
+    }, draft);
+    expect(response.status).toBe(502);
+    expect(calls).toEqual(['create new']);
+  });
+
+  it('verifies the replacement before retiring pending sessions for the old plan', async () => {
+    const { commitDraftPlan } = await import('../../../base44/shared/commitDraftPlan');
+    const calls: string[] = [];
+    const saved: any[] = [];
+    const response = await commitDraftPlan({
+      entities: {
+        TrainingPlan: {
+          filter: async () => [{ id: 'old-plan' }],
+          update: async () => { calls.push('promote'); return { id: draft.id, status: 'active' }; },
+          bulkUpdate: async () => { calls.push('archive old'); },
+          get: async () => ({ status: 'archived' }),
+        },
+        TrainingPlanSession: {
+          filter: async query => {
+            if (query.status === 'pending') {
+              expect(query.training_plan_id).toEqual({ $in: ['old-plan'] });
+              return [{ id: 'old-pending', date: '2099-01-01' }];
+            }
+            return saved;
+          },
+          bulkCreate: async rows => { calls.push('create new'); saved.push(...rows); },
+          delete: async id => { calls.push(`remove ${id}`); },
+        },
+      },
+    }, draft);
+    expect(await response.json()).toMatchObject({ success: true, previous_schedule_retired: true });
+    expect(calls).toEqual(['create new', 'promote', 'archive old', 'remove old-pending']);
+  });
+});

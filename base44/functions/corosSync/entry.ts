@@ -11,8 +11,6 @@ import { constantTimeEqual } from '../../shared/crypto.ts';
 import { getSyncLookbackDays } from '../../shared/syncLookback.ts';
 import { parseFitWithLaps, summarizeStream } from '../../shared/workoutParsers.ts';
 import { isUsableTelemetry, storageStream, MAX_STREAM_SAMPLES } from '../../shared/streamValidity.ts';
-import { assertOwnsAthlete } from '../../shared/ownership.ts';
-import { readCorosArchive, saveCorosArchive } from '../../shared/corosRecordingArchive.ts';
 import { persistCorosBatches } from '../../shared/corosBatchPersistence.ts';
 import { corosActivityId, isDuplicateCorosSession } from '../../shared/corosActivityIdentity.ts';
 import {
@@ -218,7 +216,6 @@ async function handleWebhook(req, base44) {
     const conns = await base44.asServiceRole.entities.CorosConnection.filter({ coros_user_id: body.coros_user_id });
     if (conns[0]) { connection = conns[0]; athleteId = connection.athlete_id; }
   }
-  if (!athleteId && body.athlete_id) athleteId = body.athlete_id;
   if (!athleteId) return Response.json({ error: 'Could not resolve athlete from webhook payload' }, { status: 400 });
 
   const activity = body.activity || body.workout || body;
@@ -930,56 +927,6 @@ async function handleDisconnect(base44) {
   return Response.json({ success: true });
 }
 
-const MAX_ARCHIVED_SAMPLE_COUNT = 28800;
-
-async function handleRecording(base44, workoutId: unknown, recover: boolean) {
-  const user = await base44.auth.me().catch(() => null);
-  if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
-  if (typeof workoutId !== 'string' || !workoutId.trim()) {
-    return Response.json({ error: 'Workout ID required' }, { status: 400 });
-  }
-  const workout = await base44.entities.WorkoutSession.get(workoutId).catch(() => null);
-  if (!workout || !(await assertOwnsAthlete(base44, user, workout.athlete_id))) {
-    return Response.json({ error: 'Workout not found' }, { status: 404 });
-  }
-  const parts = typeof workout.provider_activity_id === 'string' ? workout.provider_activity_id.split(':') : [];
-  const [sportType, labelId] = parts;
-  if (workout.source_provider !== 'coros' || parts.length !== 2 ||
-    corosActivityId(labelId, sportType) !== workout.provider_activity_id) {
-    return Response.json({ error: 'This workout has no confirmed COROS activity ID.' }, { status: 422 });
-  }
-  const scope = {
-    athlete_id: workout.athlete_id, session_id: workout.id, provider_activity_id: workout.provider_activity_id,
-  };
-  const archive = base44.asServiceRole.entities.CorosRecordingArchive;
-  const expectedDuration = workout.duration_seconds || Number(workout.duration_minutes) * 60;
-  try {
-    let bytes = await readCorosArchive(archive, scope);
-    if (!bytes && recover) {
-      const rows = await base44.asServiceRole.entities.CorosConnection.filter({ athlete_id: workout.athlete_id });
-      const conn = rows.find(row => row.access_token && row.status !== 'disconnected');
-      if (!conn) return Response.json({ error: 'Connect COROS to recover the original recording.' }, { status: 409 });
-      const accessToken = await refreshIfNeeded(conn, base44);
-      const fit = await downloadCorosFit(accessToken, labelId, sportType, true);
-      if (!fit?.original || fit.stream.length > MAX_ARCHIVED_SAMPLE_COUNT || !isUsableTelemetry(fit.stream, expectedDuration)) {
-        return Response.json({ error: 'COROS did not return a usable original recording within the archive limit.' }, { status: 422 });
-      }
-      const athlete = await base44.asServiceRole.entities.AthleteProfile.get(workout.athlete_id);
-      bytes = await saveCorosArchive(archive, scope, athlete.created_by_id, fit.original);
-    }
-    if (!bytes) return Response.json({ status: 'unavailable' });
-    const decoded = parseFitWithLaps(bytes);
-    if (!decoded || decoded.stream.length > MAX_ARCHIVED_SAMPLE_COUNT || !isUsableTelemetry(decoded.stream, expectedDuration)) {
-      return Response.json({ error: 'Archived FIT does not contain a usable recording.' }, { status: 422 });
-    }
-    return Response.json({
-      status: 'verified', streams: storageStream(decoded.stream), sample_count: decoded.stream.length,
-    }, { headers: { 'Cache-Control': 'private, no-store' } });
-  } catch {
-    return Response.json({ error: 'The original COROS recording could not be verified or retrieved.' }, { status: 502 });
-  }
-}
-
 // ----- router -----
 
 Deno.serve(async (req) => {
@@ -1002,9 +949,6 @@ Deno.serve(async (req) => {
     }
     if (action === 'authorize') return await handleAuthorize(req, base44);
     if (action === 'status') return await handleStatus(base44);
-    if (action === 'read_recording' || action === 'recover_recording') {
-      return await handleRecording(base44, body.workout_id, action === 'recover_recording');
-    }
     if (action === 'sync_historical') return await handleSyncHistorical(base44);
     if (action === 'list_tools') return await handleListTools(base44);
     if (action === 'sync_recovery') return await handleSyncRecovery(base44);
