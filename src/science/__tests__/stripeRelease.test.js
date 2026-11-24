@@ -80,7 +80,10 @@ describe('billing release isolation', () => {
   });
 
   it('uses only configured test billing on private staging and binds checkout to the session and app', async () => {
-    const f = fixture(stage, { settings: { STRIPE_PUBLIC_CHECKOUT: 'enabled' } });
+    const f = fixture(stage, { settings: {
+      STRIPE_PUBLIC_CHECKOUT: 'enabled', STRIPE_TEST_SECRET_KEY: undefined,
+      STRIPE_SECRET_KEY: 'sk_test_fixture', STRIPE_TEST_WEBHOOK_SECRET: undefined,
+    } });
     expect((await f.invoke('stripeCheckout', { plan: 'pro' })).status).toBe(503);
     expect((await fixture(stage, { settings: { STRIPE_TEST_SECRET_KEY: 'sk_live_fixture' } }).invoke('stripeTestCheckout', {})).status).toBe(503);
     f.fetch.mockResolvedValue(Response.json({ url: 'https://checkout.stripe.com/fixture' }));

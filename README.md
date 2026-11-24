@@ -62,7 +62,7 @@ When you use `base44 dev`, the command injects the local Base44 values for you, 
 
 ## Publish Your Changes
 
-**Publishing is currently blocked by the Base44 checkpoint/source SHA mismatch.** Do not deploy a checkpoint carrying stale `3f386d4` just because a newer GitHub PR merged. Do not bypass protected `main` to make the Builder sync green. Once the integration is repaired, verify the source SHA, checkpoint and staging preview before using Publish in the Base44 dashboard:
+The published Base44 app serves `trainpacelab.com`. A GitHub merge and its Vercel deployment are separate from the Base44 release. Verify the reviewed source SHA, the built Base44 checkpoint, the private staging behaviour and the rollback checkpoint before using Publish in the Base44 dashboard. Follow the [release procedure](docs/WORKOUT_BACKEND_RELEASE.md) for the backend and permission cutover.
 
 ```bash
 base44 dashboard open

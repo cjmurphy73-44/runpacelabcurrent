@@ -11,7 +11,8 @@ export function stripeEnvironment() {
   const appId = Deno.env.get('BASE44_APP_ID');
   const test = appId === TEST_APP;
   const live = appId === LIVE_APP;
-  const candidateKey = test ? stripeSecret('STRIPE_TEST_SECRET_KEY') : live ? stripeSecret('STRIPE_SECRET_KEY') : null;
+  // Base44-managed sandboxes store their test key under STRIPE_SECRET_KEY.
+  const candidateKey = test ? stripeSecret('STRIPE_TEST_SECRET_KEY') ?? stripeSecret('STRIPE_SECRET_KEY') : live ? stripeSecret('STRIPE_SECRET_KEY') : null;
   const apiKey = candidateKey?.match(test ? /^(sk|rk)_test_/ : /^(sk|rk)_live_/) ? candidateKey : null;
   return {
     appId,

@@ -14,10 +14,10 @@ export default async function(req) {
     const user = await base44.auth.me().catch(() => null);
     if (!user) return Response.json({ error: "Authentication required to start test checkout." }, { status: 401 });
 
-    const { appId, apiKey, origin, test, webhookSecret } = stripeEnvironment();
+    const { appId, apiKey, origin, test } = stripeEnvironment();
     if (!test) return Response.json({ error: 'Test checkout is only available on private staging.' }, { status: 404 });
     const priceId = stripeSecret('STRIPE_TEST_PRO_PRICE_ID');
-    if (!apiKey || !priceId || !webhookSecret) return Response.json({ error: 'Test billing is not configured.' }, { status: 503 });
+    if (!apiKey || !priceId) return Response.json({ error: 'Test billing is not configured.' }, { status: 503 });
     const params = new URLSearchParams();
     params.append("ui_mode", "hosted");
     params.append("mode", "subscription");
