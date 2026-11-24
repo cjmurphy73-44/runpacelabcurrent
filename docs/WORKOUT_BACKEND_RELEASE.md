@@ -30,6 +30,13 @@ Run `node scripts/verify-base44-staging-workouts.mjs --athlete-only` with an aut
 
 For full acceptance, run without `--athlete-only`. Supply authorized sessions for an unrelated test athlete and assigned test coach as `TPL_STAGING_OTHER_ATHLETE_TOKEN` and `TPL_STAGING_COACH_TOKEN` through a private environment. Keep tokens out of logs and source control. The test checks isolation and access to an existing active plan. Supply a confirmed, authorized long COROS workout and independently checked reference data in `TPL_STAGING_COROS_WORKOUT_ID`, `TPL_STAGING_COROS_SAMPLE_COUNT`, `TPL_STAGING_COROS_LAST_SECOND` and `TPL_STAGING_COROS_SHA256`. Recovery persists an archive for that workout. Archive input is limited to 2 MiB and 28,800 samples per request.
 
+## Profile and coach authorization cutover
+
+1. Export a recoverable Base44 data snapshot before changing existing account permissions. Install the optional `User.verified_athlete_profile_id` field and `linkAthleteProfile` first. As an administrator, invoke `backfillOwnershipMapping` in dry-run mode and reconcile ambiguous or failed mappings. Apply only after confirming the mapping and retain the existing records.
+2. With the new roster and linking functions available, switch the athlete entity policies and frontend together. The policies use the server-verified profile link, and coach access is checked against active, administrator-reviewed assignments on each request. Preserve legacy assignments as records. An administrator can approve an existing pair through `manageCoachRoster` after checking the coach's identity and the athlete's consent.
+3. Verify that non-admin users cannot change verified links or grant assignments directly. Test ordinary entity reads and writes alongside the six protected functions. Check that revoking a coach immediately denies future roster and athlete requests.
+4. Unused catalog entities should retain administrator-only access while records are held for retention review. Keep browser support and error reporting authenticated. Monitor Base44 function logs for request errors and keep automatic writes to Airtable out of request handlers.
+
 ## Rollback
 
 Disable archive writes first if the recording path regresses. Restore the verified Vercel deployment independently. If the backend must roll back, restore reviewed handler versions while retaining additive schema fields, the walking enum and any archive rows already written. Removing the new enum after walks have been saved could make existing rows invalid. Preserve plans, workouts, provider connections and archive data during rollback. Record the actual published revisions and repeat the smoke checks after rollback.

@@ -27,6 +27,13 @@
     "notes": {
       "type": "string",
       "description": "Coach's private notes about this athlete (focus areas, cautions)"
+    },
+    "authorization_source": {
+      "type": "string",
+      "enum": [
+        "admin_reviewed"
+      ],
+      "description": "Set by an administrator after verifying the assignment."
     }
   },
   "required": [
@@ -35,45 +42,24 @@
   ],
   "rls": {
     "create": {
-      "$or": [
-        {
-          "data.coach_user_id": "{{user.id}}"
-        },
-        {
-          "user_condition": {
-            "role": "admin"
-          }
-        }
-      ]
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "update": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "delete": {
+      "user_condition": {
+        "role": "admin"
+      }
     },
     "read": {
       "$or": [
         {
-          "created_by_id": "{{user.id}}"
-        },
-        {
-          "user_condition": {
-            "role": "admin"
-          }
-        }
-      ]
-    },
-    "update": {
-      "$or": [
-        {
-          "created_by_id": "{{user.id}}"
-        },
-        {
-          "user_condition": {
-            "role": "admin"
-          }
-        }
-      ]
-    },
-    "delete": {
-      "$or": [
-        {
-          "created_by_id": "{{user.id}}"
+          "data.coach_user_id": "{{user.id}}"
         },
         {
           "user_condition": {

@@ -1,28 +1,30 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
+import { getAuthorizedAthlete, isRecordId } from '../../shared/ownership.ts';
 import { assertPaidPlan } from '../../shared/planGate.ts';
+import { claimRateLimit } from '../../shared/rateLimit.ts';
 import { formatPaceFromMs } from '../../shared/vdot.ts';
 import { deriveRunningThresholdPace } from '../../shared/thresholdPace.ts';
 
 Deno.serve(async (req) => {
   try {
     const base44 = createClientFromRequest(req);
-    const user = await base44.auth.me();
+    const user = await base44.auth.me().catch(() => null);
     if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
+
+    const { athlete_id, event_type } = (await req.json().catch(() => null)) ?? {};
+    if (!isRecordId(athlete_id) || !event_type) return Response.json({ error: 'athlete_id and event_type are required' }, { status: 400 });
+
+    const athlete = await getAuthorizedAthlete(base44, user, athlete_id);
+    if (!athlete) return Response.json({ error: 'Athlete profile not found' }, { status: 404 });
 
     const gate = await assertPaidPlan(base44, user);
     if (!gate.ok) return Response.json({ error: 'Race strategy requires a Pro plan.', plan: gate.plan }, { status: 402 });
-
-    const { athlete_id, event_type } = await req.json();
-    if (!athlete_id || !event_type) return Response.json({ error: 'athlete_id and event_type are required' }, { status: 400 });
-
-    const athlete = await base44.entities.AthleteProfile.get(athlete_id);
-    if (!athlete) return Response.json({ error: 'Athlete profile not found' }, { status: 404 });
 
     // Baseline-test enrichment is optional, the PhysiologicalBaselines entity may not be
     // configured for this app, so a missing schema shouldn't fail the whole strategy.
     let latestBaseline = null;
     try {
-      const baselines = await base44.entities.PhysiologicalBaselines.filter({ athlete_id }, '-recorded_date', 1);
+      const baselines = await base44.asServiceRole.entities.PhysiologicalBaselines.filter({ athlete_id }, '-recorded_date', 1);
       latestBaseline = baselines[0] || null;
     } catch (_e) {
       latestBaseline = null;
@@ -33,7 +35,7 @@ Deno.serve(async (req) => {
     // stored value.
     let thresholdPace = null;
     try {
-      const recentSessions = await base44.entities.WorkoutSession.filter({ athlete_id }, '-date', 200);
+      const recentSessions = await base44.asServiceRole.entities.WorkoutSession.filter({ athlete_id }, '-date', 200);
       thresholdPace = deriveRunningThresholdPace(recentSessions, athlete.vdot_estimate, athlete.functional_threshold_pace_ms, athlete.lactate_threshold_hr);
     } catch (_e) { /* best-effort enrichment */ }
 
@@ -65,6 +67,10 @@ Target event: ${event_type}
 
 Produce a structured ${taperDays}-day exponential taper plan (day 1 = ${taperDays} days out, day ${taperDays} = race day) appropriate to this event's distance, short track/middle-distance events taper fast with sharpening intensity, road races taper progressively, and ultra-endurance events use a longer, recovery-weighted taper, that progressively reduces training volume while retaining short high-intensity efforts to preserve blood plasma volume and neuromuscular sharpness. Also produce a race-day physiological execution strategy with specific heart rate and/or power caps mapped to this athlete's exact thresholds, including fueling/pacing guidance appropriate to the event's duration (e.g. carb intake per hour for ultras).`;
 
+    if (!claimRateLimit(`race-strategy:${user.id}`, 10, 60 * 60_000)) {
+      return Response.json({ error: 'Rate limit exceeded' }, { status: 429 });
+    }
+
     const result = await base44.integrations.Core.InvokeLLM({
       prompt,
       response_json_schema: {
@@ -90,6 +96,6 @@ Produce a structured ${taperDays}-day exponential taper plan (day 1 = ${taperDay
 
     return Response.json(result);
   } catch (error) {
-    return Response.json({ error: error.message }, { status: 500 });
+    return Response.json({ error: 'Request could not be completed' }, { status: 500 });
   }
 });

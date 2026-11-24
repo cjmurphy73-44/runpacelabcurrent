@@ -57,6 +57,7 @@ function WorkoutActivity({ id }) {
   const [loadError, setLoadError] = useState(false);
   const [loadAttempt, setLoadAttempt] = useState(0);
   const [workout, setWorkout] = useState(null);
+  const [coachView, setCoachView] = useState(false);
   const [feedback, setFeedback] = useState(null);
   const [assets, setAssets] = useState(null);
   const [assetError, setAssetError] = useState(false);
@@ -76,11 +77,33 @@ function WorkoutActivity({ id }) {
     setLoading(true);
     setLoadError(false);
     const ifActive = update => { if (active) update(); };
-    base44.entities.WorkoutSession.get(id).then(workout => {
+    const loadWorkout = async () => {
+      try {
+        return { workout: await base44.entities.WorkoutSession.get(id) };
+      } catch (error) {
+        const status = error?.response?.status ?? error?.status;
+        if (status !== 404 && status !== 403) throw error;
+        try {
+          const { data } = await base44.functions.invoke("manageCoachRoster", { action: "workout", workout_id: id });
+          return { ...data, readOnly: true };
+        } catch (coachError) {
+          if ((coachError?.response?.status ?? coachError?.status) === 402) throw error;
+          throw coachError;
+        }
+      }
+    };
+    loadWorkout().then(({ workout, readOnly, feedback: coachFeedback }) => {
       if (!active) return;
       setWorkout(workout);
       setLoading(false);
       if (!workout) return;
+      if (readOnly) {
+        setCoachView(true);
+        setFeedback(coachFeedback);
+        setFeedbackLoading(false);
+        setAssets([]);
+        return;
+      }
 
       if (workout.training_plan_session_id) {
         base44.entities.TrainingPlanSession.get(workout.training_plan_session_id)
@@ -240,7 +263,7 @@ function WorkoutActivity({ id }) {
             ) : (
               <>
                 <span className="text-sm font-mono tabular-nums">{workout.date || "—"}</span>
-                <Button size="sm" variant="outline" onClick={() => { setDateDraft(workout.date || ""); setEditingDate(true); }} className="gap-1.5">
+                <Button size="sm" variant="outline" disabled={coachView} onClick={() => { setDateDraft(workout.date || ""); setEditingDate(true); }} className="gap-1.5">
                   <Pencil className="w-3.5 h-3.5" /> Correct date
                 </Button>
               </>
@@ -357,7 +380,7 @@ function WorkoutActivity({ id }) {
         </section>
       )}
 
-      {workout.source_provider === "coros" && workout.provider_activity_id
+      {!coachView && workout.source_provider === "coros" && workout.provider_activity_id
         ? <CorosOriginalRecording key={workout.id} workout={workout} />
         : <RecordingIntervals workout={workout} />}
 
@@ -395,7 +418,7 @@ function WorkoutActivity({ id }) {
                     <AlertCircle className="w-4 h-4 mt-0.5 shrink-0" />
                     <span>{feedback.feedback}</span>
                   </p>
-                  <Button size="sm" variant="outline" onClick={handleRetry} disabled={retrying} className="gap-1.5">
+                  <Button size="sm" variant="outline" onClick={handleRetry} disabled={retrying || coachView} className="gap-1.5">
                     <RotateCw className={`w-3.5 h-3.5 ${retrying ? "animate-spin" : ""}`} />
                     {retrying ? "Retrying…" : "Retry"}
                   </Button>
@@ -418,7 +441,7 @@ function WorkoutActivity({ id }) {
             ) : feedbackLoading ? (
               <p role="status" className="text-sm text-muted-foreground">Checking for coach insights…</p>
             ) : (
-              <Button size="sm" variant="outline" onClick={handleRetry} disabled={retrying}>
+              <Button size="sm" variant="outline" onClick={handleRetry} disabled={retrying || coachView}>
                 {retrying ? "Generating insights…" : "Generate coach insights"}
               </Button>
             )}

@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useCallback } from "react";
 import { base44 } from "@/api/base44Client";
+import { ensureProfileLinked } from "@/lib/profileLinkage";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 import { Sparkles, ShieldAlert } from "lucide-react";
@@ -30,11 +31,8 @@ export default function TrainingPlan() {
     try {
       const user = await base44.auth.me();
       if (!user) { setLoading(false); return; }
-      // Same precedence as the dashboard: the profile linked on the user record first,
-      // then the most recently updated owned profile. Keeps the plan journey working
-      // even when the profile was created under a different identity.
       let activeAthlete = null;
-      const linkedId = user.data?.athlete_profile_id;
+      const linkedId = user.data?.verified_athlete_profile_id ?? user.verified_athlete_profile_id;
       if (linkedId) {
         try { activeAthlete = await base44.entities.AthleteProfile.get(linkedId); }
         catch (err) { console.warn("Linked athlete_profile_id not resolvable:", err); activeAthlete = null; }
@@ -44,6 +42,7 @@ export default function TrainingPlan() {
         activeAthlete = profiles[0] || null;
       }
       if (activeAthlete) {
+        await ensureProfileLinked(user, activeAthlete);
         setAthlete(activeAthlete);
         const [drafts, activePlans] = await Promise.all([
           base44.entities.TrainingPlan.filter({ athlete_id: activeAthlete.id, status: "draft" }, "-created_date", 1).catch(() => []),

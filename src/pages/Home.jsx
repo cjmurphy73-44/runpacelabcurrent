@@ -101,15 +101,9 @@ export default function Home() {
     (async () => {
       try {
         if (!user) return; // signed-out, show the sign-in prompt below
-        // Prefer the profile explicitly linked on the user (fetch it directly by ID:
-        // a filter by created_by_id misses profiles created under a different identity,
-        // e.g. an earlier auth account or a service-role backend function, which is
-        // exactly why a Gmail re-login "lost" an existing profile full of data).
-        // RLS read allows id == user.data.athlete_profile_id, so this succeeds even
-        // when created_by_id doesn't match the current user. Fall back to the most
-        // recently updated owned profile only when no link is set.
+        // Prefer the server-verified profile, then look up profiles owned by this user.
         let profile = null;
-        const linkedId = user.data?.athlete_profile_id;
+        const linkedId = user.data?.verified_athlete_profile_id ?? user.verified_athlete_profile_id;
         if (linkedId) {
           try {
             profile = await base44.entities.AthleteProfile.get(linkedId);

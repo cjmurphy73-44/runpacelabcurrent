@@ -36,6 +36,8 @@ try {
   const owned = await athlete.entities.AthleteProfile.filter({ created_by_id: owner.id }, '-updated_date', 2);
   assert.equal(owned.length, 1);
   profile = owned[0];
+  const link = await athlete.functions.invoke('linkAthleteProfile', { athlete_id: profile.id });
+  assert.equal(link.data?.success, true);
   const date = new Date().toISOString().slice(0, 10);
   const manual = { athlete_id: profile.id, date, sport: 'walking', duration_minutes: 23, rpe: 3 };
   verified.push(check);
@@ -76,12 +78,14 @@ try {
     assert.notEqual(outsider.role, 'admin');
     assert.notEqual(coachUser.role, 'admin');
     const assigned = await coach.entities.CoachAthleteAssignment.filter({
-      athlete_profile_id: profile.id, coach_user_id: coachUser.id, status: 'active',
+      athlete_profile_id: profile.id, coach_user_id: coachUser.id, status: 'active', authorization_source: 'admin_reviewed',
     }, 'id', 2);
     assert.equal(assigned.length, 1);
     assert.ok(await denied(() => other.functions.invoke('logManualWorkout', manual)));
     assert.ok(await denied(() => other.entities.WorkoutSession.get(saved.id)));
-    assert.equal((await coach.entities.WorkoutSession.get(saved.id))?.id, saved.id);
+    assert.ok(await denied(() => coach.entities.WorkoutSession.get(saved.id)));
+    const shared = await coach.functions.invoke('manageCoachRoster', { action: 'workout', workout_id: saved.id });
+    assert.equal(shared.data?.workout?.id, saved.id);
     verified.push(check);
 
     check = 'active plan and coach reads';
@@ -89,7 +93,8 @@ try {
     assert.equal(plans.length, 1);
     const sessions = await athlete.entities.TrainingPlanSession.filter({ athlete_id: profile.id, training_plan_id: plans[0].id }, 'date', 100);
     assert.ok(sessions.length > 0);
-    assert.equal((await coach.entities.TrainingPlan.get(plans[0].id))?.id, plans[0].id);
+    const roster = await coach.functions.invoke('manageCoachRoster', { action: 'list' });
+    assert.equal(roster.data?.plans?.[profile.id]?.id, plans[0].id);
     assert.ok(await denied(() => other.entities.TrainingPlan.get(plans[0].id)));
     assert.ok(await denied(() => other.functions.invoke('postWorkoutAIEvaluation', {
       workout_session_id: saved.id, athlete_id: profile.id,

@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { base44 } from "@/api/base44Client";
+import { useAuth } from "@/lib/AuthContext";
 import { useToast } from "@/components/ui/use-toast";
 import PublicFooter from "@/components/layout/PublicFooter";
 
@@ -26,6 +27,7 @@ const QUICK_LINKS = [
 
 export default function Support() {
   const { toast } = useToast();
+  const { user } = useAuth();
   const [type, setType] = useState("bug");
   const [email, setEmail] = useState("");
   const [message, setMessage] = useState("");
@@ -34,7 +36,7 @@ export default function Support() {
 
   const submit = async (e) => {
     e.preventDefault();
-    if (!message.trim()) return;
+    if (!user || !message.trim()) return;
     setBusy(true);
     try {
       await base44.functions.invoke("logBetaFeedback", {
@@ -89,7 +91,15 @@ export default function Support() {
           ))}
         </div>
 
-        {sent ? (
+        {!user ? (
+          <Card>
+            <CardContent className="p-6 space-y-3">
+              <p>Sign in to send a support message.</p>
+              <Button asChild><Link to="/login">Sign in</Link></Button>
+              <Button asChild variant="ghost"><Link to="/forgot-password">Reset password</Link></Button>
+            </CardContent>
+          </Card>
+        ) : sent ? (
           <Card>
             <CardContent className="p-8 text-center">
               <CheckCircle2 className="w-12 h-12 text-success mx-auto mb-4" />
@@ -150,6 +160,7 @@ export default function Support() {
                     value={message}
                     onChange={(e) => setMessage(e.target.value)}
                     rows={5}
+                    maxLength={4000}
                     required
                   />
                 </div>

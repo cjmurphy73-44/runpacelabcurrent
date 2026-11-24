@@ -4,7 +4,7 @@ function samePrescription(saved: any, expected: any) {
   return Object.entries(expected).every(([key, value]) => (saved[key] ?? '') === value);
 }
 
-export async function commitDraftPlan(base44: any, plan: any) {
+export async function commitDraftPlan(base44: any, plan: any, ownerId?: string) {
   const prepared = prepareDraftPlanCommit(plan);
   if (!prepared.valid) {
     return Response.json({
@@ -25,7 +25,7 @@ export async function commitDraftPlan(base44: any, plan: any) {
     toCreate.splice(index, 1);
   }
   if (toCreate.length) {
-    try { await sessions.bulkCreate(toCreate); } catch { /* reconcile an uncertain batch */ }
+    try { await sessions.bulkCreate(ownerId ? toCreate.map(row => ({ ...row, created_by_id: ownerId })) : toCreate); } catch { /* reconcile an uncertain batch */ }
   }
   const saved = await sessions.filter(scope, 'date', prepared.sessions.length + 1);
   const expected = [...prepared.sessions];

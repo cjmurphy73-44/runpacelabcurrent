@@ -1,5 +1,6 @@
 import React, { useMemo, useState } from "react";
 import { base44 } from "@/api/base44Client";
+import { linkAthleteProfile } from "@/lib/profileLinkage";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Sparkles, ArrowLeft, ArrowRight, ShieldCheck } from "lucide-react";
@@ -122,7 +123,7 @@ export default function OnboardingFlow({ onCreated }) {
       const existing = user?.id ? await base44.entities.AthleteProfile.filter({ created_by_id: user.id }, "-updated_date", 50) : [];
       const owned = existing.find((p) => p.created_by_id === user?.id) || existing[0];
       if (owned) {
-        await base44.auth.updateMe({ athlete_profile_id: owned.id });
+        await linkAthleteProfile(owned.id);
         try { base44.analytics.track({ eventName: "onboarding_complete", properties: { mode: "relink" } }); } catch {}
         onCreated(owned);
         return;
@@ -141,9 +142,9 @@ export default function OnboardingFlow({ onCreated }) {
         ctl_time_constant_days: consts.ctl, atl_time_constant_days: consts.atl,
         primary_wearables: form.wearables.length ? form.wearables : undefined,
       });
-      // S5: stamp this profile's id onto the owning user so health-data RLS can scope reads.
+      // Verify the profile link on the server before the dashboard reads athlete data.
       // Must happen immediately after profile creation so the dashboard never renders blank.
-      await base44.auth.updateMe({ athlete_profile_id: profile.id });
+      await linkAthleteProfile(profile.id);
       try { base44.analytics.track({ eventName: "onboarding_complete", properties: { mode: "new", tier: form.tier } }); } catch {}
       onCreated(profile);
     } catch (e) { setError(e?.response?.data?.error || "Could not finish setting up your profile. Try again."); }

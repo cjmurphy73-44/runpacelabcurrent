@@ -1,6 +1,8 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
+import { getAuthorizedAthlete, isRecordId } from '../../shared/ownership.ts';
 import { sendAthletePush } from '../../shared/pushNotifications.ts';
 import { assertPaidPlan } from '../../shared/planGate.ts';
+import { claimRateLimit } from '../../shared/rateLimit.ts';
 import { validateAdjustments } from '../../shared/planValidation.ts';
 
 // C-13 Adaptive Re-planning.
@@ -19,31 +21,31 @@ const DEVIATION_STATUSES = ['skipped', 'partial', 'excess'];
 Deno.serve(async (req: Request) => {
   try {
     const base44 = createClientFromRequest(req);
-    const user = await base44.auth.me();
+    const user = await base44.auth.me().catch(() => null);
     if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
+
+    const { session_id } = (await req.json().catch(() => null)) ?? {};
+    if (!isRecordId(session_id)) return Response.json({ error: 'session_id is required' }, { status: 400 });
+
+    const session = await base44.asServiceRole.entities.TrainingPlanSession.get(session_id).catch(() => null);
+    if (!session) return Response.json({ error: 'Plan session not found' }, { status: 404 });
+
+    const athlete = await getAuthorizedAthlete(base44, user, session.athlete_id);
+    if (!athlete) return Response.json({ error: 'Plan session not found' }, { status: 404 });
 
     const gate = await assertPaidPlan(base44, user);
     if (!gate.ok) return Response.json({ error: 'Adaptive re-planning requires a Pro plan.', plan: gate.plan }, { status: 402 });
 
-    const { session_id } = await req.json();
-    if (!session_id) return Response.json({ error: 'session_id is required' }, { status: 400 });
-
-    const session = await base44.entities.TrainingPlanSession.get(session_id);
-    if (!session) return Response.json({ error: 'Plan session not found' }, { status: 404 });
-
     if (!DEVIATION_STATUSES.includes(session.status)) {
       return Response.json({ success: true, skipped: true, reason: 'not a deviation' });
     }
-
-    const athlete = await base44.entities.AthleteProfile.get(session.athlete_id);
-    if (!athlete) return Response.json({ error: 'Athlete profile not found' }, { status: 404 });
 
     // Resolve the actual session duration (if a workout was linked) to quantify
     // the delta. For `skipped` there is no linked workout → actual = 0.
     const prescribed = session.prescribed_duration_minutes || 0;
     let actual = 0;
     try {
-      const linked = await base44.entities.WorkoutSession.filter({ training_plan_session_id: session.id }, '-date', 1);
+      const linked = await base44.asServiceRole.entities.WorkoutSession.filter({ athlete_id: athlete.id, training_plan_session_id: session.id }, '-date', 1);
       if (linked[0]) actual = linked[0].duration_minutes || 0;
     } catch { /* linked workout optional */ }
     const delta = Math.round(actual - prescribed);
@@ -52,7 +54,7 @@ Deno.serve(async (req: Request) => {
     const ctl = athlete.current_ctl || 0;
 
     const today = new Date().toISOString().slice(0, 10);
-    const pending = await base44.entities.TrainingPlanSession.filter({ athlete_id: session.athlete_id, status: 'pending' });
+    const pending = await base44.asServiceRole.entities.TrainingPlanSession.filter({ athlete_id: session.athlete_id, status: 'pending' });
     const upcoming = pending
       .filter((s) => s.date >= today)
       .sort((a, b) => a.date.localeCompare(b.date))
@@ -60,6 +62,10 @@ Deno.serve(async (req: Request) => {
 
     if (upcoming.length === 0) {
       return Response.json({ success: true, adjusted: [], summary: 'No upcoming pending sessions to adjust.', deviated_session: session_id });
+    }
+
+    if (!claimRateLimit(`auto-replan:${user.id}`, 10, 60 * 60_000)) {
+      return Response.json({ error: 'Rate limit exceeded' }, { status: 429 });
     }
 
     const llmResult: any = await base44.integrations.Core.InvokeLLM({
@@ -118,11 +124,15 @@ Return an adjustment for EVERY session id listed.`,
       });
     }
 
-    await base44.entities.TrainingPlanSession.bulkUpdate(validation.accepted);
+    if (!(await getAuthorizedAthlete(base44, user, athlete.id))) {
+      return Response.json({ error: 'Athlete profile not found' }, { status: 404 });
+    }
+    await base44.asServiceRole.entities.TrainingPlanSession.bulkUpdate(validation.accepted);
 
     const summary: string = llmResult.summary || 'Your coach adjusted the rest of your week.';
-    await base44.entities.CoachMessage.create({
+    await base44.asServiceRole.entities.CoachMessage.create({
       athlete_id: session.athlete_id,
+      created_by_id: athlete.created_by_id,
       message_type: 'micro_adjustment',
       content_text: summary,
     });
@@ -138,6 +148,6 @@ Return an adjustment for EVERY session id listed.`,
 
     return Response.json({ success: true, adjusted: validation.accepted, rejected: validation.rejected, summary, deviated_session: session_id });
   } catch (error: any) {
-    return Response.json({ error: error.message }, { status: 500 });
+    return Response.json({ error: 'Request could not be completed' }, { status: 500 });
   }
 });

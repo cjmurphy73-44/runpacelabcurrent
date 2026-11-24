@@ -13,11 +13,35 @@
     },
     "access_token": {
       "type": "string",
-      "description": "Current Strava OAuth access token"
+      "description": "Current Strava OAuth access token",
+      "rls": {
+        "read": {
+          "user_condition": {
+            "role": "admin"
+          }
+        },
+        "write": {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      }
     },
     "refresh_token": {
       "type": "string",
-      "description": "Strava OAuth refresh token, used to re-authorize after the access token expires"
+      "description": "Strava OAuth refresh token, used to re-authorize after the access token expires",
+      "rls": {
+        "read": {
+          "user_condition": {
+            "role": "admin"
+          }
+        },
+        "write": {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      }
     },
     "token_expires_at": {
       "type": "string",
@@ -66,7 +90,9 @@
       "created_by_id": "{{user.id}}"
     },
     "update": {
-      "created_by_id": "{{user.id}}"
+      "user_condition": {
+        "role": "admin"
+      }
     },
     "delete": {
       "created_by_id": "{{user.id}}"

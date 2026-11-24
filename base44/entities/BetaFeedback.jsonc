@@ -8,7 +8,9 @@
       "enum": [
         "bug",
         "idea",
-        "other"
+        "other",
+        "billing",
+        "account"
       ],
       "default": "bug",
       "description": "Category of feedback: a bug report, a product idea, or something else"
@@ -48,7 +50,9 @@
   ],
   "rls": {
     "create": {
-      "created_by_id": "{{user.id}}"
+      "user_condition": {
+        "role": "admin"
+      }
     },
     "read": {
       "$or": [

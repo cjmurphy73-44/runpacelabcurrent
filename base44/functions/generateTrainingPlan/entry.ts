@@ -1,4 +1,5 @@
 // base44/functions/generateTrainingPlan/entry.ts
+import { getAuthorizedAthlete, isRecordId } from '../../shared/ownership.ts';
 // Server-side, plan-gated training-plan generation. The frontend FeatureGate only hides
 // the button; without this server-side check a free-tier user could call the function
 // directly via the SDK and burn a long Core InvokeLLM run + plan write. Generates a
@@ -15,10 +16,15 @@ import { reportError } from '../../shared/errorReport.ts';
 Deno.serve(async (req) => {
   try {
     const base44 = createClientFromRequest(req);
-    const user = await base44.auth.me();
+    const user = await base44.auth.me().catch(() => null);
     if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
 
-    // Server-side subscription enforcement (the hard boundary).
+    const { athlete_id, race_goals, long_term_goal } = (await req.json().catch(() => null)) ?? {};
+    if (!isRecordId(athlete_id)) return Response.json({ error: 'athlete_id is required' }, { status: 400 });
+
+    const athlete = await getAuthorizedAthlete(base44, user, athlete_id);
+    if (!athlete) return Response.json({ error: 'Athlete profile not found' }, { status: 404 });
+
     const gate = await assertPaidPlan(base44, user);
     if (!gate.ok) return Response.json({ error: 'Plan generation requires a Pro plan.', plan: gate.plan }, { status: 402 });
 
@@ -28,18 +34,12 @@ Deno.serve(async (req) => {
       return Response.json({ error: 'Rate limit reached for plan generation. Try again later.' }, { status: 429 });
     }
 
-    const { athlete_id, race_goals, long_term_goal } = await req.json().catch(() => ({}));
-    if (!athlete_id) return Response.json({ error: 'athlete_id is required' }, { status: 400 });
-
-    const athlete = await base44.entities.AthleteProfile.get(athlete_id);
-    if (!athlete) return Response.json({ error: 'Athlete profile not found' }, { status: 404 });
-
-    const recentSessions = await base44.entities.WorkoutSession.filter({ athlete_id }, '-date', 500);
+    const recentSessions = await base44.asServiceRole.entities.WorkoutSession.filter({ athlete_id }, '-date', 500);
     // Baseline-test enrichment is optional, the PhysiologicalBaselines entity may not be
     // configured for this app, so a missing schema shouldn't fail the whole plan generation.
     let latestBaseline = null;
     try {
-      const baselines = await base44.entities.PhysiologicalBaselines.filter({ athlete_id }, '-recorded_date', 1);
+      const baselines = await base44.asServiceRole.entities.PhysiologicalBaselines.filter({ athlete_id }, '-recorded_date', 1);
       latestBaseline = baselines[0] || null;
     } catch (_e) {
       latestBaseline = null;
@@ -232,8 +232,12 @@ ${needsPhase2Note ? `12. phase2_note, since the true goal horizon (${totalWeeks}
     // materializes TrainingPlanSession rows and flips the status to active).
     const startDate = weekDates[0]?.start_date || toDateStr(today);
     const endDate = weekDates[weekDates.length - 1]?.end_date || toDateStr(today);
-    const trainingPlan = await base44.entities.TrainingPlan.create({
+    if (!(await getAuthorizedAthlete(base44, user, athlete_id))) {
+      return Response.json({ error: 'Athlete profile not found' }, { status: 404 });
+    }
+    const trainingPlan = await base44.asServiceRole.entities.TrainingPlan.create({
       athlete_id,
+      created_by_id: athlete.created_by_id,
       status: 'draft',
       start_date: startDate,
       end_date: endDate,
@@ -256,6 +260,6 @@ ${needsPhase2Note ? `12. phase2_note, since the true goal horizon (${totalWeeks}
     return Response.json({ success: true, training_plan: trainingPlan });
   } catch (error) {
     try { await reportError(base44, { source: 'generateTrainingPlan', message: error.message, stack: error.stack, severity: 'High' }); } catch {}
-    return Response.json({ error: error.message || 'Internal server error' }, { status: 500 });
+    return Response.json({ error: 'Could not generate training plan' }, { status: 500 });
   }
 });

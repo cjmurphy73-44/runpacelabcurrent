@@ -108,7 +108,9 @@ export default function RosterDashboard({ assignments, profiles, workouts, plans
   const saveNotes = async () => {
     setSaving(true);
     try {
-      await base44.entities.CoachAthleteAssignment.update(selected.assignment.id, {
+      await base44.functions.invoke("manageCoachRoster", {
+        action: "notes",
+        assignment_id: selected.assignment.id,
         notes,
       });
       onChanged?.();
