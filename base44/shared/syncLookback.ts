@@ -6,8 +6,9 @@
 // cap (fail closed) so a missing subscription never grants unlimited history.
 // A canceled / past_due subscription is treated as free.
 
+import { isSubscriptionActive, PAID_PLANS } from './planGate.ts';
+
 const FREE_LOOKBACK_DAYS = 90;
-const PAID_PLANS = new Set(['pro', 'unlimited', 'coach_pro', 'team']);
 
 export async function getSyncLookbackDays(base44: any, userId: string): Promise<number> {
   try {
@@ -17,8 +18,7 @@ export async function getSyncLookbackDays(base44: any, userId: string): Promise<
       1,
     );
     const sub = subs?.[0];
-    const active = !sub?.status || sub.status === 'active' || sub.status === 'trialing';
-    return active && PAID_PLANS.has(sub?.plan) ? Infinity : FREE_LOOKBACK_DAYS;
+    return isSubscriptionActive(sub) && PAID_PLANS.has(sub?.plan) ? Infinity : FREE_LOOKBACK_DAYS;
   } catch {
     return FREE_LOOKBACK_DAYS;
   }

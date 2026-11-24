@@ -3,6 +3,7 @@ import { useServices } from "@/services/providers/ServiceContext";
 import { useAuth } from "@/lib/AuthContext";
 import { base44 } from "@/api/base44Client";
 import { isPro, hasFeature, type GatedFeature } from "@/lib/subscriptionFeatures";
+import { isSubscriptionActive } from "../../base44/shared/planGate";
 
 // Module-level guard so subscription_active fires once per browser session,
 // not on every hook remount.
@@ -25,13 +26,12 @@ export function useSubscription(): SubscriptionState {
   const [loading, setLoading] = useState(true);
 
   const refresh = useCallback(async () => {
-    if (!user?.id) { setLoading(false); return; }
+    if (!user?.id) { setPlan("free"); setStatus("active"); setLoading(false); return; }
     try {
       const rows = await subscriptionRepo.filter({ user_id: user.id }, "-created_date", 5);
       const sub = rows[0];
       if (sub) {
-        // Mirror server-side assertPaidPlan: only active/trialing subscriptions grant paid access.
-        const active = !sub.status || sub.status === "active" || sub.status === "trialing";
+        const active = isSubscriptionActive(sub);
         setPlan(active ? sub.plan : "free");
         setStatus(sub.status);
       }
