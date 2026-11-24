@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import { logManualWorkout } from '../../../base44/shared/manualWorkout';
+import { recomputeCTLATLTSB } from '../../../base44/shared/ctlRecalc';
 import { VALID_WORKOUT_SPORTS } from '../../../base44/shared/workoutSports';
 // @ts-ignore Vite expands the glob at test load time.
 const schemas = import.meta.glob('../../../base44/entities/WorkoutSession.jsonc', { query: '?raw', import: 'default' });
@@ -24,11 +25,22 @@ function client() {
         }),
       },
     },
-    functions: {
-      invoke: vi.fn(async (_name: string, args: any) => {
-        expect(history[0].athlete_id).toBe(args.athlete_id);
-        return { data: { success: true } };
-      }),
+    asServiceRole: {
+      entities: {
+        AthleteProfile: {
+          get: vi.fn(async () => ({ created_by_id: 'user-1' })),
+          update: vi.fn(async () => ({})),
+        },
+        WorkoutSession: {
+          filter: vi.fn(async ({ athlete_id }, _sort?: string, _limit?: number, _skip?: number) =>
+            history.filter(row => row.athlete_id === athlete_id)),
+        },
+        DailyMetrics: {
+          filter: vi.fn(async () => []),
+          bulkCreate: vi.fn(async () => []),
+          bulkUpdate: vi.fn(async (_updates: Record<string, unknown>[]) => []),
+        },
+      },
     },
   };
 }
@@ -56,15 +68,40 @@ describe('manual workout release contract', () => {
       workout_session: { sport, source_format: 'csv', duration_seconds: 1800, session_tss: 72 },
     });
     expect(base44.history).toHaveLength(1);
-    expect(base44.functions.invoke).toHaveBeenCalledWith('recalculateCTLATLTSB', { athlete_id: payload.athlete_id });
+    expect(base44.asServiceRole.entities.DailyMetrics.bulkCreate).toHaveBeenCalledWith([
+      expect.objectContaining({ athlete_id: payload.athlete_id, created_by_id: 'user-1', total_trimp: 72, verified_trimp: 0 }),
+    ]);
   });
 
   it('reports a confirmed save even if recomputation fails', async () => {
     const base44 = client();
-    base44.functions.invoke.mockRejectedValue(new Error('unavailable'));
+    base44.asServiceRole.entities.AthleteProfile.update.mockRejectedValue(new Error('unavailable'));
     const response = await logManualWorkout(base44, request());
     expect(await response.json()).toMatchObject({ success: true, training_load_refreshed: false });
     expect(base44.history).toHaveLength(1);
+  });
+
+  it('includes every history page and clears stale load without modifying recovery data', async () => {
+    const base44 = client();
+    const { WorkoutSession, DailyMetrics } = base44.asServiceRole.entities;
+    const sessions = Array.from({ length: 501 }, () => ({
+      athlete_id: payload.athlete_id, date: payload.date, session_trimp: 1, load_source: 'stream',
+    }));
+    WorkoutSession.filter.mockImplementation(async (_query, _sort, limit = sessions.length, skip = 0) =>
+      sessions.slice(skip, skip + limit));
+    const priorDay = { id: 'recovery-day', date: '2026-10-09', total_trimp: 23, sleep_score: 82 };
+    DailyMetrics.filter.mockResolvedValue([priorDay]);
+
+    await recomputeCTLATLTSB(base44, payload.athlete_id);
+
+    expect(DailyMetrics.bulkCreate).toHaveBeenCalledWith([
+      expect.objectContaining({ date: payload.date, total_trimp: 501, verified_trimp: 501 }),
+    ]);
+    const [updates] = DailyMetrics.bulkUpdate.mock.calls[0];
+    expect(updates).toEqual([
+      expect.objectContaining({ id: priorDay.id, total_trimp: 0, calculated_ctl: 0 }),
+    ]);
+    expect(updates[0]).not.toHaveProperty('sleep_score');
   });
 
   it('denies a foreign athlete or an unauthenticated request without writing', async () => {
@@ -74,7 +111,7 @@ describe('manual workout release contract', () => {
     base44.auth.me.mockRejectedValue(new Error('not authenticated'));
     expect((await logManualWorkout(base44, request())).status).toBe(401);
     expect(base44.entities.WorkoutSession.create).not.toHaveBeenCalled();
-    expect(base44.functions.invoke).not.toHaveBeenCalled();
+    expect(base44.asServiceRole.entities.WorkoutSession.filter).not.toHaveBeenCalled();
   });
 
   it('rejects an invalid date, unknown sport or nonfinite duration before persistence', async () => {

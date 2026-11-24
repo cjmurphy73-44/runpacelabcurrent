@@ -12,6 +12,7 @@ import { reportError } from '../../shared/errorReport.ts';
 import { checkImportAllowance } from '../../shared/importLimit.ts';
 import { isWorkoutSport } from '../../shared/workoutSports.ts';
 import { inlineWorkoutStream } from '../../shared/streamValidity.ts';
+import { recomputeCTLATLTSB } from '../../shared/ctlRecalc.ts';
 
 Deno.serve(async (req) => {
   const base44 = createClientFromRequest(req);
@@ -104,31 +105,11 @@ Deno.serve(async (req) => {
         const created = await base44.entities.WorkoutSession.bulkCreate(sessionsToCreate);
         const affectedDates = [...new Set(created.map((s) => s.date))];
 
-        const allSessions = await base44.entities.WorkoutSession.filter({ athlete_id });
-        const trimpByDate = {};
-        for (const s of allSessions) {
-          if (!affectedDates.includes(s.date)) continue;
-          trimpByDate[s.date] = (trimpByDate[s.date] || 0) + (s.session_trimp || s.session_tss || 0);
-        }
-        const allMetrics = await base44.entities.DailyMetrics.filter({ athlete_id });
-        const metricsByDate = {};
-        for (const m of allMetrics) metricsByDate[m.date] = m;
-
-        const metricsToUpdate = [];
-        const metricsToCreate = [];
-        for (const d of affectedDates) {
-          const totalTrimp = Math.round((trimpByDate[d] || 0) * 100) / 100;
-          if (metricsByDate[d]) {
-            metricsToUpdate.push({ id: metricsByDate[d].id, total_trimp: totalTrimp });
-          } else {
-            metricsToCreate.push({ athlete_id, date: d, total_trimp: totalTrimp });
-          }
-        }
-        if (metricsToUpdate.length > 0) await base44.entities.DailyMetrics.bulkUpdate(metricsToUpdate);
-        if (metricsToCreate.length > 0) await base44.entities.DailyMetrics.bulkCreate(metricsToCreate);
-
-        await base44.functions.invoke('recalculateCTLATLTSB', { athlete_id });
-        return Response.json({ success: true, imported_sessions_count: created.length, skipped_duplicates: skippedDuplicates, affected_dates: affectedDates });
+        const load = await recomputeCTLATLTSB(base44, athlete_id).catch(() => null);
+        return Response.json({
+          success: true, imported_sessions_count: created.length, skipped_duplicates: skippedDuplicates,
+          affected_dates: affectedDates, training_load_refreshed: load?.success === true,
+        });
       }
 
       parsedResult = parseCsv(text);
@@ -375,7 +356,7 @@ Deno.serve(async (req) => {
         parsing_status: 'parsed',
         uploaded_at: new Date().toISOString(),
       }),
-      base44.functions.invoke('calculateDailyTRIMP', { athlete_id, date }),
+      recomputeCTLATLTSB(base44, athlete_id),
     ]);
 
     // Deterministic state handed back to the caller (and recomputed identically
@@ -387,7 +368,7 @@ Deno.serve(async (req) => {
       duration_minutes: session.duration_minutes, session_tss: session.session_tss,
       attached: false, athlete_state_summary: stateSummary,
       asset_registered: asset.status === 'fulfilled' && Boolean(asset.value?.id),
-      training_load_refreshed: load.status === 'fulfilled' && load.value?.data?.success === true,
+      training_load_refreshed: load.status === 'fulfilled' && load.value.success,
     });
   } catch (error) {
     try { await reportError(base44, { source: 'ingestWorkoutFile', message: error.message, stack: error.stack, severity: 'High' }); } catch {}

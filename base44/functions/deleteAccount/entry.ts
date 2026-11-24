@@ -5,7 +5,7 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.49';
 // deleteMe() in the auth SDK, so this service-role function performs the
 // deletion: it first clears the user's data across all owned entities
 // (best-effort), then deletes the User record itself.
-export default async function(req) {
+Deno.serve(async function(req) {
   try {
     const base44 = createClientFromRequest(req);
     const user = await base44.auth.me();
@@ -52,4 +52,4 @@ export default async function(req) {
   } catch (error) {
     return Response.json({ error: error.message }, { status: 500 });
   }
-}
+});

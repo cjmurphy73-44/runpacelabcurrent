@@ -1,5 +1,6 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.38';
 import { commitDraftPlan } from '../../shared/commitDraftPlan.ts';
+import { assertOwnsAthlete } from '../../shared/ownership.ts';
 import { reportError } from '../../shared/errorReport.ts';
 
 Deno.serve(async (req) => {
@@ -15,7 +16,8 @@ Deno.serve(async (req) => {
     if (!plan) return Response.json({ error: 'Plan not found' }, { status: 404 });
     if (plan.status !== 'draft') return Response.json({ error: 'Plan is not a draft' }, { status: 400 });
 
-    if (plan.created_by_id !== user.id && user.role !== 'admin') {
+    if ((plan.created_by_id !== user.id && user.role !== 'admin') ||
+        !(await assertOwnsAthlete(base44, user, plan.athlete_id))) {
       return Response.json({ error: 'Forbidden' }, { status: 403 });
     }
 

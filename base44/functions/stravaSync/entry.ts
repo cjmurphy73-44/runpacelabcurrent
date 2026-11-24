@@ -2,6 +2,7 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
 import { VALID_SPORTS, calcTrimp, normalizeSport, getOwnedAthlete, selfUrl } from '../../shared/workoutIngest.ts';
 import { env, hmacBase64Url } from '../../shared/oauth.ts';
 import { getSyncLookbackDays } from '../../shared/syncLookback.ts';
+import { recomputeCTLATLTSB } from '../../shared/ctlRecalc.ts';
 
 const STRAVA_API = 'https://www.strava.com';
 const SCOPE = 'read,activity:read_all';
@@ -103,6 +104,7 @@ async function handleSyncHistorical(base44) {
   const lookbackDays = await getSyncLookbackDays(base44, user.id);
   const afterSec = lookbackDays === Infinity ? '' : `&after=${Math.floor((Date.now() - lookbackDays * 86400000) / 1000)}`;
   let imported = 0, errors = 0;
+  let trainingLoadRefreshed = true;
   try {
     const res = await fetch(`${STRAVA_API}/api/v3/athlete/activities?per_page=100${afterSec}`, { headers: { Authorization: `Bearer ${token}` } });
     if (!res.ok) { await base44.asServiceRole.entities.StravaConnection.update(conn.id, { last_error: `Historical fetch failed: ${res.status}` }); return Response.json({ error: `Historical fetch failed: ${res.status}` }, { status: 502 }); }
@@ -122,10 +124,16 @@ async function handleSyncHistorical(base44) {
     }
     for (let i = 0; i < toCreate.length; i += 500) await base44.asServiceRole.entities.WorkoutSession.bulkCreate(toCreate.slice(i, i + 500));
     imported = toCreate.length;
-    for (const d of [...new Set(toCreate.map((s) => s.date))]) { try { await base44.asServiceRole.functions.invoke('calculateDailyTRIMP', { athlete_id: athlete.id, date: d }); } catch {} }
-    await base44.asServiceRole.entities.StravaConnection.update(conn.id, { last_sync_at: new Date().toISOString(), last_error: '' });
+    if (imported) {
+      const load = await recomputeCTLATLTSB(base44, athlete.id).catch(() => null);
+      trainingLoadRefreshed = load?.success === true;
+    }
+    await base44.asServiceRole.entities.StravaConnection.update(conn.id, {
+      last_sync_at: new Date().toISOString(),
+      last_error: trainingLoadRefreshed ? '' : 'Workouts saved; training load could not be refreshed.',
+    });
   } catch (e) { await base44.asServiceRole.entities.StravaConnection.update(conn.id, { last_error: e.message }); return Response.json({ error: e.message }, { status: 500 }); }
-  return Response.json({ success: true, imported, errors });
+  return Response.json({ success: true, imported, errors, training_load_refreshed: trainingLoadRefreshed });
 }
 
 async function handleDisconnect(base44) {

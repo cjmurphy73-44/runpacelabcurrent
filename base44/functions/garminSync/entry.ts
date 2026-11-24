@@ -6,6 +6,7 @@ import { hmacBase64Url } from '../../shared/oauth.ts';
 import { garminConfig, garminRedirectUri, refreshGarminToken } from '../../shared/garminAuth.ts';
 import { normalizeGarminRecovery, ingestRecovery } from '../../shared/recoveryIngest.ts';
 import { getSyncLookbackDays } from '../../shared/syncLookback.ts';
+import { recomputeCTLATLTSB } from '../../shared/ctlRecalc.ts';
 
 // OAuth configuration and token refresh live in shared/garminAuth.ts so the
 // backfill function refetches stored activities with the same connection logic.
@@ -126,7 +127,8 @@ async function handleSyncHistorical(base44) {
 
   const lookbackDays = await getSyncLookbackDays(base44, user.id);
   const lookbackCutoff = lookbackDays === Infinity ? null : new Date(Date.now() - lookbackDays * 86400000);
-  let imported = 0, errors = 0;
+  let imported = 0, errors = 0, recoveryImported = 0;
+  let trainingLoadRefreshed = true;
   try {
     const res = await fetch(`${apiBase}/activities`, { headers: { Authorization: `Bearer ${accessToken}` } });
     if (!res.ok) { await base44.asServiceRole.entities.GarminConnection.update(conn.id, { last_error: `Historical fetch failed: ${res.status}` }); return Response.json({ error: `Historical fetch failed: ${res.status}` }, { status: 502 }); }
@@ -219,13 +221,15 @@ async function handleSyncHistorical(base44) {
     }
     for (let i = 0; i < toCreate.length; i += 500) await base44.asServiceRole.entities.WorkoutSession.bulkCreate(toCreate.slice(i, i + 500));
     imported = toCreate.length;
-    for (const d of [...new Set(toCreate.map((s) => s.date))]) { try { await base44.asServiceRole.functions.invoke('calculateDailyTRIMP', { athlete_id: athlete.id, date: d }); } catch {} }
+    if (imported) {
+      const load = await recomputeCTLATLTSB(base44, athlete.id).catch(() => null);
+      trainingLoadRefreshed = load?.success === true;
+    }
 
     // Recovery backfill: pull recent daily summaries (sleep / HRV / resting HR / body battery /
     // stress / training readiness) through the same normalizer + ingest path used by live
     // webhook pushes, so newly-connected athletes get rolling baselines immediately instead of
     // waiting for pushes to accumulate. Best-effort — no-ops if the endpoint is unavailable.
-    let recoveryImported = 0;
     try {
       const rRes = await fetch(`${apiBase}/dailies`, { headers: { Authorization: `Bearer ${accessToken}` } });
       if (rRes.ok) {
@@ -245,12 +249,15 @@ async function handleSyncHistorical(base44) {
       }
     } catch { /* recovery backfill is best-effort */ }
 
-    await base44.asServiceRole.entities.GarminConnection.update(conn.id, { last_sync_at: new Date().toISOString(), last_error: '' });
+    await base44.asServiceRole.entities.GarminConnection.update(conn.id, {
+      last_sync_at: new Date().toISOString(),
+      last_error: trainingLoadRefreshed ? '' : 'Workouts saved; training load could not be refreshed.',
+    });
   } catch (e) {
     await base44.asServiceRole.entities.GarminConnection.update(conn.id, { last_error: e.message });
     return Response.json({ error: e.message }, { status: 500 });
   }
-  return Response.json({ success: true, imported, errors, recovery_imported: recoveryImported });
+  return Response.json({ success: true, imported, errors, recovery_imported: recoveryImported, training_load_refreshed: trainingLoadRefreshed });
 }
 
 async function handleDisconnect(base44) {

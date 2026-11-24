@@ -3,7 +3,9 @@
 
 import { calculateVDOT, danielsThresholdMs, formatPaceFromMs } from '../../shared/vdot.ts';
 
-export default async function (req: Request) {
+declare const Deno: { serve(handler: (req: Request) => Promise<Response>): unknown };
+
+export default async function calculateRaceBaseline(req: Request) {
   if (req.method !== 'POST') {
     return new Response(JSON.stringify({ error: 'Method not allowed' }), {
       status: 405,
@@ -33,3 +35,5 @@ export default async function (req: Request) {
     });
   }
 }
+
+if (typeof Deno !== 'undefined') Deno.serve(calculateRaceBaseline);

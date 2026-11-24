@@ -1,5 +1,6 @@
 import { assertOwnsAthlete } from './ownership.ts';
 import { isWorkoutSport } from './workoutSports.ts';
+import { recomputeCTLATLTSB } from './ctlRecalc.ts';
 
 // Keep persistence and the derived training-load refresh separate. Once a workout
 // has been saved a calculation failure must never tell the athlete to save again.
@@ -36,8 +37,8 @@ export async function logManualWorkout(base44: any, request: Request) {
 
   let training_load_refreshed = false;
   try {
-    const result = await base44.functions.invoke('recalculateCTLATLTSB', { athlete_id });
-    training_load_refreshed = Boolean(result?.data && !result.data.error);
+    const result = await recomputeCTLATLTSB(base44, athlete_id);
+    training_load_refreshed = result.success;
   } catch {
     // A later recalculation can recover from the saved workout.
   }

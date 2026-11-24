@@ -1,6 +1,7 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
 import { VALID_SPORTS, calcTrimp, normalizeSport, getOwnedAthlete } from '../../shared/workoutIngest.ts';
 import { resolveSessionLoad } from '../../shared/loadModel.ts';
+import { recomputeCTLATLTSB } from '../../shared/ctlRecalc.ts';
 import { resolveTimeInZone } from '../../shared/hrZones.ts';
 import { resolveActiveCalories } from '../../shared/calories.ts';
 import { env, hmacBase64Url } from '../../shared/oauth.ts';
@@ -10,7 +11,7 @@ import { assertSafeFileUrl } from '../../shared/urlGuard.ts';
 import { constantTimeEqual } from '../../shared/crypto.ts';
 import { getSyncLookbackDays } from '../../shared/syncLookback.ts';
 import { parseFitWithLaps, summarizeStream } from '../../shared/workoutParsers.ts';
-import { isUsableTelemetry, storageStream, MAX_STREAM_SAMPLES } from '../../shared/streamValidity.ts';
+import { inlineWorkoutStream, isUsableTelemetry, MAX_STREAM_SAMPLES } from '../../shared/streamValidity.ts';
 import { persistCorosBatches } from '../../shared/corosBatchPersistence.ts';
 import { corosActivityId, isDuplicateCorosSession } from '../../shared/corosActivityIdentity.ts';
 import {
@@ -328,12 +329,13 @@ async function handleWebhook(req, base44) {
     zone_method: zoneResult.zone_method,
     zone_bounds_bpm: zoneResult.zone_bounds_bpm,
     temperature_c: temperatureC ?? undefined,
-    streams: fitParsed ? storageStream(fitParsed.stream.slice(0, MAX_STREAM_SAMPLES)) : undefined,
+    streams: fitParsed ? inlineWorkoutStream(fitParsed.stream) : undefined,
     laps: fitParsed?.laps?.length ? fitParsed.laps : undefined,
     ...energy,
   });
 
-  try { await base44.asServiceRole.functions.invoke('calculateDailyTRIMP', { athlete_id: athleteId, date }); } catch (e) { console.warn('calculateDailyTRIMP failed:', e); }
+  const load = await recomputeCTLATLTSB(base44, athleteId).catch(() => null);
+  const trainingLoadRefreshed = load?.success === true;
   // Call the shared module directly (not the HTTP wrapper) — the webhook has no user
   // session, so the HTTP wrapper's base44.auth.me() check would reject it. The shared
   // module uses asServiceRole internally. Also fixes a parameter-name mismatch: the
@@ -341,9 +343,12 @@ async function handleWebhook(req, base44) {
   try { await runPostWorkoutEvaluation(base44, session.id, athleteId); } catch (e) { console.warn('postWorkoutAIEvaluation failed:', e); }
 
   if (connection) {
-    await base44.asServiceRole.entities.CorosConnection.update(connection.id, { last_sync_at: new Date().toISOString(), last_error: '' });
+    await base44.asServiceRole.entities.CorosConnection.update(connection.id, {
+      last_sync_at: new Date().toISOString(),
+      last_error: trainingLoadRefreshed ? '' : 'Workout saved; training load could not be refreshed.',
+    });
   }
-  return Response.json({ success: true, workout_session_id: session.id });
+  return Response.json({ success: true, workout_session_id: session.id, training_load_refreshed: trainingLoadRefreshed });
 }
 
 // App-user action: return the COROS MCP OAuth authorize URL (PKCE) for the browser to redirect to.
@@ -450,7 +455,7 @@ function applyFitTelemetry(payload: any, fit: any, athlete: any): boolean {
   payload.zone_seconds = zoneResult.zone_seconds;
   payload.zone_method = zoneResult.zone_method;
   payload.zone_bounds_bpm = zoneResult.zone_bounds_bpm;
-  payload.streams = storageStream(fit.stream.slice(0, MAX_STREAM_SAMPLES));
+  payload.streams = inlineWorkoutStream(fit.stream);
   if (fit.laps?.length) payload.laps = fit.laps.slice(0, 200);
   return true;
 }
@@ -628,8 +633,8 @@ async function syncHistoricalFor(athlete: any, accessToken: string, base44, look
   );
   error_messages.push(...write.errors);
   // Recompute load only for sessions the persistence API actually confirmed.
-  for (const d of new Set([...write.persisted_dates, ...recoveredDates])) {
-    try { await base44.asServiceRole.functions.invoke('calculateDailyTRIMP', { athlete_id: athlete.id, date: d }); }
+  if (write.persisted_dates.length || recoveredDates.size) {
+    try { await recomputeCTLATLTSB(base44, athlete.id); }
     catch {
       error_messages.push('Daily load recomputation failed; sessions remain saved.');
     }
