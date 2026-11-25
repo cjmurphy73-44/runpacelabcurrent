@@ -567,11 +567,7 @@ Deno.serve(async (req) => {
       });
     }
 
-    // New ingestion model: raw files are simply appended to the master WorkoutSession log.
-    // Downstream analysis — EarlyversionAIcoach evaluation and the CTL/ATL/TSB + daily-TRIMP
-    // calculations — is run separately/on-demand against this log, not inline during the bulk
-    // import. This keeps the batch resilient and free of the timeout/sequencing complications
-    // that arose when coupling ingest to the recompute pipeline.
+    // The import page refreshes training load once after all its upload batches finish.
     const duplicate_count = errors.filter((e) => /^Skipped duplicate workout/.test(e.error || '')).length;
     const failed_count = errors.length - duplicate_count;
     return Response.json({
@@ -582,6 +578,7 @@ Deno.serve(async (req) => {
       successCount: createdSessions.length,
       errorCount: failed_count,
       created_count: createdSessions.length,
+      ...(createdSessions.length === 1 ? { workout_session_id: createdSessions[0]?.id } : {}),
       duplicate_count,
       failed_count,
       affected_dates: [...new Set(createdSessions.map((s) => s.date))],

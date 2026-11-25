@@ -66,7 +66,7 @@ export default function ManualWorkoutModal({ open, onClose, athleteId, onSaved }
           ? `Logged ${dur} min · est. TSS ${estimatedTss}.`
           : "Training load could not be refreshed yet.",
       });
-      onSaved?.();
+      onSaved?.(result.workout_session);
       reset();
       onClose?.();
     } catch (err) {

@@ -126,7 +126,7 @@ export default function Imports() {
       {/* 2, Import workout files */}
       <section id="workout-files" className="space-y-3 scroll-mt-24">
         <SectionHeading index="02" title="Import workout files" description="Bulk-upload .fit or .csv exports from your watch or training platform." icon={Upload} />
-        <BulkWorkoutImport athleteId={athlete.id} onUploaded={() => {}} />
+        <BulkWorkoutImport key={athlete.id} athleteId={athlete.id} />
         <p className="text-xs text-muted-foreground">
           Supports <span className="font-medium">.fit</span> and <span className="font-medium">.csv</span> from Strava, COROS, Garmin and others.
           {" "}<span className="font-medium">.gpx</span> isn't supported yet, convert it to FIT/CSV or use a device connection above.
@@ -160,7 +160,7 @@ export default function Imports() {
         open={manualOpen}
         onClose={() => setManualOpen(false)}
         athleteId={athlete.id}
-        onSaved={() => navigate("/")}
+        onSaved={(workout) => navigate(`/workouts/${encodeURIComponent(workout.id)}`)}
       />
 
       <div className="pt-2">

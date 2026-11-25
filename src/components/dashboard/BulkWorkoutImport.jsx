@@ -1,4 +1,5 @@
 import React, { useRef, useState } from "react";
+import { Link } from "react-router-dom";
 import { summarizeBulkIngestResponse } from "@/lib/bulkIngestOutcome";
 import { base44 } from "@/api/base44Client";
 import { Button } from "@/components/ui/button";
@@ -15,7 +16,7 @@ function isSupportedFile(name) {
   return lower.endsWith(".fit") || lower.endsWith(".csv");
 }
 
-export default function BulkWorkoutImport({ athleteId, onUploaded }) {
+export default function BulkWorkoutImport({ athleteId }) {
   const [fileList, setFileList] = useState([]);
   const [skippedCount, setSkippedCount] = useState(0);
   const [sport, setSport] = useState("running");
@@ -23,6 +24,7 @@ export default function BulkWorkoutImport({ athleteId, onUploaded }) {
   const [busy, setBusy] = useState(false);
   const [progress, setProgress] = useState(null); // { phase, current, total }
   const [resultsSummary, setResultsSummary] = useState(null); // { created, duplicates, errors }
+  const [loadRefresh, setLoadRefresh] = useState(null);
   const folderInputRef = useRef(null);
 
   const addFiles = (fileArray) => {
@@ -32,11 +34,22 @@ export default function BulkWorkoutImport({ athleteId, onUploaded }) {
     setSkippedCount(skipped);
     setStatus(null);
     setResultsSummary(null);
+    setLoadRefresh(null);
+  };
+
+  const refreshTrainingLoad = async () => {
+    setLoadRefresh("refreshing");
+    try {
+      const { data } = await base44.functions.invoke("recalculateCTLATLTSB", { athlete_id: athleteId });
+      setLoadRefresh(data?.success === true ? "complete" : "failed");
+    } catch {
+      setLoadRefresh("failed");
+    }
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (fileList.length === 0) return;
+    if (fileList.length === 0 || busy || loadRefresh === "refreshing") return;
     if (!athleteId) {
       setStatus({ type: "error", message: "No athlete profile found. Create your athlete profile before importing workouts." });
       return;
@@ -44,8 +57,10 @@ export default function BulkWorkoutImport({ athleteId, onUploaded }) {
     setBusy(true);
     setStatus(null);
     setResultsSummary(null);
+    setLoadRefresh(null);
 
     let createdCount = 0;
+    let workoutId = null;
     let duplicateCount = 0;
     const allErrors = [];
     const totalBatches = Math.ceil(fileList.length / BATCH_SIZE);
@@ -63,6 +78,7 @@ export default function BulkWorkoutImport({ athleteId, onUploaded }) {
         const outcome = summarizeBulkIngestResponse(res?.data);
         // A failed batch can still have successfully persisted sessions.
         createdCount += outcome.created;
+        if (outcome.workoutId) workoutId = outcome.workoutId;
         duplicateCount += outcome.duplicates;
         allErrors.push(...outcome.failures);
       } catch (err) {
@@ -75,6 +91,7 @@ export default function BulkWorkoutImport({ athleteId, onUploaded }) {
       duplicates: duplicateCount,
       errors: allErrors,
       total: fileList.length,
+      workoutId: createdCount === 1 ? workoutId : null,
     });
 
     setStatus({
@@ -83,13 +100,13 @@ export default function BulkWorkoutImport({ athleteId, onUploaded }) {
     });
 
     if (!allErrors.length) setFileList([]);
-    if (createdCount > 0 && onUploaded) onUploaded();
+    if (createdCount > 0) await refreshTrainingLoad();
     setBusy(false);
     setProgress(null);
   };
 
   const buttonLabel = progress
-    ? `Processing Batch ${progress.current}/${progress.total}...`
+      ? `Processing batch ${progress.current}/${progress.total}…`
     : `Import ${fileList.length || ""} File(s)`;
 
   return (
@@ -108,6 +125,7 @@ export default function BulkWorkoutImport({ athleteId, onUploaded }) {
                 type="file"
                 accept=".fit,.csv,application/vnd.ant.fit,application/octet-stream"
                 multiple
+                disabled={busy || loadRefresh === "refreshing"}
                 onChange={(e) => addFiles(Array.from(e.target.files || []))}
                 className="text-xs"
               />
@@ -116,11 +134,13 @@ export default function BulkWorkoutImport({ athleteId, onUploaded }) {
                 type="file"
                 webkitdirectory=""
                 multiple
+                disabled={busy || loadRefresh === "refreshing"}
                 className="hidden"
                 onChange={(e) => addFiles(Array.from(e.target.files || []))}
               />
               <button
                 type="button"
+                disabled={busy || loadRefresh === "refreshing"}
                 onClick={() => folderInputRef.current?.click()}
                 className="inline-flex items-center gap-1.5 text-xs text-primary hover:underline w-fit"
               >
@@ -140,10 +160,11 @@ export default function BulkWorkoutImport({ athleteId, onUploaded }) {
 
           <div>
             <Label className="text-xs font-semibold">Fallback Sport</Label>
-            <Select value={sport} onValueChange={setSport}>
+            <Select value={sport} onValueChange={setSport} disabled={busy || loadRefresh === "refreshing"}>
               <SelectTrigger className="h-8 text-xs mt-1"><SelectValue /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="running">Running</SelectItem>
+                <SelectItem value="walking">Walking</SelectItem>
                 <SelectItem value="cycling">Cycling</SelectItem>
                 <SelectItem value="swimming">Swimming</SelectItem>
                 <SelectItem value="strength">Strength</SelectItem>
@@ -153,7 +174,7 @@ export default function BulkWorkoutImport({ athleteId, onUploaded }) {
             </Select>
           </div>
 
-          <Button type="submit" disabled={busy || fileList.length === 0} className="w-full text-xs min-h-[44px]">
+          <Button type="submit" disabled={busy || loadRefresh === "refreshing" || fileList.length === 0} className="w-full text-xs min-h-[44px]">
             {buttonLabel}
           </Button>
 
@@ -186,6 +207,25 @@ export default function BulkWorkoutImport({ athleteId, onUploaded }) {
                   <span className="font-bold">{resultsSummary.errors.length}</span> Failed
                 </div>
               </div>
+
+              {(resultsSummary.created > 0 || resultsSummary.duplicates > 0 || resultsSummary.errors.length > 0) && (
+                <div className="flex flex-wrap gap-2">
+                  {resultsSummary.workoutId && (
+                    <Button asChild size="sm"><Link to={`/workouts/${resultsSummary.workoutId}`}>Review imported workout</Link></Button>
+                  )}
+                  <Button asChild variant="outline" size="sm"><Link to="/workouts">Open workout history</Link></Button>
+                </div>
+              )}
+              {loadRefresh && (
+                <div role="status" className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+                  {loadRefresh === "refreshing" && <span>Updating training load…</span>}
+                  {loadRefresh === "complete" && <span>Training load updated.</span>}
+                  {loadRefresh === "failed" && <>
+                    <span>Workouts saved. Training load could not be refreshed.</span>
+                    <Button type="button" variant="outline" size="sm" onClick={refreshTrainingLoad}>Retry training load</Button>
+                  </>}
+                </div>
+              )}
 
               {resultsSummary.errors.length > 0 && (
                 <div className="mt-2">
