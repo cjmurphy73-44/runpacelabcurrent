@@ -1,6 +1,5 @@
 import React, { useState } from "react";
 import { base44 } from "@/api/base44Client";
-import { useAuth } from "@/lib/AuthContext";
 import {
   Dialog,
   DialogContent,
@@ -15,13 +14,13 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/components/ui/use-toast";
 import { Loader2 } from "lucide-react";
+import { feedbackWasAccepted } from "@/lib/feedbackReceipt";
 
 // Persistent beta feedback reporter. Stores each submission in the BetaFeedback
 // entity so the team can triage from the Admin page instead of relying on an
-// email inbox. Falls back to clipboard copy if the entity write fails.
+// email inbox. Failed writes preserve the draft for a deliberate retry.
 export default function BetaFeedbackModal({ open, onClose }) {
   const { toast } = useToast();
-  const { user } = useAuth();
   const [email, setEmail] = useState("");
   const [type, setType] = useState("bug");
   const [message, setMessage] = useState("");
@@ -38,24 +37,18 @@ export default function BetaFeedbackModal({ open, onClose }) {
         contact_email: email.trim() || undefined,
         route,
       });
-      const ok = res?.data?.success || res?.success;
+      const ok = feedbackWasAccepted(res);
       if (ok) {
         toast({ title: "Feedback sent", description: "Thanks, the team will review it." });
         setMessage("");
         setEmail("");
         onClose?.();
       } else {
-        toast({ title: res?.data?.error || "Could not send feedback", variant: "destructive" });
+        toast({ title: "Could not send feedback", description: "Please try again. Your message is still here.", variant: "destructive" });
       }
-    } catch (e) {
-      // Fallback: copy to clipboard so the tester always has a path.
-      try {
-        const fallback = `${message}\n\nFrom: ${email || "(anonymous)"}`;
-        await navigator.clipboard.writeText(fallback);
-        toast({ title: "Saved to clipboard instead", description: "Copy failed to reach the server, paste it into a message to the team.", variant: "destructive" });
-      } catch {
-        toast({ title: e?.message || "Could not send feedback", variant: "destructive" });
-      }
+    } catch {
+      // Never silently copy private feedback or expose backend error details.
+      toast({ title: "Could not send feedback", description: "Please try again. Your message is still here.", variant: "destructive" });
     } finally {
       setSubmitting(false);
     }
@@ -97,7 +90,6 @@ export default function BetaFeedbackModal({ open, onClose }) {
               placeholder="you@example.com"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              defaultValue={user?.email || ""}
             />
           </div>
           <div className="space-y-1.5">
