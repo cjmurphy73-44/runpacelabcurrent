@@ -216,7 +216,11 @@ export function parseTcx(text) {
   }
 
   if (stream.length === 0) return null;
-  return { summary: summarizeStream(stream), stream, laps };
+  return {
+    summary: { ...summarizeStream(stream), derived_date: new Date(firstTimeMs).toISOString().slice(0, 10) },
+    stream,
+    laps,
+  };
 }
 
 export function parseCsv(text) {
@@ -266,7 +270,10 @@ export function parseCsv(text) {
     if (hrIdx !== -1) { const v = parseFloat(cols[hrIdx]); if (!isNaN(v)) point.heart_rate = v; }
     if (powerIdx !== -1) { const v = parseFloat(cols[powerIdx]); if (!isNaN(v)) point.power = v; }
     if (cadenceIdx !== -1) { const v = parseFloat(cols[cadenceIdx]); if (!isNaN(v)) point.cadence = v; }
-    if (distIdx !== -1) { const v = parseFloat(cols[distIdx]); if (!isNaN(v)) point.distance = v; }
+    if (distIdx !== -1) {
+      const distance = parseFloat(cols[distIdx]);
+      if (Number.isFinite(distance) && distance >= 0) point.distance = distance;
+    }
     if (altIdx !== -1) { const v = parseFloat(cols[altIdx]); if (!isNaN(v)) point.altitude = v; }
     if (speedIdx !== -1) { const v = parseFloat(cols[speedIdx]); if (!isNaN(v)) point.speed = v; }
 
@@ -284,8 +291,17 @@ export function parseCsv(text) {
     if (typeof p.distance === 'number') maxDistance = Math.max(maxDistance, p.distance);
   }
   const durationSeconds = stream.length > 1 ? stream[stream.length - 1].time - stream[0].time : 0;
-  let distanceKm = maxDistance;
-  if (distanceKm > 1000) distanceKm = distanceKm / 1000;
+  // Recorded distance is stored in metres. Keep the legacy inference only for
+  // unlabeled CSV columns, and take explicit unit headers at face value.
+  const distanceHeader = headers[distIdx];
+  const distanceScale = distanceHeader === 'distance_km' ||
+    (distanceHeader === 'distance' && maxDistance <= 1000) ? 1000 : 1;
+  if (distanceScale === 1000) {
+    for (const point of stream) {
+      if (point.distance !== null) point.distance *= distanceScale;
+    }
+  }
+  const distanceKm = maxDistance * distanceScale / 1000;
 
   const summary = {
     avg_hr: hrCount ? Math.round(hrSum / hrCount) : null,

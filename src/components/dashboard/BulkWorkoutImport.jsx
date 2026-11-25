@@ -12,8 +12,7 @@ import { History, FolderOpen, CheckCircle2, AlertTriangle, XCircle, FileCode } f
 const BATCH_SIZE = 5;
 
 function isSupportedFile(name) {
-  const lower = name.toLowerCase();
-  return lower.endsWith(".fit") || lower.endsWith(".csv");
+  return /\.(fit|tcx|csv)$/i.test(name);
 }
 
 export default function BulkWorkoutImport({ athleteId }) {
@@ -119,11 +118,11 @@ export default function BulkWorkoutImport({ athleteId }) {
       <CardContent>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <Label className="text-xs font-semibold">Select Activity Files (.fit, .csv)</Label>
+            <Label className="text-xs font-semibold">Select activity files (.fit, .tcx, .csv)</Label>
             <div className="mt-1.5 flex flex-col gap-2">
               <Input
                 type="file"
-                accept=".fit,.csv,application/vnd.ant.fit,application/octet-stream"
+                accept=".fit,.tcx,.csv,application/vnd.ant.fit,application/octet-stream"
                 multiple
                 disabled={busy || loadRefresh === "refreshing"}
                 onChange={(e) => addFiles(Array.from(e.target.files || []))}
