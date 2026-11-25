@@ -105,6 +105,9 @@ export default function Landing() {
               </Card>
             ))}
           </div>
+          <Button asChild variant="outline" className="mt-6 min-h-11 whitespace-normal">
+            <Link to="/register?returnTo=%2Fimport">Import your first workout <ArrowRight className="h-4 w-4" aria-hidden="true" /></Link>
+          </Button>
         </section>
 
         <section id="pricing" aria-labelledby="pricing-title" className="scroll-mt-24 border-y border-border bg-muted/30">
