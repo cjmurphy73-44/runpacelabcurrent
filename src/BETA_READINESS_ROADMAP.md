@@ -5,7 +5,7 @@ _Status legend: ✅ pass · ❌ fail · 🟡 unverified · ⛔ blocked. An item 
 
 The app is published at `https://trainpacelab.base44.app` and accepts real Stripe payments. This roadmap is the **verification** layer that sits on top of `PRODUCTION_ROADMAP.md`: it does not re-implement anything — it proves each area works for an external tester, or marks it unverified. Phases are ordered by launch risk; no phase may be marked done while a 🔴 item inside it is ❌ or 🟡.
 
-Evidence goes in the **Evidence** column of each checklist (route, date, tester, device, and a one-line observed outcome). Source inspection alone is never a pass. Preview/browser limitations are recorded as 🟡 unverified, not as ✅.
+Evidence goes in the **Evidence** column of each checklist (route, date, tester, device, environment, and a one-line observed outcome). Source inspection alone is never a runtime pass. Until Base44 staging backend, auth, database, functions, secrets and SDK routing are independently verified, run only offline synthetic tests with external requests denied; keep authenticated integration, real-provider and payment acceptance 🟡 unverified. Preview/browser limitations remain 🟡, never ✅. Real-provider accounts and payment testing require separate explicit approval after isolation is proven. Published-app checks, if separately authorized, are read-only observation and never test-fixture writes.
 
 ---
 
@@ -137,7 +137,7 @@ One pass per route on mobile and desktop. Expected outcome for every row: route 
 | # | Checklist item | Expected outcome (pass) | Sev | Status | Evidence |
 |---|---|---|---|---|---|
 | 4.1 | Wearable messaging sweep: no surface implies Garmin/Strava direct sync is live today | Single source of truth = `src/lib/wearableCatalog.js` | 🔴 | 🟡 | |
-| 4.2 | COROS full path on published domain: connect → history → recovery → webhook ingest | End-to-end on `trainpacelab.base44.app`, not preview | 🔴 | 🟡 | |
+| 4.2 | COROS full path: connect → history → recovery → webhook ingest | Offline mocked flow first; authenticated isolated end-to-end acceptance only after backend separation evidence and explicit approval, never production fixture writes | 🔴 | 🟡 | |
 | 4.3 | Duplicate webhook event (same `event_id`) is skipped, not re-ingested | `WebhookEvent` dedup holds | 🔴 | 🟡 | |
 | 4.4 | Large workout history load on Home does not blank the dashboard | Loads with skeletons; no NaN | 🟡 | 🟡 | |
 | 4.5 | Offline / flaky network: forms show inline error, no silent failure | Errors bubble to UI | 🟡 | 🟡 | |
@@ -176,5 +176,5 @@ A cohort advances only when its exit criteria are met. Any 🔴 ❌ blocks the n
 
 - A fix is not a pass: retest the same checklist item end-to-end after the edit, then record fresh evidence.
 - When a shared component or service changes (e.g. `workoutIngest`, RLS, service adapter), retest every phase row that depends on it, not just the one that failed.
-- Preview/browser limitations are 🟡 unverified until confirmed on the published app; never mark them ✅.
+- Preview/browser limitations remain 🟡 unverified. Do not use published-app tests to clear isolated write-path, OAuth, webhook, billing or ownership gates; require separately approved, independently isolated runtime acceptance evidence before marking them ✅.
 - Triage every ❌ by severity (🔴 blocks, 🟡 degrades) and user impact before fixing.
