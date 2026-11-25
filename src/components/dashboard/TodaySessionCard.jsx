@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { base44 } from "@/api/base44Client";
+import { Link } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import ZoneBadge from "@/components/ui/ZoneBadge";
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
@@ -8,6 +8,7 @@ import { CheckCircle2, Moon, AlertTriangle } from "lucide-react";
 import moment from "moment";
 import { useCoachInjurySignal } from "@/hooks/useCoachInjurySignal";
 import CoachHoldCard from "@/components/dashboard/CoachHoldCard";
+import { loadActiveSchedule } from "@/services/activeSchedule";
 
 function detectAnomaly(biometricTelemetry) {
   const sorted = [...(biometricTelemetry || [])].sort((a, b) => b.date.localeCompare(a.date));
@@ -22,18 +23,23 @@ export default function TodaySessionCard({ athleteId }) {
   const injury = useCoachInjurySignal(athleteId);
   const [session, setSession] = useState(undefined);
   const [plan, setPlan] = useState(null);
+  const [workoutId, setWorkoutId] = useState(null);
+  const [loadError, setLoadError] = useState(false);
 
   useEffect(() => {
     if (!athleteId) return;
-    (async () => {
-      const todayStr = moment().format("YYYY-MM-DD");
-      const [sessions, plans] = await Promise.all([
-        base44.entities.TrainingPlanSession.filter({ athlete_id: athleteId, date: todayStr }),
-        base44.entities.TrainingPlan.filter({ athlete_id: athleteId, status: "active" }, "-created_date", 1),
-      ]);
-      setSession(sessions?.[0] || null);
-      setPlan(plans?.[0] || null);
-    })();
+    let active = true;
+    const today = moment().format("YYYY-MM-DD");
+    setSession(undefined);
+    setLoadError(false);
+    loadActiveSchedule(athleteId, today, today).then(({ plan, sessions, workoutBySession }) => {
+      if (!active) return;
+      const session = sessions[0] ?? null;
+      setSession(session);
+      setPlan(plan);
+      setWorkoutId(session ? workoutBySession[session.id] : null);
+    }).catch(() => { if (active) setLoadError(true); });
+    return () => { active = false; };
   }, [athleteId]);
 
   const anomaly = detectAnomaly(biometricTelemetry);
@@ -61,7 +67,9 @@ export default function TodaySessionCard({ athleteId }) {
           }
         />
 
-        {session === undefined ? (
+        {loadError ? (
+          <p role="status" className="text-sm text-muted-foreground">Could not load today’s session.</p>
+        ) : session === undefined ? (
           <p className="text-sm text-muted-foreground">Loading...</p>
         ) : session && !runOnHold ? (
           <div className="space-y-3">
@@ -94,6 +102,7 @@ export default function TodaySessionCard({ athleteId }) {
               )}
             </div>
             {session.rationale_text && <p className="text-sm text-muted-foreground">{session.rationale_text}</p>}
+            {workoutId && <Link to={`/workouts/${workoutId}`} className="inline-block text-sm text-primary hover:underline">Review completed workout</Link>}
           </div>
         ) : !session ? (
           <div className="flex items-center gap-3 py-2">

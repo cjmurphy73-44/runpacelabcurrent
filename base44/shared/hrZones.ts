@@ -42,7 +42,7 @@ export function zoneIndexForHeartRate(hr, restHr, maxHr) {
 // Accumulate seconds per zone across a second-by-second stream. Gaps longer than 60s
 // are treated as pauses and excluded, and the last known HR is carried forward so a
 // dropped sample does not silently shrink the tracked time.
-export function timeInZoneFromStream(stream, restHr, maxHr) {
+export function timeInZoneFromStream(stream, restHr, maxHr, measuredOnly = false) {
   const seconds = [0, 0, 0, 0, 0];
   let covered = 0;
   let total = 0;
@@ -55,10 +55,13 @@ export function timeInZoneFromStream(stream, restHr, maxHr) {
     const prev = stream[i - 1] || {};
     if (i > 0) {
       const raw = Number(pt.time) - Number(prev.time);
-      const dt = Number.isFinite(raw) ? Math.min(Math.max(raw, 0), 60) : 0;
+      const dt = !Number.isFinite(raw) || raw <= 0 || (measuredOnly && raw > 5)
+        ? 0 : Math.min(raw, 60);
       if (dt > 0) {
         total += dt;
-        const hr = Number.isFinite(pt.heart_rate) && pt.heart_rate > 0 ? pt.heart_rate : lastHr;
+        const hr = measuredOnly
+          ? (typeof pt.heart_rate === 'number' && pt.heart_rate >= 30 && pt.heart_rate <= 250 ? pt.heart_rate : null)
+          : (Number.isFinite(pt.heart_rate) && pt.heart_rate > 0 ? pt.heart_rate : lastHr);
         if (Number.isFinite(hr) && hr > 0) {
           seconds[zoneIndexForHeartRate(hr, restHr, maxHr)] += dt;
           covered += dt;
@@ -79,17 +82,17 @@ const EMPTY_ZONES = [0, 0, 0, 0, 0];
 // Resolve the zone distribution for a session from a real stream, or report that there
 // is none. `laps` and `avgHr` are accepted for call-site compatibility but are never
 // used to manufacture a split.
-export function resolveTimeInZone({ stream, durationSeconds, restHr, maxHr }) {
+export function resolveTimeInZone({ stream, durationSeconds, restHr, maxHr, measuredOnly = false }) {
   const bounds = zoneFloorBpm(restHr, maxHr);
   const duration = Math.max(0, Number(durationSeconds) || 0);
 
-  const fromStream = timeInZoneFromStream(stream, restHr, maxHr);
+  const fromStream = timeInZoneFromStream(stream, restHr, maxHr, measuredOnly);
   if (fromStream.covered_seconds >= 60 && (duration === 0 || fromStream.covered_seconds >= duration * 0.3)) {
     return {
       zone_seconds: fromStream.zone_seconds,
       zone_method: 'stream',
       zone_bounds_bpm: bounds,
-      coverage_pct: duration ? Math.round((fromStream.covered_seconds / duration) * 100) : 100,
+      coverage_pct: duration ? Math.min(100, Math.round((fromStream.covered_seconds / duration) * 100)) : 100,
     };
   }
 

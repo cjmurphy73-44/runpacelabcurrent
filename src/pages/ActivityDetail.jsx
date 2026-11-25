@@ -5,6 +5,8 @@ import { downloadWorkoutFile } from "@/services/workoutExport";
 import { useSubscription } from "@/hooks/useSubscription";
 import RecordingIntervals from "@/components/workout/RecordingIntervals";
 import CorosOriginalRecording from "@/components/workout/CorosOriginalRecording";
+import WorkoutZonePanel from "@/components/workout/WorkoutZonePanel";
+import WorkoutFitnessImpact from "@/components/workout/WorkoutFitnessImpact";
 import FeatureGate from "@/components/billing/FeatureGate";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -16,6 +18,8 @@ import { ArrowLeft, Sparkles, Activity as ActivityIcon, Clock, MapPin, HeartPuls
 import { workoutLoadPresentation } from "@/lib/workoutLoadPresentation";
 import { aerobicDecouplingInterpretation, efficiencyFactorInterpretation } from "@/lib/workoutInterpretation";
 import { AuditBadge } from "@/components/ui/AuditBadge";
+import { hasVerifiedStreams } from "@/lib/streamValidity";
+import { recordingCoverage } from "@/lib/recordingCoverage";
 
 // Intensity → dynamic color tokens used across the insight card.
 const INTENSITY_STYLES = {
@@ -69,6 +73,8 @@ function WorkoutActivity({ id }) {
   const [patching, setPatching] = useState(false);
   const [patchMsg, setPatchMsg] = useState(null);
   const [planSession, setPlanSession] = useState(null);
+  const [athlete, setAthlete] = useState(null);
+  const [fitnessRevision, setFitnessRevision] = useState(0);
   const { plan } = useSubscription();
 
   useEffect(() => {
@@ -107,7 +113,14 @@ function WorkoutActivity({ id }) {
 
       if (workout.training_plan_session_id) {
         base44.entities.TrainingPlanSession.get(workout.training_plan_session_id)
-          .then(session => ifActive(() => setPlanSession(session)))
+          .then(session => {
+            if (session?.athlete_id === workout.athlete_id) ifActive(() => setPlanSession(session));
+          })
+          .catch(() => {});
+      }
+      if (hasVerifiedStreams(workout) && !workout.zone_bounds_bpm?.length) {
+        base44.entities.AthleteProfile.get(workout.athlete_id)
+          .then(profile => ifActive(() => setAthlete(profile)))
           .catch(() => {});
       }
       base44.entities.WorkoutFeedback.filter({ workout_id: id }, "-created_date", 1)
@@ -171,7 +184,9 @@ function WorkoutActivity({ id }) {
         setFeedback(rows[0]);
       }
     } catch (e) {
-      setInsightError("Could not generate insights. Try again.");
+      setInsightError((e?.response?.status ?? e?.status) === 429
+        ? "Too many new insight requests. Try again in a few minutes."
+        : "Could not generate insights. Try again.");
     } finally {
       setRetrying(false);
     }
@@ -201,6 +216,7 @@ function WorkoutActivity({ id }) {
     { icon: Clock, label: "Duration", value: workout.duration_minutes ? `${workout.duration_minutes} min` : "—" },
     { icon: MapPin, label: "Distance", value: workout.distance_km ? `${workout.distance_km} km` : "—" },
     { icon: HeartPulse, label: "Avg HR", value: workout.avg_hr ? `${workout.avg_hr} bpm` : "—" },
+    { icon: HeartPulse, label: "Max HR", value: workout.max_hr ? `${workout.max_hr} bpm` : "—" },
     { icon: Gauge, label: "Training load", value: load.amount, detail: load.amount === "Load unavailable" ? null : load.label },
   ];
 
@@ -209,6 +225,9 @@ function WorkoutActivity({ id }) {
     : "Activity";
 
   const laps = Array.isArray(workout.laps) ? workout.laps : [];
+  const hasInlineRecording = hasVerifiedStreams(workout);
+  const hasCompleteInlineRecording = hasInlineRecording && !recordingCoverage(workout)?.partial;
+  const canLoadCoros = !coachView && workout.source_provider === "coros" && Boolean(workout.provider_activity_id);
   const sortedAssets = [...(Array.isArray(assets) ? assets : [])].sort((a, b) => (SOURCE_PRIORITY_UI[b.file_type] || 0) - (SOURCE_PRIORITY_UI[a.file_type] || 0) || (a.uploaded_at || "").localeCompare(b.uploaded_at || ""));
 
   return (
@@ -233,7 +252,7 @@ function WorkoutActivity({ id }) {
           ) : undefined}
         />
         <Card>
-          <CardContent className="pt-6 grid grid-cols-2 sm:grid-cols-4 gap-4">
+          <CardContent className="pt-6 grid grid-cols-2 sm:grid-cols-5 gap-4">
             {summary.map((s) => (
               <div key={s.label} className="space-y-1">
                 <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
@@ -245,6 +264,49 @@ function WorkoutActivity({ id }) {
             ))}
           </CardContent>
         </Card>
+        {planSession && (
+          <Card>
+            <CardContent className="pt-6 flex flex-wrap items-center justify-between gap-3 text-sm">
+              <div>
+                <p className="font-medium">Linked plan session</p>
+                <p className="text-muted-foreground">{planSession.date} · {planSession.prescribed_duration_minutes || 0} min planned</p>
+              </div>
+              <Button asChild size="sm" variant="outline"><Link to="/calendar">Training calendar</Link></Button>
+            </CardContent>
+          </Card>
+        )}
+      </section>
+
+      <section className="space-y-4">
+        <SectionHeading title="Workout recording" icon={HeartPulse} />
+        <Card>
+          <CardContent className="pt-6 space-y-4">
+            {canLoadCoros ? (
+              <CorosOriginalRecording
+                workout={workout}
+                athlete={athlete}
+                hasInlineRecording={hasInlineRecording}
+                hasCompleteInlineRecording={hasCompleteInlineRecording}
+                onRestored={(metrics, loadRefreshed) => {
+                  setWorkout(current => ({ ...current, ...metrics }));
+                  if (loadRefreshed) setFitnessRevision(revision => revision + 1);
+                }}
+              />
+            ) : (
+              <>
+                <WorkoutZonePanel workout={workout} athlete={athlete} showImport={!coachView} />
+                {!coachView && workout.source_provider === "coros" && !workout.provider_activity_id && !hasInlineRecording && (
+                  <p className="text-sm text-muted-foreground">This workout has no COROS activity ID for an exact recording lookup.</p>
+                )}
+                <RecordingIntervals workout={workout} />
+              </>
+            )}
+          </CardContent>
+        </Card>
+        {!coachView && <WorkoutFitnessImpact key={fitnessRevision} workout={workout} athleteId={workout.athlete_id} />}
+      </section>
+
+      <section>
         <Card>
           <CardContent className="pt-6 flex flex-wrap items-center gap-3">
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
@@ -379,10 +441,6 @@ function WorkoutActivity({ id }) {
           </Card>
         </section>
       )}
-
-      {!coachView && workout.source_provider === "coros" && workout.provider_activity_id
-        ? <CorosOriginalRecording key={workout.id} workout={workout} />
-        : <RecordingIntervals workout={workout} />}
 
       <section className="space-y-4">
         <SectionHeading

@@ -85,7 +85,7 @@ export default function WorkoutDetailModal({ workout, athlete, children, onChang
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>{children}</DialogTrigger>
-      <DialogContent className="max-w-2xl max-h-[90dvh] overflow-y-auto bg-card/95 border border-border/50 backdrop-blur">
+      <DialogContent className="w-[calc(100%_-_1rem)] max-w-2xl max-h-[90dvh] overflow-y-auto overflow-x-hidden bg-card/95 border border-border/50 backdrop-blur">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 flex-wrap">
             {workout.date}
@@ -95,6 +95,10 @@ export default function WorkoutDetailModal({ workout, athlete, children, onChang
             )}
           </DialogTitle>
         </DialogHeader>
+
+        <Button asChild variant="outline" size="sm" className="justify-self-start">
+          <Link to={`/workouts/${workout.id}`}>Open workout analysis</Link>
+        </Button>
 
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-sm">
           <WorkoutMetricTile label="Total Time" value={durationMin ? `${durationMin} min` : "—"} />
@@ -175,8 +179,7 @@ export default function WorkoutDetailModal({ workout, athlete, children, onChang
           )}
         </div>
 
-        <div className="flex items-center justify-end gap-2 pt-2 border-t border-border/50">
-          <Button asChild variant="outline" size="sm"><Link to={`/workouts/${workout.id}`}>Workout analysis & coach insights</Link></Button>
+        <div className="flex flex-wrap items-center justify-end gap-2 pt-2 border-t border-border/50">
           <Button variant="outline" size="sm" onClick={() => setEditing(true)}>
             <Pencil className="w-4 h-4" /> Edit
           </Button>

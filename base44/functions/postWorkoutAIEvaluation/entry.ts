@@ -39,6 +39,7 @@ Deno.serve(async (req: Request) => {
     const result = await runPostWorkoutEvaluation(base44, workout_id, athlete_id);
     return Response.json(result, { headers: { 'Content-Type': 'application/json' } });
   } catch (error) {
+    if (error?.status === 429) return Response.json({ error: error.message }, { status: 429 });
     return Response.json({ error: error.message || 'Evaluation failed' }, { status: 500 });
   }
 });

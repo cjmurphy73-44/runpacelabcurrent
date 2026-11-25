@@ -203,7 +203,9 @@ export async function buildAthleteStateSummary(base44, workout) {
   const athleteId = workout.athlete_id;
 
   const sessions = athleteId
-    ? await base44.asServiceRole.entities.WorkoutSession.filter({ athlete_id: athleteId }, 'date', 500).catch(() => [])
+    ? await base44.asServiceRole.entities.WorkoutSession.filter(
+      { athlete_id: athleteId, date: { $lte: workout.date } }, '-date', 500, 0, ['date', 'session_trimp', 'session_tss'],
+    ).catch(() => [])
     : [];
   const history = sessions && sessions.length ? sessions : [workout];
 

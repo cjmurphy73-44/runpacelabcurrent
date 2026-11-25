@@ -124,7 +124,7 @@ export default function Imports() {
       </section>
 
       {/* 2, Import workout files */}
-      <section className="space-y-3">
+      <section id="workout-files" className="space-y-3 scroll-mt-24">
         <SectionHeading index="02" title="Import workout files" description="Bulk-upload .fit or .csv exports from your watch or training platform." icon={Upload} />
         <BulkWorkoutImport athleteId={athlete.id} onUploaded={() => {}} />
         <p className="text-xs text-muted-foreground">

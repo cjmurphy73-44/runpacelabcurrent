@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useCallback } from "react";
+import { Link } from "react-router-dom";
 import { base44 } from "@/api/base44Client";
 import { downloadWorkoutFile } from "@/services/workoutExport";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -9,33 +10,49 @@ import { useCoachInjurySignal } from "@/hooks/useCoachInjurySignal";
 import CoachHoldCard from "@/components/dashboard/CoachHoldCard";
 import { useSubscription } from "@/hooks/useSubscription";
 import FeatureGate from "@/components/billing/FeatureGate";
+import { loadActiveSchedule } from "@/services/activeSchedule";
 
 const ZONE_TRIMP_FACTOR = { Z1: 0.5, Z2: 0.7, Z3: 0.9, Z4: 1.1, Z5: 1.3 };
 
 export default function TrainingCalendar({ athleteId, currentTsb }) {
   const [sessions, setSessions] = useState([]);
+  const [workoutBySession, setWorkoutBySession] = useState({});
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
+  const [adjustError, setAdjustError] = useState("");
   const [requesting, setRequesting] = useState(false);
   const injury = useCoachInjurySignal(athleteId);
   const { plan } = useSubscription();
 
   const load = useCallback(async () => {
     setLoading(true);
-    const all = await base44.entities.TrainingPlanSession.filter({ athlete_id: athleteId });
-    const today = moment().startOf("day");
-    const weekOut = moment().add(6, "days").endOf("day");
-    const upcoming = all.filter((s) => moment(s.date).isBetween(today, weekOut, null, "[]"));
-    setSessions(upcoming);
-    setLoading(false);
+    setLoadError(false);
+    try {
+      const { sessions, workoutBySession } = await loadActiveSchedule(
+        athleteId, moment().format("YYYY-MM-DD"), moment().add(6, "days").format("YYYY-MM-DD"),
+      );
+      setSessions(sessions);
+      setWorkoutBySession(workoutBySession);
+    } catch {
+      setLoadError(true);
+    } finally {
+      setLoading(false);
+    }
   }, [athleteId]);
 
   useEffect(() => { load(); }, [load]);
 
   const requestMicroadjustment = async () => {
     setRequesting(true);
-    await base44.functions.invoke("requestMicroadjustment", { athlete_id: athleteId, current_tsb: currentTsb });
-    await load();
-    setRequesting(false);
+    setAdjustError("");
+    try {
+      await base44.functions.invoke("requestMicroadjustment", { athlete_id: athleteId, current_tsb: currentTsb });
+      await load();
+    } catch (error) {
+      setAdjustError(error?.response?.data?.error || "Could not adjust the schedule.");
+    } finally {
+      setRequesting(false);
+    }
   };
 
   const days = Array.from({ length: 7 }, (_, i) => moment().add(i, "days").format("YYYY-MM-DD"));
@@ -55,8 +72,14 @@ export default function TrainingCalendar({ athleteId, currentTsb }) {
           {requesting ? "Adjusting…" : "AI Microadjustment"}
         </Button>
       </div>
+      {adjustError && <p role="alert" className="text-sm text-destructive">{adjustError}</p>}
       {loading ? (
         <p className="text-sm text-muted-foreground">Loading...</p>
+      ) : loadError ? (
+        <div className="flex flex-wrap items-center gap-2">
+          <p role="alert" className="text-sm text-muted-foreground">Could not load your active schedule.</p>
+          <Button size="sm" variant="outline" onClick={load}>Retry</Button>
+        </div>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           {days.map((day) => {
@@ -84,6 +107,11 @@ export default function TrainingCalendar({ athleteId, currentTsb }) {
                       <p className="text-muted-foreground">Target TRIMP ~{estTrimp}</p>
                       {session.rationale_text && <p className="text-xs text-muted-foreground">{session.rationale_text}</p>}
                       <p className="text-xs uppercase tracking-wide text-muted-foreground">{session.status}</p>
+                      {workoutBySession[session.id] && (
+                        <Link className="block text-sm text-primary hover:underline" to={`/workouts/${workoutBySession[session.id]}`}>
+                          Review completed workout
+                        </Link>
+                      )}
                       <FeatureGate feature="structured_export" plan={plan} compact>
                         <Button size="sm" variant="outline" onClick={() => downloadWorkoutFile(session)} className="gap-1.5 mt-2 w-full">
                           <Download className="w-3.5 h-3.5" /> Export Workout

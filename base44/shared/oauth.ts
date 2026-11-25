@@ -4,6 +4,8 @@
 // HMAC-state signing / env plumbing that is identical across providers.
 // Plain module — no Deno.serve; imported by backend function entry.ts files.
 
+declare const Deno: { env: { get(name: string): string | undefined } };
+
 export function env(name: string): string {
   try { return Deno.env.get(name) || ''; } catch { return ''; }
 }
