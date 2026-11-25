@@ -1,6 +1,8 @@
 import React, { useEffect, useState, useCallback } from "react";
 import { Link } from "react-router-dom";
 import { base44 } from "@/api/base44Client";
+import { loadActiveSchedule } from "@/services/activeSchedule";
+import moment from "moment";
 import OnboardingFlow from "@/components/dashboard/OnboardingFlow";
 import { ensureProfileLinked } from "@/lib/profileLinkage";
 import FitnessStats from "@/components/dashboard/FitnessStats";
@@ -57,7 +59,7 @@ export default function Home() {
   const [refreshIssue, setRefreshIssue] = useState(false);
   const [messages, setMessages] = useState([]);
   const [loadTimelineWorkouts, setLoadTimelineWorkouts] = useState([]);
-  const [plannedWorkouts, setPlannedWorkouts] = useState([]);
+  const [schedule, setSchedule] = useState(null);
   const [manualOpen, setManualOpen] = useState(false);
 
   const trackWorkoutIngested = () => {
@@ -69,10 +71,12 @@ export default function Home() {
   const loadAthleteData = useCallback(async (athleteId) => {
     const [freshAthlete, recentWorkouts, [messageResult, planResult]] = await Promise.all([
       base44.entities.AthleteProfile.get(athleteId),
-      base44.entities.WorkoutSession.filter({ athlete_id: athleteId }, "-date", 60),
+      base44.entities.WorkoutSession.filter({ athlete_id: athleteId }, "-date", 60, 0, [
+        "id", "date", "sport", "duration_minutes", "distance_km", "avg_hr", "session_trimp", "session_tss", "load_source",
+      ]),
       Promise.allSettled([
         base44.entities.CoachMessage.filter({ athlete_id: athleteId }, "-created_date", 10),
-        base44.entities.TrainingPlanSession.filter({ athlete_id: athleteId }, "-date", 60),
+        loadActiveSchedule(athleteId, moment().format("YYYY-MM-DD"), moment().add(7, "days").format("YYYY-MM-DD")),
       ]),
     ]);
     setAthlete(freshAthlete);
@@ -80,21 +84,16 @@ export default function Home() {
     if (messageResult.status === "fulfilled") setMessages(messageResult.value);
     setRefreshIssue(messageResult.status === "rejected" || planResult.status === "rejected");
     setLoadTimelineWorkouts(recentWorkouts);
-    if (planResult.status !== "fulfilled") return;
-    const todayKey = new Date().toISOString().split("T")[0];
-    const in7Days = new Date();
-    in7Days.setDate(in7Days.getDate() + 7);
-    const in7DaysKey = in7Days.toISOString().split("T")[0];
-    setPlannedWorkouts(planResult.value.filter((p) => p.date >= todayKey && p.date <= in7DaysKey));
+    setSchedule(planResult.status === "fulfilled" ? planResult.value : null);
   }, []);
 
-  const refreshDashboard = async (athleteId) => {
+  const refreshDashboard = useCallback(async (athleteId) => {
     try {
       await loadAthleteData(athleteId);
     } catch {
       setRefreshIssue(true);
     }
-  };
+  }, [loadAthleteData]);
 
   useEffect(() => {
     let cancelled = false;
@@ -256,7 +255,7 @@ export default function Home() {
           <WidgetBoundary name="Wearable sync"><WearableSyncBar onSynced={() => refreshDashboard(athlete.id)} /></WidgetBoundary>
           <WidgetBoundary name="Physiology strip"><PhysiologyStrip athlete={athlete} /></WidgetBoundary>
           <WidgetBoundary name="Calibration meter"><CalibrationMeter athlete={athlete} athleteId={athlete.id} /></WidgetBoundary>
-          <WidgetBoundary name="Today's session"><TodaySessionCard athleteId={athlete.id} /></WidgetBoundary>
+          <WidgetBoundary name="Today's session"><TodaySessionCard athleteId={athlete.id} schedule={schedule} /></WidgetBoundary>
           <WidgetBoundary name="Weekly volume"><WeeklyVolumeLine athleteId={athlete.id} /></WidgetBoundary>
         </section>
 
@@ -310,7 +309,7 @@ export default function Home() {
           icon={TrendingUp}
           deep
         >
-          <WidgetBoundary name="Load & fatigue chart"><LoadFatigueChart completedSessions={loadTimelineWorkouts} plannedWorkouts={plannedWorkouts} /></WidgetBoundary>
+          <WidgetBoundary name="Load & fatigue chart"><LoadFatigueChart completedSessions={loadTimelineWorkouts} plannedWorkouts={schedule?.sessions ?? []} /></WidgetBoundary>
           <WidgetBoundary name="Horizon strip"><HorizonStrip athleteId={athlete.id} /></WidgetBoundary>
         </CollapsibleSection>
 
@@ -320,7 +319,9 @@ export default function Home() {
           subtitle="Reconciliation across your recent sessions"
           deep
         >
-          <WidgetBoundary name="Planned vs actual"><PlannedActualReconciliation athleteId={athlete.id} /></WidgetBoundary>
+          <WidgetBoundary name="Planned vs actual">
+            <PlannedActualReconciliation athleteId={athlete.id} activePlanId={schedule?.plan?.id} onScheduleChanged={refreshDashboard} />
+          </WidgetBoundary>
         </CollapsibleSection>
 
         {/* 7, Recovery & Readiness (collapsible) */}

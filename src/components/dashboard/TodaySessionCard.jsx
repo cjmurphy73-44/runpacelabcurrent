@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React from "react";
 import { Link } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import ZoneBadge from "@/components/ui/ZoneBadge";
@@ -8,7 +8,6 @@ import { CheckCircle2, Moon, AlertTriangle } from "lucide-react";
 import moment from "moment";
 import { useCoachInjurySignal } from "@/hooks/useCoachInjurySignal";
 import CoachHoldCard from "@/components/dashboard/CoachHoldCard";
-import { loadActiveSchedule } from "@/services/activeSchedule";
 
 function detectAnomaly(biometricTelemetry) {
   const sorted = [...(biometricTelemetry || [])].sort((a, b) => b.date.localeCompare(a.date));
@@ -18,29 +17,13 @@ function detectAnomaly(biometricTelemetry) {
   return hrvValues[0] < baseline * 0.85;
 }
 
-export default function TodaySessionCard({ athleteId }) {
+export default function TodaySessionCard({ athleteId, schedule }) {
   const { biometricTelemetry } = useFitness() || {};
   const injury = useCoachInjurySignal(athleteId);
-  const [session, setSession] = useState(undefined);
-  const [plan, setPlan] = useState(null);
-  const [workoutId, setWorkoutId] = useState(null);
-  const [loadError, setLoadError] = useState(false);
-
-  useEffect(() => {
-    if (!athleteId) return;
-    let active = true;
-    const today = moment().format("YYYY-MM-DD");
-    setSession(undefined);
-    setLoadError(false);
-    loadActiveSchedule(athleteId, today, today).then(({ plan, sessions, workoutBySession }) => {
-      if (!active) return;
-      const session = sessions[0] ?? null;
-      setSession(session);
-      setPlan(plan);
-      setWorkoutId(session ? workoutBySession[session.id] : null);
-    }).catch(() => { if (active) setLoadError(true); });
-    return () => { active = false; };
-  }, [athleteId]);
+  const today = moment().format("YYYY-MM-DD");
+  const session = schedule?.sessions.find(item => item.date === today);
+  const plan = schedule?.plan;
+  const workoutId = session && schedule?.workoutBySession[session.id];
 
   const anomaly = detectAnomaly(biometricTelemetry);
   const isRunning = session?.sport?.toLowerCase() === "running";
@@ -67,10 +50,8 @@ export default function TodaySessionCard({ athleteId }) {
           }
         />
 
-        {loadError ? (
+        {!schedule ? (
           <p role="status" className="text-sm text-muted-foreground">Could not load today’s session.</p>
-        ) : session === undefined ? (
-          <p className="text-sm text-muted-foreground">Loading...</p>
         ) : session && !runOnHold ? (
           <div className="space-y-3">
             <div className="flex items-center gap-2 flex-wrap">

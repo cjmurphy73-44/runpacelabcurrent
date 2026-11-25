@@ -12,11 +12,12 @@ import { useEffect, useState, useCallback } from 'react';
 import { useServices } from '@/services/providers/ServiceContext';
 import { workoutMatchingEngine } from '@/services/workoutMatchingEngine';
 import { useSubscription } from '@/hooks/useSubscription';
+import moment from 'moment';
 
 const AUTO_CONFIDENCE = 0.9;
 
 function todayKey() {
-  return new Date().toISOString().split('T')[0];
+  return moment().format('YYYY-MM-DD');
 }
 
 function statusForMatch(match) {
@@ -31,7 +32,7 @@ function statusForMatch(match) {
   }
 }
 
-export function usePlannedActualReconciliation(athleteId) {
+export function usePlannedActualReconciliation(athleteId, activePlanId, onScheduleChanged) {
   const { workoutSessionRepo, trainingPlanSessionRepo, functionGateway } = useServices();
   const { isPro } = useSubscription();
   const [matches, setMatches] = useState([]);
@@ -76,10 +77,11 @@ export function usePlannedActualReconciliation(athleteId) {
     setLoading(true);
     setError(null);
     try {
-      const [sessions, planned] = await Promise.all([
+      const sinceKey = moment().subtract(30, 'days').format('YYYY-MM-DD');
+      const [sessions, planned] = activePlanId ? await Promise.all([
         workoutSessionRepo.filter({ athlete_id: athleteId }, '-date', 60),
-        trainingPlanSessionRepo.filter({ athlete_id: athleteId }, '-date', 200),
-      ]);
+        trainingPlanSessionRepo.filter({ athlete_id: athleteId, training_plan_id: activePlanId }, '-date', 200),
+      ]) : [[], []];
 
       const ingested = (sessions || [])
         .filter((s) => !s.training_plan_session_id)
@@ -91,9 +93,6 @@ export function usePlannedActualReconciliation(athleteId) {
           distanceKm: s.distance_km,
         }));
 
-      const today = new Date();
-      const since = new Date(today); since.setDate(since.getDate() - 30);
-      const sinceKey = since.toISOString().split('T')[0];
       const tKey = todayKey();
 
       const candidates = (planned || [])
@@ -135,8 +134,7 @@ export function usePlannedActualReconciliation(athleteId) {
       // Unmarked plan sessions older than 7 days are silently dropped, not shown, not
       // mutated (the pending record stays in the DB). Only sessions within the last week
       // surface as overdue for the user to skip or confirm.
-      const overdueCutoff = new Date(today); overdueCutoff.setDate(overdueCutoff.getDate() - 7);
-      const overdueCutoffKey = overdueCutoff.toISOString().split('T')[0];
+      const overdueCutoffKey = moment().subtract(7, 'days').format('YYYY-MM-DD');
       const todayRows = (planned || [])
         .filter((p) => (!p.status || p.status === 'pending') && p.date === tK)
         .filter((p) => !linkedScheduled.has(p.id) && !matchedScheduledIds.has(p.id))
@@ -162,12 +160,13 @@ export function usePlannedActualReconciliation(athleteId) {
       setAutoLinked(autoLinkedRows);
       setOverdue(overdueRows);
       setTodaySessions(todayRows);
+      if (autoLinkedRows.length) void onScheduleChanged?.(athleteId);
     } catch (e) {
       setError(e?.message || 'Failed to load reconciliation matches');
     } finally {
       setLoading(false);
     }
-  }, [athleteId, workoutSessionRepo, trainingPlanSessionRepo]);
+  }, [athleteId, activePlanId, onScheduleChanged, workoutSessionRepo, trainingPlanSessionRepo]);
 
   useEffect(() => { load(); }, [load]);
 
@@ -181,6 +180,7 @@ export function usePlannedActualReconciliation(athleteId) {
         training_plan_session_id: match.scheduledWorkoutId,
       });
       setLastConfirmed(match.sessionId);
+      void onScheduleChanged?.(athleteId);
       if (newStatus === 'partial' || newStatus === 'excess') void triggerReplan(match.scheduledWorkoutId);
       await load();
       return true;
@@ -190,7 +190,7 @@ export function usePlannedActualReconciliation(athleteId) {
     } finally {
       setConfirmingId(null);
     }
-  }, [confirmingId, load, triggerReplan, trainingPlanSessionRepo, workoutSessionRepo]);
+  }, [athleteId, confirmingId, load, onScheduleChanged, triggerReplan, trainingPlanSessionRepo, workoutSessionRepo]);
 
   // Acknowledge an auto-link, no DB write (already linked); just dismiss from the verify queue.
   const confirmAutoLink = useCallback((match) => {
@@ -206,6 +206,7 @@ export function usePlannedActualReconciliation(athleteId) {
       await workoutSessionRepo.update(match.sessionId, { training_plan_session_id: null });
       await trainingPlanSessionRepo.update(match.scheduledWorkoutId, { status: 'pending' });
       setLastRejected(match.sessionId);
+      void onScheduleChanged?.(athleteId);
       setAutoLinked((prev) => prev.filter((m) => m.sessionId !== match.sessionId));
       await load();
       return true;
@@ -215,7 +216,7 @@ export function usePlannedActualReconciliation(athleteId) {
     } finally {
       setRejectingId(null);
     }
-  }, [rejectingId, load, workoutSessionRepo, trainingPlanSessionRepo]);
+  }, [athleteId, rejectingId, load, onScheduleChanged, workoutSessionRepo, trainingPlanSessionRepo]);
 
   const markSkipped = useCallback(async (sessionId) => {
     if (!sessionId || skippingId) return false;
@@ -223,6 +224,7 @@ export function usePlannedActualReconciliation(athleteId) {
     try {
       await trainingPlanSessionRepo.update(sessionId, { status: 'skipped' });
       setLastSkipped(sessionId);
+      void onScheduleChanged?.(athleteId);
       setOverdue((prev) => prev.filter((s) => s.id !== sessionId));
       setTodaySessions((prev) => prev.filter((s) => s.id !== sessionId));
       void triggerReplan(sessionId);
@@ -233,7 +235,7 @@ export function usePlannedActualReconciliation(athleteId) {
     } finally {
       setSkippingId(null);
     }
-  }, [skippingId, triggerReplan, trainingPlanSessionRepo]);
+  }, [athleteId, onScheduleChanged, skippingId, triggerReplan, trainingPlanSessionRepo]);
 
   // Quick "mark off" for today's planned sessions, marks the plan session completed
   // without linking an uploaded activity (user did the session, no file needed).
@@ -243,6 +245,7 @@ export function usePlannedActualReconciliation(athleteId) {
     try {
       await trainingPlanSessionRepo.update(sessionId, { status: 'completed' });
       setLastMarkedDone(sessionId);
+      void onScheduleChanged?.(athleteId);
       setTodaySessions((prev) => prev.filter((s) => s.id !== sessionId));
       return true;
     } catch (e) {
@@ -251,7 +254,7 @@ export function usePlannedActualReconciliation(athleteId) {
     } finally {
       setMarkingId(null);
     }
-  }, [markingId, trainingPlanSessionRepo]);
+  }, [athleteId, markingId, onScheduleChanged, trainingPlanSessionRepo]);
 
   return {
     matches,

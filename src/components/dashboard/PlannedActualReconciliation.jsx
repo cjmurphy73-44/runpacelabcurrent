@@ -26,7 +26,7 @@ function pctText(ratio) {
   return `${Math.round(ratio * 100)}% of plan`;
 }
 
-export default function PlannedActualReconciliation({ athleteId }) {
+export default function PlannedActualReconciliation({ athleteId, activePlanId, onScheduleChanged }) {
   const {
     matches,
     autoLinked,
@@ -49,7 +49,7 @@ export default function PlannedActualReconciliation({ athleteId }) {
     lastMarkedDone,
     adjustingId,
     lastAdjustment,
-  } = usePlannedActualReconciliation(athleteId);
+  } = usePlannedActualReconciliation(athleteId, activePlanId, onScheduleChanged);
   const { toast } = useToast();
   const { plan } = useSubscription();
 
