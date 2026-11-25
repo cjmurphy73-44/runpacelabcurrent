@@ -254,6 +254,7 @@ function parseFit(buffer) {
     duration_minutes: Math.round((durationSeconds / 60) * 100) / 100,
     duration_seconds: Math.round(durationSeconds),
     derived_date: derivedDate,
+    recording_started_at: Number.isFinite(startInstant?.getTime()) ? startInstant.toISOString() : undefined,
   };
 
   return { summary, stream };
@@ -455,7 +456,7 @@ Deno.serve(async (req) => {
         }
 
         const sessionSport = sport || 'running';
-        if (TelemetryParser.isDuplicate(stagedByDate, date, sessionSport, durationMinutes, distanceKm)) {
+        if (TelemetryParser.isDuplicate(stagedByDate, date, sessionSport, durationMinutes, distanceKm, parsed.recording_started_at)) {
           errors.push({ file_name, error: `Skipped duplicate workout on ${date}` });
           continue;
         }
@@ -497,6 +498,7 @@ Deno.serve(async (req) => {
         const newSession = {
           athlete_id,
           date,
+          recording_started_at: parsed.recording_started_at || undefined,
           sport: sessionSport,
           duration_minutes: durationMinutes,
           duration_seconds: parsed.duration_seconds || Math.round(durationMinutes * 60),
@@ -534,7 +536,7 @@ Deno.serve(async (req) => {
       const date = { $in: dateKeys.slice(dateOffset, dateOffset + 100) };
       for (let skip = 0; ; skip += pageSize) {
         const rows = await base44.entities.WorkoutSession.filter(
-          { athlete_id, date }, 'id', pageSize, skip, ['date', 'sport', 'duration_minutes', 'distance_km'],
+          { athlete_id, date }, 'id', pageSize, skip, ['date', 'sport', 'duration_minutes', 'distance_km', 'recording_started_at'],
         );
         for (const row of rows) (savedByDate[row.date] ||= []).push(row);
         if (rows.length < pageSize) break;
@@ -542,7 +544,7 @@ Deno.serve(async (req) => {
     }
     const sessionsToCreate = [];
     for (const { session, fileName } of candidates) {
-      if (TelemetryParser.isDuplicate(savedByDate, session.date, session.sport, session.duration_minutes, session.distance_km)) {
+      if (TelemetryParser.isDuplicate(savedByDate, session.date, session.sport, session.duration_minutes, session.distance_km, session.recording_started_at)) {
         errors.push({ file_name: fileName, error: `Skipped duplicate workout on ${session.date}` });
       } else {
         sessionsToCreate.push(session);

@@ -11,6 +11,11 @@
       "format": "date",
       "description": "Date the workout took place"
     },
+    "recording_started_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Start timestamp from the original workout recording, when available"
+    },
     "sport": {
       "type": "string",
       "enum": [

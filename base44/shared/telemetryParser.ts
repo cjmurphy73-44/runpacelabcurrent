@@ -37,11 +37,20 @@ function sanitizeSession(session) {
   };
 }
 
-function isDuplicateSession(byDate, date, sport, durationMinutes, distanceKm) {
+function isDuplicateSession(byDate, date, sport, durationMinutes, distanceKm, recordingStartedAt?) {
   const sameDay = byDate[date];
-  return Array.isArray(sameDay) && sameDay.some(session => session.sport === sport &&
-    Math.abs(Number(session.duration_minutes) - durationMinutes) < 1 &&
-    Math.abs(Number(session.distance_km ?? 0) - distanceKm) < 0.1);
+  if (!Array.isArray(sameDay)) return false;
+  const candidateStart = Date.parse(recordingStartedAt);
+  return sameDay.some((session) => {
+    const similar = session.sport === sport &&
+      Math.abs(Number(session.duration_minutes) - durationMinutes) < 1 &&
+      Math.abs(Number(session.distance_km ?? 0) - distanceKm) < 0.1;
+    if (!similar) return false;
+
+    const savedStart = Date.parse(session.recording_started_at);
+    return !Number.isFinite(candidateStart) || !Number.isFinite(savedStart) ||
+      Math.abs(candidateStart - savedStart) <= 5_000;
+  });
 }
 
 // The bulk import uses the same checks for file rows and pre-parsed summaries.

@@ -216,8 +216,13 @@ export function parseTcx(text) {
   }
 
   if (stream.length === 0) return null;
+  const recordingStartedAt = new Date(firstTimeMs).toISOString();
   return {
-    summary: { ...summarizeStream(stream), derived_date: new Date(firstTimeMs).toISOString().slice(0, 10) },
+    summary: {
+      ...summarizeStream(stream),
+      derived_date: recordingStartedAt.slice(0, 10),
+      recording_started_at: recordingStartedAt,
+    },
     stream,
     laps,
   };
@@ -244,7 +249,7 @@ export function parseCsv(text) {
 
   const stream = [];
   let firstTime = null;
-  let derivedDate = null;
+  let recordingStartedAt = null;
 
   for (let i = 1; i < lines.length; i++) {
     const cols = lines[i].split(',');
@@ -259,7 +264,7 @@ export function parseCsv(text) {
           firstTime = milliseconds;
           if (!Number.isFinite(numeric) || numeric >= 1_000_000_000) {
             const date = new Date(milliseconds);
-            if (Number.isFinite(date.getTime())) derivedDate = date.toISOString().slice(0, 10);
+            if (Number.isFinite(date.getTime())) recordingStartedAt = date.toISOString();
           }
         }
         point.time = (milliseconds - firstTime) / 1000;
@@ -311,7 +316,8 @@ export function parseCsv(text) {
     distance_km: distanceKm ? Math.round(distanceKm * 100) / 100 : null,
     duration_minutes: durationSeconds ? Math.round((durationSeconds / 60) * 100) / 100 : null,
     duration_seconds: durationSeconds ? Math.round(durationSeconds) : 0,
-    derived_date: derivedDate,
+    derived_date: recordingStartedAt?.slice(0, 10) ?? null,
+    recording_started_at: recordingStartedAt,
   };
 
   return { summary, stream, laps: [] };

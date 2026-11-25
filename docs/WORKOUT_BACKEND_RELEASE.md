@@ -6,7 +6,7 @@ Deploy the Base44 resources and frontend from the same reviewed candidate. The p
 
 | Boundary | Compatibility requirement |
 | --- | --- |
-| WorkoutSession | Add walking and optional provider identity, training-load provenance and sample power. Keep all existing enum values, row permissions and required fields. Preserve existing Other workouts and all saved streams. |
+| WorkoutSession | Add walking and optional provider identity, recording start time, training-load provenance and sample power. Keep all existing enum values, row permissions and required fields. Preserve existing Other workouts and all saved streams. |
 | Manual workout | Legacy clients can still create the same WorkoutSession payload. The coordinated client uses logManualWorkout, which checks athlete ownership and reports storage and derived-load refresh independently. |
 | FIT and CSV imports | Keep the legacy workout ID, duration and estimated load fields alongside the current workout response. Once a session is committed, a load-refresh or first asset registration failure can be recovered from the stored workout and raw file reference. |
 | History and daily load | Retain workouts and their dates. Read all pages of load inputs, excluding full telemetry from the calculation query. Manual and single-file saves run the same calculation directly after persistence. A failed refresh reports a saved workout with stale metrics. Confirm both the saved workout and the recalculated daily total in acceptance. |
