@@ -1,9 +1,12 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useMemo, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Sparkles, RefreshCw, ChevronDown, ChevronUp } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import { useFitness } from "@/context/FitnessContext";
+import { useAuth } from "@/lib/AuthContext";
+import { useSubscription } from "@/hooks/useSubscription";
 import { useServices } from "@/services/providers/ServiceContext";
 
 const WINDOW_DAYS = 14;
@@ -93,21 +96,20 @@ const RESPONSE_SCHEMA = {
 export default function CoachBriefing({ athlete }) {
   const { dailyMetrics, workoutSessions, loading } = useFitness();
   const { functionGateway } = useServices();
-  const [briefing, setBriefing] = useState(null);
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState(null);
+  const { user } = useAuth();
+  const { isPro, loading: planLoading } = useSubscription();
   const [detailsOpen, setDetailsOpen] = useState(false);
-  const ranSignature = useRef("");
 
   const payload = useMemo(() => buildPayload(athlete, workoutSessions, dailyMetrics), [athlete, workoutSessions, dailyMetrics]);
-  // A stable signature so we don't re-run the LLM on every render, only when the underlying data actually changes.
   const signature = useMemo(() => JSON.stringify(payload), [payload]);
   const hasData = payload.sessions_last_14d.length > 0 || payload.metrics_last_14d.length > 0;
+  const entitled = isPro || user?.role === "admin";
 
-  const generate = async (sig) => {
-    setBusy(true);
-    setError(null);
-    try {
+  const { data: briefing, isFetching: busy, error, refetch } = useQuery({
+    queryKey: ["coach-briefing", user?.id, athlete?.id, signature],
+    enabled: false,
+    retry: false,
+    queryFn: async () => {
       const prompt = `You are an elite, plainspoken endurance coach giving the athlete a brief, honest read on their last couple of weeks.
 
 Use ONLY the data below. Do not invent sessions or metrics that aren't present. If a signal is missing, say so briefly rather than guessing.
@@ -122,63 +124,49 @@ Cover:
 Keep the assessment to 2–4 sentences. Then give 3–5 highlights as short bullets, each tagged positive / neutral / warning.
 
 Athlete data (JSON):
-${JSON.stringify(payload)}`;
+${signature}`;
       const response = await functionGateway.invoke('coachBriefing', { athlete_id: athlete?.id, prompt, response_json_schema: RESPONSE_SCHEMA });
-      setBriefing(response.data.result);
-      ranSignature.current = sig;
-    } catch (e) {
-      setError(e?.message || "Couldn't generate your briefing right now.");
-    } finally {
-      setBusy(false);
-    }
-  };
+      if (!response.data?.result?.assessment) throw new Error("Briefing was not returned");
+      return response.data.result;
+    },
+  });
 
-  // Auto-generate once when fitness data lands (and again only if the data materially changes).
-  useEffect(() => {
-    if (loading || busy) return;
-    if (!hasData) return;
-    if (signature === ranSignature.current) return;
-    generate(signature);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [loading, hasData, signature, busy]);
+  const generate = () => {
+    if (entitled && athlete?.id && hasData && !busy) void refetch({ cancelRefetch: false });
+  };
+  const errorStatus = error?.response?.status ?? error?.status;
 
   return (
     <Card>
       <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0">
         <div className="flex items-center gap-2">
-          <Sparkles className="w-4 h-4 text-primary" />
-          <CardTitle className="text-sm font-heading">Coach Briefing</CardTitle>
-          <span className="text-[10px] uppercase tracking-wider font-medium px-1.5 py-0.5 rounded border border-border text-muted-foreground">AI</span>
+          <Sparkles className="w-4 h-4 text-primary" aria-hidden="true" />
+          <CardTitle className="text-sm font-heading">AI briefing</CardTitle>
         </div>
-        <Button
-          variant="ghost"
-          size="icon"
-          className="h-7 w-7"
-          onClick={() => generate(signature)}
-          disabled={busy || loading || !hasData}
-          title="Refresh briefing"
-        >
-          <RefreshCw className={`w-3.5 h-3.5 ${busy ? "animate-spin" : ""}`} />
-        </Button>
+        {entitled && briefing && (
+          <Button variant="ghost" size="icon" className="min-h-11 min-w-11" onClick={generate}
+            disabled={busy || loading || !hasData} aria-label="Refresh briefing">
+            <RefreshCw className={`w-3.5 h-3.5 ${busy ? "animate-spin" : ""}`} aria-hidden="true" />
+          </Button>
+        )}
       </CardHeader>
       <CardContent className="space-y-4">
-        {loading ? (
+        {planLoading ? (
+          <p className="text-sm text-muted-foreground">Checking your plan…</p>
+        ) : !entitled ? (
+          <p className="text-sm text-muted-foreground">AI briefings are included with Pro.</p>
+        ) : loading ? (
           <p className="text-sm text-muted-foreground">Reading your training data…</p>
         ) : !hasData ? (
-          <p className="text-sm text-muted-foreground">
-            Not enough recent data for a briefing yet, log a couple of sessions or sync a wearable and your coach's read on the last two weeks will appear here.
-          </p>
+          <p className="text-sm text-muted-foreground">Log or sync workouts to get a review of your last two weeks.</p>
         ) : busy && !briefing ? (
-          <div className="space-y-2">
-            <div className="h-3 w-3/4 rounded bg-muted animate-pulse" />
-            <div className="h-3 w-5/6 rounded bg-muted animate-pulse" />
-            <div className="h-3 w-2/3 rounded bg-muted animate-pulse" />
-            <p className="text-xs text-muted-foreground pt-1">Your coach is reviewing the last couple of weeks…</p>
-          </div>
+          <p role="status" className="text-sm text-muted-foreground">Reviewing your last two weeks…</p>
         ) : error ? (
           <div className="space-y-2">
-            <p className="text-sm text-destructive">{error}</p>
-            <Button variant="outline" size="sm" onClick={() => generate(signature)} disabled={busy}>
+            <p role="status" className="text-sm text-destructive">
+              {errorStatus === 429 ? "You’ve reached the briefing limit. Try again later." : "Couldn’t generate your briefing."}
+            </p>
+            <Button variant="outline" size="sm" className="min-h-11" onClick={generate} disabled={busy}>
               Try again
             </Button>
           </div>
@@ -220,7 +208,9 @@ ${JSON.stringify(payload)}`;
             )}
             </div>
           </>
-        ) : null}
+        ) : (
+          <Button variant="outline" size="sm" className="min-h-11" onClick={generate}>Generate briefing</Button>
+        )}
       </CardContent>
     </Card>
   );

@@ -1,4 +1,5 @@
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useCallback } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { useServices } from "@/services/providers/ServiceContext";
 import { useAuth } from "@/lib/AuthContext";
 import { base44 } from "@/api/base44Client";
@@ -21,27 +22,23 @@ export interface SubscriptionState {
 export function useSubscription(): SubscriptionState {
   const { subscriptionRepo } = useServices();
   const { user } = useAuth();
-  const [plan, setPlan] = useState("free");
-  const [status, setStatus] = useState("active");
-  const [loading, setLoading] = useState(true);
+  const userId = user?.id;
+  const subscription = useQuery({
+    queryKey: ["subscription", userId],
+    enabled: Boolean(userId),
+    queryFn: async () => (await subscriptionRepo.filter({ user_id: userId }, "-created_date", 1))[0] ?? null,
+    staleTime: 60_000,
+    retry: false,
+  });
+  const current = subscription.isError ? null : subscription.data;
+  const plan = current && isSubscriptionActive(current) ? current.plan || "free" : "free";
+  const status = current?.status || "active";
+  const loading = Boolean(userId) && subscription.isPending;
+  const { refetch } = subscription;
 
   const refresh = useCallback(async () => {
-    if (!user?.id) { setPlan("free"); setStatus("active"); setLoading(false); return; }
-    try {
-      const rows = await subscriptionRepo.filter({ user_id: user.id }, "-created_date", 5);
-      const sub = rows[0];
-      if (sub) {
-        const active = isSubscriptionActive(sub);
-        setPlan(active ? sub.plan : "free");
-        setStatus(sub.status);
-      }
-      else { setPlan("free"); setStatus("active"); }
-    } catch {
-      setPlan("free"); setStatus("active");
-    } finally { setLoading(false); }
-  }, [subscriptionRepo, user?.id]);
-
-  useEffect(() => { refresh(); }, [refresh]);
+    if (userId) await refetch({ cancelRefetch: false });
+  }, [refetch, userId]);
 
   useEffect(() => {
     if (!loading && !subscriptionActiveTracked && plan && plan !== "free" && status === "active") {

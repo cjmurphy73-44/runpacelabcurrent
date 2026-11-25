@@ -104,7 +104,7 @@ export default function Imports() {
 
       {/* 1, Connect a device (automated sync) */}
       <section className="space-y-3">
-        <SectionHeading index="01" title="Connect a device" description="Automated sync, new activities and recovery flow in without you lifting a finger." icon={Watch} />
+        <SectionHeading title="Connect a device" description="Sync workouts and recovery from your supported devices." icon={Watch} />
         <div className="space-y-3">
           <CorosIntegration athleteId={athlete.id} />
           <GarminIntegration athleteId={athlete.id} />
@@ -125,7 +125,7 @@ export default function Imports() {
 
       {/* 2, Import workout files */}
       <section id="workout-files" className="space-y-3 scroll-mt-24">
-        <SectionHeading index="02" title="Import workout files" description="Upload FIT, TCX or CSV exports from your watch or training platform." icon={Upload} />
+        <SectionHeading title="Import workout files" description="Upload FIT, TCX or CSV exports." icon={Upload} />
         <BulkWorkoutImport key={athlete.id} athleteId={athlete.id} />
         <p className="text-xs text-muted-foreground">
           For GPX exports, convert the file to FIT, TCX or CSV, or try a device connection above.
@@ -134,13 +134,13 @@ export default function Imports() {
 
       {/* 3, Recovery & sleep */}
       <section className="space-y-3">
-        <SectionHeading index="03" title="Recovery & sleep" description="Log today's HRV, sleep and resting HR manually, or bulk-import a CSV/JSON export from Oura, WHOOP, Garmin or Apple Health." icon={HeartPulse} />
+        <SectionHeading title="Recovery & sleep" description="Log HRV, sleep and resting heart rate or import a file." icon={HeartPulse} />
         <RecoveryImportSection athleteId={athlete.id} />
       </section>
 
       {/* 4, Lab results */}
       <section className="space-y-3">
-        <SectionHeading index="04" title="Lab results" description="Blood panels, VO₂max, lactate-at-threshold, feed your recovery baselines and AI synthesis." icon={FlaskConical} />
+        <SectionHeading title="Lab results" description="Log blood panels, VO₂max and lactate threshold." icon={FlaskConical} />
         <Card>
           <CardContent className="pt-5">
             <LabResultsImport athleteId={athlete.id} />
@@ -151,7 +151,7 @@ export default function Imports() {
 
       {/* 5, Advanced webhook / API */}
       <section className="space-y-3">
-        <SectionHeading index="05" title="Webhook & API" description="Advanced, push workout summaries from your own scripts, Zapier, or Make." icon={Webhook} />
+        <SectionHeading title="Webhook & API" description="Send workout summaries from an automation or script." icon={Webhook} />
         <WebhookSyncPanel athleteId={athlete.id} />
       </section>
 

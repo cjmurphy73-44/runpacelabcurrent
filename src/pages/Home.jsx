@@ -250,7 +250,7 @@ export default function Home() {
         <AnomalyAlertBanner />
         {/* 1, Today's snapshot */}
         <section className="space-y-4">
-          <SectionHeading index="01" title="Today's snapshot" description="Your form, readiness and prescribed session for today." icon={Sun} />
+          <SectionHeading title="Today's snapshot" description="Your form, readiness and planned session." icon={Sun} />
           <WidgetBoundary name="Today's focus"><TodayFocusLine athlete={athlete} /></WidgetBoundary>
           <WidgetBoundary name="Wearable sync"><WearableSyncBar onSynced={() => refreshDashboard(athlete.id)} /></WidgetBoundary>
           <WidgetBoundary name="Physiology strip"><PhysiologyStrip athlete={athlete} /></WidgetBoundary>
@@ -259,18 +259,20 @@ export default function Home() {
           <WidgetBoundary name="Weekly volume"><WeeklyVolumeLine athleteId={athlete.id} /></WidgetBoundary>
         </section>
 
-        {/* 2, Coaching: the AI read on the last two weeks sits directly under today's snapshot */}
+        {/* 2, Coaching */}
         <section className="space-y-4">
-          <SectionHeading index="02" title="Coaching" description="Your coach's read on the last two weeks." icon={MessageCircle} />
+          <SectionHeading title="Coaching" icon={MessageCircle} action={
+            <Link to="/coach" className="inline-flex min-h-11 items-center gap-1 text-sm font-medium hover:underline">
+              Open coach <ArrowRight className="h-4 w-4 text-primary" aria-hidden="true" />
+            </Link>
+          } />
           <WidgetBoundary name="Coach briefing"><CoachBriefing athlete={athlete} /></WidgetBoundary>
         </section>
 
         {/* 3, Recent activity */}
         <section className="space-y-4">
           <SectionHeading
-            index="03"
             title="Recent activity"
-            description="Review your latest sessions and add new ones."
             icon={Activity}
             action={
               <div className="flex items-center gap-2">
