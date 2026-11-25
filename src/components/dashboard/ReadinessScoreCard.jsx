@@ -87,7 +87,7 @@ export default function ReadinessScoreCard() {
                 <div className="flex items-center justify-between text-sm">
                   <span className="text-muted-foreground flex items-center gap-1.5">
                     {providerSource && <RecoverySourceBadge source={providerSource} />}
-                    <span>device score</span>
+                    <span>{providerSource === "manual" ? "reported score" : "device score"}</span>
                   </span>
                   <span className="font-medium">{providerScore}</span>
                 </div>

@@ -65,13 +65,15 @@ function fixture(user, grant) {
   const entities = {
     AthleteProfile: {
       get: vi.fn(async id => id === athleteId ? { id: athleteId, created_by_id: owner.id } : null),
+      filter: vi.fn(async query => query.created_by_id === owner.id ? [{ id: athleteId, created_by_id: owner.id }] : []),
       update: vi.fn(async () => ({})),
     },
+    User: { get: vi.fn(async () => user) },
     CoachAthleteAssignment: { filter: vi.fn(async () => grant ? [grant] : []) },
     Subscription: { filter: vi.fn(async () => [{ plan: 'coach_pro', status: 'trialing' }]) },
     WorkoutSession: { filter: vi.fn(async () => []) },
     PhysiologicalBaselines: { filter: vi.fn(async () => []) },
-    DailyMetrics: { filter: vi.fn(async () => []) },
+    DailyMetrics: { filter: vi.fn(async () => []), upsert: vi.fn(async () => ({ created: 0, updated: 1 })) },
     TrainingPlan: {
       get: vi.fn(async id => id === draft.id ? draft : null),
       create: vi.fn(async value => ({ ...value, id: 'draft-fixture' })),
@@ -104,6 +106,38 @@ const functions = [
   ['refreshTelemetryState', { athlete_id: athleteId }],
   ['autoReplanOnDeviation', { session_id: 'session-fixture' }],
 ];
+
+describe('recovery entry authorization', () => {
+  it.each([[null, 401], [coach, 404]])('denies non-owners before saving recovery', async (user, status) => {
+    const base44 = fixture(user, authorized);
+    const result = await invoke('saveDailyRecovery', base44, { athlete_id: athleteId, records: [{ date: day, sleep_score: 76 }] });
+    expect(result.status).toBe(status);
+    expect(base44.asServiceRole.entities.DailyMetrics.upsert).not.toHaveBeenCalled();
+  });
+
+  it('updates the owner and date once, with explicitly reported readiness separated from the calculated score', async () => {
+    const base44 = fixture(owner);
+    const result = await invoke('saveDailyRecovery', base44, {
+      athlete_id: athleteId,
+      records: [{ date: day, sleep_score: 70 }, { date: day, hrv: 58, readiness_score: 75 }],
+    });
+    expect(result.status).toBe(200);
+    expect(base44.asServiceRole.entities.DailyMetrics.upsert).toHaveBeenCalledWith([{
+      athlete_id: athleteId, date: day, sleep_score: 70, hrv: 58, recovery_source: 'manual',
+      provider_readiness_score: 75, provider_readiness_source: 'manual',
+    }], { key: ['athlete_id', 'date'] });
+  });
+
+  it('rejects a batch attempting to replace a calculated load field before any writes', async () => {
+    const base44 = fixture(owner);
+    const result = await invoke('saveDailyRecovery', base44, {
+      athlete_id: athleteId,
+      records: [{ date: day, sleep_score: 70 }, { date: day, calculated_tsb: 200 }],
+    });
+    expect(result.status).toBe(400);
+    expect(base44.asServiceRole.entities.DailyMetrics.upsert).not.toHaveBeenCalled();
+  });
+});
 
 describe.each(functions)('%s authorization', (name, payload) => {
   it.each([

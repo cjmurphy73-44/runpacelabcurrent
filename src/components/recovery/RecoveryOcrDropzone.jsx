@@ -1,5 +1,6 @@
 import React, { useRef, useState } from "react";
 import { base44 } from "@/api/base44Client";
+import { saveDailyRecovery } from "@/lib/saveDailyRecovery";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -155,12 +156,7 @@ function RecoveryOcrModal({ open, image_url, parsed, athleteId, onClose, onSaved
         if (form[f.key] !== "" && form[f.key] != null) payload[f.key] = Number(form[f.key]);
       }
       const date = form.date || new Date().toISOString().slice(0, 10);
-      const existing = await base44.entities.DailyMetrics.filter({ athlete_id: athleteId, date }, "-date", 1);
-      if (existing.length > 0) {
-        await base44.entities.DailyMetrics.update(existing[0].id, payload);
-      } else {
-        await base44.entities.DailyMetrics.create({ athlete_id: athleteId, date, ...payload });
-      }
+      await saveDailyRecovery(athleteId, [{ date, ...payload }]);
       setDone(true);
       onSaved?.();
       setTimeout(() => onClose?.(), 700);

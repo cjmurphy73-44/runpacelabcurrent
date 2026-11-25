@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { base44 } from "@/api/base44Client";
+import { saveDailyRecovery } from "@/lib/saveDailyRecovery";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -16,17 +16,20 @@ export default function HolisticFactorsLog({ athleteId }) {
   const [muscleSoreness, setMuscleSoreness] = useState(existing?.holistic_factors?.muscle_soreness || "");
   const [travelJetLag, setTravelJetLag] = useState(existing?.holistic_factors?.travel_jet_lag || false);
   const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState(null);
 
   const handleSave = async () => {
     setSaving(true);
+    setSaveError(null);
     const holistic_factors = { nutrition_status: nutritionStatus || undefined, muscle_soreness: muscleSoreness || undefined, travel_jet_lag: travelJetLag };
-    if (existing) {
-      await base44.entities.DailyMetrics.update(existing.id, { holistic_factors });
-    } else {
-      await base44.entities.DailyMetrics.create({ athlete_id: athleteId, date: today, holistic_factors });
+    try {
+      await saveDailyRecovery(athleteId, [{ date: today, holistic_factors }]);
+      await reload();
+    } catch (error) {
+      setSaveError(error.message);
+    } finally {
+      setSaving(false);
     }
-    await reload();
-    setSaving(false);
   };
 
   return (
@@ -58,6 +61,7 @@ export default function HolisticFactorsLog({ athleteId }) {
           <Checkbox checked={travelJetLag} onCheckedChange={setTravelJetLag} id="travel_jet_lag" />
           <label htmlFor="travel_jet_lag" className="text-sm">Travel / Jet Lag</label>
         </div>
+        {saveError && <p role="alert" className="text-sm text-destructive">{saveError}</p>}
         <Button size="sm" onClick={handleSave} disabled={saving} className="w-full">{saving ? "Saving..." : "Save Today's Factors"}</Button>
       </CardContent>
     </Card>

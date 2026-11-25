@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { base44 } from "@/api/base44Client";
+import { saveDailyRecovery } from "@/lib/saveDailyRecovery";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
@@ -17,6 +18,7 @@ export default function LifestyleFactorForm({ athleteId }) {
   const [existing, setExisting] = useState(null);
   const [form, setForm] = useState({ high_work_stress: false, travel_jet_lag: false, muscle_soreness: false, nutrition_quality: "" });
   const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState(null);
 
   useEffect(() => {
     (async () => {
@@ -37,13 +39,13 @@ export default function LifestyleFactorForm({ athleteId }) {
 
   const handleSave = async () => {
     setSaving(true);
+    setSaveError(null);
     const nutritionStatus = form.nutrition_quality === "good" || form.nutrition_quality === "excellent"
       ? "fueled"
       : form.nutrition_quality
         ? "under_fueled"
         : undefined;
     const payload = {
-      athlete_id: athleteId,
       date: today,
       holistic_factors: {
         travel_jet_lag: form.travel_jet_lag,
@@ -52,13 +54,14 @@ export default function LifestyleFactorForm({ athleteId }) {
       },
       notes: form.high_work_stress ? "High work stress" : "",
     };
-    if (existing) {
-      await base44.entities.DailyMetrics.update(existing.id, payload);
-    } else {
-      const created = await base44.entities.DailyMetrics.create(payload);
-      setExisting(created);
+    try {
+      await saveDailyRecovery(athleteId, [payload]);
+      setExisting({ ...existing, ...payload });
+    } catch (error) {
+      setSaveError(error.message);
+    } finally {
+      setSaving(false);
     }
-    setSaving(false);
   };
 
   return (
@@ -76,6 +79,7 @@ export default function LifestyleFactorForm({ athleteId }) {
           </div>
         ))}
       </div>
+      {saveError && <p role="alert" className="text-sm text-destructive">{saveError}</p>}
       <div>
         <Label className="text-xs">Nutrition Quality</Label>
         <Select value={form.nutrition_quality} onValueChange={(v) => setForm({ ...form, nutrition_quality: v })}>
