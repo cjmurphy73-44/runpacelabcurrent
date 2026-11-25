@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { ChevronDown, ChevronRight } from "lucide-react";
+import { choosePlanWeek, localPlanDate } from "@/lib/planWeekNavigation";
 
 const ZONE_BAR_COLORS = { Z1: "bg-secondary", Z2: "bg-primary/50", Z3: "bg-primary", Z4: "bg-chart-4", Z5: "bg-destructive" };
 
@@ -23,12 +24,16 @@ function zoneDistribution(days) {
 const ZONE_COLORS = { Rest: "outline", Z1: "outline", Z2: "secondary", Z3: "secondary", Z4: "default", Z5: "destructive" };
 
 export default function TrainingPlanWeeklyBreakdown({ weeklyPlans }) {
-  const [openWeek, setOpenWeek] = useState(null);
+  const [openWeek, setOpenWeek] = useState(() => choosePlanWeek(weeklyPlans));
+  const today = localPlanDate();
   if (!weeklyPlans || weeklyPlans.length === 0) return null;
 
   return (
     <Card>
-      <CardHeader className="pb-2"><CardTitle className="text-sm font-heading">Week-by-Week Breakdown</CardTitle></CardHeader>
+      <CardHeader className="pb-2 space-y-1">
+        <CardTitle className="text-sm font-heading">Your week-by-week training</CardTitle>
+        <p className="text-xs text-muted-foreground">The current or next scheduled week opens first. Select another week to review its sessions.</p>
+      </CardHeader>
       <CardContent className="space-y-2">
         {weeklyPlans.map((week) => {
           const isOpen = openWeek === week.week_number;
@@ -36,8 +41,11 @@ export default function TrainingPlanWeeklyBreakdown({ weeklyPlans }) {
           return (
             <div key={week.week_number} className="border border-border rounded-lg overflow-hidden">
               <button
+                type="button"
+                aria-expanded={isOpen}
+                aria-controls={`training-week-${week.week_number}`}
                 onClick={() => setOpenWeek(isOpen ? null : week.week_number)}
-                className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-accent"
+                className="w-full min-h-11 flex items-center gap-3 px-4 py-3 text-left hover:bg-accent focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary"
               >
                 {isOpen ? <ChevronDown className="w-4 h-4 shrink-0" /> : <ChevronRight className="w-4 h-4 shrink-0" />}
                 <div className="flex-1 min-w-0">
@@ -53,11 +61,11 @@ export default function TrainingPlanWeeklyBreakdown({ weeklyPlans }) {
                 )}
               </button>
               {isOpen && (
-                <div className="divide-y divide-border">
+                <div id={`training-week-${week.week_number}`} className="divide-y divide-border">
                   {week.days?.map((day, idx) => (
-                    <div key={idx} className="px-4 py-3 flex flex-col sm:flex-row sm:items-start gap-2">
+                    <div key={idx} className={`px-4 py-3 flex flex-col sm:flex-row sm:items-start gap-2 ${day.date === today ? "bg-accent/50 border-l-2 border-primary" : ""}`}>
                       <div className="sm:w-32 shrink-0">
-                        <p className="text-sm font-medium">{day.day_name}</p>
+                        <p className="text-sm font-medium flex items-center gap-2">{day.day_name}{day.date === today && <span className="text-xs text-primary">Today</span>}</p>
                         <p className="text-xs text-muted-foreground">{day.date}</p>
                       </div>
                       <div className="flex-1 space-y-1">
