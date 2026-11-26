@@ -1,15 +1,14 @@
 import React from "react";
 import { Link } from "react-router-dom";
 import { ChevronRight } from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { workoutLoadPresentation } from "@/lib/workoutLoadPresentation";
 
 export default function RecentWorkouts({ workouts }) {
   return (
     <Card>
-      <CardHeader><CardTitle className="text-sm font-heading">Recent workouts</CardTitle></CardHeader>
-      <CardContent className="space-y-2">
+      <CardContent className="space-y-1 p-4">
         {workouts.length === 0 ? (
           <p className="text-sm text-muted-foreground">No workouts logged yet.</p>
         ) : (
@@ -29,6 +28,9 @@ export default function RecentWorkouts({ workouts }) {
             </Link>
           ))
         )}
+        <Link to="/workouts" className="inline-flex min-h-11 items-center gap-1 text-sm font-medium hover:underline">
+          View workout history <ChevronRight className="h-4 w-4 text-primary" aria-hidden="true" />
+        </Link>
       </CardContent>
     </Card>
   );

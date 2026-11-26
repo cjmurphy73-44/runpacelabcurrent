@@ -22,7 +22,7 @@ export default function AccountMenu({ onFeedback, onLogout }) {
         <button
           type="button"
           title="Account"
-          className="flex items-center justify-center h-9 w-9 rounded-md text-muted-foreground hover:bg-accent"
+          className="flex h-11 w-11 items-center justify-center rounded-md text-muted-foreground hover:bg-accent"
         >
           <User className="w-4 h-4" />
         </button>

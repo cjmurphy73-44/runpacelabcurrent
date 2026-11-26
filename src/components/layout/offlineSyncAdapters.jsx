@@ -1,4 +1,5 @@
 import React, { useState, useEffect, createContext, useContext } from "react";
+import { RefreshCw } from "lucide-react";
 import offlineSyncQueue from "@/services/offlineSyncQueue";
 
 // --- REACT CONTEXT & PROVIDER (adapts the framework-agnostic OfflineSyncQueueService) ---
@@ -35,11 +36,16 @@ export function NetworkStatusBadge() {
   const syncInProgress = ctx?.syncInProgress ?? false;
   const queueCount = ctx?.pendingCount ?? 0;
   const syncNow = ctx?.syncNow;
+  const label = !isOnline ? `Offline (${queueCount} queued)`
+    : syncInProgress ? "Syncing changes"
+    : queueCount > 0 ? `${queueCount} changes queued`
+    : "Online";
 
   return (
     <div className="flex items-center space-x-2 min-w-0">
       <div
-        className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold border transition-all min-w-0 ${
+        title={label}
+        className={`inline-flex min-w-0 items-center gap-1.5 rounded-full border px-1.5 py-1 text-xs font-semibold transition-all sm:px-2.5 ${
           !isOnline
             ? "bg-warning/10 text-warning border-warning/30 shadow-sm"
             : syncInProgress
@@ -50,25 +56,20 @@ export function NetworkStatusBadge() {
         }`}
       >
         <span
-          className={`w-2 h-2 rounded-full mr-1.5 shrink-0 ${
+          aria-hidden="true"
+          className={`h-2 w-2 shrink-0 rounded-full ${
             !isOnline ? "bg-warning" : syncInProgress ? "bg-primary" : queueCount > 0 ? "bg-accent-foreground" : "bg-success"
           }`}
         />
-        <span className="truncate">
-          {!isOnline
-            ? `Offline (${queueCount} queued)`
-            : syncInProgress
-            ? "Syncing changes..."
-            : queueCount > 0
-            ? `Syncing (${queueCount})`
-            : "Online & Synced"}
-        </span>
+        <span role="status" className="sr-only sm:not-sr-only sm:truncate">{label}</span>
         {queueCount > 0 && isOnline && !syncInProgress && syncNow && (
           <button
             onClick={() => syncNow().catch((err) => alert(err.message))}
-            className="ml-2 underline hover:opacity-80 font-bold uppercase text-[10px]"
+            aria-label="Sync queued changes"
+            className="flex items-center gap-1 font-semibold hover:underline"
           >
-            Sync Now
+            <RefreshCw className="h-3.5 w-3.5" aria-hidden="true" />
+            <span className="hidden sm:inline">Sync</span>
           </button>
         )}
       </div>

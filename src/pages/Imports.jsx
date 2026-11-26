@@ -1,12 +1,12 @@
 import React, { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
-import { useNavigate } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { base44 } from "@/api/base44Client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Loader2, Plus, ArrowRight, Watch, Upload, FlaskConical, Webhook, Settings, HeartPulse } from "lucide-react";
 import HelpLink from "@/components/guide/HelpLink";
 import BulkWorkoutImport from "@/components/dashboard/BulkWorkoutImport";
+import OcrDropzone from "@/components/imports/OcrDropzone";
 import RecoveryImportSection from "@/components/imports/RecoveryImportSection";
 import WebhookSyncPanel from "@/components/imports/WebhookSyncPanel";
 import LabResultsImport from "@/components/imports/LabResultsImport";
@@ -21,6 +21,7 @@ import SectionHeading from "@/components/layout/SectionHeading";
 
 export default function Imports() {
   const navigate = useNavigate();
+  const { hash } = useLocation();
   const { user } = useAuth();
   const [athlete, setAthlete] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -43,6 +44,13 @@ export default function Imports() {
       setLoading(false);
     })();
   }, [user]);
+
+  useEffect(() => {
+    if (!athlete?.id || (hash !== "#workout-files" && hash !== "#devices")) return;
+    const section = document.getElementById(hash.slice(1));
+    section?.focus({ preventScroll: true });
+    section?.scrollIntoView({ block: "start" });
+  }, [athlete?.id, hash]);
 
   if (loading) {
     return (
@@ -76,34 +84,33 @@ export default function Imports() {
   }
 
   return (
-    <div className="max-w-3xl mx-auto space-y-8">
-      <div className="flex items-start justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-heading font-bold">Imports & Sync</h1>
-          <p className="text-sm text-muted-foreground">
-            Get your training and recovery data into TrainPaceLab, in this order.
-          </p>
+    <div className="mx-auto max-w-3xl space-y-6">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <h1 className="text-2xl font-heading font-bold">Imports & Sync</h1>
+        <div className="flex flex-wrap items-center gap-2">
+          <Button asChild variant="outline" size="sm" className="min-h-11">
+            <Link to="#devices"><Watch aria-hidden="true" /> Connect a device</Link>
+          </Button>
+          <Button onClick={() => setManualOpen(true)} variant="outline" size="sm" className="min-h-11">
+            <Plus aria-hidden="true" /> Log workout
+          </Button>
         </div>
-        <HelpLink section="connect-data" label="How to export from your watch" />
       </div>
 
-      {/* Quick manual log, for users with no device yet */}
-      <Card className="border-dashed bg-muted/30">
-        <CardContent className="pt-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-          <div>
-            <p className="font-heading font-semibold">No device handy? Log one manually.</p>
-            <p className="text-sm text-muted-foreground">
-              Add a quick session and your CTL / ATL / TSB refresh instantly, no file needed.
-            </p>
-          </div>
-          <Button onClick={() => setManualOpen(true)}>
-            <Plus className="w-4 h-4" /> Add a manual workout
-          </Button>
-        </CardContent>
-      </Card>
+      <section id="workout-files" aria-label="File import" tabIndex={-1} className="space-y-3 scroll-mt-24">
+        <SectionHeading title="Import workout files" icon={Upload} action={
+          <HelpLink section="connect-data" label="Export help" />
+        } />
+        <BulkWorkoutImport key={athlete.id} athleteId={athlete.id} />
+        <details className="rounded-lg border border-border bg-card">
+          <summary className="min-h-11 cursor-pointer px-4 py-3 text-sm font-medium">Import a screenshot</summary>
+          <OcrDropzone athleteId={athlete.id} onSaved={() => {
+            try { base44.analytics.track({ eventName: "workout_ingested" }); } catch {}
+          }} />
+        </details>
+      </section>
 
-      {/* 1, Connect a device (automated sync) */}
-      <section className="space-y-3">
+      <section id="devices" aria-label="Devices" tabIndex={-1} className="space-y-3 scroll-mt-24">
         <SectionHeading title="Connect a device" description="Sync workouts and recovery from your supported devices." icon={Watch} />
         <div className="space-y-3">
           <CorosIntegration athleteId={athlete.id} />
@@ -123,37 +130,23 @@ export default function Imports() {
         </div>
       </section>
 
-      {/* 2, Import workout files */}
-      <section id="workout-files" className="space-y-3 scroll-mt-24">
-        <SectionHeading title="Import workout files" description="Upload FIT, TCX or CSV exports." icon={Upload} />
-        <BulkWorkoutImport key={athlete.id} athleteId={athlete.id} />
-        <p className="text-xs text-muted-foreground">
-          For GPX exports, convert the file to FIT, TCX or CSV, or try a device connection above.
-        </p>
-      </section>
-
-      {/* 3, Recovery & sleep */}
-      <section className="space-y-3">
-        <SectionHeading title="Recovery & sleep" description="Log HRV, sleep and resting heart rate or import a file." icon={HeartPulse} />
-        <RecoveryImportSection athleteId={athlete.id} />
-      </section>
-
-      {/* 4, Lab results */}
-      <section className="space-y-3">
-        <SectionHeading title="Lab results" description="Log blood panels, VO₂max and lactate threshold." icon={FlaskConical} />
-        <Card>
-          <CardContent className="pt-5">
+      <details className="rounded-lg border border-border bg-card">
+        <summary className="min-h-11 cursor-pointer px-4 py-3 text-sm font-medium">Recovery, lab results and API</summary>
+        <div className="space-y-6 px-4 pb-4">
+          <section className="space-y-3">
+            <SectionHeading title="Recovery & sleep" icon={HeartPulse} />
+            <RecoveryImportSection athleteId={athlete.id} />
+          </section>
+          <section className="space-y-3">
+            <SectionHeading title="Lab results" icon={FlaskConical} />
             <LabResultsImport athleteId={athlete.id} />
-          </CardContent>
-        </Card>
-        <p className="text-xs text-muted-foreground">One row per metric per date.</p>
-      </section>
-
-      {/* 5, Advanced webhook / API */}
-      <section className="space-y-3">
-        <SectionHeading title="Webhook & API" description="Send workout summaries from an automation or script." icon={Webhook} />
-        <WebhookSyncPanel athleteId={athlete.id} />
-      </section>
+          </section>
+          <section className="space-y-3">
+            <SectionHeading title="Webhook & API" icon={Webhook} />
+            <WebhookSyncPanel athleteId={athlete.id} />
+          </section>
+        </div>
+      </details>
 
       <ManualWorkoutModal
         open={manualOpen}
