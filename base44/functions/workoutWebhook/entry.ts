@@ -12,7 +12,7 @@ import { resolveTimeInZone } from '../../shared/hrZones.ts';
 import { resolveActiveCalories } from '../../shared/calories.ts';
 import { assertSafeFileUrl } from '../../shared/urlGuard.ts';
 import { recomputeCTLATLTSB } from '../../shared/ctlRecalc.ts';
-import { runPostWorkoutEvaluation } from '../../shared/postWorkoutAI.ts';
+import { automaticWorkoutInsightsEnabled, runPostWorkoutEvaluation } from '../../shared/postWorkoutAI.ts';
 import { reportError } from '../../shared/errorReport.ts';
 import { claimRateLimit } from '../../shared/rateLimit.ts';
 import { constantTimeEqual } from '../../shared/crypto.ts';
@@ -161,9 +161,9 @@ async function handleIngest(req, base44, apiKey, parsedBody) {
   // WorkoutFeedback insight record (with intensity) for this session. Fire and
   // forget — the webhook returns immediately; the insight is linked back to the
   // session by postWorkoutAIEvaluation and surfaces in real time via ActivityDetail.
-  try {
-    waitUntil(runPostWorkoutEvaluation(base44, session.id, athlete.id));
-  } catch (e) { console.warn('postWorkoutAIEvaluation dispatch failed:', e); }
+  if (automaticWorkoutInsightsEnabled()) {
+    waitUntil(runPostWorkoutEvaluation(base44, session.id, athlete.id).catch(() => console.warn('Workout insight failed')));
+  }
 
   return Response.json({ success: true, workout_session_id: session.id });
 }
@@ -306,7 +306,9 @@ async function handleStravaEvent(base44, body) {
 
   try { await base44.asServiceRole.entities.WebhookEvent.create({ event_id: eventId, provider: 'strava', athlete_id: conn.athlete_id, workout_session_id: session.id, outcome: 'created' }); } catch {}
   try { await recomputeCTLATLTSB(base44, conn.athlete_id); } catch {}
-  try { waitUntil(runPostWorkoutEvaluation(base44, session.id, conn.athlete_id)); } catch {}
+  if (automaticWorkoutInsightsEnabled()) {
+    waitUntil(runPostWorkoutEvaluation(base44, session.id, conn.athlete_id).catch(() => console.warn('Strava workout insight failed')));
+  }
   await base44.asServiceRole.entities.StravaConnection.update(conn.id, { last_sync_at: new Date().toISOString(), last_error: '', status: 'connected' });
   return Response.json({ success: true, workout_session_id: session.id });
 }

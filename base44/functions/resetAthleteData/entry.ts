@@ -16,10 +16,11 @@ Deno.serve(async (req) => {
     // asServiceRole bypasses RLS so coach-/system-created rows (WorkoutFeedback,
     // CoachMessage, WebhookEvent, OAuth connections) are cleared too.
     const e = base44.asServiceRole.entities;
+    await e.WorkoutSession.deleteMany({ athlete_id });
     await Promise.all([
-      e.WorkoutSession.deleteMany({ athlete_id }),
       e.WorkoutAsset.deleteMany({ athlete_id }),
       e.CorosRecordingArchive.deleteMany({ athlete_id }),
+      e.WorkoutOriginalRecording.deleteMany({ athlete_id }),
       e.DailyMetrics.deleteMany({ athlete_id }),
       e.TrainingPlan.deleteMany({ athlete_id }),
       e.TrainingPlanSession.deleteMany({ athlete_id }),

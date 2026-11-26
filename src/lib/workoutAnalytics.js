@@ -76,6 +76,15 @@ function buildZones(seconds) {
   return seconds.map((s, i) => ({ zone: i + 1, label: ZONE_LABELS[i], seconds: Math.round(s), pct: total ? (s / total) * 100 : 0 }));
 }
 
+export function recordedZoneDistribution(recording) {
+  if (recording?.zone_method !== "stream" || recording.zone_seconds?.length !== 5) return null;
+  return {
+    zones: buildZones(recording.zone_seconds),
+    method: "stream",
+    bounds: recording.zone_bounds_bpm,
+  };
+}
+
 export function sessionZoneDistribution(workout, athlete) {
   const restHr = Number(athlete?.resting_hr) || 60;
   const maxHr = Number(athlete?.max_heart_rate) || Number(workout?.max_hr) || 190;

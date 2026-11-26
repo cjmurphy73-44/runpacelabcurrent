@@ -29,4 +29,10 @@ describe("bulk import outcome", () => {
     expect(result.failures[0].error).toContain("Database unavailable");
     expect(result.created).toBe(0);
   });
+
+  it("requires a saved-workout receipt before offering a detail link", () => {
+    expect(summarizeBulkIngestResponse()).toMatchObject({ failures: [{ file_name: "Batch" }] });
+    expect(summarizeBulkIngestResponse({ created_count: 1, workout_session_id: "../calendar" })).not.toHaveProperty("workoutId");
+    expect(summarizeBulkIngestResponse({ created_count: 1, workout_session_id: "saved-1" })).toMatchObject({ workoutId: "saved-1" });
+  });
 });

@@ -5,23 +5,21 @@ import { Activity } from "lucide-react";
 export default function PublicFooter() {
   return (
     <footer className="border-t border-border bg-background">
-      <div className="max-w-6xl mx-auto px-4 py-10">
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-          <Link to="/" className="flex items-center gap-2 font-heading font-bold">
-            <Activity className="w-4 h-4 text-primary" />
+      <div className="mx-auto max-w-6xl px-5 py-5 sm:px-8">
+        <div className="flex flex-wrap items-center justify-between gap-x-6">
+          <Link to="/" className="inline-flex min-h-11 items-center gap-2 font-heading text-sm font-bold">
+            <Activity className="h-4 w-4 text-primary" aria-hidden="true" />
             <span>TrainPaceLab</span>
           </Link>
-          <nav className="flex flex-wrap items-center gap-x-5 gap-y-2 text-sm text-muted-foreground">
-            <Link to="/support" className="hover:text-foreground">Support</Link>
-            <Link to="/terms" className="hover:text-foreground">Terms of Service</Link>
-            <Link to="/privacy" className="hover:text-foreground">Privacy Policy</Link>
-            <Link to="/refund" className="hover:text-foreground">Refund Policy</Link>
-            <a href="https://trainpacelab.com" className="hover:text-foreground">Home</a>
+          <nav aria-label="Support and legal links" className="flex flex-wrap items-center gap-x-5 text-sm text-muted-foreground [&>a]:inline-flex [&>a]:min-h-11 [&>a]:items-center [&>a:hover]:text-foreground">
+            <Link to="/support">Support</Link>
+            <Link to="/terms">Terms</Link>
+            <Link to="/privacy">Privacy</Link>
+            <Link to="/refund">Refunds</Link>
           </nav>
         </div>
-        <p className="mt-6 text-xs text-muted-foreground">
-          © {new Date().getFullYear()} TrainPaceLab. All rights reserved. TrainPaceLab is a training-intelligence
-          tool and does not provide medical advice; consult a qualified professional for injury or health concerns.
+        <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
+          © {new Date().getFullYear()} TrainPaceLab. TrainPaceLab does not provide medical advice. For injury or health concerns, consult a healthcare professional.
         </p>
       </div>
     </footer>

@@ -19,8 +19,12 @@ export default function FeatureGate({ feature, plan, children, compact = false }
 
   if (compact) {
     return (
-      <Button asChild variant="outline" size="sm" className="gap-1.5">
-        <Link to="/subscribe"><Lock className="w-3.5 h-3.5" />{LABELS[feature]}<PlanBadge feature={feature} className="ml-1" /></Link>
+      <Button asChild variant="outline" size="sm" className="h-auto min-h-8 max-w-full gap-1.5 whitespace-normal py-1.5 text-left">
+        <Link to="/subscribe">
+          <Lock className="h-3.5 w-3.5 shrink-0" />
+          <span>{LABELS[feature]}</span>
+          <PlanBadge feature={feature} className="ml-1 shrink-0" />
+        </Link>
       </Button>
     );
   }

@@ -11,6 +11,11 @@
       "format": "date",
       "description": "Date the workout took place"
     },
+    "recording_started_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Start timestamp from the original workout recording, when available"
+    },
     "sport": {
       "type": "string",
       "enum": [
@@ -58,6 +63,18 @@
       "type": "number",
       "minimum": 0,
       "description": "Average cadence"
+    },
+    "original_recording_sha256": {
+      "type": "string",
+      "description": "Checksum of the private FIT or TCX attached by the workout owner",
+      "pattern": "^[0-9a-f]{64}$",
+      "rls": {
+        "write": {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      }
     },
     "source_provider": {
       "type": "string",

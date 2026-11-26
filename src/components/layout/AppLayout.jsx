@@ -19,11 +19,12 @@ export default function AppLayout() {
   const { user, logout } = useAuth();
   const location = useLocation();
   const [feedbackOpen, setFeedbackOpen] = useState(false);
-  const { isPro, coachMode, plan, canUseCoachWorkspace } = useCoachAccess();
+  const { isPro, plan, canUseCoachWorkspace } = useCoachAccess();
   const isCoach = canUseCoachWorkspace;
 
   const navLink = (to, label, Icon) => (
     <Link
+      key={to}
       to={to}
       title={label}
       className={`flex items-center gap-2 px-2 sm:px-3 py-2 rounded-md text-sm font-medium whitespace-nowrap transition-colors duration-150 ${
@@ -40,44 +41,32 @@ export default function AppLayout() {
       <OfflineSyncProvider>
         <div className="min-h-screen bg-background">
           <header className="border-b border-border sticky top-0 bg-background/85 backdrop-blur z-30 pt-safe">
-            <div className="max-w-7xl mx-auto flex items-center justify-between gap-4 px-4 py-3">
-              <div className="flex items-center gap-6 min-w-0">
-                <Link to="/app" className="flex items-center gap-2 font-heading font-bold text-lg shrink-0">
-                  <Activity className="w-5 h-5 text-primary" />
-                  <span className="flex flex-col leading-none">
-                    <span>Trainpacelab</span>
-                    <span className="hidden sm:block text-[10px] font-normal font-body text-muted-foreground tracking-wide uppercase">Multi-Sport Endurance</span>
-                  </span>
+            <div className="mx-auto flex max-w-7xl items-center justify-between gap-2 px-4 py-2 sm:gap-4">
+              <div className="flex min-w-0 items-center gap-4">
+                <Link to="/app" className="inline-flex min-h-11 shrink-0 items-center gap-2 font-heading font-bold tracking-tight sm:text-lg">
+                  <Activity className="h-5 w-5 shrink-0 text-primary" aria-hidden="true" />
+                  TrainPaceLab
                 </Link>
-                <div className="hidden sm:block shrink-0">
-                  <NetworkStatusBadge />
-                </div>
                 <nav className="hidden lg:flex items-center gap-1 min-w-0 overflow-x-auto">
                   {PRIMARY_NAV.map((n) => navLink(n.to, n.label, n.icon))}
                   {navLink(COACH_NAV.to, COACH_NAV.label, COACH_NAV.icon)}
                   {isCoach && navLink("/roster", "Roster", Users)}
                   <ToolsDropdown />
                 </nav>
-                <div className="lg:hidden">
-                  <MobileNav />
-                </div>
               </div>
-              <div className="flex items-center gap-2 shrink-0">
-                <div className="sm:hidden">
-                  <NetworkStatusBadge />
-                </div>
-            {!isPro && (
-              <Button asChild variant="default" size="sm" title="Upgrade plan" className="hidden lg:inline-flex gap-1.5">
-                <Link to="/subscribe"><Sparkles className="w-4 h-4" /><span className="hidden sm:inline">Upgrade</span></Link>
-              </Button>
-            )}
-            {isPro && (
-              <PlanBadge plan={plan} className="hidden sm:inline-flex" />
-            )}
-            <AccountMenu onFeedback={() => setFeedbackOpen(true)} onLogout={logout} />
-          </div>
-        </div>
-      </header>
+              <div className="flex shrink-0 items-center gap-1 sm:gap-2">
+                <NetworkStatusBadge />
+                <div className="lg:hidden"><MobileNav /></div>
+                {!isPro && (
+                  <Button asChild variant="default" size="sm" title="Upgrade plan" className="hidden gap-1.5 lg:inline-flex">
+                    <Link to="/subscribe"><Sparkles className="h-4 w-4" aria-hidden="true" /> Upgrade</Link>
+                  </Button>
+                )}
+                {isPro && <PlanBadge plan={plan} className="hidden sm:inline-flex" />}
+                <AccountMenu onFeedback={() => setFeedbackOpen(true)} onLogout={logout} />
+              </div>
+            </div>
+          </header>
       <BetaFeedbackModal open={feedbackOpen} onClose={() => setFeedbackOpen(false)} />
       <main className="max-w-7xl mx-auto px-4 py-8 pb-24 md:pb-8">
         <PageErrorBoundary>

@@ -23,6 +23,10 @@ function data(local: number, fields: Field[]) {
 function field(id: number, size: number, type: number, value: number): Field {
   return { id, size, type, value };
 }
+function fitEnvelope(body: number[]) {
+  const header = [14, 0x20, 0, 0, body.length & 0xff, (body.length >> 8) & 0xff, 0, 0, 0x2e, 0x46, 0x49, 0x54, 0, 0];
+  return Uint8Array.from([...header, ...body, 0, 0]);
+}
 function syntheticFit(lapFields: Field[]) {
   const recordFields = [field(253, 4, 0x86, 100000), field(3, 1, 0x02, 175)];
   const endFields = [field(253, 4, 0x86, 100600), field(3, 1, 0x02, 185)];
@@ -33,9 +37,7 @@ function syntheticFit(lapFields: Field[]) {
     ...definition(1, 19, lapFields),
     ...data(1, lapFields),
   ];
-  // 14-byte FIT header + message bytes + trailing CRC (parser skips CRC).
-  const header = [14, 0x20, 0, 0, body.length & 0xff, (body.length >> 8) & 0xff, 0, 0, 0x2e, 0x46, 0x49, 0x54, 0, 0];
-  return Uint8Array.from([...header, ...body, 0, 0]);
+  return fitEnvelope(body);
 }
 describe('FIT global message 19 lap mapping', () => {
   it('decodes elapsed time, distance, speed and HR from the correct FIT field numbers', () => {
@@ -73,5 +75,20 @@ describe('FIT global message 19 lap mapping', () => {
     expect(parsed?.laps[0].distance_km).toBeNull();
     expect(parsed?.laps[0].avg_hr).toBeNull();
     expect(parsed?.laps[0].max_hr).toBeNull();
+  });
+  it('preserves records after developer fields and decodes compressed timestamps across a rollover', () => {
+    const record = [field(253, 4, 0x86, 100031), field(3, 1, 0x02, 143)];
+    const recordDefinition = definition(2, 20, record);
+    recordDefinition[0] |= 0x20;
+    const session = [field(2, 4, 0x86, 100030), field(5, 1, 0x02, 11)];
+    const parsed = parseFitWithLaps(fitEnvelope([
+      ...recordDefinition, 1, 0, 2, 0,
+      ...data(2, record), 1, 2,
+      0xc0, 148, 3, 4,
+      ...definition(1, 18, session), ...data(1, session),
+    ]));
+    expect(parsed?.stream).toMatchObject([{ time: 0, heart_rate: 143 }, { time: 1, heart_rate: 148 }]);
+    expect(parsed?.identity).toEqual({ sport: 'walking', activityCount: 1 });
+    expect(parsed?.summary.recording_started_at).toBe(new Date((631065600 + 100030) * 1000).toISOString());
   });
 });

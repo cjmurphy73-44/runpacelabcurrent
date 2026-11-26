@@ -42,7 +42,7 @@ export default function FirstDataPanel({ athlete, onAddManual, onRefresh }) {
       const [workouts, recoveryDays, latest] = await Promise.all([
         base44.entities.WorkoutSession.count({ athlete_id: athlete.id }),
         base44.entities.DailyMetrics.count({ athlete_id: athlete.id }),
-        base44.entities.WorkoutSession.filter({ athlete_id: athlete.id }, "-date", 1),
+        base44.entities.WorkoutSession.filter({ athlete_id: athlete.id }, "-date", 1, 0, ["date"]),
       ]);
       setCounts({
         workouts,
@@ -76,23 +76,17 @@ export default function FirstDataPanel({ athlete, onAddManual, onRefresh }) {
       <Card className="border-dashed border-2 shadow-none">
         <CardContent className="pt-7 pb-7 space-y-5">
           <div className="space-y-1.5">
-            <h2 className="text-xl font-heading font-bold">You're set up{name}.</h2>
+            <h1 className="text-xl font-heading font-bold">You're set up{name}.</h1>
             <p className="text-sm text-muted-foreground">
-              We've built a starting model of your fitness. One workout is all it takes to switch the
-              dashboard on, pick whichever way of getting data in suits you.
+              Add a workout to start seeing your training on Home.
             </p>
           </div>
 
           {/* What we already know, with its source stated plainly. */}
           <div className="rounded-lg border border-border bg-muted/20 p-4 space-y-3">
-            <div className="flex items-center justify-between gap-3 flex-wrap">
-              <p className="text-sm font-medium flex items-center gap-2">
-                <Gauge className="w-4 h-4 text-primary" /> What we already know
-              </p>
-              <span className="text-[10px] uppercase tracking-wider font-semibold text-muted-foreground border border-border rounded px-1.5 py-0.5">
-                Estimated, not measured
-              </span>
-            </div>
+            <p className="flex items-center gap-2 text-sm font-medium">
+              <Gauge className="h-4 w-4 text-primary" aria-hidden="true" /> Profile estimates
+            </p>
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
               <Metric icon={Gauge} label="VDOT" value={athlete?.vdot_estimate ? Number(athlete.vdot_estimate).toFixed(1) : null} />
               <Metric icon={Activity} label="Threshold pace" value={formatPace(athlete?.functional_threshold_pace_ms)} />
@@ -100,7 +94,7 @@ export default function FirstDataPanel({ athlete, onAddManual, onRefresh }) {
               <Metric icon={HeartPulse} label="Resting HR" value={athlete?.resting_hr ? `${athlete.resting_hr} bpm` : null} />
             </div>
             <p className="text-xs text-muted-foreground">
-              Derived from the effort you entered. Log a race or a threshold run and these become measured.
+              Based on the information you entered during setup.
             </p>
           </div>
 
@@ -109,23 +103,23 @@ export default function FirstDataPanel({ athlete, onAddManual, onRefresh }) {
             <p className="text-sm font-medium">Get your first data in</p>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               <Link
-                to="/import"
+                to="/import#devices"
                 className="group rounded-lg border border-border p-4 hover:border-primary/60 hover:bg-primary/5 transition-colors"
               >
                 <Watch className="w-5 h-5 text-primary" />
                 <p className="mt-2 text-sm font-medium">Connect a device</p>
                 <p className="text-xs text-muted-foreground mt-1">
-                  Connect COROS or Garmin to sync workouts and available recovery data. For Strava, upload a workout export.
+                  Sync workouts and available recovery data from a supported device.
                 </p>
               </Link>
               <Link
-                to="/import"
+                to="/import#workout-files"
                 className="group rounded-lg border border-border p-4 hover:border-primary/60 hover:bg-primary/5 transition-colors"
               >
                 <Upload className="w-5 h-5 text-primary" />
                 <p className="mt-2 text-sm font-medium">Upload a file</p>
                 <p className="text-xs text-muted-foreground mt-1">
-                  A .fit or .csv export from your watch. Good for Apple Watch and one-off imports.
+                  Upload a FIT, TCX or CSV workout export.
                 </p>
               </Link>
               <button
@@ -136,7 +130,7 @@ export default function FirstDataPanel({ athlete, onAddManual, onRefresh }) {
                 <Plus className="w-5 h-5 text-primary" />
                 <p className="mt-2 text-sm font-medium">Log it manually</p>
                 <p className="text-xs text-muted-foreground mt-1">
-                  No device needed. Type the session in and the engine updates immediately.
+                  Add the time and effort of a session.
                 </p>
               </button>
             </div>
@@ -155,7 +149,7 @@ export default function FirstDataPanel({ athlete, onAddManual, onRefresh }) {
                 ok={hasWorkouts}
                 label="Workouts"
                 detail={
-                  loading ? "Checking…"
+                  loading ? "Checking…" : !counts ? "Could not check"
                     : hasWorkouts
                       ? `${counts.workouts} session${counts.workouts === 1 ? "" : "s"}${counts.lastDate ? ` · latest ${counts.lastDate}` : ""}`
                       : "Nothing yet, use any option above"
@@ -165,14 +159,14 @@ export default function FirstDataPanel({ athlete, onAddManual, onRefresh }) {
                 ok={hasRecovery}
                 label="Recovery signals"
                 detail={
-                  loading ? "Checking…"
+                  loading ? "Checking…" : !counts ? "Could not check"
                     : hasRecovery
                       ? `${counts.recoveryDays} day${counts.recoveryDays === 1 ? "" : "s"} of sleep / HRV / resting HR`
                       : "None yet, connect a wearable or log a quick check-in"
                 }
               />
             </ul>
-            <WearableSyncBar onSynced={handleRefresh} />
+            <WearableSyncBar onSynced={handleRefresh} showConnect={false} />
           </div>
 
           {wearables.length > 0 && <WearableSyncGuide selectedWearables={wearables} />}

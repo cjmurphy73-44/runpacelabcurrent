@@ -28,6 +28,17 @@
       "type": "string",
       "format": "date"
     },
+    "completed_workout_id": {
+      "type": "string",
+      "description": "Workout reserved or confirmed for this session by the authenticated reconciliation handler",
+      "rls": {
+        "write": {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      }
+    },
     "sport": {
       "type": "string",
       "enum": [

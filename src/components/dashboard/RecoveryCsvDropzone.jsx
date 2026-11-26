@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { base44 } from "@/api/base44Client";
+import { saveDailyRecovery } from "@/lib/saveDailyRecovery";
 import { UploadCloud } from "lucide-react";
 import { useFitness } from "@/context/FitnessContext";
 
@@ -76,26 +76,9 @@ export default function RecoveryCsvDropzone({ athleteId }) {
     }
 
     try {
-      // UPSERT into DailyMetrics per date, never touch the computed total_trimp / ctl / atl / tsb,
-      // which recalculateCTLATLTSB owns.
-      const existing = await base44.entities.DailyMetrics.filter({ athlete_id: athleteId }, "-date", 2000);
-      const byDate = new Map(existing.map((m) => [m.date, m.id]));
-      const updates = [];
-      const creates = [];
-      for (const r of parsed) {
-        const payload = {};
-        if (r.hrv !== undefined) payload.hrv = r.hrv;
-        if (r.sleep_score !== undefined) payload.sleep_score = r.sleep_score;
-        if (byDate.has(r.date)) {
-          updates.push({ id: byDate.get(r.date), ...payload });
-        } else {
-          creates.push({ athlete_id: athleteId, date: r.date, ...payload });
-        }
-      }
-      if (updates.length) await base44.entities.DailyMetrics.bulkUpdate(updates);
-      if (creates.length) await base44.entities.DailyMetrics.bulkCreate(creates);
+      const { created, updated } = await saveDailyRecovery(athleteId, parsed);
       await reload();
-      setStatus({ type: "success", message: `Synced ${parsed.length} recovery record(s), ${updates.length} updated, ${creates.length} new.` });
+      setStatus({ type: "success", message: `Saved ${created + updated} recovery records (${updated} updated, ${created} new).` });
     } catch (e) {
       setStatus({ type: "error", message: "Import failed: " + e.message });
     }

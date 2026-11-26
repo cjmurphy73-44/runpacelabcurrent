@@ -1,6 +1,5 @@
 import React, { useRef, useState } from "react";
 import { base44 } from "@/api/base44Client";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Loader2, UploadCloud, Image as ImageIcon, CheckCircle2, AlertTriangle, ChevronRight, X } from "lucide-react";
 import OcrVerificationModal from "@/components/imports/OcrVerificationModal";
 import { useSubscription } from "@/hooks/useSubscription";
@@ -59,21 +58,16 @@ export default function OcrDropzone({ athleteId, onSaved }) {
 
   return (
     <FeatureGate feature="ocr_import" plan={plan}>
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-sm font-heading">Quick OCR Import</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          <div
+      <div className="space-y-3 p-4 pt-0">
+          <button
+            type="button"
             onClick={() => inputRef.current?.click()}
-            className="cursor-pointer rounded-lg border-2 border-dashed border-border hover:border-primary/60 hover:bg-accent/40 transition-colors p-6 flex flex-col items-center justify-center text-center gap-2 min-h-[150px]"
+            className="flex min-h-24 w-full flex-col items-center justify-center gap-2 rounded-lg border border-dashed border-border p-4 text-center hover:border-primary/60 hover:bg-accent/40"
           >
-            <UploadCloud className="w-6 h-6 text-muted-foreground" />
-            <p className="text-sm font-medium">Drop workout screenshots</p>
-            <p className="text-xs text-muted-foreground inline-flex items-center gap-1">
-              <ImageIcon className="w-3 h-3" /> Select multiple images, each is OCRed and queued for review
-            </p>
-          </div>
+            <UploadCloud className="h-5 w-5 text-primary" aria-hidden="true" />
+            <span className="text-sm font-medium">Choose workout screenshots</span>
+            <span className="text-xs text-muted-foreground">Review the extracted details before saving.</span>
+          </button>
           <input
             ref={inputRef}
             type="file"
@@ -118,8 +112,7 @@ export default function OcrDropzone({ athleteId, onSaved }) {
               ))}
             </div>
           )}
-        </CardContent>
-      </Card>
+      </div>
 
       {activeItem && (
         <OcrVerificationModal

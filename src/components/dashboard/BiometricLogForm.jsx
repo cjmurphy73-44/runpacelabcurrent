@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { base44 } from "@/api/base44Client";
+import { saveDailyRecovery } from "@/lib/saveDailyRecovery";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -15,25 +15,24 @@ export default function BiometricLogForm({ athleteId }) {
     hrv: existing?.hrv ?? "",
     sleep_score: existing?.sleep_score ?? "",
     resting_hr: existing?.resting_hr ?? "",
-    readiness_score: existing?.readiness_score ?? "",
+    readiness_score: existing?.provider_readiness_source === "manual" ? existing.provider_readiness_score ?? "" : "",
   });
   const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState(null);
 
   const handleSave = async () => {
     setSaving(true);
+    setSaveError(null);
     const payload = {};
     if (form.hrv !== "") payload.hrv = Number(form.hrv);
     if (form.sleep_score !== "") payload.sleep_score = Number(form.sleep_score);
     if (form.resting_hr !== "") payload.resting_hr = Number(form.resting_hr);
     if (form.readiness_score !== "") payload.readiness_score = Number(form.readiness_score);
     try {
-      // UPSERT today's DailyMetrics, only the recovery fields, never the computed load columns.
-      if (existing) {
-        await base44.entities.DailyMetrics.update(existing.id, payload);
-      } else {
-        await base44.entities.DailyMetrics.create({ athlete_id: athleteId, date: today, ...payload });
-      }
+      await saveDailyRecovery(athleteId, [{ date: today, ...payload }]);
       await reload();
+    } catch (error) {
+      setSaveError(error.message);
     } finally {
       setSaving(false);
     }
@@ -56,10 +55,11 @@ export default function BiometricLogForm({ athleteId }) {
           <Input type="number" value={form.resting_hr} onChange={(e) => setForm({ ...form, resting_hr: e.target.value })} />
         </div>
         <div>
-          <Label className="text-xs">Readiness</Label>
+          <Label className="text-xs">Reported readiness</Label>
           <Input type="number" value={form.readiness_score} onChange={(e) => setForm({ ...form, readiness_score: e.target.value })} />
         </div>
       </div>
+      {saveError && <p role="alert" className="text-sm text-destructive">{saveError}</p>}
       <Button size="sm" onClick={handleSave} disabled={saving} className="w-full">
         {saving ? "Saving..." : existing ? "Update Today's Log" : "Save Today's Log"}
       </Button>

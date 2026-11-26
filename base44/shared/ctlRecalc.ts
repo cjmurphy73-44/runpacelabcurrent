@@ -4,8 +4,17 @@
 // implementation. Takes a base44 client and runs against its asServiceRole scope.
 
 const DAY_MS = 86400000;
+const EMPTY_DAY = {
+  total_trimp: 0, verified_trimp: 0, summary_trimp: 0,
+  calculated_ctl: 0, calculated_atl: 0, calculated_tsb: 0,
+  ode_fitness: 0, ode_fatigue: 0, ode_form: 0,
+};
 
 import { calculateFitnessFatigueOde } from './fitnessFatigueOde.ts';
+
+function hasChanges(current: any, values: Record<string, number>) {
+  return Object.entries(values).some(([key, value]) => current[key] !== value);
+}
 
 async function readAthleteHistory(entity: any, athlete_id: string, fields: string[]) {
   const records: any[] = [];
@@ -42,7 +51,7 @@ export async function recomputeCTLATLTSB(base44: any, athlete_id: string) {
 
   const [sessions, existing] = await Promise.all([
     readAthleteHistory(WorkoutSession, athlete_id, ['id', 'date', 'session_trimp', 'session_tss', 'load_source']),
-    readAthleteHistory(DailyMetrics, athlete_id, ['id', 'date']),
+    readAthleteHistory(DailyMetrics, athlete_id, ['id', 'date', ...Object.keys(EMPTY_DAY)]),
   ]);
   const trimpByDate: Record<string, number> = {};
   // Load is counted once per day, but kept split by provenance so the verified (measured
@@ -59,19 +68,12 @@ export async function recomputeCTLATLTSB(base44: any, athlete_id: string) {
   }
   const workoutDates = Object.keys(trimpByDate).sort();
 
-  const existingByDate: Record<string, string> = {};
-  for (const m of existing) existingByDate[m.date] = m.id;
-
-  const emptyDay = {
-    total_trimp: 0, verified_trimp: 0, summary_trimp: 0,
-    calculated_ctl: 0, calculated_atl: 0, calculated_tsb: 0,
-    ode_fitness: 0, ode_fatigue: 0, ode_form: 0,
-  };
+  const existingByDate = new Map(existing.map(row => [row.date, row]));
   if (workoutDates.length === 0) {
-    const ids = existing.map((m) => m.id);
+    const ids = existing.filter(m => hasChanges(m, EMPTY_DAY)).map(m => m.id);
     for (let i = 0; i < ids.length; i += 500) {
       await DailyMetrics.bulkUpdate(
-        ids.slice(i, i + 500).map((id) => ({ id, ...emptyDay })),
+        ids.slice(i, i + 500).map((id) => ({ id, ...EMPTY_DAY })),
       );
     }
     await AthleteProfile.update(athlete_id, {
@@ -108,7 +110,9 @@ export async function recomputeCTLATLTSB(base44: any, athlete_id: string) {
   let ctl: number | null = null;
   let currentATL: number | null = null;
   const cursor2 = new Date(start);
-  const updates: any[] = existing.filter((m) => m.date < workoutDates[0]).map((m) => ({ id: m.id, ...emptyDay }));
+  const updates: any[] = existing
+    .filter(m => m.date < workoutDates[0] && hasChanges(m, EMPTY_DAY))
+    .map(m => ({ id: m.id, ...EMPTY_DAY }));
   const creates: any[] = [];
 
   while (cursor2 <= end) {
@@ -137,8 +141,9 @@ export async function recomputeCTLATLTSB(base44: any, athlete_id: string) {
       payload.total_trimp = Math.round(load * 100) / 100;
       payload.verified_trimp = Math.round((verifiedByDate[iso] || 0) * 100) / 100;
       payload.summary_trimp = Math.round((summaryByDate[iso] || 0) * 100) / 100;
-      if (existingByDate[iso]) updates.push({ id: existingByDate[iso], ...payload });
-      else creates.push({ athlete_id, date: iso, created_by_id: athlete.created_by_id, ...payload });
+      const existingDay = existingByDate.get(iso);
+      if (!existingDay) creates.push({ athlete_id, date: iso, created_by_id: athlete.created_by_id, ...payload });
+      else if (hasChanges(existingDay, payload)) updates.push({ id: existingDay.id, ...payload });
     }
     cursor2.setTime(cursor2.getTime() + DAY_MS);
   }

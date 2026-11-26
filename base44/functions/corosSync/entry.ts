@@ -1,4 +1,5 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
+import { waitUntil } from 'base44:runtime';
 import { VALID_SPORTS, calcTrimp, normalizeSport, getOwnedAthlete } from '../../shared/workoutIngest.ts';
 import { resolveSessionLoad } from '../../shared/loadModel.ts';
 import { recomputeCTLATLTSB } from '../../shared/ctlRecalc.ts';
@@ -6,7 +7,7 @@ import { resolveTimeInZone } from '../../shared/hrZones.ts';
 import { resolveActiveCalories } from '../../shared/calories.ts';
 import { env, hmacBase64Url } from '../../shared/oauth.ts';
 import { ingestRecovery } from '../../shared/recoveryIngest.ts';
-import { runPostWorkoutEvaluation } from '../../shared/postWorkoutAI.ts';
+import { automaticWorkoutInsightsEnabled, runPostWorkoutEvaluation } from '../../shared/postWorkoutAI.ts';
 import { assertSafeFileUrl } from '../../shared/urlGuard.ts';
 import { constantTimeEqual } from '../../shared/crypto.ts';
 import { getSyncLookbackDays } from '../../shared/syncLookback.ts';
@@ -340,7 +341,10 @@ async function handleWebhook(req, base44) {
   // session, so the HTTP wrapper's base44.auth.me() check would reject it. The shared
   // module uses asServiceRole internally. Also fixes a parameter-name mismatch: the
   // old call passed workout_session_id but the wrapper expected workout_id.
-  try { await runPostWorkoutEvaluation(base44, session.id, athleteId); } catch (e) { console.warn('postWorkoutAIEvaluation failed:', e); }
+  if (automaticWorkoutInsightsEnabled()) {
+    waitUntil(runPostWorkoutEvaluation(base44, session.id, athleteId)
+      .catch(() => console.warn('COROS post-workout insight failed')));
+  }
 
   if (connection) {
     await base44.asServiceRole.entities.CorosConnection.update(connection.id, {

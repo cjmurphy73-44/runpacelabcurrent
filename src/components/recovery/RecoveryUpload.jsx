@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { base44 } from "@/api/base44Client";
+import { saveDailyRecovery } from "@/lib/saveDailyRecovery";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -85,21 +85,9 @@ export default function RecoveryUpload({ athleteId }) {
         return;
       }
 
-      // UPSERT recovery fields into DailyMetrics per date, never touch computed load columns.
-      const existing = await base44.entities.DailyMetrics.filter({ athlete_id: athleteId }, "-date", 2000);
-      const byDate = new Map(existing.map((m) => [m.date, m.id]));
-      const updates = [];
-      const creates = [];
-      for (const r of parsed) {
-        const payload = {};
-        for (const f of NUMERIC_FIELDS) if (r[f] !== undefined) payload[f] = r[f];
-        if (byDate.has(r.date)) updates.push({ id: byDate.get(r.date), ...payload });
-        else creates.push({ athlete_id: athleteId, date: r.date, ...payload });
-      }
-      if (updates.length) await base44.entities.DailyMetrics.bulkUpdate(updates);
-      if (creates.length) await base44.entities.DailyMetrics.bulkCreate(creates);
+      const { created, updated } = await saveDailyRecovery(athleteId, parsed);
       await reload();
-      setStatus({ type: "success", message: `Synced ${parsed.length} record(s), ${updates.length} updated, ${creates.length} new.` });
+      setStatus({ type: "success", message: `Saved ${created + updated} recovery records (${updated} updated, ${created} new).` });
       setFile(null);
     } catch (err) {
       setStatus({ type: "error", message: err.message || "Import failed." });

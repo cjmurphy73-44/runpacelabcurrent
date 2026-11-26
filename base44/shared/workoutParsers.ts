@@ -8,6 +8,9 @@
 //   import { parseFitWithLaps, parseTcx, parseCsv, tryParseSummaryCsv, summarizeStream } from '../../shared/workoutParsers.ts';
 
 export const SOURCE_PRIORITY = { fit: 4, tcx: 3, csv: 2, manual: 1 };
+const FIT_EPOCH_SECONDS = 631065600;
+const FIT_SPORTS = { 1: 'running', 2: 'cycling', 5: 'swimming', 11: 'walking' };
+const TCX_SPORTS = { running: 'running', biking: 'cycling', cycling: 'cycling', swimming: 'swimming', walking: 'walking' };
 
 function baseTypeSize(baseType) {
   const t = baseType & 0x1F;
@@ -18,8 +21,8 @@ function baseTypeSize(baseType) {
 }
 
 // Decode the file-header + definition/data records of a FIT binary blob. Collects
-// BOTH record (global message 20) and lap (global message 19) messages as raw
-// per-field maps so consumers can apply their own scaling. Returns { records, laps }.
+// Record, lap and session messages are kept as raw field maps so consumers can
+// apply their own scaling.
 function decodeFit(bytes) {
   const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
   const headerSize = view.getUint8(0);
@@ -27,12 +30,15 @@ function decodeFit(bytes) {
   const localDefs = {};
   const records = [];
   const laps = [];
+  const sessions = [];
+  let lastTimestamp;
 
   while (offset < bytes.byteLength - 2) {
     const recordHeader = view.getUint8(offset);
     offset += 1;
-    const isDefinition = (recordHeader & 0x40) !== 0;
-    const localMesgType = (recordHeader & 0x80) !== 0 ? (recordHeader >> 5) & 0x3 : recordHeader & 0xF;
+    const compressed = (recordHeader & 0x80) !== 0;
+    const isDefinition = !compressed && (recordHeader & 0x40) !== 0;
+    const localMesgType = compressed ? (recordHeader >> 5) & 0x3 : recordHeader & 0xF;
 
     if (isDefinition) {
       offset += 1;
@@ -45,16 +51,28 @@ function decodeFit(bytes) {
         fields.push({ fieldNum: view.getUint8(offset), size: view.getUint8(offset + 1), baseType: view.getUint8(offset + 2) });
         offset += 3;
       }
+      let developerBytes = 0;
       if (recordHeader & 0x20) {
         const numDevFields = view.getUint8(offset); offset += 1;
-        offset += numDevFields * 3;
+        for (let i = 0; i < numDevFields; i++) {
+          developerBytes += view.getUint8(offset + 1);
+          offset += 3;
+        }
       }
-      localDefs[localMesgType] = { globalMesgNum, fields, littleEndian };
+      localDefs[localMesgType] = { globalMesgNum, fields, littleEndian, developerBytes };
     } else {
       const def = localDefs[localMesgType];
-      if (!def) break;
+      if (!def) throw new Error('FIT data has no matching definition');
       const rec = {};
+      const compressedTimestamp = compressed && def.fields[0]?.fieldNum === 253 && def.fields[0]?.size === 4;
+      if (compressed) {
+        if (lastTimestamp == null) throw new Error('FIT compressed timestamp has no reference');
+        const seconds = recordHeader & 0x1f;
+        const previousSeconds = lastTimestamp % 32;
+        rec[253] = lastTimestamp - previousSeconds + seconds + (seconds < previousSeconds ? 32 : 0);
+      }
       for (const f of def.fields) {
+        if (compressedTimestamp && f === def.fields[0]) continue;
         const t = f.baseType & 0x1F;
         let value = null;
         if (t !== 7 && f.size === baseTypeSize(f.baseType)) {
@@ -70,11 +88,15 @@ function decodeFit(bytes) {
         if (value !== null) rec[f.fieldNum] = value;
         offset += f.size;
       }
+      offset += def.developerBytes;
+      if (typeof rec[253] === 'number' && rec[253] !== 0xFFFFFFFF) lastTimestamp = rec[253];
       if (def.globalMesgNum === 20 && Object.keys(rec).length > 0) records.push(rec);
       else if (def.globalMesgNum === 19 && Object.keys(rec).length > 0) laps.push(rec);
+      else if (def.globalMesgNum === 18 && Object.keys(rec).length > 0) sessions.push(rec);
     }
   }
-  return { records, laps };
+  if (offset !== bytes.byteLength - 2) throw new Error('Incomplete FIT record');
+  return { records, laps, sessions };
 }
 
 // Derive a uniform summary from a stream whose `distance` channel is in METERS
@@ -103,22 +125,23 @@ export function summarizeStream(stream) {
 }
 
 export function parseFitWithLaps(bytes) {
-  const { records, laps: rawLaps } = decodeFit(bytes);
+  const { records, laps: rawLaps, sessions } = decodeFit(bytes);
   if (!records || records.length === 0) return null;
 
-  const withTimestamps = records.filter((r) => typeof r[253] === 'number');
+  const withTimestamps = records.filter((r) => Number.isFinite(r[253]) && r[253] > 0 && r[253] !== 0xFFFFFFFF);
   if (withTimestamps.length === 0) return null;
-  const firstTs = Math.min(...withTimestamps.map((r) => r[253]));
+  const firstTs = withTimestamps.reduce((first, r) => Math.min(first, r[253]), Infinity);
 
-  const stream = records
-    .filter((r) => typeof r[253] === 'number')
+  const stream = withTimestamps
     .map((r) => ({
       time: r[253] - firstTs,
       heart_rate: (r[3] !== undefined && r[3] !== 0xFF) ? r[3] : null,
-      altitude: (r[2] !== undefined && r[2] !== 0xFFFF) ? (r[2] / 5 - 500) : null,
+      altitude: (r[78] !== undefined && r[78] !== 0xFFFFFFFF) ? (r[78] / 5 - 500)
+        : (r[2] !== undefined && r[2] !== 0xFFFF) ? (r[2] / 5 - 500) : null,
       distance: (r[5] !== undefined && r[5] !== 0xFFFFFFFF) ? (r[5] / 100) : null, // meters
       cadence: (r[4] !== undefined && r[4] !== 0xFF) ? r[4] : null,
-      speed: (r[6] !== undefined && r[6] !== 0xFFFF) ? (r[6] / 1000) : null, // m/s
+      speed: (r[73] !== undefined && r[73] !== 0xFFFFFFFF) ? (r[73] / 1000)
+        : (r[6] !== undefined && r[6] !== 0xFFFF) ? (r[6] / 1000) : null, // m/s
       power: (r[7] !== undefined && r[7] !== 0xFFFF) ? r[7] : null,
     }))
     .sort((a, b) => a.time - b.time);
@@ -149,7 +172,23 @@ export function parseFitWithLaps(bytes) {
     };
   }).filter((l) => l.duration_s > 0 || l.distance_km !== null);
 
-  return { summary: summarizeStream(stream), stream, laps };
+  const session = sessions.length === 1 ? sessions[0] : null;
+  const sessionStart = session && validField(session, 2, 0xFFFFFFFF) && session[2] > 0
+    ? session[2] : firstTs;
+  const recordingStartedAt = new Date((sessionStart + FIT_EPOCH_SECONDS) * 1000).toISOString();
+  return {
+    summary: {
+      ...summarizeStream(stream),
+      derived_date: recordingStartedAt.slice(0, 10),
+      recording_started_at: recordingStartedAt,
+    },
+    identity: {
+      sport: FIT_SPORTS[session?.[5]] ?? null,
+      activityCount: sessions.length,
+    },
+    stream,
+    laps,
+  };
 }
 
 // TCX is XML. We parse it with a lightweight, dependency-free regex pass over the
@@ -216,7 +255,21 @@ export function parseTcx(text) {
   }
 
   if (stream.length === 0) return null;
-  return { summary: summarizeStream(stream), stream, laps };
+  const recordingStartedAt = new Date(firstTimeMs).toISOString();
+  const activities = [...text.matchAll(/<Activity\b[^>]*\bSport="([^"]+)"[^>]*>/gi)];
+  return {
+    summary: {
+      ...summarizeStream(stream),
+      derived_date: recordingStartedAt.slice(0, 10),
+      recording_started_at: recordingStartedAt,
+    },
+    identity: {
+      sport: TCX_SPORTS[activities[0]?.[1]?.toLowerCase()] ?? null,
+      activityCount: activities.length,
+    },
+    stream,
+    laps,
+  };
 }
 
 export function parseCsv(text) {
@@ -240,7 +293,7 @@ export function parseCsv(text) {
 
   const stream = [];
   let firstTime = null;
-  let derivedDate = null;
+  let recordingStartedAt = null;
 
   for (let i = 1; i < lines.length; i++) {
     const cols = lines[i].split(',');
@@ -255,7 +308,7 @@ export function parseCsv(text) {
           firstTime = milliseconds;
           if (!Number.isFinite(numeric) || numeric >= 1_000_000_000) {
             const date = new Date(milliseconds);
-            if (Number.isFinite(date.getTime())) derivedDate = date.toISOString().slice(0, 10);
+            if (Number.isFinite(date.getTime())) recordingStartedAt = date.toISOString();
           }
         }
         point.time = (milliseconds - firstTime) / 1000;
@@ -266,7 +319,10 @@ export function parseCsv(text) {
     if (hrIdx !== -1) { const v = parseFloat(cols[hrIdx]); if (!isNaN(v)) point.heart_rate = v; }
     if (powerIdx !== -1) { const v = parseFloat(cols[powerIdx]); if (!isNaN(v)) point.power = v; }
     if (cadenceIdx !== -1) { const v = parseFloat(cols[cadenceIdx]); if (!isNaN(v)) point.cadence = v; }
-    if (distIdx !== -1) { const v = parseFloat(cols[distIdx]); if (!isNaN(v)) point.distance = v; }
+    if (distIdx !== -1) {
+      const distance = parseFloat(cols[distIdx]);
+      if (Number.isFinite(distance) && distance >= 0) point.distance = distance;
+    }
     if (altIdx !== -1) { const v = parseFloat(cols[altIdx]); if (!isNaN(v)) point.altitude = v; }
     if (speedIdx !== -1) { const v = parseFloat(cols[speedIdx]); if (!isNaN(v)) point.speed = v; }
 
@@ -284,8 +340,17 @@ export function parseCsv(text) {
     if (typeof p.distance === 'number') maxDistance = Math.max(maxDistance, p.distance);
   }
   const durationSeconds = stream.length > 1 ? stream[stream.length - 1].time - stream[0].time : 0;
-  let distanceKm = maxDistance;
-  if (distanceKm > 1000) distanceKm = distanceKm / 1000;
+  // Recorded distance is stored in metres. Keep the legacy inference only for
+  // unlabeled CSV columns, and take explicit unit headers at face value.
+  const distanceHeader = headers[distIdx];
+  const distanceScale = distanceHeader === 'distance_km' ||
+    (distanceHeader === 'distance' && maxDistance <= 1000) ? 1000 : 1;
+  if (distanceScale === 1000) {
+    for (const point of stream) {
+      if (point.distance !== null) point.distance *= distanceScale;
+    }
+  }
+  const distanceKm = maxDistance * distanceScale / 1000;
 
   const summary = {
     avg_hr: hrCount ? Math.round(hrSum / hrCount) : null,
@@ -295,7 +360,8 @@ export function parseCsv(text) {
     distance_km: distanceKm ? Math.round(distanceKm * 100) / 100 : null,
     duration_minutes: durationSeconds ? Math.round((durationSeconds / 60) * 100) / 100 : null,
     duration_seconds: durationSeconds ? Math.round(durationSeconds) : 0,
-    derived_date: derivedDate,
+    derived_date: recordingStartedAt?.slice(0, 10) ?? null,
+    recording_started_at: recordingStartedAt,
   };
 
   return { summary, stream, laps: [] };

@@ -1,10 +1,11 @@
 import React, { useEffect, useState, useCallback } from "react";
 import { Link } from "react-router-dom";
 import { base44 } from "@/api/base44Client";
+import { loadActiveSchedule } from "@/services/activeSchedule";
+import moment from "moment";
 import OnboardingFlow from "@/components/dashboard/OnboardingFlow";
 import { ensureProfileLinked } from "@/lib/profileLinkage";
 import FitnessStats from "@/components/dashboard/FitnessStats";
-import OcrDropzone from "@/components/imports/OcrDropzone";
 import RecentWorkouts from "@/components/dashboard/RecentWorkouts";
 import CoachMessageFeed from "@/components/dashboard/CoachMessageFeed";
 import WeeklySummary from "@/components/dashboard/WeeklySummary";
@@ -19,7 +20,6 @@ import HolisticFactorsLog from "@/components/dashboard/HolisticFactorsLog";
 import TodaySessionCard from "@/components/dashboard/TodaySessionCard";
 import WeeklyVolumeLine from "@/components/dashboard/WeeklyVolumeLine";
 import DashboardGreeting from "@/components/dashboard/DashboardGreeting";
-import DashboardQuickActions from "@/components/dashboard/DashboardQuickActions";
 
 import HorizonStrip from "@/components/dashboard/HorizonStrip";
 import LoadFatigueChart from "@/components/dashboard/LoadFatigueChart";
@@ -41,12 +41,10 @@ import FirstDataPanel from "@/components/onboarding/FirstDataPanel";
 import PlannedActualReconciliation from "@/components/dashboard/PlannedActualReconciliation";
 import CoachBriefing from "@/components/dashboard/CoachBriefing";
 import PhysiologyStrip from "@/components/dashboard/PhysiologyStrip";
-import TodayFocusLine from "@/components/dashboard/TodayFocusLine";
 import WearableSyncBar from "@/components/dashboard/WearableSyncBar";
 import AnomalyAlertBanner from "@/components/dashboard/AnomalyAlertBanner";
 import AISynthesisCard from "@/components/dashboard/AISynthesisCard";
-import ConnectionHealthBanner from "@/components/dashboard/ConnectionHealthBanner";
-import { Sun, TrendingUp, Activity, MessageCircle, HeartPulse, ArrowRight, Plus, LogIn } from "lucide-react";
+import { Sun, TrendingUp, Activity, MessageCircle, HeartPulse, ArrowRight, Plus, Upload, LogIn } from "lucide-react";
 
 export default function Home() {
   const [loading, setLoading] = useState(true);
@@ -57,7 +55,7 @@ export default function Home() {
   const [refreshIssue, setRefreshIssue] = useState(false);
   const [messages, setMessages] = useState([]);
   const [loadTimelineWorkouts, setLoadTimelineWorkouts] = useState([]);
-  const [plannedWorkouts, setPlannedWorkouts] = useState([]);
+  const [schedule, setSchedule] = useState(null);
   const [manualOpen, setManualOpen] = useState(false);
 
   const trackWorkoutIngested = () => {
@@ -66,35 +64,32 @@ export default function Home() {
   const { isGeek } = useUIPreferences();
   const { user, redirectToLogin } = useAuth();
 
-  const loadAthleteData = useCallback(async (athleteId) => {
+  const loadAthleteData = useCallback(async (athleteId, initialProfile) => {
     const [freshAthlete, recentWorkouts, [messageResult, planResult]] = await Promise.all([
-      base44.entities.AthleteProfile.get(athleteId),
-      base44.entities.WorkoutSession.filter({ athlete_id: athleteId }, "-date", 60),
+      initialProfile ?? base44.entities.AthleteProfile.get(athleteId),
+      base44.entities.WorkoutSession.filter({ athlete_id: athleteId }, "-date", 60, 0, [
+        "id", "date", "sport", "duration_minutes", "distance_km", "avg_hr", "session_trimp", "session_tss", "load_source",
+      ]),
       Promise.allSettled([
         base44.entities.CoachMessage.filter({ athlete_id: athleteId }, "-created_date", 10),
-        base44.entities.TrainingPlanSession.filter({ athlete_id: athleteId }, "-date", 60),
+        loadActiveSchedule(athleteId, moment().format("YYYY-MM-DD"), moment().add(7, "days").format("YYYY-MM-DD")),
       ]),
     ]);
     setAthlete(freshAthlete);
-    setWorkouts(recentWorkouts.slice(0, 10));
+    setWorkouts(recentWorkouts.slice(0, 5));
     if (messageResult.status === "fulfilled") setMessages(messageResult.value);
     setRefreshIssue(messageResult.status === "rejected" || planResult.status === "rejected");
     setLoadTimelineWorkouts(recentWorkouts);
-    if (planResult.status !== "fulfilled") return;
-    const todayKey = new Date().toISOString().split("T")[0];
-    const in7Days = new Date();
-    in7Days.setDate(in7Days.getDate() + 7);
-    const in7DaysKey = in7Days.toISOString().split("T")[0];
-    setPlannedWorkouts(planResult.value.filter((p) => p.date >= todayKey && p.date <= in7DaysKey));
+    setSchedule(planResult.status === "fulfilled" ? planResult.value : null);
   }, []);
 
-  const refreshDashboard = async (athleteId) => {
+  const refreshDashboard = useCallback(async (athleteId) => {
     try {
       await loadAthleteData(athleteId);
     } catch {
       setRefreshIssue(true);
     }
-  };
+  }, [loadAthleteData]);
 
   useEffect(() => {
     let cancelled = false;
@@ -120,7 +115,7 @@ export default function Home() {
         if (profile) {
           setProfileExists(true);
           await ensureProfileLinked(user, profile);
-          await loadAthleteData(profile.id);
+          await loadAthleteData(profile.id, profile);
         }
         // No profile found is NOT an error, it means onboarding is required.
         // Only a thrown query counts as a loadError (transient RLS/network blip),
@@ -229,14 +224,8 @@ export default function Home() {
             <Button size="sm" variant="outline" onClick={() => refreshDashboard(athlete.id)}>Retry refresh</Button>
           </div>
         )}
-        <WidgetBoundary name="Connection health"><ConnectionHealthBanner /></WidgetBoundary>
-        {isEmpty ? (
+        {isEmpty && !schedule?.plan ? (
           <section className="space-y-6">
-            <SectionHeading
-              title="Welcome"
-              description="You're set up, bring in your first data and we'll take it from there."
-              icon={Sun}
-            />
             <FirstDataPanel
               athlete={athlete}
               onAddManual={() => setManualOpen(true)}
@@ -246,48 +235,43 @@ export default function Home() {
         ) : (
           <>
           <DashboardGreeting athlete={athlete} />
-          <WidgetBoundary name="Quick actions"><DashboardQuickActions /></WidgetBoundary>
-          <div className="space-y-8">
+          <div className="space-y-6">
         <AnomalyAlertBanner />
-        {/* 1, Today's snapshot */}
-        <section className="space-y-4">
-          <SectionHeading index="01" title="Today's snapshot" description="Your form, readiness and prescribed session for today." icon={Sun} />
-          <WidgetBoundary name="Today's focus"><TodayFocusLine athlete={athlete} /></WidgetBoundary>
+        <section className="space-y-3">
+          <SectionHeading title="Today" icon={Sun} action={
+            <Link to="/recovery" className="inline-flex min-h-11 items-center gap-1 text-sm font-medium hover:underline">
+              Recovery <ArrowRight className="h-4 w-4 text-primary" aria-hidden="true" />
+            </Link>
+          } />
+          <WidgetBoundary name="Today's session"><TodaySessionCard athlete={athlete} schedule={schedule} /></WidgetBoundary>
           <WidgetBoundary name="Wearable sync"><WearableSyncBar onSynced={() => refreshDashboard(athlete.id)} /></WidgetBoundary>
-          <WidgetBoundary name="Physiology strip"><PhysiologyStrip athlete={athlete} /></WidgetBoundary>
-          <WidgetBoundary name="Calibration meter"><CalibrationMeter athlete={athlete} athleteId={athlete.id} /></WidgetBoundary>
-          <WidgetBoundary name="Today's session"><TodaySessionCard athleteId={athlete.id} /></WidgetBoundary>
-          <WidgetBoundary name="Weekly volume"><WeeklyVolumeLine athleteId={athlete.id} /></WidgetBoundary>
         </section>
 
-        {/* 2, Coaching: the AI read on the last two weeks sits directly under today's snapshot */}
-        <section className="space-y-4">
-          <SectionHeading index="02" title="Coaching" description="Your coach's read on the last two weeks." icon={MessageCircle} />
-          <WidgetBoundary name="Coach briefing"><CoachBriefing athlete={athlete} /></WidgetBoundary>
-        </section>
-
-        {/* 3, Recent activity */}
-        <section className="space-y-4">
+        <section className="space-y-3">
           <SectionHeading
-            index="03"
-            title="Recent activity"
-            description="Review your latest sessions and add new ones."
+            title="Recent workouts"
             icon={Activity}
             action={
-              <div className="flex items-center gap-2">
-                <Button variant="outline" size="sm" onClick={() => setManualOpen(true)} className="whitespace-nowrap">
-                  <Plus className="w-3.5 h-3.5" /> Manual
+              <div className="flex flex-wrap items-center gap-2">
+                <Button variant="outline" size="sm" onClick={() => setManualOpen(true)} className="min-h-11">
+                  <Plus className="h-3.5 w-3.5" aria-hidden="true" /> Log workout
                 </Button>
-                <Link to="/import" className="inline-flex items-center gap-1 text-sm font-medium text-primary hover:underline whitespace-nowrap">
-                  All import options <ArrowRight className="w-3.5 h-3.5" />
-                </Link>
+                <Button asChild variant="outline" size="sm" className="min-h-11">
+                  <Link to="/import#workout-files"><Upload aria-hidden="true" /> Import file</Link>
+                </Button>
               </div>
             }
           />
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <WidgetBoundary name="Quick import"><OcrDropzone athleteId={athlete.id} onSaved={() => { trackWorkoutIngested(); refreshDashboard(athlete.id); }} /></WidgetBoundary>
-            <WidgetBoundary name="Recent workouts"><RecentWorkouts workouts={workouts} athlete={athlete} onChanged={() => refreshDashboard(athlete.id)} /></WidgetBoundary>
-          </div>
+          <WidgetBoundary name="Recent workouts"><RecentWorkouts workouts={workouts} /></WidgetBoundary>
+        </section>
+
+        <section className="space-y-3">
+          <SectionHeading title="Coaching" icon={MessageCircle} action={
+            <Link to="/coach" className="inline-flex min-h-11 items-center gap-1 text-sm font-medium hover:underline">
+              Open coach <ArrowRight className="h-4 w-4 text-primary" aria-hidden="true" />
+            </Link>
+          } />
+          <WidgetBoundary name="Coach briefing"><CoachBriefing athlete={athlete} /></WidgetBoundary>
         </section>
 
         {/* 4, Coach notes (collapsible) */}
@@ -310,7 +294,8 @@ export default function Home() {
           icon={TrendingUp}
           deep
         >
-          <WidgetBoundary name="Load & fatigue chart"><LoadFatigueChart completedSessions={loadTimelineWorkouts} plannedWorkouts={plannedWorkouts} /></WidgetBoundary>
+          <WidgetBoundary name="Weekly volume"><WeeklyVolumeLine athleteId={athlete.id} /></WidgetBoundary>
+          <WidgetBoundary name="Load & fatigue chart"><LoadFatigueChart completedSessions={loadTimelineWorkouts} plannedWorkouts={schedule?.sessions ?? []} /></WidgetBoundary>
           <WidgetBoundary name="Horizon strip"><HorizonStrip athleteId={athlete.id} /></WidgetBoundary>
         </CollapsibleSection>
 
@@ -320,7 +305,9 @@ export default function Home() {
           subtitle="Reconciliation across your recent sessions"
           deep
         >
-          <WidgetBoundary name="Planned vs actual"><PlannedActualReconciliation athleteId={athlete.id} /></WidgetBoundary>
+          <WidgetBoundary name="Planned vs actual">
+            <PlannedActualReconciliation athleteId={athlete.id} activePlanId={schedule?.plan?.id} onScheduleChanged={refreshDashboard} />
+          </WidgetBoundary>
         </CollapsibleSection>
 
         {/* 7, Recovery & Readiness (collapsible) */}
@@ -330,6 +317,8 @@ export default function Home() {
           icon={HeartPulse}
           deep
         >
+          <WidgetBoundary name="Physiology strip"><PhysiologyStrip athlete={athlete} /></WidgetBoundary>
+          <WidgetBoundary name="Calibration meter"><CalibrationMeter athlete={athlete} athleteId={athlete.id} /></WidgetBoundary>
           <WidgetBoundary name="AI synthesis"><AISynthesisCard athleteId={athlete.id} /></WidgetBoundary>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
             <WidgetBoundary name="Readiness score"><ReadinessScoreCard /></WidgetBoundary>
@@ -344,12 +333,6 @@ export default function Home() {
 
           </div>
           </>
-        )}
-        {/* Standard mode: a single pointer to the deep dive instead of hiding it silently */}
-        {!isGeek && !isEmpty && (
-          <p className="mt-8 text-center text-xs text-muted-foreground">
-            Want the full numbers, formulas and advanced metrics? Switch to <span className="font-medium text-foreground">Geek</span> mode in the menu.
-          </p>
         )}
         {/* Advanced metrics (Geek mode only) */}
         {isGeek && !isEmpty && (

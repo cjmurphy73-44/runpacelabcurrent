@@ -1,12 +1,14 @@
 // Run against the existing TrainPaceLab staging app with authorized test roles.
 // This script never targets production and never prints tokens or athlete data.
 import assert from 'node:assert/strict';
+import { createHash } from 'node:crypto';
 import { createClient } from '@base44/sdk';
 
 const appId = '6aefe9d09e2788fc8591c758';
 const serverUrl = 'https://train-pace-lab-copy-8591c758.base44.app';
-const athleteOnly = process.argv[2] === '--athlete-only';
-assert.ok(process.argv.length === 2 || (process.argv.length === 3 && athleteOnly), 'Unknown verification option');
+const options = process.argv.slice(2);
+const athleteOnly = options.includes('--athlete-only');
+assert.ok(options.every(option => ['--athlete-only', '--recording'].includes(option)), 'Unknown verification option');
 const account = (key) => {
   const token = process.env[key];
   assert.ok(token, `${key} must be supplied by an authorized staging test session`);
@@ -23,6 +25,24 @@ async function denied(action) {
   } catch (error) {
     return [401, 403, 404].includes(statusOf(error));
   }
+}
+
+function originalFitFixture(date, seconds) {
+  const definition = Buffer.from([0x40, 0, 0, 20, 0, 3, 253, 4, 0x86, 3, 1, 0x02, 5, 4, 0x86]);
+  const bytes = Buffer.alloc(14 + definition.length + (seconds + 1) * 10 + 2);
+  const start = Date.parse(date + 'T10:00:00Z') / 1000 - 631065600;
+  bytes[0] = 14;
+  bytes[1] = 0x20;
+  bytes.writeUInt32LE(bytes.length - 16, 4);
+  bytes.write('.FIT', 8);
+  definition.copy(bytes, 14);
+  for (let elapsed = 0; elapsed <= seconds; elapsed++) {
+    const offset = 14 + definition.length + elapsed * 10;
+    bytes.writeUInt32LE(start + elapsed, offset + 1);
+    bytes[offset + 5] = elapsed === seconds ? 155 : 142;
+    bytes.writeUInt32LE(elapsed * 350, offset + 6);
+  }
+  return bytes;
 }
 
 let athlete;
@@ -68,6 +88,40 @@ try {
   if (legacy?.id) fixtures.push(legacy.id);
   assert.equal((await athlete.entities.WorkoutSession.get(legacy.id)).sport, 'running');
   verified.push(check);
+
+  if (options.includes('--recording')) {
+    check = 'private original file attachment and checksum readback';
+    const workoutDate = new Date(Date.now() - 13 * 86400000).toISOString().slice(0, 10);
+    const summary = (await athlete.functions.invoke('logManualWorkout', {
+      athlete_id: profile.id, date: workoutDate, sport: 'running', duration_minutes: 70, distance_km: 14.7, rpe: 4,
+    })).data;
+    const workout_id = summary?.workout_session?.id;
+    assert.ok(workout_id);
+    fixtures.push(workout_id);
+    const bytes = originalFitFixture(workoutDate, 4200);
+    const sha256 = createHash('sha256').update(bytes).digest('hex');
+    const file = new File([bytes], 'qa-original.fit', { type: 'application/octet-stream' });
+    const attach = async () => (await athlete.functions.invoke('workoutOriginalRecording', { action: 'save', workout_id, file })).data;
+    const attached = await attach();
+    assert.equal(attached.sha256, sha256);
+    assert.equal(attached.analysis.coverage.sampleCount, 4201);
+    assert.equal(attached.analysis.coverage.percent, 100);
+    assert.equal(attached.training_load_refreshed, true);
+    assert.equal((await attach()).sha256, sha256);
+    const stored = await athlete.entities.WorkoutSession.get(workout_id);
+    assert.equal(stored.original_recording_sha256, sha256);
+    assert.equal(stored.load_source, 'stream');
+    assert.ok(!stored.streams?.length);
+    const downloaded = (await athlete.functions.invoke('workoutOriginalRecording', { action: 'download', workout_id })).data;
+    assert.equal(downloaded.sha256, sha256);
+    assert.deepEqual(Buffer.from(downloaded.file_b64, 'base64'), bytes);
+    if (process.env.TPL_STAGING_OTHER_ATHLETE_TOKEN) {
+      const outsider = account('TPL_STAGING_OTHER_ATHLETE_TOKEN');
+      assert.notEqual((await outsider.auth.me()).id, owner.id);
+      assert.ok(await denied(() => outsider.functions.invoke('workoutOriginalRecording', { action: 'download', workout_id })));
+    }
+    verified.push(check);
+  }
 
   if (!athleteOnly) {
     check = 'athlete and coach isolation';

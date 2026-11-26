@@ -6,10 +6,10 @@ import { assertOwnsAthlete } from '../../shared/ownership.ts';
 import { reportError } from '../../shared/errorReport.ts';
 import { resolveSessionLoad } from '../../shared/loadModel.ts';
 import { inlineWorkoutStream } from '../../shared/streamValidity.ts';
-import { parseCsv } from '../../shared/workoutParsers.ts';
+import { parseCsv, parseTcx } from '../../shared/workoutParsers.ts';
+import { VALID_WORKOUT_SPORTS as VALID_SPORTS } from '../../shared/workoutSports.ts';
 
 const GARMIN_EPOCH_OFFSET_SEC = 631065600; // seconds between Unix epoch and FIT/Garmin epoch (1989-12-31)
-const VALID_SPORTS = ['running', 'walking', 'cycling', 'swimming', 'strength', 'triathlon', 'other'];
 const WARMUP_SECONDS = 300;
 const MIN_DECOUPLING_DURATION_MIN = 45;
 
@@ -254,6 +254,7 @@ function parseFit(buffer) {
     duration_minutes: Math.round((durationSeconds / 60) * 100) / 100,
     duration_seconds: Math.round(durationSeconds),
     derived_date: derivedDate,
+    recording_started_at: Number.isFinite(startInstant?.getTime()) ? startInstant.toISOString() : undefined,
   };
 
   return { summary, stream };
@@ -299,21 +300,15 @@ Deno.serve(async (req) => {
       return Response.json({ success: true, created_count: 0, errors: [] });
     }
 
-    const athlete = await base44.entities.AthleteProfile.get(athlete_id);
-    if (!athlete) return Response.json({ error: 'Athlete profile not found' }, { status: 404 });
     if (!(await assertOwnsAthlete(base44, user, athlete_id))) return Response.json({ error: 'Not your athlete profile' }, { status: 403 });
+    const athlete = await base44.entities.AthleteProfile.get(athlete_id).catch(() => null);
+    if (!athlete) return Response.json({ error: 'Athlete profile not found' }, { status: 404 });
 
     const restHr = athlete.resting_hr || 60;
     const maxHr = athlete.max_heart_rate || 190;
 
-    // Dedup safeguard (TelemetryParser.isDuplicate in base44/shared/telemetryParser.ts):
-    // skip any session matching an existing one (or one already staged in this batch) on the
-    // same date/sport/duration/distance, preventing repeated-import inflation.
-    const existingSessions = await base44.entities.WorkoutSession.filter({ athlete_id });
-    const sessionsByDateAll = {};
-    for (const s of existingSessions) (sessionsByDateAll[s.date] ||= []).push(s);
-
-    const sessionsToCreate = [];
+    const stagedByDate = Object.create(null);
+    const candidates = [];
     const errors = [];
 
     // Pre-compiled summary rows (extracted client-side in the browser from .fit/.csv files),
@@ -333,7 +328,7 @@ Deno.serve(async (req) => {
             errors.push({ file_name: row?.file_name || 'unknown', error: 'Missing date or invalid duration (under 1 min or over 24h)' });
             continue;
           }
-          if (TelemetryParser.isDuplicate(sessionsByDateAll, rowDate, sessionSport, durationMinutes, distanceKm)) {
+          if (TelemetryParser.isDuplicate(stagedByDate, rowDate, sessionSport, durationMinutes, distanceKm)) {
             errors.push({ file_name: row?.file_name || 'unknown', error: `Skipped duplicate workout on ${rowDate}` });
             continue;
           }
@@ -354,15 +349,15 @@ Deno.serve(async (req) => {
           };
           const sanitizedSession = TelemetryParser.sanitize(newSession);
           if (!sanitizedSession) { errors.push({ file_name: row?.file_name || 'unknown', error: 'Sanitization rejected invalid session (date/duration out of range)' }); continue; }
-          sessionsToCreate.push(sanitizedSession);
-          (sessionsByDateAll[rowDate] ||= []).push(sanitizedSession);
+          candidates.push({ session: sanitizedSession, fileName: row?.file_name || rowDate });
+          (stagedByDate[rowDate] ||= []).push(sanitizedSession);
         } catch (rowError) {
           errors.push({ file_name: row?.file_name || 'unknown', error: rowError.message });
         }
       }
     }
 
-    for (const f of (files || [])) {
+    for (const f of (Array.isArray(files) ? files : [])) {
       try {
         const { file_url, file_name, sport } = f;
         if (!file_url || !file_name) {
@@ -388,13 +383,16 @@ Deno.serve(async (req) => {
           sourceFormat = 'fit';
           const buffer = new Uint8Array(await fileRes.arrayBuffer());
           parsedResult = parseFit(buffer);
+        } else if (lowerName.endsWith('.tcx')) {
+          sourceFormat = 'tcx';
+          parsedResult = parseTcx(await fileRes.text());
         } else if (lowerName.endsWith('.csv')) {
           sourceFormat = 'csv';
           const text = await fileRes.text();
           summaryRows = tryParseSummaryCsv(text);
           if (!summaryRows) parsedResult = parseCsv(text);
         } else {
-          errors.push({ file_name, error: 'Unsupported file type, only .fit and .csv are supported' });
+          errors.push({ file_name, error: 'Unsupported file type. Use FIT, TCX or CSV.' });
           continue;
         }
 
@@ -403,7 +401,7 @@ Deno.serve(async (req) => {
           for (const row of summaryRows) {
             const rowDate = row.date || default_date || f.date;
             const sessionSport = row.sport || fallbackSport;
-            if (TelemetryParser.isDuplicate(sessionsByDateAll, rowDate, sessionSport, row.duration_minutes, row.distance_km)) {
+            if (TelemetryParser.isDuplicate(stagedByDate, rowDate, sessionSport, row.duration_minutes, row.distance_km)) {
               errors.push({ file_name, error: `Skipped duplicate workout on ${rowDate}` });
               continue;
             }
@@ -425,8 +423,8 @@ Deno.serve(async (req) => {
             };
             const sanitizedSession = TelemetryParser.sanitize(newSession);
             if (!sanitizedSession) { errors.push({ file_name, error: 'Sanitization rejected invalid session (date/duration out of range)' }); continue; }
-            sessionsToCreate.push(sanitizedSession);
-            (sessionsByDateAll[rowDate] ||= []).push(sanitizedSession);
+            candidates.push({ session: sanitizedSession, fileName: file_name });
+            (stagedByDate[rowDate] ||= []).push(sanitizedSession);
           }
           continue;
         }
@@ -458,7 +456,7 @@ Deno.serve(async (req) => {
         }
 
         const sessionSport = sport || 'running';
-        if (TelemetryParser.isDuplicate(sessionsByDateAll, date, sessionSport, durationMinutes, distanceKm)) {
+        if (TelemetryParser.isDuplicate(stagedByDate, date, sessionSport, durationMinutes, distanceKm, parsed.recording_started_at)) {
           errors.push({ file_name, error: `Skipped duplicate workout on ${date}` });
           continue;
         }
@@ -500,6 +498,7 @@ Deno.serve(async (req) => {
         const newSession = {
           athlete_id,
           date,
+          recording_started_at: parsed.recording_started_at || undefined,
           sport: sessionSport,
           duration_minutes: durationMinutes,
           duration_seconds: parsed.duration_seconds || Math.round(durationMinutes * 60),
@@ -517,13 +516,38 @@ Deno.serve(async (req) => {
           efficiency_factor: efficiency_factor ?? undefined,
           aerobic_decoupling: aerobic_decoupling ?? undefined,
           streams: inlineWorkoutStream(stream),
+          ...(parsedResult.laps?.length ? { laps: parsedResult.laps.slice(0, 200) } : {}),
         };
         const sanitizedSession = TelemetryParser.sanitize(newSession);
         if (!sanitizedSession) { errors.push({ file_name, error: 'Sanitization rejected invalid session (date/duration out of range)' }); continue; }
-        sessionsToCreate.push(sanitizedSession);
-        (sessionsByDateAll[date] ||= []).push(sanitizedSession);
+        candidates.push({ session: sanitizedSession, fileName: file_name });
+        (stagedByDate[date] ||= []).push(sanitizedSession);
       } catch (fileError) {
         errors.push({ file_name: f.file_name || 'unknown', error: fileError.message });
+      }
+    }
+
+    // Match against existing sessions only on the days being imported. Page
+    // through those days so old workouts deduplicate without downloading streams.
+    const savedByDate = Object.create(null);
+    const dateKeys = Object.keys(stagedByDate);
+    const pageSize = 500;
+    for (let dateOffset = 0; dateOffset < dateKeys.length; dateOffset += 100) {
+      const date = { $in: dateKeys.slice(dateOffset, dateOffset + 100) };
+      for (let skip = 0; ; skip += pageSize) {
+        const rows = await base44.entities.WorkoutSession.filter(
+          { athlete_id, date }, 'id', pageSize, skip, ['date', 'sport', 'duration_minutes', 'distance_km', 'recording_started_at'],
+        );
+        for (const row of rows) (savedByDate[row.date] ||= []).push(row);
+        if (rows.length < pageSize) break;
+      }
+    }
+    const sessionsToCreate = [];
+    for (const { session, fileName } of candidates) {
+      if (TelemetryParser.isDuplicate(savedByDate, session.date, session.sport, session.duration_minutes, session.distance_km, session.recording_started_at)) {
+        errors.push({ file_name: fileName, error: `Skipped duplicate workout on ${session.date}` });
+      } else {
+        sessionsToCreate.push(session);
       }
     }
 
@@ -547,10 +571,13 @@ Deno.serve(async (req) => {
       try {
         const created = await base44.entities.WorkoutSession.bulkCreate(batch);
         createdSessions.push(...created);
-      } catch (batchError) {
-        // Don't let one bad sub-batch fail the whole request — report it and keep going.
-        for (const item of batch) {
-          errors.push({ file_name: item.raw_file_url || item.date || 'unknown', error: `Insert failed: ${batchError.message}` });
+      } catch {
+        // The service may have persisted some rows before the response failed.
+        for (const { date } of batch) {
+          errors.push({
+            file_name: date,
+            error: 'Workout could not be confirmed. Check Workouts before retrying.',
+          });
         }
       }
     }
@@ -567,11 +594,7 @@ Deno.serve(async (req) => {
       });
     }
 
-    // New ingestion model: raw files are simply appended to the master WorkoutSession log.
-    // Downstream analysis — EarlyversionAIcoach evaluation and the CTL/ATL/TSB + daily-TRIMP
-    // calculations — is run separately/on-demand against this log, not inline during the bulk
-    // import. This keeps the batch resilient and free of the timeout/sequencing complications
-    // that arose when coupling ingest to the recompute pipeline.
+    // The import page refreshes training load once after all its upload batches finish.
     const duplicate_count = errors.filter((e) => /^Skipped duplicate workout/.test(e.error || '')).length;
     const failed_count = errors.length - duplicate_count;
     return Response.json({
@@ -582,6 +605,7 @@ Deno.serve(async (req) => {
       successCount: createdSessions.length,
       errorCount: failed_count,
       created_count: createdSessions.length,
+      ...(createdSessions.length === 1 ? { workout_session_id: createdSessions[0]?.id } : {}),
       duplicate_count,
       failed_count,
       affected_dates: [...new Set(createdSessions.map((s) => s.date))],

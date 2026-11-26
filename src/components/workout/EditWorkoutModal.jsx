@@ -45,13 +45,14 @@ export default function EditWorkoutModal({ workout, open, onClose, onSaved }) {
       if (maxHr !== "") updates.max_hr = Number(maxHr);
       if (updates.duration_minutes != null) updates.duration_seconds = updates.duration_minutes * 60;
 
-      await base44.functions.invoke("editWorkoutSession", {
+      const { data } = await base44.functions.invoke("editWorkoutSession", {
         workout_id: workout.id,
         action: "update",
         updates,
       });
+      if (!data?.workout) throw new Error("The workout update could not be confirmed.");
       toast({ title: "Workout updated", description: "Training load refreshed." });
-      onSaved?.();
+      onSaved?.(data.workout);
       onClose?.();
     } catch (err) {
       toast({

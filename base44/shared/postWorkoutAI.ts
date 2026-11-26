@@ -5,9 +5,16 @@
 
 import { sendAthletePush } from './pushNotifications.ts';
 import { buildAthleteStateSummary } from './athleteState.ts';
+import { claimRateLimit } from './rateLimit.ts';
+import { env } from './oauth.ts';
 
 const MAX_LLM_ATTEMPTS = 2;
 const FALLBACK_BACKOFF_MS = 800;
+const activeEvaluations = new Map<string, ReturnType<typeof evaluateWorkout>>();
+
+export function automaticWorkoutInsightsEnabled() {
+  return env('POST_WORKOUT_AI_AUTOMATIC') === 'enabled';
+}
 
 const EVAL_SCHEMA = {
   type: 'object',
@@ -19,20 +26,23 @@ const EVAL_SCHEMA = {
   required: ['intensity', 'feedback'],
 };
 
-function buildPrompt(workout: any, athlete_id: string, stateSummary: any) {
+function buildPrompt(workout: any, stateSummary: any) {
+  const { athlete_id: _athleteId, ...trainingState } = stateSummary ?? {};
   const stateBlock = stateSummary
-    ? `\nDeterministic training state, computed in code. Treat every value as ground truth: do not recompute, re-derive or contradict it. Your job is the prose around these numbers.\n${JSON.stringify(stateSummary)}\n`
+    ? `\nDeterministic training state, computed in code. Use its provenance and gaps. Do not recompute or contradict it.\n${JSON.stringify(trainingState)}\n`
     : '';
-  return `Analyze this workout session for athlete ${athlete_id}:
+  const loadBasis = workout.load_source === 'stream'
+    ? `integrated from recorded heart-rate samples (${workout.load_coverage_pct ?? 'unknown'}% coverage)`
+    : workout.session_trimp > 0 ? 'estimated from the session average heart rate'
+    : 'heart-rate load unavailable';
+  return `Analyze this workout session:
       Sport: ${workout.sport}
       Duration: ${workout.duration_minutes} mins
       Distance: ${workout.distance_km} km
       Avg HR: ${workout.avg_hr} bpm
       Max HR: ${workout.max_hr} bpm
       TRIMP: ${workout.session_trimp}
-      Load provenance: ${workout.load_source === 'stream'
-        ? `measured, integrated from this session's per-second heart-rate stream over ${workout.load_coverage_pct ?? 100}% of its duration`
-        : 'estimated from the session average heart rate, so describe it as an estimate and never as a measured value'}
+      Load provenance: ${loadBasis}
       ${stateBlock}
       Provide a JSON object with:
       - "intensity": one of "easy" | "moderate" | "hard" | "very_hard" (the dominant physiological intensity of the session)
@@ -43,20 +53,21 @@ function buildPrompt(workout: any, athlete_id: string, stateSummary: any) {
 async function invokeWithRetry(
   base44: any,
   workout: any,
-  athlete_id: string,
   stateSummary: any,
 ): Promise<any> {
   let lastErr: any = null;
   for (let attempt = 1; attempt <= MAX_LLM_ATTEMPTS; attempt++) {
     try {
       const res: any = await base44.asServiceRole.integrations.Core.InvokeLLM({
-        prompt: buildPrompt(workout, athlete_id, stateSummary),
+        prompt: buildPrompt(workout, stateSummary),
         response_json_schema: EVAL_SCHEMA,
       });
-      if (res && (res.feedback || res.intensity)) return res;
+      if (typeof res?.feedback === 'string' && res.feedback.trim()) return res;
       throw new Error('Empty LLM response');
     } catch (e: any) {
       lastErr = e;
+      const status = e?.response?.status ?? e?.status;
+      if (status >= 400 && status < 500 && status !== 408) break;
       if (attempt < MAX_LLM_ATTEMPTS) {
         await new Promise((r) => setTimeout(r, FALLBACK_BACKOFF_MS * attempt));
       }
@@ -65,16 +76,36 @@ async function invokeWithRetry(
   throw lastErr || new Error('LLM evaluation failed after retries');
 }
 
-async function upsertFeedback(base44: any, workout_id: string, athlete_id: string, data: any) {
-  const existing = await base44.asServiceRole.entities.WorkoutFeedback.filter({ workout_id }, '-created_date', 1);
-  if (existing[0]) {
-    return await base44.asServiceRole.entities.WorkoutFeedback.update(existing[0].id, data);
+async function persistFeedback(base44: any, existing: any, workout_id: string, athlete_id: string, data: any) {
+  if (existing) {
+    return await base44.asServiceRole.entities.WorkoutFeedback.update(existing.id, data);
   }
   return await base44.asServiceRole.entities.WorkoutFeedback.create({ workout_id, athlete_id, ...data });
 }
 
-export async function runPostWorkoutEvaluation(base44: any, workout_id: string, athlete_id: string) {
-  const workout = await base44.asServiceRole.entities.WorkoutSession.get(workout_id);
+export function runPostWorkoutEvaluation(base44: any, workout_id: string, athlete_id: string, verifiedWorkout?: any) {
+  const key = JSON.stringify([athlete_id, workout_id, verifiedWorkout?.original_recording_sha256 ?? null]);
+  const current = activeEvaluations.get(key);
+  if (current) return current;
+  const evaluation = evaluateWorkout(base44, workout_id, athlete_id, verifiedWorkout).finally(() => activeEvaluations.delete(key));
+  activeEvaluations.set(key, evaluation);
+  return evaluation;
+}
+
+async function evaluateWorkout(base44: any, workout_id: string, athlete_id: string, verifiedWorkout?: any) {
+  const workout = verifiedWorkout ?? await base44.asServiceRole.entities.WorkoutSession.get(workout_id);
+  if (!workout || workout.id !== workout_id || workout.athlete_id !== athlete_id) throw new Error('Workout not found for this athlete');
+  const feedbackStore = base44.asServiceRole.entities.WorkoutFeedback;
+  const recording = workout.original_recording_sha256 ? { input_recording_sha256: workout.original_recording_sha256 } : {};
+  const scope = { workout_id, athlete_id, ...recording };
+  // Reuse existing feedback before loading training history or calling the model.
+  const [existing] = await feedbackStore.filter(scope, '-created_date', 1);
+  if (existing?.status === 'complete' && existing.feedback) {
+    return { success: true, feedback: existing, evaluation: null };
+  }
+  if (!claimRateLimit(`post-workout-ai:${athlete_id}`, 8, 10 * 60_000)) {
+    throw Object.assign(new Error('Too many new insight requests. Try again in a few minutes.'), { status: 429 });
+  }
 
   // Deterministic math first, prose second: every caller (upload, COROS, Garmin)
   // gets the same structured state in the prompt without wiring it individually.
@@ -85,39 +116,33 @@ export async function runPostWorkoutEvaluation(base44: any, workout_id: string, 
     console.warn('AthleteStateSummary unavailable:', stateErr?.message);
   }
 
-  let feedbackRecord: any;
-  let coachMsg: any = null;
-  let failed = false;
-
+  let data: any;
   try {
-    const aiEvaluation: any = await invokeWithRetry(base44, workout, athlete_id, stateSummary);
-    const feedbackText = aiEvaluation?.feedback ? aiEvaluation.feedback : String(aiEvaluation);
-    const intensity = aiEvaluation?.intensity ? aiEvaluation.intensity : 'moderate';
-    const highlights = Array.isArray(aiEvaluation?.highlights) ? aiEvaluation.highlights : [];
-
-    coachMsg = await base44.asServiceRole.entities.CoachMessage.create({
-      athlete_id,
-      message_type: 'performance_summary',
-      content_text: feedbackText,
-      triggered_by_workout_session_id: workout_id,
-    });
-
-    feedbackRecord = await upsertFeedback(base44, workout_id, athlete_id, {
-      feedback: feedbackText,
+    const aiEvaluation: any = await invokeWithRetry(base44, workout, stateSummary);
+    data = {
+      feedback: aiEvaluation.feedback.trim(),
       status: 'complete',
-      intensity,
-      highlights,
-    });
+      intensity: EVAL_SCHEMA.properties.intensity.enum.includes(aiEvaluation.intensity) ? aiEvaluation.intensity : 'moderate',
+      highlights: Array.isArray(aiEvaluation.highlights) ? aiEvaluation.highlights.filter(h => typeof h === 'string').slice(0, 4) : [],
+    };
   } catch (evalErr: any) {
-    failed = true;
-    console.warn('postWorkoutAIEvaluation LLM failed after retry:', evalErr?.message);
-    feedbackRecord = await upsertFeedback(base44, workout_id, athlete_id, {
+    console.warn('postWorkoutAIEvaluation model unavailable:', evalErr?.status ?? evalErr?.response?.status ?? 'unknown');
+    data = {
       feedback: "The AI coach couldn't analyse this session this time. Tap retry to try again.",
       status: 'failed',
       intensity: 'moderate',
       highlights: [] as string[],
-    });
+    };
   }
+  // A different worker may have completed the same job during model generation.
+  // This check reduces duplicate writes and keeps a late failure from replacing a success.
+  const [latest] = await feedbackStore.filter(scope, '-created_date', 1);
+  if (latest?.status === 'complete' && latest.feedback) {
+    return { success: true, feedback: latest, evaluation: null };
+  }
+  const feedbackRecord = await persistFeedback(base44, latest ?? existing, workout_id, athlete_id, { ...data, ...recording });
+  const failed = data.status === 'failed';
+  let coachMsg = null;
 
   try {
     await base44.asServiceRole.entities.WorkoutSession.update(workout_id, { post_workout_feedback_id: feedbackRecord.id });
@@ -126,11 +151,20 @@ export async function runPostWorkoutEvaluation(base44: any, workout_id: string, 
   }
 
   if (!failed) {
+    coachMsg = await base44.asServiceRole.entities.CoachMessage.create({
+      athlete_id,
+      message_type: 'performance_summary',
+      content_text: feedbackRecord.feedback,
+      triggered_by_workout_session_id: workout_id,
+    }).catch((error: any) => {
+      console.warn('postWorkoutAIEvaluation coach message could not be saved:', error?.status ?? 'unknown');
+      return null;
+    });
     await sendAthletePush(base44, athlete_id, {
       title: 'New coach insight',
       content: 'Your post-workout AI evaluation is ready to review.',
       action_label: 'View insight',
-      action_url: `/activity/${workout_id}`,
+      action_url: `/workouts/${workout_id}`,
     }).catch((e: any) => console.warn('postWorkoutAIEvaluation push failed:', e?.message));
   }
 

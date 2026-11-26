@@ -1,0 +1,87 @@
+{
+  "name": "WorkoutOriginalRecording",
+  "type": "object",
+  "description": "Private immutable parts of an original FIT or TCX attached by the workout owner. A manifest records checksum-verified publication.",
+  "properties": {
+    "athlete_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "session_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "owner_user_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "attempt_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "kind": {
+      "type": "string",
+      "enum": [
+        "part",
+        "manifest"
+      ]
+    },
+    "part_index": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 170
+    },
+    "data_b64": {
+      "type": "string",
+      "maxLength": 32768
+    },
+    "byte_count": {
+      "type": "integer",
+      "minimum": 14,
+      "maximum": 2097152
+    },
+    "part_count": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 171
+    },
+    "part_bytes": {
+      "type": "integer",
+      "enum": [12288],
+      "description": "Fixed byte width of newly saved archive parts"
+    },
+    "sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    }
+  },
+  "required": [
+    "athlete_id",
+    "session_id",
+    "owner_user_id",
+    "attempt_id",
+    "kind"
+  ],
+  "rls": {
+    "create": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "read": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "update": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "delete": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
+}

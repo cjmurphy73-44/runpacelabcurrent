@@ -4,13 +4,17 @@ import { corosAccessToken } from './corosMcp.ts';
 import { retrieveOriginalCorosFit } from './corosOriginalFit.ts';
 import { env } from './oauth.ts';
 import { assertOwnsAthlete } from './ownership.ts';
-import { isUsableTelemetry, storageStream } from './streamValidity.ts';
+import { inlineWorkoutStream, isUsableTelemetry, storageStream } from './streamValidity.ts';
 import { parseFitWithLaps } from './workoutParsers.ts';
-import { summarizeRecordingCoverage, summarizeRecordingWindows } from './recordingWindows.js';
+import { summarizeRecordingCoverage } from './recordingWindows.js';
+import { claimRateLimit } from './rateLimit.ts';
+import { measureWorkoutRecording, recordingAnalysis, recordingDuration } from './workoutRecordingMeasurements.ts';
+import { recomputeCTLATLTSB } from './ctlRecalc.ts';
 
 const MAX_ARCHIVED_SAMPLE_COUNT = 28800;
+type RecordingAction = 'read_recording' | 'recover_recording' | 'analyze_recording' | 'restore_recording';
 
-export async function handleCorosRecording(base44, workoutId: unknown, recover: boolean, analysisOnly = false) {
+export async function handleCorosRecording(base44, workoutId: unknown, action: RecordingAction, analysisOnly = false) {
   const user = await base44.auth.me().catch(() => null);
   if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
   if (typeof workoutId !== 'string' || !workoutId.trim()) {
@@ -30,12 +34,16 @@ export async function handleCorosRecording(base44, workoutId: unknown, recover: 
     athlete_id: workout.athlete_id, session_id: workout.id, provider_activity_id: workout.provider_activity_id,
   };
   const archive = base44.asServiceRole.entities.CorosRecordingArchive;
-  const expectedDuration = workout.duration_seconds || Number(workout.duration_minutes) * 60;
+  const expectedDuration = recordingDuration(workout);
   try {
     let bytes = await readCorosArchive(archive, scope);
-    if (!bytes && recover) {
-      if (env('COROS_FIT_ARCHIVE_WRITES') !== 'enabled') {
+    let source = 'archive';
+    if (!bytes && action !== 'read_recording') {
+      if (action === 'recover_recording' && env('COROS_FIT_ARCHIVE_WRITES') !== 'enabled') {
         return Response.json({ error: 'Original COROS recording recovery is temporarily unavailable.' }, { status: 503 });
+      }
+      if (!claimRateLimit(`coros-recording:${user.id}`, 8, 60_000)) {
+        return Response.json({ error: 'Too many recording requests. Try again in a minute.' }, { status: 429 });
       }
       const rows = await base44.asServiceRole.entities.CorosConnection.filter({ athlete_id: workout.athlete_id });
       const conn = rows.find(row => row.access_token && row.status !== 'disconnected');
@@ -43,30 +51,72 @@ export async function handleCorosRecording(base44, workoutId: unknown, recover: 
       const accessToken = await corosAccessToken(conn, base44);
       const fit = await retrieveOriginalCorosFit(accessToken, labelId, sportType, expectedDuration, MAX_ARCHIVED_SAMPLE_COUNT);
       if (!fit) {
-        return Response.json({ error: 'COROS did not return a usable original recording within the archive limit.' }, { status: 422 });
+        return Response.json({ error: 'COROS did not return a usable original FIT for this workout. You can import the original file if you have it.' }, { status: 422 });
       }
-      const athlete = await base44.asServiceRole.entities.AthleteProfile.get(workout.athlete_id);
-      bytes = await saveCorosArchive(archive, scope, athlete.created_by_id, fit);
+      if (action === 'analyze_recording' || action === 'restore_recording') {
+        bytes = fit;
+        source = 'provider';
+      } else {
+        const athlete = await base44.asServiceRole.entities.AthleteProfile.get(workout.athlete_id);
+        bytes = await saveCorosArchive(archive, scope, athlete.created_by_id, fit);
+      }
     }
     if (!bytes) return Response.json({ status: 'unavailable' });
     const decoded = parseFitWithLaps(bytes);
     if (!decoded || decoded.stream.length > MAX_ARCHIVED_SAMPLE_COUNT || !isUsableTelemetry(decoded.stream, expectedDuration)) {
-      return Response.json({ error: 'Archived FIT does not contain a usable recording.' }, { status: 422 });
+      return Response.json({ error: 'The original FIT does not contain a usable recording.' }, { status: 422 });
     }
     const recording = {
-      status: 'verified', sample_count: decoded.stream.length, recording_sha256: await hashCorosRecording(bytes),
+      status: 'verified', source, sample_count: decoded.stream.length, recording_sha256: await hashCorosRecording(bytes),
     };
-    const payload = analysisOnly ? {
-      ...recording,
-      analysis: {
-        coverage: summarizeRecordingCoverage({ ...workout, streams: decoded.stream }),
-        windows: {
-          300: summarizeRecordingWindows(decoded.stream, 300),
-          600: summarizeRecordingWindows(decoded.stream, 600),
-        },
-      },
-    } : { ...recording, streams: storageStream(decoded.stream) };
-    return Response.json(payload, { headers: { 'Cache-Control': 'private, no-store' } });
+    if (analysisOnly || action === 'analyze_recording' || action === 'restore_recording') {
+      const athlete = await base44.asServiceRole.entities.AthleteProfile.get(workout.athlete_id);
+      const { coverage, zones, measuredLoad } = measureWorkoutRecording(workout, athlete, decoded);
+      let restored_workout = null;
+      let training_load_refreshed = null;
+      if (action === 'restore_recording' && coverage && !coverage.partial) {
+        const streams = inlineWorkoutStream(decoded.stream);
+        const existingCoverage = summarizeRecordingCoverage(workout);
+        if (streams && (!existingCoverage || existingCoverage.partial || !isUsableTelemetry(workout.streams, expectedDuration))) {
+          const { avg_hr, max_hr } = decoded.summary;
+          const patch = {
+            streams,
+            source_format: 'fit',
+            zone_seconds: zones.zone_seconds,
+            zone_method: zones.zone_method,
+            zone_bounds_bpm: zones.zone_bounds_bpm,
+            ...(avg_hr ? { avg_hr } : {}),
+            ...(max_hr ? { max_hr } : {}),
+            ...(decoded.laps.length ? { laps: decoded.laps.slice(0, 200) } : {}),
+            ...measuredLoad,
+          };
+          // Use the caller's entity permissions for the write. Keep the workout
+          // identity, date, device energy and plan link untouched.
+          try {
+            await base44.entities.WorkoutSession.update(workout.id, patch);
+            restored_workout = {
+              id: workout.id, source_format: 'fit',
+              ...(avg_hr ? { avg_hr } : {}),
+              ...(max_hr ? { max_hr } : {}),
+              ...measuredLoad,
+            };
+            if (measuredLoad) {
+              const loadResult = await recomputeCTLATLTSB(base44, workout.athlete_id).catch(() => null);
+              training_load_refreshed = loadResult?.success === true;
+            }
+          } catch {
+            console.warn('Verified COROS analysis available, inline recording could not be saved.');
+          }
+        }
+      }
+      return Response.json({
+        ...recording, restored_workout, training_load_refreshed,
+        analysis: recordingAnalysis(decoded, coverage, zones),
+      }, { headers: { 'Cache-Control': 'private, no-store' } });
+    }
+    return Response.json({ ...recording, streams: storageStream(decoded.stream) }, {
+      headers: { 'Cache-Control': 'private, no-store' },
+    });
   } catch {
     return Response.json({ error: 'The original COROS recording could not be verified or retrieved.' }, { status: 502 });
   }
