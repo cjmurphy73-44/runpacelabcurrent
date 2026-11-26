@@ -16,6 +16,7 @@ Deno.serve(async function(req) {
     const profiles = await e.AthleteProfile.filter(owned, 'id', 100, 0, ['id', 'created_by_id']);
     const athleteIds = profiles.filter(profile => profile.created_by_id === user.id).map(profile => profile.id);
     await e.CorosRecordingArchive.deleteMany({ owner_user_id: user.id });
+    await e.WorkoutOriginalRecording.deleteMany({ owner_user_id: user.id });
 
     // Best-effort cleanup of the user's data; a failure on one entity must not
     // block the account deletion itself.

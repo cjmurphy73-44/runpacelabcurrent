@@ -15,6 +15,18 @@
       "type": "string",
       "description": "AI-generated coaching feedback text for the session"
     },
+    "input_recording_sha256": {
+      "type": "string",
+      "description": "Original recording used in the analysis, where attached by the athlete",
+      "pattern": "^[0-9a-f]{64}$",
+      "rls": {
+        "write": {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      }
+    },
     "status": {
       "type": "string",
       "enum": [

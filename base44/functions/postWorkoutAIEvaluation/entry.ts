@@ -36,7 +36,7 @@ Deno.serve(async (req: Request) => {
       return Response.json({ error: 'Forbidden' }, { status: 403 });
     }
 
-    const result = await runPostWorkoutEvaluation(base44, workout_id, athlete_id);
+    const result = await runPostWorkoutEvaluation(base44, workout_id, athlete_id, workout);
     return Response.json(result, { headers: { 'Content-Type': 'application/json' } });
   } catch (error) {
     if (error?.status === 429) return Response.json({ error: error.message }, { status: 429 });

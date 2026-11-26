@@ -33,7 +33,7 @@
     "part_index": {
       "type": "integer",
       "minimum": 0,
-      "maximum": 85
+      "maximum": 170
     },
     "data_b64": {
       "type": "string",
@@ -47,7 +47,12 @@
     "part_count": {
       "type": "integer",
       "minimum": 1,
-      "maximum": 86
+      "maximum": 171
+    },
+    "part_bytes": {
+      "type": "integer",
+      "enum": [12288],
+      "description": "Fixed byte width of newly saved archive parts"
     },
     "sha256": {
       "type": "string",

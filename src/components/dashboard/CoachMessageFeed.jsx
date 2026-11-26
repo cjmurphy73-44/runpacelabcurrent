@@ -1,4 +1,5 @@
 import React, { useMemo } from "react";
+import { Link } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Sparkles, Activity, AlertTriangle, CheckCircle2 } from "lucide-react";
@@ -50,6 +51,11 @@ export default function CoachMessageFeed({ messages = [] }) {
                   <div key={m.id} className="border-b border-border last:border-0 pb-3 last:pb-0">
                     <Badge variant="outline" className="capitalize mb-1">{m.message_type.replace(/_/g, " ")}</Badge>
                     <p className="text-sm whitespace-pre-wrap">{m.content_text}</p>
+                    {m.triggered_by_workout_session_id && (
+                      <Link className="text-xs text-primary hover:underline" to={`/workouts/${m.triggered_by_workout_session_id}`}>
+                        Review workout
+                      </Link>
+                    )}
                   </div>
                 ))}
               </div>

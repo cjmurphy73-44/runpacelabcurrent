@@ -1,5 +1,4 @@
 import React from "react";
-import { Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
 import { Button } from "@/components/ui/button";
@@ -40,7 +39,6 @@ export default function CorosOriginalRecording({ workout, athlete, hasInlineReco
           }}>
             {isFetching ? "Verifying the recording…" : "Load original COROS recording"}
           </Button>
-          {!hasInlineRecording && <Link to="/import#workout-files" className="text-sm text-primary hover:underline">Import a recording</Link>}
         </div>
       )}
       {error && <p role="alert" className="text-sm text-destructive">

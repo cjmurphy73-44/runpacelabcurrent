@@ -1,5 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { useParams, Link } from "react-router-dom";
+import { useQueryClient } from "@tanstack/react-query";
+import { useAuth } from "@/lib/AuthContext";
 import { base44 } from "@/api/base44Client";
 import { downloadWorkoutFile } from "@/services/workoutExport";
 import { useSubscription } from "@/hooks/useSubscription";
@@ -11,15 +13,18 @@ import FeatureGate from "@/components/billing/FeatureGate";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import WorkoutOriginalRecording, { useOriginalRecording } from "@/components/workout/WorkoutOriginalRecording";
+import WorkoutSessionActions from "@/components/workout/WorkoutSessionActions";
+import CyclingPowerScenario from "@/components/workout/CyclingPowerScenario";
 import PageShell from "@/components/layout/PageShell";
 import SectionHeading from "@/components/layout/SectionHeading";
-import { ArrowLeft, Sparkles, Activity as ActivityIcon, Clock, MapPin, HeartPulse, Gauge, RotateCw, AlertCircle, Files, Layers, CalendarDays, Pencil, Check, X, Loader2, Download, TrendingDown } from "lucide-react";
+import { ArrowLeft, Sparkles, Activity as ActivityIcon, Clock, MapPin, HeartPulse, Gauge, RotateCw, AlertCircle, Files, Layers, Flame, Download, TrendingDown } from "lucide-react";
 import { workoutLoadPresentation } from "@/lib/workoutLoadPresentation";
 import { aerobicDecouplingInterpretation, efficiencyFactorInterpretation } from "@/lib/workoutInterpretation";
 import { AuditBadge } from "@/components/ui/AuditBadge";
 import { hasVerifiedStreams } from "@/lib/streamValidity";
 import { recordingCoverage } from "@/lib/recordingCoverage";
+import { normalizedPacePower, sessionCalories } from "@/lib/workoutAnalytics";
 
 // Intensity → dynamic color tokens used across the insight card.
 const INTENSITY_STYLES = {
@@ -68,14 +73,19 @@ function WorkoutActivity({ id }) {
   const [feedbackLoading, setFeedbackLoading] = useState(true);
   const [retrying, setRetrying] = useState(false);
   const [insightError, setInsightError] = useState("");
-  const [editingDate, setEditingDate] = useState(false);
-  const [dateDraft, setDateDraft] = useState("");
-  const [patching, setPatching] = useState(false);
-  const [patchMsg, setPatchMsg] = useState(null);
   const [planSession, setPlanSession] = useState(null);
   const [athlete, setAthlete] = useState(null);
   const [fitnessRevision, setFitnessRevision] = useState(0);
+  const [loadRefreshPending, setLoadRefreshPending] = useState(false);
+  const [refreshingLoad, setRefreshingLoad] = useState(false);
+  const [loadRefreshError, setLoadRefreshError] = useState(false);
   const { plan } = useSubscription();
+  const { user } = useAuth();
+  const queryClient = useQueryClient();
+  const hasInlineRecording = hasVerifiedStreams(workout);
+  const inlineCoverage = hasInlineRecording ? recordingCoverage(workout) : null;
+  const hasCompleteInlineRecording = Boolean(inlineCoverage && !inlineCoverage.partial);
+  const original = useOriginalRecording(workout, hasCompleteInlineRecording, coachView);
 
   useEffect(() => {
     let active = true;
@@ -118,7 +128,9 @@ function WorkoutActivity({ id }) {
           })
           .catch(() => {});
       }
-      if (hasVerifiedStreams(workout) && !workout.zone_bounds_bpm?.length) {
+      if ((hasVerifiedStreams(workout) && !workout.zone_bounds_bpm?.length) ||
+          (workout.sport === "cycling" && !workout.avg_power) ||
+          (workout.avg_hr && !workout.active_calories)) {
         base44.entities.AthleteProfile.get(workout.athlete_id)
           .then(profile => ifActive(() => setAthlete(profile)))
           .catch(() => {});
@@ -169,6 +181,8 @@ function WorkoutActivity({ id }) {
 
   const style = feedback?.intensity ? INTENSITY_STYLES[feedback.intensity] : null;
   const isFailed = feedback?.status === "failed";
+  const feedbackUsesEarlierData = feedback && workout.original_recording_sha256 &&
+    feedback.input_recording_sha256 !== workout.original_recording_sha256;
 
   const handleRetry = async () => {
     if (!workout?.athlete_id || retrying) return;
@@ -192,32 +206,40 @@ function WorkoutActivity({ id }) {
     }
   };
 
-  const handlePatchDate = async () => {
-    if (!workout || !dateDraft || patching) return;
-    setPatching(true);
-    setPatchMsg(null);
+  const onRecordingSaved = (data) => {
+    queryClient.setQueryData(["workout-original-recording", user?.id, id, data.sha256], data.analysis);
+    setWorkout(current => ({ ...current, ...data.workout }));
+    setLoadRefreshPending(data.training_load_refreshed === false);
+    if (data.training_load_refreshed) setFitnessRevision(revision => revision + 1);
+  };
+  const refreshLoad = async () => {
+    setRefreshingLoad(true);
+    setLoadRefreshError(false);
     try {
-      const { data } = await base44.functions.invoke("editWorkoutSession", {
-        workout_id: workout.id, action: "update", updates: { date: dateDraft },
-      });
-      if (!data?.workout) throw new Error("Workout update was not confirmed.");
-      setWorkout(data.workout);
-      setPatchMsg({ ok: true, text: "Date updated." });
-      setEditingDate(false);
-    } catch (e) {
-      setPatchMsg({ ok: false, text: e?.response?.data?.error || "Could not update date." });
+      const { data } = await base44.functions.invoke("recalculateCTLATLTSB", { athlete_id: workout.athlete_id });
+      if (!data?.success) throw new Error("Load refresh could not be confirmed.");
+      setLoadRefreshPending(false);
+      setFitnessRevision(revision => revision + 1);
+    } catch {
+      setLoadRefreshError(true);
     } finally {
-      setPatching(false);
+      setRefreshingLoad(false);
     }
   };
 
   const load = workoutLoadPresentation(workout);
+  const calories = sessionCalories(workout, athlete);
   const summary = [
     { icon: Clock, label: "Duration", value: workout.duration_minutes ? `${workout.duration_minutes} min` : "—" },
     { icon: MapPin, label: "Distance", value: workout.distance_km ? `${workout.distance_km} km` : "—" },
     { icon: HeartPulse, label: "Avg HR", value: workout.avg_hr ? `${workout.avg_hr} bpm` : "—" },
     { icon: HeartPulse, label: "Max HR", value: workout.max_hr ? `${workout.max_hr} bpm` : "—" },
     { icon: Gauge, label: "Training load", value: load.amount, detail: load.amount === "Load unavailable" ? null : load.label },
+    { icon: Gauge, label: workout.avg_power ? "Avg power" : workout.sport === "cycling" ? "Avg speed" : "Avg pace", value: normalizedPacePower(workout) },
+    ...(calories.kcal ? [{
+      icon: Flame, label: "Energy", value: `${calories.kcal} kcal`,
+      detail: calories.basis || (calories.source === "device" ? "Device reported" : calories.source === "manual" ? "Manually entered" : "Estimated"),
+    }] : []),
   ];
 
   const title = workout.sport
@@ -225,9 +247,11 @@ function WorkoutActivity({ id }) {
     : "Activity";
 
   const laps = Array.isArray(workout.laps) ? workout.laps : [];
-  const hasInlineRecording = hasVerifiedStreams(workout);
-  const hasCompleteInlineRecording = hasInlineRecording && !recordingCoverage(workout)?.partial;
-  const canLoadCoros = !coachView && workout.source_provider === "coros" && Boolean(workout.provider_activity_id);
+  const hasOriginal = Boolean(workout.original_recording_sha256);
+  const canLoadCoros = !coachView && !hasOriginal && workout.source_provider === "coros" && Boolean(workout.provider_activity_id);
+  const plannedMinutes = Number(planSession?.prescribed_duration_minutes);
+  const recordedMinutes = Number(workout.duration_seconds) > 0 ? Number(workout.duration_seconds) / 60 : Number(workout.duration_minutes);
+  const durationDifference = plannedMinutes > 0 && recordedMinutes > 0 ? Math.round(recordedMinutes - plannedMinutes) : null;
   const sortedAssets = [...(Array.isArray(assets) ? assets : [])].sort((a, b) => (SOURCE_PRIORITY_UI[b.file_type] || 0) - (SOURCE_PRIORITY_UI[a.file_type] || 0) || (a.uploaded_at || "").localeCompare(b.uploaded_at || ""));
 
   return (
@@ -252,7 +276,7 @@ function WorkoutActivity({ id }) {
           ) : undefined}
         />
         <Card>
-          <CardContent className="pt-6 grid grid-cols-2 sm:grid-cols-5 gap-4">
+          <CardContent className="pt-5 grid grid-cols-2 sm:grid-cols-4 gap-4">
             {summary.map((s) => (
               <div key={s.label} className="space-y-1">
                 <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
@@ -268,16 +292,23 @@ function WorkoutActivity({ id }) {
           <Card>
             <CardContent className="pt-6 flex flex-wrap items-center justify-between gap-3 text-sm">
               <div>
-                <p className="font-medium">Linked plan session</p>
-                <p className="text-muted-foreground">{planSession.date} · {planSession.prescribed_duration_minutes || 0} min planned</p>
+                <p className="font-medium">Plan vs. completed</p>
+                <p className="text-muted-foreground">
+                  {plannedMinutes > 0 ? `${plannedMinutes} min planned` : "Planned duration unavailable"}
+                  {recordedMinutes > 0 && ` · ${Math.round(recordedMinutes)} min recorded`}
+                  {durationDifference !== null && durationDifference !== 0 && ` · ${Math.abs(durationDifference)} min ${durationDifference > 0 ? "longer" : "shorter"}`}
+                </p>
+                {planSession.prescribed_intensity_zone && (
+                  <p className="text-xs text-muted-foreground">Plan target {planSession.prescribed_intensity_zone}</p>
+                )}
               </div>
-              <Button asChild size="sm" variant="outline"><Link to="/calendar">Training calendar</Link></Button>
+              <Button asChild size="sm" variant="outline"><Link to={`/calendar?date=${encodeURIComponent(planSession.date)}`}>View plan week</Link></Button>
             </CardContent>
           </Card>
         )}
       </section>
 
-      <section className="space-y-4">
+      <section className="space-y-4" id="recording">
         <SectionHeading title="Workout recording" icon={HeartPulse} />
         <Card>
           <CardContent className="pt-6 space-y-4">
@@ -294,47 +325,39 @@ function WorkoutActivity({ id }) {
               />
             ) : (
               <>
-                <WorkoutZonePanel workout={workout} athlete={athlete} showImport={!coachView} />
+                {original.isFetching && <p role="status" className="text-sm text-muted-foreground">Reading the saved recording…</p>}
+                {original.isError && <div className="flex flex-wrap items-center gap-2">
+                  <p role="alert" className="text-sm text-muted-foreground">Could not verify the saved recording.</p>
+                  <Button size="sm" variant="outline" onClick={() => original.refetch()}>Retry</Button>
+                </div>}
+                {!original.isFetching && <WorkoutZonePanel workout={workout} athlete={athlete} originalAnalysis={original.data} showImport={false} />}
                 {!coachView && workout.source_provider === "coros" && !workout.provider_activity_id && !hasInlineRecording && (
                   <p className="text-sm text-muted-foreground">This workout has no COROS activity ID for an exact recording lookup.</p>
                 )}
-                <RecordingIntervals workout={workout} />
+                <RecordingIntervals workout={workout} windowsByDuration={original.data?.windows} />
               </>
             )}
+            {!coachView && (
+              <WorkoutOriginalRecording
+                workout={workout}
+                canAttach={!hasCompleteInlineRecording}
+                coverage={original.data?.coverage ?? inlineCoverage}
+                onSave={onRecordingSaved}
+              />
+            )}
+            {loadRefreshPending && (
+              <div className="flex flex-wrap items-center gap-2">
+                <p role="status" className="text-sm text-muted-foreground">Recording saved. Fitness history still needs a refresh.</p>
+                <Button variant="outline" size="sm" onClick={refreshLoad} disabled={refreshingLoad}>
+                  {refreshingLoad ? "Refreshing…" : "Refresh fitness history"}
+                </Button>
+                {loadRefreshError && <p role="alert" className="text-sm text-destructive">Fitness history could not be refreshed. Try again.</p>}
+              </div>
+            )}
+            {workout.sport === "cycling" && !coachView && <CyclingPowerScenario workout={workout} athlete={athlete} />}
           </CardContent>
         </Card>
         {!coachView && <WorkoutFitnessImpact key={fitnessRevision} workout={workout} athleteId={workout.athlete_id} />}
-      </section>
-
-      <section>
-        <Card>
-          <CardContent className="pt-6 flex flex-wrap items-center gap-3">
-            <div className="flex items-center gap-2 text-sm text-muted-foreground">
-              <CalendarDays className="w-4 h-4" /> Session date
-            </div>
-            {editingDate ? (
-              <>
-                <Input type="date" value={dateDraft} onChange={(e) => setDateDraft(e.target.value)} className="w-auto" />
-                <Button size="sm" onClick={handlePatchDate} disabled={patching || !dateDraft} className="gap-1.5">
-                  {patching ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Check className="w-3.5 h-3.5" />} Save
-                </Button>
-                <Button size="sm" variant="ghost" onClick={() => { setEditingDate(false); setPatchMsg(null); }} className="gap-1.5">
-                  <X className="w-3.5 h-3.5" /> Cancel
-                </Button>
-              </>
-            ) : (
-              <>
-                <span className="text-sm font-mono tabular-nums">{workout.date || "—"}</span>
-                <Button size="sm" variant="outline" disabled={coachView} onClick={() => { setDateDraft(workout.date || ""); setEditingDate(true); }} className="gap-1.5">
-                  <Pencil className="w-3.5 h-3.5" /> Correct date
-                </Button>
-              </>
-            )}
-            {patchMsg && (
-              <span className={`text-xs ${patchMsg.ok ? "text-primary" : "text-destructive"}`}>{patchMsg.text}</span>
-            )}
-          </CardContent>
-        </Card>
       </section>
 
       {(workout.efficiency_factor != null || workout.aerobic_decoupling != null) && (
@@ -366,20 +389,15 @@ function WorkoutActivity({ id }) {
         </section>
       )}
 
-      <section className="space-y-4">
+      {!coachView && (sortedAssets.length > 0 || assetError) && <section className="space-y-4">
         <SectionHeading
-          title="Attached files"
-          description="Source files used for this workout."
+          title="Imported files"
           icon={Files}
         />
         <Card>
           <CardContent className="pt-6">
             {assetError ? (
               <p className="text-sm text-muted-foreground">Attached files could not be loaded.</p>
-            ) : assets === null ? (
-              <p role="status" className="text-sm text-muted-foreground">Loading attached files…</p>
-            ) : sortedAssets.length === 0 ? (
-              <p className="text-sm text-muted-foreground">No files attached to this workout.</p>
             ) : (
               <ul className="divide-y divide-border">
                 {sortedAssets.map((a) => {
@@ -400,7 +418,7 @@ function WorkoutActivity({ id }) {
             )}
           </CardContent>
         </Card>
-      </section>
+      </section>}
 
       {laps.length > 0 && (
         <section className="space-y-4">
@@ -461,6 +479,14 @@ function WorkoutActivity({ id }) {
           </CardHeader>
           <CardContent className="space-y-4">
             {insightError && <p role="alert" className="text-sm text-destructive">{insightError}</p>}
+            {feedbackUsesEarlierData && !isFailed && !coachView && (
+              <div className="flex flex-wrap items-center gap-2">
+                <p className="text-xs text-muted-foreground">This insight predates the attached recording.</p>
+                <Button size="sm" variant="outline" onClick={handleRetry} disabled={retrying}>
+                  {retrying ? "Generating insights…" : "Refresh coach insight"}
+                </Button>
+              </div>
+            )}
             {style && !isFailed && (
               <div className="h-1.5 w-full rounded-full bg-muted overflow-hidden">
                 <div
@@ -506,6 +532,10 @@ function WorkoutActivity({ id }) {
           </CardContent>
         </Card>
       </section>
+      {!coachView && <WorkoutSessionActions workout={workout} onSaved={(updated) => {
+        setWorkout(updated);
+        setFitnessRevision(revision => revision + 1);
+      }} />}
     </PageShell>
   );
 }

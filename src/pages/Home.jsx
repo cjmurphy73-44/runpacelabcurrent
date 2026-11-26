@@ -64,9 +64,9 @@ export default function Home() {
   const { isGeek } = useUIPreferences();
   const { user, redirectToLogin } = useAuth();
 
-  const loadAthleteData = useCallback(async (athleteId) => {
+  const loadAthleteData = useCallback(async (athleteId, initialProfile) => {
     const [freshAthlete, recentWorkouts, [messageResult, planResult]] = await Promise.all([
-      base44.entities.AthleteProfile.get(athleteId),
+      initialProfile ?? base44.entities.AthleteProfile.get(athleteId),
       base44.entities.WorkoutSession.filter({ athlete_id: athleteId }, "-date", 60, 0, [
         "id", "date", "sport", "duration_minutes", "distance_km", "avg_hr", "session_trimp", "session_tss", "load_source",
       ]),
@@ -115,7 +115,7 @@ export default function Home() {
         if (profile) {
           setProfileExists(true);
           await ensureProfileLinked(user, profile);
-          await loadAthleteData(profile.id);
+          await loadAthleteData(profile.id, profile);
         }
         // No profile found is NOT an error, it means onboarding is required.
         // Only a thrown query counts as a loadError (transient RLS/network blip),

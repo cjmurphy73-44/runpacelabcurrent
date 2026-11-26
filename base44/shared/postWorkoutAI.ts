@@ -6,10 +6,15 @@
 import { sendAthletePush } from './pushNotifications.ts';
 import { buildAthleteStateSummary } from './athleteState.ts';
 import { claimRateLimit } from './rateLimit.ts';
+import { env } from './oauth.ts';
 
 const MAX_LLM_ATTEMPTS = 2;
 const FALLBACK_BACKOFF_MS = 800;
 const activeEvaluations = new Map<string, ReturnType<typeof evaluateWorkout>>();
+
+export function automaticWorkoutInsightsEnabled() {
+  return env('POST_WORKOUT_AI_AUTOMATIC') === 'enabled';
+}
 
 const EVAL_SCHEMA = {
   type: 'object',
@@ -78,20 +83,21 @@ async function persistFeedback(base44: any, existing: any, workout_id: string, a
   return await base44.asServiceRole.entities.WorkoutFeedback.create({ workout_id, athlete_id, ...data });
 }
 
-export function runPostWorkoutEvaluation(base44: any, workout_id: string, athlete_id: string) {
-  const key = JSON.stringify([athlete_id, workout_id]);
+export function runPostWorkoutEvaluation(base44: any, workout_id: string, athlete_id: string, verifiedWorkout?: any) {
+  const key = JSON.stringify([athlete_id, workout_id, verifiedWorkout?.original_recording_sha256 ?? null]);
   const current = activeEvaluations.get(key);
   if (current) return current;
-  const evaluation = evaluateWorkout(base44, workout_id, athlete_id).finally(() => activeEvaluations.delete(key));
+  const evaluation = evaluateWorkout(base44, workout_id, athlete_id, verifiedWorkout).finally(() => activeEvaluations.delete(key));
   activeEvaluations.set(key, evaluation);
   return evaluation;
 }
 
-async function evaluateWorkout(base44: any, workout_id: string, athlete_id: string) {
-  const workout = await base44.asServiceRole.entities.WorkoutSession.get(workout_id);
-  if (!workout || workout.athlete_id !== athlete_id) throw new Error('Workout not found for this athlete');
+async function evaluateWorkout(base44: any, workout_id: string, athlete_id: string, verifiedWorkout?: any) {
+  const workout = verifiedWorkout ?? await base44.asServiceRole.entities.WorkoutSession.get(workout_id);
+  if (!workout || workout.id !== workout_id || workout.athlete_id !== athlete_id) throw new Error('Workout not found for this athlete');
   const feedbackStore = base44.asServiceRole.entities.WorkoutFeedback;
-  const scope = { workout_id, athlete_id };
+  const recording = workout.original_recording_sha256 ? { input_recording_sha256: workout.original_recording_sha256 } : {};
+  const scope = { workout_id, athlete_id, ...recording };
   // Reuse existing feedback before loading training history or calling the model.
   const [existing] = await feedbackStore.filter(scope, '-created_date', 1);
   if (existing?.status === 'complete' && existing.feedback) {
@@ -134,7 +140,7 @@ async function evaluateWorkout(base44: any, workout_id: string, athlete_id: stri
   if (latest?.status === 'complete' && latest.feedback) {
     return { success: true, feedback: latest, evaluation: null };
   }
-  const feedbackRecord = await persistFeedback(base44, latest ?? existing, workout_id, athlete_id, data);
+  const feedbackRecord = await persistFeedback(base44, latest ?? existing, workout_id, athlete_id, { ...data, ...recording });
   const failed = data.status === 'failed';
   let coachMsg = null;
 

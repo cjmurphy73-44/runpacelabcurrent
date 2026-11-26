@@ -8,7 +8,7 @@ import { isGarminHealthSummary, normalizeGarminRecovery, ingestRecovery } from '
 import { assertSafeFileUrl } from '../../shared/urlGuard.ts';
 import { constantTimeEqual } from '../../shared/crypto.ts';
 import { recomputeCTLATLTSB } from '../../shared/ctlRecalc.ts';
-import { runPostWorkoutEvaluation } from '../../shared/postWorkoutAI.ts';
+import { automaticWorkoutInsightsEnabled, runPostWorkoutEvaluation } from '../../shared/postWorkoutAI.ts';
 
 function env(name) { try { return Deno.env.get(name) || ''; } catch { return ''; } }
 
@@ -172,7 +172,9 @@ Deno.serve(async (req) => {
 
     try { await base44.asServiceRole.entities.WebhookEvent.create({ event_id: eventId, provider: 'generic', athlete_id: athleteId, workout_session_id: session.id, outcome: 'created' }); } catch {}
     try { await recomputeCTLATLTSB(base44, athleteId); } catch {}
-    try { waitUntil(runPostWorkoutEvaluation(base44, session.id, athleteId)); } catch {}
+    if (automaticWorkoutInsightsEnabled()) {
+      waitUntil(runPostWorkoutEvaluation(base44, session.id, athleteId).catch(() => console.warn('Garmin workout insight failed')));
+    }
     if (connection) await base44.asServiceRole.entities.GarminConnection.update(connection.id, { last_sync_at: new Date().toISOString(), last_error: '' });
 
     return Response.json({ success: true, workout_session_id: session.id });

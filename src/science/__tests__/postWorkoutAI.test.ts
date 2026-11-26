@@ -43,4 +43,20 @@ describe('post-workout AI evaluation reuse', () => {
     expect(model.mock.calls[0][0].prompt).not.toContain('private-athlete');
     expect(sendAthletePush).toHaveBeenCalledTimes(1);
   });
+
+  it('uses the attached recording as the evidence key and reuses the resulting insight', async () => {
+    const sha256 = 'a'.repeat(64);
+    const workout = { id: 'workout', athlete_id: 'private-athlete', original_recording_sha256: sha256 };
+    const base44 = client();
+    const evaluate = () => runPostWorkoutEvaluation(base44, workout.id, workout.athlete_id, workout);
+    const first = await evaluate();
+    expect(first.feedback).toMatchObject({ input_recording_sha256: sha256, status: 'complete' });
+    await evaluate();
+    expect(base44.asServiceRole.entities.WorkoutFeedback.filter).toHaveBeenCalledWith(
+      { athlete_id: 'private-athlete', workout_id: 'workout', input_recording_sha256: sha256 }, '-created_date', 1,
+    );
+    expect(base44.asServiceRole.entities.WorkoutSession.get).not.toHaveBeenCalled();
+    expect(base44.asServiceRole.integrations.Core.InvokeLLM).toHaveBeenCalledTimes(1);
+    expect(base44.asServiceRole.integrations.Core.InvokeLLM.mock.calls[0][0].prompt).not.toContain(sha256);
+  });
 });

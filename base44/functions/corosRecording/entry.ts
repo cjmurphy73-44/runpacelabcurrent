@@ -8,7 +8,6 @@ Deno.serve(async (request) => {
     action !== 'analyze_recording' && action !== 'restore_recording') {
     return Response.json({ error: 'Unknown recording action' }, { status: 400 });
   }
-  return handleCorosRecording(
-    createClientFromRequest(request), body.workout_id, action, body.response_mode === 'analysis',
-  );
+  const base44 = createClientFromRequest(request);
+  return handleCorosRecording(base44, body.workout_id, action, body.response_mode === 'analysis');
 });

@@ -6,10 +6,9 @@ import { env } from './oauth.ts';
 import { assertOwnsAthlete } from './ownership.ts';
 import { inlineWorkoutStream, isUsableTelemetry, storageStream } from './streamValidity.ts';
 import { parseFitWithLaps } from './workoutParsers.ts';
-import { summarizeRecordingCoverage, summarizeRecordingWindows } from './recordingWindows.js';
-import { resolveTimeInZone } from './hrZones.ts';
+import { summarizeRecordingCoverage } from './recordingWindows.js';
 import { claimRateLimit } from './rateLimit.ts';
-import { resolveSessionLoad } from './loadModel.ts';
+import { measureWorkoutRecording, recordingAnalysis, recordingDuration } from './workoutRecordingMeasurements.ts';
 import { recomputeCTLATLTSB } from './ctlRecalc.ts';
 
 const MAX_ARCHIVED_SAMPLE_COUNT = 28800;
@@ -35,7 +34,7 @@ export async function handleCorosRecording(base44, workoutId: unknown, action: R
     athlete_id: workout.athlete_id, session_id: workout.id, provider_activity_id: workout.provider_activity_id,
   };
   const archive = base44.asServiceRole.entities.CorosRecordingArchive;
-  const expectedDuration = workout.duration_seconds || Number(workout.duration_minutes) * 60;
+  const expectedDuration = recordingDuration(workout);
   try {
     let bytes = await readCorosArchive(archive, scope);
     let source = 'archive';
@@ -72,12 +71,7 @@ export async function handleCorosRecording(base44, workoutId: unknown, action: R
     };
     if (analysisOnly || action === 'analyze_recording' || action === 'restore_recording') {
       const athlete = await base44.asServiceRole.entities.AthleteProfile.get(workout.athlete_id);
-      const coverage = summarizeRecordingCoverage({ ...workout, streams: decoded.stream });
-      const restHr = athlete?.resting_hr || 60;
-      const maxHr = athlete?.max_heart_rate || workout.max_hr || 190;
-      const zones = resolveTimeInZone({
-        stream: decoded.stream, durationSeconds: expectedDuration, restHr, maxHr, measuredOnly: true,
-      });
+      const { coverage, zones, measuredLoad } = measureWorkoutRecording(workout, athlete, decoded);
       let restored_workout = null;
       let training_load_refreshed = null;
       if (action === 'restore_recording' && coverage && !coverage.partial) {
@@ -85,12 +79,6 @@ export async function handleCorosRecording(base44, workoutId: unknown, action: R
         const existingCoverage = summarizeRecordingCoverage(workout);
         if (streams && (!existingCoverage || existingCoverage.partial || !isUsableTelemetry(workout.streams, expectedDuration))) {
           const { avg_hr, max_hr } = decoded.summary;
-          const load = resolveSessionLoad({
-            stream: decoded.stream, durationSeconds: expectedDuration,
-            avgHr: avg_hr || workout.avg_hr, restHr, maxHr, sex: athlete?.sex,
-          });
-          const measuredLoad = load.load_source === 'stream' && zones.coverage_pct >= 95
-            ? { ...load, load_coverage_pct: zones.coverage_pct } : null;
           const patch = {
             streams,
             source_format: 'fit',
@@ -121,13 +109,10 @@ export async function handleCorosRecording(base44, workoutId: unknown, action: R
           }
         }
       }
-      return Response.json({ ...recording, restored_workout, training_load_refreshed, analysis: {
-        coverage, ...zones,
-        windows: {
-          300: summarizeRecordingWindows(decoded.stream, 300),
-          600: summarizeRecordingWindows(decoded.stream, 600),
-        },
-      } }, { headers: { 'Cache-Control': 'private, no-store' } });
+      return Response.json({
+        ...recording, restored_workout, training_load_refreshed,
+        analysis: recordingAnalysis(decoded, coverage, zones),
+      }, { headers: { 'Cache-Control': 'private, no-store' } });
     }
     return Response.json({ ...recording, streams: storageStream(decoded.stream) }, {
       headers: { 'Cache-Control': 'private, no-store' },

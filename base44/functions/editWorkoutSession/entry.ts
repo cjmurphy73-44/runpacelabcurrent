@@ -50,6 +50,7 @@ Deno.serve(async function(req: Request): Promise<Response> {
       }
       await base44.asServiceRole.entities.CorosRecordingArchive.deleteMany({ session_id: workout_id, athlete_id: session.athlete_id });
       await base44.entities.WorkoutSession.delete(workout_id);
+      await base44.asServiceRole.entities.WorkoutOriginalRecording.deleteMany({ session_id: workout_id, athlete_id: session.athlete_id });
       await recomputeCTLATLTSB(base44, session.athlete_id).catch((e: any) =>
         console.warn('editWorkout: recalc after delete failed', e?.message));
       return Response.json({ success: true, deleted: true });

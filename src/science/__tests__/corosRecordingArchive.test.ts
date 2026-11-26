@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { parseFitWithLaps } from '../../../base44/shared/workoutParsers';
-import { readCorosArchive, saveCorosArchive } from '../../../base44/shared/corosRecordingArchive';
+import { hashCorosRecording, readCorosArchive, saveCorosArchive } from '../../../base44/shared/corosRecordingArchive';
 
 const scope = { athlete_id: 'athlete-a', session_id: 'session-a', provider_activity_id: '100:1234' };
 
@@ -38,9 +38,27 @@ describe('original COROS FIT archive', () => {
     const store = archiveStore();
     const original = originalFit();
     expect(await saveCorosArchive(store, scope, 'user-a', original)).toEqual(original);
-    expect(store.rows.filter(row => row.kind === 'part')).toHaveLength(3);
+    expect(store.rows.filter(row => row.kind === 'part')).toHaveLength(6);
     expect(await readCorosArchive(store, scope)).toEqual(original);
     expect(await readCorosArchive(store, { ...scope, athlete_id: 'athlete-b' })).toBeNull();
+  });
+
+  it('reads legacy manifests that omit the original part width', async () => {
+    const store = archiveStore();
+    const bytes = originalFit(28 * 1024);
+    const attempt_id = 'legacy';
+    const width = 24 * 1024;
+    for (let offset = 0; offset < bytes.length; offset += width) {
+      store.rows.push({
+        ...scope, attempt_id, kind: 'part', part_index: offset / width,
+        data_b64: btoa(String.fromCharCode(...bytes.subarray(offset, offset + width))),
+      });
+    }
+    store.rows.push({
+      ...scope, attempt_id, kind: 'manifest', byte_count: bytes.length, part_count: 2,
+      sha256: await hashCorosRecording(bytes),
+    });
+    expect(await readCorosArchive(store, scope)).toEqual(bytes);
   });
 
   it('reparses all 5,041 samples from an archived 84-minute original FIT', async () => {
