@@ -15,7 +15,8 @@ function validDate(date: unknown): date is string {
   if (typeof date !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(date)) return false;
   const timestamp = Date.parse(date + 'T00:00:00Z');
   return Number.isFinite(timestamp) && new Date(timestamp).toISOString().slice(0, 10) === date &&
-    date <= new Date().toISOString().slice(0, 10);
+    // Accept an athlete's current local date even when their timezone is ahead of UTC.
+    date <= new Date(Date.now() + 86_400_000).toISOString().slice(0, 10);
 }
 
 export function validateHealthJournalEntry(input: unknown) {
