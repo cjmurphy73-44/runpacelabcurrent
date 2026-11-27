@@ -67,7 +67,7 @@ export default function PrivateHealthJournal() {
     <Card>
       <CardHeader>
         <CardTitle>Optional menstrual health journal</CardTitle>
-        <p className="text-sm text-muted-foreground">Log your own symptoms alongside training. Only you can access these entries; they are not shown to coaches or sent to AI. No automatic cycle-phase prescriptions.</p>
+        <p className="text-sm text-muted-foreground">Log your own symptoms alongside training. Entries are kept outside coach and AI features. Authorized administrators may access them for support and operations. No automatic cycle-phase prescriptions.</p>
       </CardHeader>
       <CardContent className="space-y-4">
         {status === 'checking' && <p role="status" className="text-sm">Checking journal availability…</p>}
