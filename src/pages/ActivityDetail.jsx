@@ -236,7 +236,7 @@ function WorkoutActivity({ id }) {
     { icon: HeartPulse, label: "Avg HR", value: workout.avg_hr ? `${workout.avg_hr} bpm` : "—" },
     { icon: HeartPulse, label: "Max HR", value: workout.max_hr ? `${workout.max_hr} bpm` : "—" },
     { icon: Gauge, label: "Training load", value: load.amount, detail: load.amount === "Load unavailable" ? null : load.label },
-    { icon: Gauge, label: workout.avg_power ? "Avg power" : workout.sport === "cycling" ? "Avg speed" : "Avg pace", value: normalizedPacePower(workout) },
+    { icon: Gauge, label: workout.avg_power ? "Avg power" : splitMetricLabel(workout.sport), value: normalizedPacePower(workout) },
     ...(calories.kcal ? [{
       icon: Flame, label: "Energy", value: `${calories.kcal} kcal`,
       detail: calories.basis || (calories.source === "device" ? "Device reported" : calories.source === "manual" ? "Manually entered" : "Estimated"),
