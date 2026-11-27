@@ -20,10 +20,26 @@
       "type": "string",
       "enum": [
         "running",
+        "trail_running",
         "walking",
+        "hiking",
         "cycling",
+        "mountain_biking",
+        "e_bike",
         "swimming",
+        "rowing",
+        "kayaking",
+        "cross_country_skiing",
+        "downhill_skiing",
+        "snowboarding",
         "strength",
+        "yoga",
+        "elliptical",
+        "stair_climbing",
+        "tennis",
+        "soccer",
+        "climbing",
+        "boxing",
         "triathlon",
         "other"
       ],
@@ -218,6 +234,54 @@
             "minimum": 0,
             "description": "Device-recorded power in watts; null when no sensor sample, zero permitted for coasting. Never modelled watts."
           }
+        }
+      }
+    },
+    "recording_provenance": {
+      "type": "object",
+      "description": "Original FIT recording SHA-256 and lossless decoded telemetry retention audit; original binary not retained",
+      "properties": {
+        "source": {
+          "type": "string"
+        },
+        "retention": {
+          "type": "string"
+        },
+        "source_sha256": {
+          "type": "string"
+        },
+        "source_bytes": {
+          "type": "integer"
+        },
+        "original_file_retained": {
+          "type": "boolean"
+        },
+        "decoded_samples": {
+          "type": "integer"
+        },
+        "stored_samples": {
+          "type": "integer"
+        },
+        "decoded_laps": {
+          "type": "integer"
+        },
+        "stored_laps": {
+          "type": "integer"
+        },
+        "first_time_s": {
+          "type": "number"
+        },
+        "last_time_s": {
+          "type": "number"
+        },
+        "channels": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "inline_limit_bytes": {
+          "type": "integer"
         }
       }
     },
