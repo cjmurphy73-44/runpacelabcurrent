@@ -34,6 +34,10 @@ describe('sport-aware split presentation', () => {
     expect(splitMetric({ duration_s: 15, distance_km: 0.025, avg_speed: 1.67 }, 'swimming'))
       .toMatchObject({ text: '1:00 /100m', source: 'elapsed_average' });
   });
+  it('corrects legacy 25m swim laps whose distance was rounded to 0.03 km', () => {
+    expect(splitMetric({ duration_s: 15, distance_km: 0.03, avg_speed: 1.6667 }, 'swimming'))
+      .toMatchObject({ text: '1:00 /100m', source: 'device_speed' });
+  });
   it.each(['rowing', 'kayaking'])('%s shows pace per 500m', sport => {
     expect(splitMetric({ duration_s: 120, distance_km: 0.5 }, sport).text).toBe('2:00 /500m');
   });
