@@ -68,6 +68,7 @@ export default function CoachChat() {
       await base44.agents.addMessage(conversation, { role: "user", content: text });
       setAwaitingReply(true);
     } catch (err) {
+      setInput((current) => current || text);
       console.error("CoachChat send failed", err);
       toast({
         title: "Message not sent",
@@ -110,6 +111,9 @@ export default function CoachChat() {
         style={keyboardInset ? { transform: `translateY(-${keyboardInset}px)` } : undefined}
       >
         <Input
+          aria-label="Message your coach"
+          autoComplete="off"
+          className="min-w-0 flex-1 bg-card text-foreground caret-foreground placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-ring dark:bg-card dark:text-foreground"
           value={input}
           onChange={(e) => setInput(e.target.value)}
           placeholder="Message your coach..."

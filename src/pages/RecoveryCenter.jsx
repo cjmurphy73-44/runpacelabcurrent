@@ -6,6 +6,7 @@ import RecoveryCenterView from "@/components/RecoveryCenterView";
 import { FitnessProvider } from "@/context/FitnessContext";
 import { HeartPulse, Loader2 } from "lucide-react";
 import HelpLink from "@/components/guide/HelpLink";
+import PrivateHealthJournal from "@/components/health/PrivateHealthJournal";
 
 export default function RecoveryCenter() {
   const [athlete, setAthlete] = useState(null);
@@ -53,6 +54,10 @@ export default function RecoveryCenter() {
           icon={HeartPulse}
         />
         <RecoveryCenterView athleteId={athlete.id} />
+        <details className="mt-6 rounded-lg border border-border bg-card p-4">
+          <summary className="cursor-pointer font-medium">Optional private menstrual health tracking</summary>
+          <div className="mt-4"><PrivateHealthJournal /></div>
+        </details>
         <div className="mt-4"><HelpLink section="recovery" label="How recovery data works" /></div>
       </PageShell>
     </FitnessProvider>

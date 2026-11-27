@@ -1,0 +1,57 @@
+{
+  "name": "AthleteHealthConsent",
+  "type": "object",
+  "description": "Optional private menstrual-health journal consent. Server-only access; never included in coach, AI, analytics or marketing data by default.",
+  "properties": {
+    "athlete_id": {
+      "type": "string"
+    },
+    "enabled": {
+      "type": "boolean",
+      "default": false
+    },
+    "consent_version": {
+      "type": "string"
+    },
+    "consented_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "updated_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "share_with_coach": {
+      "type": "boolean",
+      "default": false,
+      "description": "Reserved. Sharing is NOT implemented; keep false."
+    }
+  },
+  "required": [
+    "athlete_id",
+    "enabled",
+    "consent_version"
+  ],
+  "rls": {
+    "create": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "read": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "update": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "delete": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
+}
