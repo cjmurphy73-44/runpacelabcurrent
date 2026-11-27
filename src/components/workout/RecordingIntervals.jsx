@@ -1,5 +1,6 @@
 import React, { useMemo, useState } from "react";
 import { recordingIntervals } from "@/lib/recordingIntervals";
+import { splitMetric, splitMetricLabel } from "@/lib/splitMetrics";
 
 function clock(seconds) {
   const s = Math.round(seconds);
@@ -16,7 +17,6 @@ export default function RecordingIntervals({ workout, windowsByDuration }) {
   );
   if (windows.length === 0) return null;
   const showPower = windows.some(window => window.avgPowerWatts != null);
-  const showPace = ["running", "walking"].includes(workout.sport);
   const hrWindows = windows.filter(w => w.avgHr != null);
   const first = hrWindows[0], last = hrWindows[hrWindows.length - 1];
   const hrChange = first && last && first !== last ? last.avgHr - first.avgHr : null;
@@ -50,7 +50,7 @@ export default function RecordingIntervals({ workout, windowsByDuration }) {
               <th scope="col" className="px-2 py-2 text-right">HR</th>
               <th scope="col" className="px-2 py-2 text-right">HR coverage</th>
               <th scope="col" className="px-2 py-2 text-right">Distance</th>
-              <th scope="col" className="px-2 py-2 text-right">{showPace ? "Avg pace" : "Avg speed"}</th>
+              <th scope="col" className="px-2 py-2 text-right">{splitMetricLabel(workout.sport)}</th>
               {showPower && <th scope="col" className="px-2 py-2 text-right">Avg power</th>}
             </tr>
           </thead>
@@ -61,9 +61,7 @@ export default function RecordingIntervals({ workout, windowsByDuration }) {
                 <td className="px-2 py-2 text-right whitespace-nowrap">{w.avgHr === null ? "—" : `${w.avgHr} bpm`}</td>
                 <td className="px-2 py-2 text-right">{Math.round(w.hrCoverage * 100)}%</td>
                 <td className="px-2 py-2 text-right whitespace-nowrap">{w.distanceKm === null ? "—" : `${w.distanceKm.toFixed(2)} km`}</td>
-                <td className="px-2 py-2 text-right whitespace-nowrap">{w.avgSpeedKmh == null ? "—" : showPace
-                  ? (w.avgSpeedKmh > 0 ? `${clock(3600 / w.avgSpeedKmh)} /km` : "—")
-                  : `${w.avgSpeedKmh.toFixed(1)} km/h`}</td>
+                <td className="px-2 py-2 text-right whitespace-nowrap">{splitMetric({ duration_s: w.durationSeconds, distance_km: w.distanceKm, avg_speed: w.avgSpeedKmh == null ? null : w.avgSpeedKmh / 3.6 }, workout.sport).text}</td>
                 {showPower && <td className="px-2 py-2 text-right whitespace-nowrap">{w.avgPowerWatts == null ? "—" : `${w.avgPowerWatts} W`}</td>}
               </tr>
             ))}
