@@ -11,6 +11,23 @@
       "format": "date",
       "description": "Calendar date these metrics apply to"
     },
+    "confirmed_rest": {
+      "type": "boolean",
+      "default": false,
+      "description": "Explicit athlete-declared rest; never inferred from missing recordings"
+    },
+    "confirmed_rest_source": {
+      "type": "string",
+      "enum": [
+        "athlete_declaration"
+      ],
+      "description": "Origin of explicit rest declaration"
+    },
+    "confirmed_rest_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Timestamp of explicit rest declaration"
+    },
     "total_trimp": {
       "type": "number",
       "default": 0,
