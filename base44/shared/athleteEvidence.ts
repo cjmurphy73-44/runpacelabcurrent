@@ -78,14 +78,24 @@ export function evidenceAwareAthleteContext(
     // Distinct load systems have different scales. Never sum TSS with TRIMP.
     const trimp = num(row.session_trimp);
     const tss = num(row.session_tss);
-    const metric = trimp !== null && trimp > 0 ? 'trimp' : tss !== null && tss > 0 ? 'tss' : null;
-    if (!metric) { loads.unknown++; continue; }
-    const load = metric === 'trimp' ? trimp! : tss!;
-    loads[metric].sessions++;
-    loads[metric].total += load;
-    const origin = row.load_source === 'stream' ? 'stream'
-      : row.load_source === 'summary' ? 'estimated' : 'unspecified';
-    loads[metric][origin]++;
+    if (!(trimp !== null && trimp > 0) && !(tss !== null && tss > 0)) {
+      loads.unknown++;
+      continue;
+    }
+    const origin: 'stream' | 'estimated' | 'unspecified' = row.load_source === 'stream'
+      ? 'stream' : row.load_source === 'summary' ? 'estimated' : 'unspecified';
+    // One session may legitimately carry both TRIMP and TSS; show both in
+    // their OWN units, never add them together or silently discard either.
+    if (trimp !== null && trimp > 0) {
+      loads.trimp.sessions++;
+      loads.trimp.total += trimp;
+      loads.trimp[origin]++;
+    }
+    if (tss !== null && tss > 0) {
+      loads.tss.sessions++;
+      loads.tss.total += tss;
+      loads.tss[origin]++;
+    }
   }
   const recoveryReport: Record<string, any> = {};
   if (options.recoveryUnavailable || !Array.isArray(recovery)) {
