@@ -8,7 +8,8 @@ const SYMPTOMS = [
   ['bloating', 'Bloating'], ['mood_change', 'Mood changes'],
   ['breast_tenderness', 'Breast tenderness'], ['sleep_disruption', 'Sleep disruption'],
 ];
-const initialEntry = () => ({ date: new Date().toISOString().slice(0, 10), period_started: false, flow: 'none', symptoms: [], symptom_severity: 0 });
+const localToday = () => new Date(Date.now() - new Date().getTimezoneOffset() * 60_000).toISOString().slice(0, 10);
+const initialEntry = () => ({ date: localToday(), period_started: false, flow: 'none', symptoms: [], symptom_severity: 0 });
 
 export default function PrivateHealthJournal() {
   const [status, setStatus] = useState('checking');
@@ -85,7 +86,7 @@ export default function PrivateHealthJournal() {
           <div className="space-y-4">
             <div className="grid gap-3 sm:grid-cols-2">
               <label className="text-sm font-medium">Date
-                <input aria-label="Journal date" type="date" max={new Date().toISOString().slice(0, 10)} value={entry.date} onChange={e => setEntry(p => ({ ...p, date: e.target.value }))} className="mt-1 block min-h-11 w-full rounded-md border border-input bg-card px-3 text-foreground" />
+                <input aria-label="Journal date" type="date" max={localToday()} value={entry.date} onChange={e => setEntry(p => ({ ...p, date: e.target.value }))} className="mt-1 block min-h-11 w-full rounded-md border border-input bg-card px-3 text-foreground" />
               </label>
               <label className="text-sm font-medium">Bleeding
                 <select value={entry.flow} onChange={e => setEntry(p => ({ ...p, flow: e.target.value }))} className="mt-1 block min-h-11 w-full rounded-md border border-input bg-card px-3 text-foreground">
