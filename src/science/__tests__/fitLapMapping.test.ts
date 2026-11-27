@@ -76,6 +76,35 @@ describe('FIT global message 19 lap mapping', () => {
     expect(parsed?.laps[0].avg_hr).toBeNull();
     expect(parsed?.laps[0].max_hr).toBeNull();
   });
+  it('retains metre-level precision for a 25m swim lap', () => {
+    const parsed = parseFitWithLaps(syntheticFit([
+      field(7, 4, 0x86, 15000),
+      field(9, 4, 0x86, 2500),
+      field(13, 2, 0x84, 1667),
+    ]));
+    expect(parsed?.laps[0].distance_km).toBe(0.025);
+    expect(parsed?.laps[0].avg_speed).toBe(1.67);
+  });
+
+  it.each([
+    [1, 3, 'trail_running'], [2, 8, 'mountain_biking'],
+    [2, 47, 'e_bike'], [4, 15, 'elliptical'],
+    [4, 16, 'stair_climbing'], [10, 20, 'strength'],
+    [10, 43, 'yoga'], [12, 0, 'cross_country_skiing'],
+    [13, 0, 'downhill_skiing'], [14, 0, 'snowboarding'],
+    [15, 0, 'rowing'], [17, 0, 'hiking'], [18, 0, 'triathlon'],
+    [21, 0, 'e_bike'], [31, 0, 'climbing'], [41, 0, 'kayaking'],
+    [47, 0, 'boxing'], [99, 0, null],
+  ] as const)('maps FIT sport %d and sub-sport %d to %s only when supported', (sport, subSport, expected) => {
+    const records = [field(253, 4, 0x86, 100000), field(3, 1, 0x02, 125)];
+    const session = [field(2, 4, 0x86, 100000), field(5, 1, 0x02, sport), field(6, 1, 0x02, subSport)];
+    const fit = fitEnvelope([
+      ...definition(0, 20, records), ...data(0, records),
+      ...definition(1, 18, session), ...data(1, session),
+    ]);
+    expect(parseFitWithLaps(fit)?.identity.sport).toBe(expected);
+  });
+
   it('preserves records after developer fields and decodes compressed timestamps across a rollover', () => {
     const record = [field(253, 4, 0x86, 100031), field(3, 1, 0x02, 143)];
     const recordDefinition = definition(2, 20, record);

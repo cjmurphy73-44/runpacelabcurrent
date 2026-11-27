@@ -9,7 +9,26 @@
 
 export const SOURCE_PRIORITY = { fit: 4, tcx: 3, csv: 2, manual: 1 };
 const FIT_EPOCH_SECONDS = 631065600;
-const FIT_SPORTS = { 1: 'running', 2: 'cycling', 5: 'swimming', 11: 'walking' };
+// FIT sport enum values from the FIT SDK Session message (field 5).
+// Unsupported or ambiguous sports remain unknown; never invent a discipline.
+const FIT_SPORTS = {
+  1: 'running', 2: 'cycling', 5: 'swimming', 7: 'soccer', 8: 'tennis',
+  11: 'walking', 12: 'cross_country_skiing', 13: 'downhill_skiing',
+  14: 'snowboarding', 15: 'rowing', 17: 'hiking', 18: 'triathlon',
+  21: 'e_bike', 31: 'climbing', 41: 'kayaking', 47: 'boxing',
+};
+function fitSport(sport, subSport) {
+  // Session sub_sport is field 6, whose values refine (not replace) the sport.
+  if (sport === 1 && subSport === 3) return 'trail_running';
+  if (sport === 2 && [8, 9].includes(subSport)) return 'mountain_biking';
+  if (sport === 2 && [28, 47].includes(subSport)) return 'e_bike';
+  if (sport === 4 && subSport === 15) return 'elliptical';
+  if (sport === 4 && subSport === 16) return 'stair_climbing';
+  if (sport === 10 && subSport === 20) return 'strength';
+  if (sport === 10 && subSport === 43) return 'yoga';
+  if (sport === 48) return 'stair_climbing';
+  return FIT_SPORTS[sport] ?? null;
+}
 const TCX_SPORTS = { running: 'running', biking: 'cycling', cycling: 'cycling', swimming: 'swimming', walking: 'walking' };
 
 function baseTypeSize(baseType) {
@@ -165,7 +184,7 @@ export function parseFitWithLaps(bytes) {
       lap_index: i,
       start_time_offset_s: Math.max(0, Math.round(startOffset * 100) / 100),
       duration_s: Math.round(duration * 100) / 100,
-      distance_km: distanceMeters !== null ? Math.round((distanceMeters / 1000) * 100) / 100 : null,
+      distance_km: distanceMeters !== null ? Math.round(distanceMeters) / 1000 : null,
       avg_hr: validField(raw, 15, 0xFF) ? raw[15] : null,
       max_hr: validField(raw, 16, 0xFF) ? raw[16] : null,
       avg_speed: validField(raw, 13, 0xFFFF) ? Math.round((raw[13] / 1000) * 100) / 100 : null,
@@ -183,7 +202,7 @@ export function parseFitWithLaps(bytes) {
       recording_started_at: recordingStartedAt,
     },
     identity: {
-      sport: FIT_SPORTS[session?.[5]] ?? null,
+      sport: fitSport(session?.[5], session?.[6]),
       activityCount: sessions.length,
     },
     stream,
@@ -246,7 +265,7 @@ export function parseTcx(text) {
       lap_index: lapIndex,
       start_time_offset_s: Math.max(0, Math.round(lapOffset * 100) / 100),
       duration_s: isNaN(totalSeconds) ? null : Math.round(totalSeconds * 100) / 100,
-      distance_km: isNaN(distanceMeters) ? null : Math.round((distanceMeters / 1000) * 100) / 100,
+      distance_km: isNaN(distanceMeters) ? null : Math.round(distanceMeters) / 1000,
       avg_hr: avgHrMatch ? parseInt(avgHrMatch[1], 10) : null,
       max_hr: maxHrMatch ? parseInt(maxHrMatch[1], 10) : null,
       avg_speed: avgSpeedMatch ? Math.round(parseFloat(avgSpeedMatch[1]) * 100) / 100 : null,
