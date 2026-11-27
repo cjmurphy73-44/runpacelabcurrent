@@ -237,6 +237,54 @@
         }
       }
     },
+    "recording_provenance": {
+      "type": "object",
+      "description": "Original FIT recording SHA-256 and lossless decoded telemetry retention audit; original binary not retained",
+      "properties": {
+        "source": {
+          "type": "string"
+        },
+        "retention": {
+          "type": "string"
+        },
+        "source_sha256": {
+          "type": "string"
+        },
+        "source_bytes": {
+          "type": "integer"
+        },
+        "original_file_retained": {
+          "type": "boolean"
+        },
+        "decoded_samples": {
+          "type": "integer"
+        },
+        "stored_samples": {
+          "type": "integer"
+        },
+        "decoded_laps": {
+          "type": "integer"
+        },
+        "stored_laps": {
+          "type": "integer"
+        },
+        "first_time_s": {
+          "type": "number"
+        },
+        "last_time_s": {
+          "type": "number"
+        },
+        "channels": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "inline_limit_bytes": {
+          "type": "integer"
+        }
+      }
+    },
     "laps": {
       "type": "array",
       "description": "Reconciled lap/split segments unified from bound assets (FIT lap message 19 preferred, then TCX <Lap>)",
