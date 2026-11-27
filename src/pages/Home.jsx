@@ -19,6 +19,7 @@ import SleepEnergyCard from "@/components/dashboard/SleepEnergyCard";
 import HolisticFactorsLog from "@/components/dashboard/HolisticFactorsLog";
 import TodaySessionCard from "@/components/dashboard/TodaySessionCard";
 import WeeklyVolumeLine from "@/components/dashboard/WeeklyVolumeLine";
+import AthleteHistoryInsights from "@/components/dashboard/AthleteHistoryInsights";
 import DashboardGreeting from "@/components/dashboard/DashboardGreeting";
 
 import HorizonStrip from "@/components/dashboard/HorizonStrip";
@@ -263,6 +264,7 @@ export default function Home() {
             }
           />
           <WidgetBoundary name="Recent workouts"><RecentWorkouts workouts={workouts} /></WidgetBoundary>
+          <WidgetBoundary name="Training context"><AthleteHistoryInsights workouts={loadTimelineWorkouts} /></WidgetBoundary>
         </section>
 
         <section className="space-y-3">
