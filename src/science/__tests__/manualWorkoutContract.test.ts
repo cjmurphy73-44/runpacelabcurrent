@@ -53,7 +53,35 @@ describe('manual workout release contract', () => {
   it('extends the existing sport schema without removing any legacy values', async () => {
     const schema = await schemas['../../../base44/entities/WorkoutSession.jsonc']();
     if (typeof schema !== "string") throw new Error("WorkoutSession schema is unreadable");
-    expect(JSON.parse(schema).properties.sport.enum).toEqual(VALID_WORKOUT_SPORTS);
+    const storedSports = JSON.parse(schema).properties.sport.enum;
+    // The manual-entry form intentionally offers a smaller set than the provider/storage contract.
+    // Never narrow persisted sport values during a production schema rollout.
+    expect(storedSports).toEqual([
+      'running',
+      'trail_running',
+      'walking',
+      'hiking',
+      'cycling',
+      'mountain_biking',
+      'e_bike',
+      'swimming',
+      'rowing',
+      'kayaking',
+      'cross_country_skiing',
+      'downhill_skiing',
+      'snowboarding',
+      'strength',
+      'yoga',
+      'elliptical',
+      'stair_climbing',
+      'tennis',
+      'soccer',
+      'climbing',
+      'boxing',
+      'triathlon',
+      'other',
+    ]);
+    expect(storedSports).toEqual(expect.arrayContaining(VALID_WORKOUT_SPORTS));
     expect(VALID_WORKOUT_SPORTS.filter(s => s !== 'walking')).toEqual([
       'running', 'cycling', 'swimming', 'strength', 'triathlon', 'other',
     ]);
