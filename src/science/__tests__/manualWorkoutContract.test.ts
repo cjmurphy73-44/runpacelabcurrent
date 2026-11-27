@@ -4,6 +4,8 @@ import { recomputeCTLATLTSB } from '../../../base44/shared/ctlRecalc';
 import { VALID_WORKOUT_SPORTS } from '../../../base44/shared/workoutSports';
 // @ts-ignore Vite expands the glob at test load time.
 const schemas = import.meta.glob('../../../base44/entities/WorkoutSession.jsonc', { query: '?raw', import: 'default' });
+// @ts-ignore Vite resolves the raw entity fixture at test load time.
+const dailySchemas = import.meta.glob('../../../base44/entities/DailyMetrics.jsonc', { query: '?raw', import: 'default' });
 
 const payload = {
   athlete_id: 'athlete-1', date: '2026-10-10', duration_minutes: 30,
@@ -85,6 +87,37 @@ describe('manual workout release contract', () => {
     expect(VALID_WORKOUT_SPORTS.filter(s => s !== 'walking')).toEqual([
       'running', 'cycling', 'swimming', 'strength', 'triathlon', 'other',
     ]);
+  });
+
+  it('retains optional recording provenance when migrating the workout schema', async () => {
+    const raw = await schemas['../../../base44/entities/WorkoutSession.jsonc']();
+    if (typeof raw !== 'string') throw new Error('WorkoutSession schema is unreadable');
+    const schema = JSON.parse(raw);
+    expect(schema.properties.recording_provenance).toMatchObject({
+      type: 'object',
+      properties: {
+        source_sha256: { type: 'string' },
+        decoded_samples: { type: 'integer' },
+        stored_samples: { type: 'integer' },
+        first_time_s: { type: 'number' },
+        last_time_s: { type: 'number' },
+        original_file_retained: { type: 'boolean' },
+      },
+    });
+    expect(schema.required).not.toContain('recording_provenance');
+    expect(schema.rls.read).toBeDefined();
+  });
+
+  it('preserves explicit rest fields alongside daily training load and athlete RLS', async () => {
+    const raw = await dailySchemas['../../../base44/entities/DailyMetrics.jsonc']();
+    if (typeof raw !== 'string') throw new Error('DailyMetrics schema is unreadable');
+    const schema = JSON.parse(raw);
+    expect(schema.properties.confirmed_rest).toMatchObject({ type: 'boolean', default: false });
+    expect(schema.properties.confirmed_rest_source.enum).toContain('athlete_declaration');
+    expect(schema.properties.confirmed_rest_at).toMatchObject({ type: 'string', format: 'date-time' });
+    expect(schema.properties.total_trimp).toMatchObject({ type: 'number' });
+    expect(schema.required).toEqual(['athlete_id', 'date']);
+    expect(schema.rls.read).toBeDefined();
   });
 
   it.each(['walking', 'running'])('saves %s in history before requesting recomputation', async sport => {
