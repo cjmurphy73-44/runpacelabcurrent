@@ -38,7 +38,7 @@ describe('evidence-aware training and recovery context', () => {
     ], [], today);
     expect(got.load_by_unit).toMatchObject({
       trimp: { sessions: 1, total: 60, stream: 1, estimated: 0 },
-      tss: { sessions: 1, total: 100, stream: 0, estimated: 1 },
+      tss: { sessions: 2, total: 180, stream: 1, estimated: 1 },
       unknown: 1,
     });
     expect(got.recorded_sports.cycling).toEqual({ sessions: 1, minutes: 60 });
