@@ -13,10 +13,13 @@ export const SPEED_SPORTS = Object.freeze([
   'tennis', 'soccer', 'climbing', 'boxing', 'strength', 'yoga', 'triathlon', 'other',
 ]);
 
+const NON_DISTANCE_SPORTS = Object.freeze(['strength', 'yoga', 'boxing', 'climbing']);
+
 const NUMBER = value => (typeof value === 'number' && Number.isFinite(value) ? value : null);
 const isPositive = value => value !== null && value > 0;
 
 export function splitMetricKind(sport) {
+  if (NON_DISTANCE_SPORTS.includes(sport)) return 'not_applicable';
   if (PACE_PER_KM_SPORTS.includes(sport)) return 'pace_km';
   if (PACE_PER_100M_SPORTS.includes(sport)) return 'pace_100m';
   if (PACE_PER_500M_SPORTS.includes(sport)) return 'pace_500m';
@@ -35,6 +38,7 @@ export function splitMetricLabel(sport) {
     case 'pace_km': return 'Avg pace (/km)';
     case 'pace_100m': return 'Avg pace (/100m)';
     case 'pace_500m': return 'Avg pace (/500m)';
+    case 'not_applicable': return 'Speed';
     default: return 'Avg speed (km/h)';
   }
 }
@@ -50,6 +54,7 @@ export function splitMetric(lap, sport) {
   const fallbackKmh = isPositive(avgSpeedMps) && avgSpeedMps <= 35 ? avgSpeedMps * 3.6 : null;
   const kmh = isPositive(elapsedKmh) ? elapsedKmh : fallbackKmh;
   const kind = splitMetricKind(sport);
+  if (kind === 'not_applicable') return { text: '—', source: 'not_applicable', kind };
   if (!isPositive(kmh)) return { text: '—', source: 'unavailable', kind };
   // Durations and rounded distances are preferred to device speed since the
   // latter may represent a different moving-time denominator.
