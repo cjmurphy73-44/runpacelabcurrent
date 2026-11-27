@@ -25,6 +25,7 @@ import { AuditBadge } from "@/components/ui/AuditBadge";
 import { hasVerifiedStreams } from "@/lib/streamValidity";
 import { recordingCoverage } from "@/lib/recordingCoverage";
 import { normalizedPacePower, sessionCalories } from "@/lib/workoutAnalytics";
+import { splitMetric, splitMetricLabel, splitDistanceText, splitDurationText } from "@/lib/splitMetrics";
 
 // Intensity → dynamic color tokens used across the insight card.
 const INTENSITY_STYLES = {
@@ -429,6 +430,7 @@ function WorkoutActivity({ id }) {
           />
           <Card>
             <CardContent className="pt-6">
+              <p className="mb-3 text-xs text-muted-foreground">Split averages use recorded lap distance and elapsed time when both are available. Device speed is a fallback and can use a different moving-time basis.</p>
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
                   <thead>
@@ -438,7 +440,7 @@ function WorkoutActivity({ id }) {
                       <th className="py-2 pr-4 font-medium">Duration</th>
                       <th className="py-2 pr-4 font-medium">Distance</th>
                       <th className="py-2 pr-4 font-medium">Avg HR</th>
-                      <th className="py-2 pr-4 font-medium">Speed</th>
+                      <th className="py-2 pr-4 font-medium">{splitMetricLabel(workout.sport)}</th>
                     </tr>
                   </thead>
                   <tbody className="font-mono tabular-nums">
@@ -446,10 +448,10 @@ function WorkoutActivity({ id }) {
                       <tr key={i} className="border-b border-border last:border-0">
                         <td className="py-2 pr-4 text-muted-foreground">{(l.lap_index ?? i) + 1}</td>
                         <td className="py-2 pr-4">{fmtOffset(l.start_time_offset_s)}</td>
-                        <td className="py-2 pr-4">{l.duration_s != null ? `${l.duration_s}s` : "—"}</td>
-                        <td className="py-2 pr-4">{l.distance_km != null ? `${l.distance_km} km` : "—"}</td>
+                        <td className="py-2 pr-4">{splitDurationText(l.duration_s)}</td>
+                        <td className="py-2 pr-4">{splitDistanceText(l.distance_km)}</td>
                         <td className="py-2 pr-4">{l.avg_hr ?? "—"}</td>
-                        <td className="py-2 pr-4">{l.avg_speed != null ? `${l.avg_speed} m/s` : "—"}</td>
+                        <td className="py-2 pr-4">{splitMetric(l, workout.sport).text}</td>
                       </tr>
                     ))}
                   </tbody>
