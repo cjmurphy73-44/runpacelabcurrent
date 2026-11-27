@@ -1,6 +1,7 @@
 // Pure helpers for the Advanced Workout Analytics detail view.
 
 import { hasVerifiedStreams } from "@/lib/streamValidity";
+import { splitMetric } from "@/lib/splitMetrics";
 
 const ZONE_BOUNDARIES = [0, 0.6, 0.7, 0.8, 0.9, 2];
 
@@ -141,19 +142,11 @@ export function formatZoneMethod(method) {
 }
 
 export function normalizedPacePower(workout) {
-  if (workout.avg_power) return `${Math.round(workout.avg_power)} W`;
-  if (!workout.distance_km || !(workout.duration_minutes || workout.duration_seconds)) return "—";
-
-  const durationMin = workout.duration_minutes || workout.duration_seconds / 60;
-
-  // Cycling has no meaningful running "pace", show speed (km/h) instead, never min/km.
-  if (workout.sport === "cycling") {
-    const kmh = workout.distance_km / (durationMin / 60);
-    return `${kmh.toFixed(1)} km/h`;
+  if (Number.isFinite(Number(workout?.avg_power)) && Number(workout.avg_power) > 0) {
+    return `${Math.round(Number(workout.avg_power))} W`;
   }
-
-  const paceMinPerKm = durationMin / workout.distance_km;
-  const min = Math.floor(paceMinPerKm);
-  const sec = Math.round((paceMinPerKm - min) * 60);
-  return `${min}:${sec.toString().padStart(2, "0")} /km`;
+  const durationSeconds = Number(workout?.duration_seconds) > 0
+    ? Number(workout.duration_seconds)
+    : Number(workout?.duration_minutes) * 60;
+  return splitMetric({ duration_s: durationSeconds, distance_km: workout?.distance_km }, workout?.sport).text;
 }
