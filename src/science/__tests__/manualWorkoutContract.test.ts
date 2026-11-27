@@ -3,7 +3,7 @@ import { logManualWorkout } from '../../../base44/shared/manualWorkout';
 import { recomputeCTLATLTSB } from '../../../base44/shared/ctlRecalc';
 import { VALID_WORKOUT_SPORTS } from '../../../base44/shared/workoutSports';
 // @ts-ignore Vite expands the glob at test load time.
-const schemas = import.meta.glob('../../../base44/entities/WorkoutSession.jsonc', { query: '?raw', import: 'default' });
+const schemas = import.meta.glob(['../../../base44/entities/WorkoutSession.jsonc', '../../../base44/entities/TrainingPlanSession.jsonc'], { query: '?raw', import: 'default' });
 
 const payload = {
   athlete_id: 'athlete-1', date: '2026-10-10', duration_minutes: 30,
@@ -50,16 +50,19 @@ function request(body = payload) {
 }
 
 describe('manual workout release contract', () => {
-  it('extends the existing sport schema without removing any legacy values', async () => {
-    const schema = await schemas['../../../base44/entities/WorkoutSession.jsonc']();
-    if (typeof schema !== "string") throw new Error("WorkoutSession schema is unreadable");
+  it.each(['WorkoutSession', 'TrainingPlanSession'])('preserves registered sports in %s', async entity => {
+    const schema = await schemas[`../../../base44/entities/${entity}.jsonc`]();
+    if (typeof schema !== 'string') throw new Error(`${entity} schema is unreadable`);
     expect(JSON.parse(schema).properties.sport.enum).toEqual(VALID_WORKOUT_SPORTS);
-    expect(VALID_WORKOUT_SPORTS.filter(s => s !== 'walking')).toEqual([
-      'running', 'cycling', 'swimming', 'strength', 'triathlon', 'other',
-    ]);
+    expect(VALID_WORKOUT_SPORTS).toEqual(expect.arrayContaining([
+      'running', 'walking', 'cycling', 'swimming', 'strength', 'triathlon', 'other',
+      'trail_running', 'hiking', 'mountain_biking', 'e_bike', 'rowing', 'kayaking',
+      'cross_country_skiing', 'downhill_skiing', 'snowboarding', 'yoga', 'elliptical',
+      'stair_climbing', 'tennis', 'soccer', 'climbing', 'boxing',
+    ]));
   });
 
-  it.each(['walking', 'running'])('saves %s in history before requesting recomputation', async sport => {
+  it.each(['walking', 'running', 'trail_running', 'rowing'])('saves %s in history before requesting recomputation', async sport => {
     const base44 = client();
     const response = await logManualWorkout(base44, request({ ...payload, sport }));
     expect(response.status).toBe(200);
