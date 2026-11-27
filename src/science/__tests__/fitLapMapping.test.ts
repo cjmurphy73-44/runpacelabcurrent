@@ -95,7 +95,7 @@ describe('FIT global message 19 lap mapping', () => {
     [15, 0, 'rowing'], [17, 0, 'hiking'], [18, 0, 'triathlon'],
     [21, 0, 'e_bike'], [31, 0, 'climbing'], [41, 0, 'kayaking'],
     [47, 0, 'boxing'], [99, 0, null],
-  ])('maps FIT sport %d and sub-sport %d to %s only when supported', (sport, subSport, expected) => {
+  ] as const)('maps FIT sport %d and sub-sport %d to %s only when supported', (sport, subSport, expected) => {
     const records = [field(253, 4, 0x86, 100000), field(3, 1, 0x02, 125)];
     const session = [field(2, 4, 0x86, 100000), field(5, 1, 0x02, sport), field(6, 1, 0x02, subSport)];
     const fit = fitEnvelope([
