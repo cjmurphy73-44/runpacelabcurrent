@@ -52,13 +52,20 @@ export function splitMetric(lap, sport) {
   // device speed may still be shown if there are no usable distance/time fields.
   const elapsedKmh = hasElapsedAverage ? distance / duration * 3600 : null;
   const fallbackKmh = isPositive(avgSpeedMps) && avgSpeedMps <= 35 ? avgSpeedMps * 3.6 : null;
-  const kmh = isPositive(elapsedKmh) ? elapsedKmh : fallbackKmh;
+  // Older FIT/TCX imports rounded split distance to 0.01 km. On 25m/50m
+  // swimming laps that can introduce a 10–20% pace error. If the original
+  // device has a plausible recorded average and materially disagrees on a
+  // short lap, prefer it instead of trusting rounded historical distance.
+  const legacyShortLap = isPositive(elapsedKmh) && isPositive(fallbackKmh) &&
+    distance <= 0.1 && Math.abs(elapsedKmh - fallbackKmh) / fallbackKmh > 0.1;
+  const kmh = legacyShortLap ? fallbackKmh
+    : isPositive(elapsedKmh) ? elapsedKmh : fallbackKmh;
   const kind = splitMetricKind(sport);
   if (kind === 'not_applicable') return { text: '—', source: 'not_applicable', kind };
   if (!isPositive(kmh)) return { text: '—', source: 'unavailable', kind };
   // Durations and rounded distances are preferred to device speed since the
   // latter may represent a different moving-time denominator.
-  const source = hasElapsedAverage ? 'elapsed_average' : 'device_speed';
+  const source = legacyShortLap || !hasElapsedAverage ? 'device_speed' : 'elapsed_average';
   if (kind === 'speed_kmh') return { text: `${kmh.toFixed(1)} km/h`, source, kind };
   const unitDistance = kind === 'pace_100m' ? 0.1 : kind === 'pace_500m' ? 0.5 : 1;
   const paceSeconds = 3600 * unitDistance / kmh;
