@@ -76,7 +76,7 @@ export async function handleAthletePlanApproval(
     }
     const preview = prepareAthletePlanProposal(session, input.reduction_percent, now());
     if (preview.state !== 'preview_only') return response(preview, 409);
-    if (input.action === 'preview') return response(preview);
+    if (input.action === 'preview') return response({ ...preview, approval_available: writesEnabled });
     // Always return the preview when writes are unavailable, but never claim
     // a successful plan update. Deployment defaults to read-only.
     if (!writesEnabled) return response({
