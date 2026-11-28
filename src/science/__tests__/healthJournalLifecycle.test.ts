@@ -114,6 +114,59 @@ describe('private journal stateful HTTP lifecycle', () => {
     expect(e.consentRows).toHaveLength(0);
   });
 
+  it('lets the athlete export and remove existing entries after collection is disabled', async () => {
+    const e = memoryEnvironment();
+    await e.send('user-a', { action: 'enable', acknowledged: true });
+    await e.send('user-a', { action: 'save',
+      entry: { date: '2026-01-20', flow: 'light', notes: 'existing private data' } });
+    expect(e.diaryRows).toHaveLength(1);
+    const status = await e.send('user-a', { action: 'status' }, false);
+    expect(status.status).toBe(200);
+    expect(await status.json()).toMatchObject({
+      available: false, enabled: false, can_manage_existing: true,
+    });
+    const exported = await e.send('user-a', { action: 'export' }, false);
+    expect(exported.status).toBe(200);
+    expect(await exported.json()).toMatchObject({ complete: true,
+      entries: [{ notes: 'existing private data' }] });
+    expect((await e.send('user-a', { action: 'save', entry: {
+      date: '2026-01-21', flow: 'light' } }, false)).status).toBe(503);
+    expect((await e.send('user-a', { action: 'enable', acknowledged: true }, false)).status).toBe(503);
+    expect(e.diaryRows).toHaveLength(1);
+    const erased = await e.send('user-a', { action: 'erase_all', confirm: 'DELETE' }, false);
+    expect(erased.status).toBe(200);
+    expect(await erased.json()).toMatchObject({ enabled: false,
+      removed_from_active_journal: true, permanent_erasure_verified: false });
+    expect(e.diaryRows).toHaveLength(0);
+    expect(e.consentRows).toHaveLength(0);
+    expect(await (await e.send('user-a', { action: 'status' }, false)).json())
+      .toMatchObject({ can_manage_existing: false });
+  });
+
+  it('does not report successful erasure if storage acknowledges deletion but retains the row', async () => {
+    const e = memoryEnvironment();
+    await e.send('user-a', { action: 'enable', acknowledged: true });
+    await e.send('user-a', { action: 'save',
+      entry: { date: '2026-01-20', flow: 'light' } });
+    e.diary.delete.mockImplementationOnce(async () => undefined);
+    const response = await e.send('user-a', { action: 'erase_all', confirm: 'DELETE' }, false);
+    expect(response.status).toBe(503);
+    expect(e.consentRows).toHaveLength(1);
+    expect(e.diaryRows).toHaveLength(1);
+  });
+
+  it('does not expose another athlete\'s entries while disabled', async () => {
+    const e = memoryEnvironment();
+    await e.send('user-a', { action: 'enable', acknowledged: true });
+    await e.send('user-a', { action: 'save',
+      entry: { date: '2026-01-20', notes: 'confidential' } });
+    const response = await e.send('user-b', { action: 'export' }, false);
+    expect(response.status).toBe(200);
+    expect(await response.json()).toMatchObject({ entries: [], complete: true });
+    expect(e.calls.crossOwnerReads).toBe(0);
+    expect(e.diaryRows).toHaveLength(1);
+  });
+
   it('does not erase consent if a journal deletion fails', async () => {
     const e = memoryEnvironment();
     await e.send('user-a', { action: 'enable', acknowledged: true });
