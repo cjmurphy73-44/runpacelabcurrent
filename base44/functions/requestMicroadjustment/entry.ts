@@ -71,19 +71,14 @@ Deno.serve(async (req) => {
       return Response.json({ success: true, adjusted: [], rejected: validation.rejected, summary: 'No valid adjustments to apply.' });
     }
 
-    if (!(await getAuthorizedAthlete(base44, user, athlete.id))) {
-      return Response.json({ error: 'Athlete profile not found' }, { status: 404 });
-    }
-    await base44.asServiceRole.entities.TrainingPlanSession.bulkUpdate(validation.accepted);
-
-    await base44.asServiceRole.entities.CoachMessage.create({
-      athlete_id,
-      created_by_id: athlete.created_by_id,
-      message_type: 'micro_adjustment',
-      content_text: llmResult.summary,
+    // Legacy micro-adjustment route is preview-only. A coach or LLM must
+    // never mutate an athlete's schedule without explicit approval.
+    // Approved writes are handled exclusively by approvedPlanAdjustment.
+    return Response.json({
+      success: true, requires_athlete_approval: true, applied: false,
+      proposed: validation.accepted, rejected: validation.rejected,
+      message: 'Preview only. Confirm an evidence-based proposal through the athlete-owned plan screen.',
     });
-
-    return Response.json({ success: true, adjusted: validation.accepted, rejected: validation.rejected });
   } catch (error) {
     return Response.json({ error: 'Request could not be completed' }, { status: 500 });
   }
