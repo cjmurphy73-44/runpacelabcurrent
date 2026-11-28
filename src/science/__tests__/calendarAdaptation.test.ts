@@ -52,6 +52,26 @@ describe('calendar-correct observational adaptation', () => {
     ]);
   });
 
+  it('excludes stale and future sports from the 84-day athlete context', () => {
+    const old = session('old-row', 120, 'rowing', { session_trimp: 200 });
+    const future = session('future-row', -1, 'kayaking', { session_tss: 100 });
+    const invalid = { ...session('invalid-row', 1, 'boxing'), date: '2026-11-31' };
+    const recent = session('recent-row', 2, 'running');
+    const result = summarizeCalendarResponse([old, future, invalid, recent], reference);
+    expect(result.state).toBe('observational_only');
+    expect(result.sport_load_models).toHaveLength(1);
+    expect(result.sport_load_models[0].sport).toBe('running');
+    expect(result.sport_load_models[0].unit).toBe('trimp');
+  });
+
+  it('fails closed when the athlete context date is invalid', () => {
+    const result = summarizeCalendarResponse([session('one', 0, 'running')], '2026-02-30');
+    expect(result).toMatchObject({
+      state: 'unavailable', reason: 'invalid_input',
+      model_count: 0, sport_load_models: [],
+    });
+  });
+
   it('deduplicates source IDs even when the retry carries the same session', () => {
     const got = modelCalendarLoad([session('same', 0, 'cycling'), session('same', 0, 'cycling')],
       reference, { unit: 'trimp', sport: 'cycling' });
