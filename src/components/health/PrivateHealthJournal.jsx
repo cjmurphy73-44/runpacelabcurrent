@@ -47,6 +47,25 @@ export default function PrivateHealthJournal() {
     return () => { active = false; };
   }, []);
 
+  const exportJournal = async () => {
+    setBusy(true);
+    setMessage('');
+    try {
+      const result = await call({ action: 'export' });
+      if (result?.complete !== true || !Array.isArray(result.entries)) throw new Error('Incomplete export');
+      const blob = new Blob([JSON.stringify(result, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = 'trainpacelab-private-health-journal.json';
+      link.click();
+      URL.revokeObjectURL(url);
+      setMessage('Private journal export prepared on this device. Store it securely.');
+    } catch {
+      setMessage('Could not export your complete journal. Nothing was deleted.');
+    } finally { setBusy(false); }
+  };
+
   const run = async (action) => {
     setBusy(true);
     setMessage('');
@@ -115,6 +134,7 @@ export default function PrivateHealthJournal() {
             </label>
             <div className="flex flex-wrap gap-3">
               <Button disabled={busy} onClick={() => run('save')}>Save private entry</Button>
+              <Button variant="outline" disabled={busy} onClick={exportJournal}>Export my journal</Button>
               <Button variant="outline" disabled={busy} onClick={() => run('erase_all')}>Erase journal and opt out</Button>
             </div>
             {rows.length > 0 && <div className="space-y-2">
