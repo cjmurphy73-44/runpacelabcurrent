@@ -14,6 +14,7 @@ const initialEntry = () => ({ date: localToday(), period_started: false, flow: '
 export default function PrivateHealthJournal() {
   const [status, setStatus] = useState('checking');
   const [enabled, setEnabled] = useState(false);
+  const [canManageExisting, setCanManageExisting] = useState(false);
   const [acknowledged, setAcknowledged] = useState(false);
   const [entry, setEntry] = useState(initialEntry);
   const [rows, setRows] = useState([]);
@@ -27,6 +28,7 @@ export default function PrivateHealthJournal() {
   const refresh = async () => {
     const result = await call({ action: 'status' });
     setEnabled(result?.enabled === true);
+    setCanManageExisting(result?.can_manage_existing === true);
     setStatus(result?.available === true ? 'available' : 'unavailable');
     if (result?.enabled === true) {
       const history = await call({ action: 'list' });
@@ -38,6 +40,7 @@ export default function PrivateHealthJournal() {
     call({ action: 'status' }).then(async result => {
       if (!active) return;
       setEnabled(result?.enabled === true);
+      setCanManageExisting(result?.can_manage_existing === true);
       setStatus(result?.available ? 'available' : 'unavailable');
       if (result?.enabled === true) {
         const history = await call({ action: 'list' });
@@ -91,12 +94,28 @@ export default function PrivateHealthJournal() {
       </CardHeader>
       <CardContent className="space-y-4">
         {status === 'checking' && <p role="status" className="text-sm">Checking journal availability…</p>}
-        {status === 'unavailable' && <p className="text-sm text-muted-foreground">Private journal is not yet enabled in this environment. Your standard recovery tracking remains available.</p>}
+        {status === 'unavailable' && <div className="space-y-3">
+          <p className="text-sm text-muted-foreground">
+            New private-journal collection is disabled. Your standard recovery tracking remains available.
+          </p>
+          {canManageExisting && <div className="space-y-2">
+            <p className="text-sm text-muted-foreground">
+              You can still export your previously saved entries or remove active entries and withdraw consent.
+              Base44 may retain deleted copies under its retention policy.
+            </p>
+            <div className="flex flex-wrap gap-2">
+              <Button variant="outline" disabled={busy} onClick={exportJournal}>Export existing entries</Button>
+              <Button variant="outline" disabled={busy} onClick={() => run('erase_all')}>
+                Remove existing entries and opt out
+              </Button>
+            </div>
+          </div>}
+        </div>}
         {status === 'available' && !enabled && (
           <div className="space-y-3">
             <label className="flex items-start gap-2 text-sm">
               <input type="checkbox" checked={acknowledged} onChange={e => setAcknowledged(e.target.checked)} className="mt-1" />
-              I choose to store sensitive menstrual and symptom information privately. This is optional, may be deleted, and is not required for readiness or plans.
+              I choose to store sensitive menstrual and symptom information privately. This is optional and is not required for readiness or plans. Entries can be removed from the active journal, but deleted copies may remain in Base44 trash, backups or version history under its retention rules.
             </label>
             <Button disabled={busy || !acknowledged} onClick={() => run('enable')}>Enable private journal</Button>
           </div>

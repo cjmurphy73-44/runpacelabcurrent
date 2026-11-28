@@ -43,7 +43,10 @@ temporarily enable and execute all of these using synthetic sample dates/labels:
 | 9 | A: erase_all without `DELETE` | Denied; records unchanged |
 | 10 | A: erase_all confirmed | All active rows removed and consent withdrawn |
 | 11 | Inspect trash and version-history policy | **Document retained copies**, purge process and expiry; do not claim hard erasure |
-| 12 | Disable feature and verify again | No further health writes; leave test environment disabled |
+| 12 | Disable feature and verify again | New consent and save denied; existing owner export and active deletion remain available |
+| 13 | A: disable after saving an entry, then export and erase | Export returns complete owner data, active records removed, no new write or opt-in allowed |
+| 14 | Simulate deletion acknowledgement without removing a record | Operation fails closed and does **not** revoke consent or claim deletion success |
+| 15 | B or C: attempt disabled-state export of A's entries | No A data disclosed; never rely on platform-admin token for this test |
 
 Run checks both by hosted HTTP invocation and through the Recovery Center at
 375px and desktop, including keyboard operation and light/dark themes. Ensure
