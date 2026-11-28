@@ -15,6 +15,7 @@
 
 import { evidenceAwareAthleteContext } from './athleteEvidence.ts';
 import { summarizeCalendarResponse } from './calendarAdaptation.ts';
+import { compareMatchedEffort } from './efficiencyComparisons.ts';
 
 const ACWR_SPIKE_THRESHOLD = 1.5;
 const HIGH_RAMP_RATE_POINTS = 7;
@@ -213,7 +214,7 @@ export async function buildAthleteStateSummary(base44, workout) {
     ? await base44.asServiceRole.entities.WorkoutSession.filter(
       { athlete_id: athleteId, date: { $lte: workout.date } }, '-date', 500, 0,
       ['id', 'date', 'sport', 'duration_seconds', 'duration_minutes',
-        'session_trimp', 'session_tss', 'load_source'],
+        'session_trimp', 'session_tss', 'load_source', 'avg_hr', 'avg_power', 'distance_km'],
     ).catch(() => { historyUnavailable = true; return []; })
     : [];
   const history = sessions && sessions.length ? sessions : [workout];
@@ -294,6 +295,9 @@ export async function buildAthleteStateSummary(base44, workout) {
     // prove rest or justify automatic injury-risk classification.
     observational_context: evidence,
     calendar_load_response: calendarResponse,
+    // Match only same-sport sessions with comparable HR and duration.
+    // Environmental confounding remains, so the output is descriptive only.
+    matched_effort_comparison: compareMatchedEffort(history, workout.date, workout.sport),
     provenance: {
       session_load: 'calculated_estimate',
       calories: workout.calories_source === 'device' ? 'measured_device' : 'calculated_estimate',
