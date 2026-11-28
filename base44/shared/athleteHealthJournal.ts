@@ -6,6 +6,7 @@ const SYMPTOMS = new Set(['cramps', 'headache', 'fatigue', 'bloating', 'mood_cha
 const FLOWS = new Set(['none', 'spotting', 'light', 'medium', 'heavy']);
 const CONSENT_VERSION = 'health-journal-v1';
 const MAX_HISTORY_ROWS = 90;
+const MAX_EXPORT_ROWS = 5000;
 
 function reply(data: unknown, status = 200) {
   return Response.json(data, { status, headers: PRIVATE_HEADERS });
@@ -68,7 +69,7 @@ export async function handleAthleteHealthJournal(base44: any, req: Request, enab
     return reply({ error: 'Invalid request' }, 400);
   }
   if (!input || typeof input !== 'object' || Array.isArray(input)) return reply({ error: 'Invalid request' }, 400);
-  if (!['status', 'enable', 'list', 'save', 'delete_day', 'erase_all'].includes(input.action)) return reply({ error: 'Unknown action' }, 400);
+  if (!['status', 'enable', 'list', 'export', 'save', 'delete_day', 'erase_all'].includes(input.action)) return reply({ error: 'Unknown action' }, 400);
 
   const athlete = await getOwnedAthlete(base44, user.id);
   if (!athlete?.id || athlete.created_by_id !== user.id) return reply({ error: 'Athlete not found' }, 404);
@@ -76,8 +77,10 @@ export async function handleAthleteHealthJournal(base44: any, req: Request, enab
   const { AthleteHealthConsent: consents, AthleteHealthJournal: entries } = base44.asServiceRole.entities;
   if (!consents || !entries) return reply({ error: 'Health journal storage unavailable' }, 503);
   try {
-    const existing = await consents.filter({ athlete_id: athlete.id }, '-created_date', 1);
-    const consent = existing?.find((r: any) => r.athlete_id === athlete.id) ?? null;
+    const existing = await consents.filter({ athlete_id: athlete.id }, '-created_date', 2);
+    if (!Array.isArray(existing) || existing.some((r: any) => r.athlete_id !== athlete.id) ||
+        existing.length > 1) throw new Error('Unexpected consent state');
+    const consent = existing[0] ?? null;
     if (input.action === 'status') return reply({ available: true, enabled: consent?.enabled === true, coach_access: false, ai_access: false });
 
     if (input.action === 'enable') {
@@ -94,7 +97,8 @@ export async function handleAthleteHealthJournal(base44: any, req: Request, enab
       // Delete in bounded batches; never remove consent until all records have been erased.
       for (let batch = 0; batch < 100; batch++) {
         const page = await entries.filter({ athlete_id: athlete.id }, '-date', 100);
-        if (!page?.length) break;
+        if (!Array.isArray(page)) throw new Error('Journal deletion could not verify records');
+        if (!page.length) break;
         for (const row of page) {
           if (row.athlete_id !== athlete.id || !row.id) throw new Error('Unexpected journal row');
           await entries.delete(row.id);
@@ -107,9 +111,35 @@ export async function handleAthleteHealthJournal(base44: any, req: Request, enab
     }
     if (consent?.enabled !== true) return reply({ error: 'Opt in before using the private journal' }, 403);
 
+    if (input.action === 'export') {
+      // Explicit owner-only export. Keep the complete journal separate from
+      // coach, AI, user-profile and workout data flows.
+      const exported: Record<string, unknown>[] = [];
+      for (let offset = 0; offset < MAX_EXPORT_ROWS; offset += 100) {
+        const page = await entries.filter({ athlete_id: athlete.id }, '-date', 100, offset);
+        if (!Array.isArray(page)) throw new Error('Journal export failed');
+        for (const row of page) {
+          if (row.athlete_id !== athlete.id) throw new Error('Unexpected journal owner');
+          exported.push({
+            date: row.date, period_started: row.period_started, flow: row.flow,
+            symptoms: row.symptoms, symptom_severity: row.symptom_severity,
+            energy: row.energy, notes: row.notes, recorded_at: row.recorded_at,
+          });
+        }
+        if (page.length < 100) return reply({
+          version: CONSENT_VERSION, exported_at: new Date().toISOString(),
+          entries: exported, complete: true, coach_access: false, ai_access: false,
+        });
+      }
+      // Never misrepresent a truncated sensitive-data export as complete.
+      return reply({ error: 'Journal exceeds single-export limit; contact support for a complete export.' }, 409);
+    }
     if (input.action === 'list') {
       const page = await entries.filter({ athlete_id: athlete.id }, '-date', MAX_HISTORY_ROWS);
-      const rows = (page ?? []).filter((r: any) => r.athlete_id === athlete.id).map((r: any) => ({
+      if (!Array.isArray(page) || page.some((r: any) => r.athlete_id !== athlete.id)) {
+        throw new Error('Unexpected journal owner');
+      }
+      const rows = page.map((r: any) => ({
         date: r.date, period_started: r.period_started, flow: r.flow,
         symptoms: r.symptoms, symptom_severity: r.symptom_severity, energy: r.energy, notes: r.notes,
       }));
@@ -123,8 +153,9 @@ export async function handleAthleteHealthJournal(base44: any, req: Request, enab
       return reply({ saved: true, date: entry.date });
     }
     if (!validDate(input.date)) return reply({ error: 'Invalid date' }, 400);
-    const rows = await entries.filter({ athlete_id: athlete.id, date: input.date }, '-date', 2);
-    for (const row of rows ?? []) {
+    const rows = await entries.filter({ athlete_id: athlete.id, date: input.date }, '-date', 3);
+    if (!Array.isArray(rows) || rows.length > 1) throw new Error('Unexpected journal day state');
+    for (const row of rows) {
       if (row.athlete_id !== athlete.id || row.date !== input.date) throw new Error('Unexpected journal row');
       await entries.delete(row.id);
     }
