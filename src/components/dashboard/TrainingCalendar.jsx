@@ -18,6 +18,8 @@ const ZONE_TRIMP_FACTOR = { Z1: 0.5, Z2: 0.7, Z3: 0.9, Z4: 1.1, Z5: 1.3 };
 export default function TrainingCalendar({ athleteId, currentTsb, startDate, onChangeWeek }) {
   const [adjustError, setAdjustError] = useState("");
   const [requesting, setRequesting] = useState(false);
+  const [review, setReview] = useState(null);
+  const [adjustStatus, setAdjustStatus] = useState('');
   const injury = useCoachInjurySignal(athleteId);
   const { plan } = useSubscription();
 
@@ -33,11 +35,48 @@ export default function TrainingCalendar({ athleteId, currentTsb, startDate, onC
   const requestMicroadjustment = async () => {
     setRequesting(true);
     setAdjustError("");
+    setAdjustStatus("");
+    setReview(null);
+    const upcoming = sessions.find((s) => s.status === 'pending' && s.date >= today);
+    if (!upcoming) {
+      setAdjustError('No upcoming pending workout to review.');
+      setRequesting(false);
+      return;
+    }
     try {
-      await base44.functions.invoke("requestMicroadjustment", { athlete_id: athleteId, current_tsb: currentTsb });
+      const response = await base44.functions.invoke('athletePlanReview', {
+        action: 'preview', session_id: upcoming.id,
+      });
+      setReview(response?.data ?? null);
+      if (response?.data?.state !== 'review_available') {
+        setAdjustStatus(response?.data?.explanation || 'No evidence-supported change is available.');
+      }
+    } catch (error) {
+      setAdjustError(error?.response?.data?.error || 'Could not review the current plan.');
+    } finally {
+      setRequesting(false);
+    }
+  };
+  const applyReviewedAdjustment = async () => {
+    if (!review?.proposal) return;
+    setRequesting(true);
+    setAdjustError('');
+    try {
+      const response = await base44.functions.invoke('athletePlanReview', {
+        action: 'apply',
+        session_id: review.proposal.session_id,
+        snapshot: review.proposal.snapshot,
+        proposed_duration_minutes: review.proposal.proposed_duration_minutes,
+        confirm: 'APPLY_REVIEWED_REDUCTION',
+      });
+      if (response?.data?.applied !== true) throw new Error('Plan change was not confirmed');
+      setReview(null);
+      setAdjustStatus('Your reviewed adjustment was applied to one upcoming session.');
       await schedule.refetch();
     } catch (error) {
-      setAdjustError(error?.response?.data?.error || "Could not adjust the schedule.");
+      setReview(null);
+      setAdjustError(error?.response?.data?.error || 'The plan may have changed. Review it again.');
+      await schedule.refetch();
     } finally {
       setRequesting(false);
     }
@@ -67,11 +106,24 @@ export default function TrainingCalendar({ athleteId, currentTsb, startDate, onC
         <FeatureGate feature="adaptive_replan" plan={plan} compact>
           <Button size="sm" variant="outline" onClick={requestMicroadjustment} disabled={requesting} className="gap-1.5">
             <Sparkles className="w-3.5 h-3.5" />
-            {requesting ? "Adjusting…" : "AI Microadjustment"}
+            {requesting ? "Reviewing…" : "Review plan options"}
           </Button>
         </FeatureGate>
       )}
       {adjustError && <p role="alert" className="text-sm text-destructive">{adjustError}</p>}
+      {adjustStatus && <p role="status" className="text-sm text-muted-foreground">{adjustStatus}</p>}
+      {review?.proposal && <Card>
+        <CardHeader className="pb-2"><CardTitle className="text-sm">Optional session adjustment</CardTitle></CardHeader>
+        <CardContent className="space-y-2 text-sm">
+          <p>{review.proposal.date}: {review.proposal.sport}. Duration {review.proposal.old_duration_minutes} min → {review.proposal.proposed_duration_minutes} min. Intensity is unchanged.</p>
+          <p className="text-muted-foreground">{review.proposal.rationale}</p>
+          <p className="text-xs text-muted-foreground">Based on recorded training evidence. This is optional, not medical advice, and no change occurs until you approve.</p>
+          <div className="flex gap-2 flex-wrap">
+            <Button size="sm" disabled={requesting} onClick={applyReviewedAdjustment}>Approve this change</Button>
+            <Button size="sm" variant="outline" disabled={requesting} onClick={() => setReview(null)}>Keep current plan</Button>
+          </div>
+        </CardContent>
+      </Card>}
       {schedule.isPending ? (
         <p className="text-sm text-muted-foreground">Loading...</p>
       ) : schedule.isError ? (

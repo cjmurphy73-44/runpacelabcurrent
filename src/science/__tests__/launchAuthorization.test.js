@@ -101,10 +101,8 @@ function fixture(user, grant) {
 const functions = [
   ['generateTrainingPlan', { athlete_id: athleteId }],
   ['commitTrainingPlan', { plan_id: draft.id }],
-  ['requestMicroadjustment', { athlete_id: athleteId }],
   ['generateRaceStrategy', { athlete_id: athleteId, event_type: '5K' }],
   ['refreshTelemetryState', { athlete_id: athleteId }],
-  ['autoReplanOnDeviation', { session_id: 'session-fixture' }],
 ];
 
 describe('recovery entry authorization', () => {
@@ -170,6 +168,38 @@ describe.each(functions)('%s authorization', (name, payload) => {
     expect(base44.integrations.Core.InvokeLLM).not.toHaveBeenCalled();
     expect(base44.asServiceRole.connectors.getConnection).not.toHaveBeenCalled();
     if (!user) expect(entities.AthleteProfile.get).not.toHaveBeenCalled();
+  });
+});
+
+describe('Sprint 4 legacy coaching endpoints are owner-only and non-mutating', () => {
+  it.each([
+    ['requestMicroadjustment', { athlete_id: athleteId }, 409],
+    ['autoReplanOnDeviation', { session_id: 'session-fixture' }, 200],
+  ])('allows owner to safely review %s with no plan writes', async (name, payload, status) => {
+    const base44 = fixture(owner);
+    const result = await invoke(name, base44, payload);
+    expect(result.status).toBe(status);
+    expect(base44.asServiceRole.entities.TrainingPlanSession.bulkUpdate).not.toHaveBeenCalled();
+    expect(base44.asServiceRole.entities.TrainingPlanSession.create).not.toHaveBeenCalled();
+    expect(base44.integrations.Core.InvokeLLM).not.toHaveBeenCalled();
+    expect(base44.asServiceRole.integrations.Core.InvokeLLM).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ['requestMicroadjustment', { athlete_id: athleteId }],
+    ['autoReplanOnDeviation', { session_id: 'session-fixture' }],
+  ])('rejects anonymous and all coach/unowned identities for %s', async (name, payload) => {
+    const cases = [[null, null, 401], [coach, authorized, 404],
+      [unrelated, null, 404], [otherCoach, null, 404]];
+    for (const [user, grant, status] of cases) {
+      const base44 = fixture(user, grant);
+      const response = await invoke(name, base44, payload);
+      expect(response.status).toBe(status);
+      expect(base44.asServiceRole.entities.TrainingPlanSession.bulkUpdate).not.toHaveBeenCalled();
+      expect(base44.asServiceRole.entities.TrainingPlanSession.create).not.toHaveBeenCalled();
+      expect(base44.integrations.Core.InvokeLLM).not.toHaveBeenCalled();
+      expect(base44.asServiceRole.integrations.Core.InvokeLLM).not.toHaveBeenCalled();
+    }
   });
 });
 
