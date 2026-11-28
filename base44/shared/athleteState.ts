@@ -14,6 +14,7 @@
 //                          zone estimate from average HR).
 
 import { evidenceAwareAthleteContext } from './athleteEvidence.ts';
+import { summarizeCalendarResponse } from './calendarAdaptation.ts';
 
 const ACWR_SPIKE_THRESHOLD = 1.5;
 const HIGH_RAMP_RATE_POINTS = 7;
@@ -229,6 +230,11 @@ export async function buildAthleteStateSummary(base44, workout) {
   });
 
   const adaptation = assessAdaptation(history);
+  const calendarResponse = summarizeCalendarResponse(history, workout.date, {
+    historyTruncated: sessions.length === 500 || historyUnavailable,
+    // No verified provider-coverage contract exists yet; do not claim that
+    // blank calendar days prove no training.
+  });
   const load = sessionLoadDescriptor(workout);
   // Only a stream-derived distribution reaches the AI context. A stale or estimated
   // one is zeroed here so no summary-only session can influence synthesis.
@@ -287,6 +293,7 @@ export async function buildAthleteStateSummary(base44, workout) {
     // Evidence-aware monitoring remains descriptive. Missing imports do not
     // prove rest or justify automatic injury-risk classification.
     observational_context: evidence,
+    calendar_load_response: calendarResponse,
     provenance: {
       session_load: 'calculated_estimate',
       calories: workout.calories_source === 'device' ? 'measured_device' : 'calculated_estimate',
