@@ -12,6 +12,7 @@ import TrainingPlanGenerator from "@/components/trainingplan/TrainingPlanGenerat
 import TrainingPlanTimeline from "@/components/trainingplan/TrainingPlanTimeline";
 import TrainingPlanWeeklyBreakdown from "@/components/trainingplan/TrainingPlanWeeklyBreakdown";
 import TrainingPlanExtras from "@/components/trainingplan/TrainingPlanExtras";
+import AthletePlanApprovalCard from "@/components/trainingplan/AthletePlanApprovalCard";
 import { planCommitBlockReason } from "@/lib/planCommitGate";
 
 export default function TrainingPlan() {
