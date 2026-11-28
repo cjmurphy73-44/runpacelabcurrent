@@ -30,6 +30,8 @@ export interface ComparableSession {
   avg_hr?: number | null;
   avg_power?: number | null;
   load_source?: string | null;
+  /** Verified HR stream coverage of session duration, from ingestion. */
+  load_coverage_pct?: number | null;
 }
 
 export function compareMatchedEffort(
@@ -47,7 +49,12 @@ export function compareMatchedEffort(
   const seen = new Set<string>();
   const candidates: { date: string; age: number; hr: number; minutes: number; metric: number }[] = [];
   for (const row of history) {
+    // 'stream' alone is not adequate evidence: averages can be biased by
+    // sparse HR samples. Require ingester-verified HR duration coverage.
+    // Missing coverage is unknown, never silently assumed complete.
     if (!row || row.sport !== sport || row.load_source !== 'stream' ||
+        measured(row.load_coverage_pct) === null ||
+        row.load_coverage_pct! < 80 || row.load_coverage_pct! > 100 ||
         typeof row.id !== 'string' || !row.id || seen.has(row.id)) continue;
     seen.add(row.id);
     const t = dateMs(row.date);
@@ -103,7 +110,7 @@ export function compareMatchedEffort(
     uncertainty: [
       'Association only; this does not establish adaptation or causal improvement.',
       'Terrain, environmental conditions, sensor error, session structure and fatigue were not controlled.',
-      'Uses workouts labelled with stream-based load, but that label alone does not verify comparable sensor coverage.',
+      'Requires at least 80% ingestion-reported HR stream coverage per session; this still does not prove equivalent sensor accuracy.',
       'Repeated observations on distinct dates are required; incomplete provider history can still bias comparisons.',
     ],
   };
