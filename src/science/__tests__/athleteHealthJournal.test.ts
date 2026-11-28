@@ -84,6 +84,46 @@ describe('private athlete menstrual journal', () => {
     ], { key: ['athlete_id', 'date'] });
   });
 
+  it('exports only owner-scoped entries with a complete flag and no shared access', async () => {
+    const { base44, journal } = fixture({ consented: true });
+    journal.filter.mockResolvedValueOnce([
+      { athlete_id: 'athlete-1', date: '2026-01-20', flow: 'light', notes: 'private' },
+    ] as any);
+    const response = await handleAthleteHealthJournal(base44, request({ action: 'export' }), true);
+    expect(response.status).toBe(200);
+    expect(response.headers.get('Cache-Control')).toBe('private, no-store');
+    const body = await response.json();
+    expect(body).toMatchObject({
+      complete: true, coach_access: false, ai_access: false,
+      entries: [{ date: '2026-01-20', notes: 'private' }],
+    });
+    expect(journal.filter).toHaveBeenCalledWith({ athlete_id: 'athlete-1' }, '-date', 100, 0);
+  });
+
+  it('refuses foreign journal rows instead of silently filtering private data', async () => {
+    const { base44, journal } = fixture({ consented: true });
+    journal.filter.mockResolvedValueOnce([
+      { athlete_id: 'athlete-2', date: '2026-01-20', notes: 'not yours' },
+    ] as any);
+    const response = await handleAthleteHealthJournal(base44, request({ action: 'export' }), true);
+    expect(response.status).toBe(503);
+    expect(journal.upsert).not.toHaveBeenCalled();
+    const body = await response.json();
+    expect(JSON.stringify(body)).not.toContain('not yours');
+  });
+
+  it('refuses duplicate or foreign consent state rather than granting access', async () => {
+    const { base44, consents, journal } = fixture();
+    consents.filter.mockResolvedValueOnce([
+      { athlete_id: 'athlete-1', enabled: true },
+      { athlete_id: 'athlete-1', enabled: true },
+    ] as any);
+    const response = await handleAthleteHealthJournal(base44, request({ action: 'save',
+      entry: { date: '2026-01-20', flow: 'light' } }), true);
+    expect(response.status).toBe(503);
+    expect(journal.upsert).not.toHaveBeenCalled();
+  });
+
   it('never allows silent deletion without explicit confirmation', async () => {
     const { base44, journal, consents } = fixture({ consented: true });
     expect((await handleAthleteHealthJournal(base44, request({ action: 'erase_all' }), true)).status).toBe(400);
