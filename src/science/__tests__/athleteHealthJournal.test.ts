@@ -139,7 +139,7 @@ describe('private athlete menstrual journal', () => {
     const result = await handleAthleteHealthJournal(base44,
       request({ action: 'erase_all', confirm: 'DELETE' }), true);
     expect(result.status).toBe(200);
-    expect(await result.json()).toMatchObject({ enabled: false, erased: true });
+    expect(await result.json()).toMatchObject({ enabled: false, removed_from_active_journal: true, permanent_erasure_verified: false });
     expect(journal.delete).toHaveBeenCalledWith('entry-a');
     expect(consents.delete).toHaveBeenCalledWith('consent-1');
   });
