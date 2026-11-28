@@ -23,7 +23,9 @@ function fixture(opts: { anonymous?: boolean; foreign?: boolean; done?: boolean;
   const session = { id: 'session-a', athlete_id: 'athlete-a', training_plan_id: 'plan-a',
     date: date(1), sport: 'running', prescribed_duration_minutes: 50,
     prescribed_intensity_zone: 'Z2', status: opts.done ? 'completed' : 'pending',
-    completed_workout_id: opts.done ? 'completed-w' : null, rationale_text: '' };
+    completed_workout_id: opts.done ? 'completed-w' : null,
+    rationale_text: 'Easy aerobic base run; preserve original training rationale.',
+    updated_date: '2026-11-28T05:00:00Z' };
   const calls = { updates: 0 };
   let readCount = 0;
   const getSession = vi.fn(async () => {
@@ -100,7 +102,12 @@ describe('athlete-approved individualized coaching', () => {
     expect(applied.status).toBe(200);
     expect(await applied.json()).toMatchObject({ applied: true, duration_minutes: 45 });
     expect(f.session).toMatchObject({ prescribed_duration_minutes: 45,
-      prescribed_intensity_zone: 'Z2', status: 'pending' });
+      prescribed_intensity_zone: 'Z2', status: 'pending',
+      rationale_text: 'Easy aerobic base run; preserve original training rationale.',
+      approved_adjustment_previous_duration_minutes: 50,
+      approved_adjustment_snapshot: p.proposal.snapshot,
+    });
+    expect(Date.parse(f.session.approved_adjustment_at)).not.toBeNaN();
     expect(f.calls.updates).toBe(1);
     const retry = await f.send(input);
     expect(retry.status).toBe(200);
@@ -128,6 +135,26 @@ describe('athlete-approved individualized coaching', () => {
       } else expect([401, 404, 409]).toContain(preview.status);
       expect(f.calls.updates).toBe(0);
     }
+  });
+
+  it('does not overwrite a newer session rationale while applying a stale preview', async () => {
+    const f = fixture();
+    const p = (await (await f.send({ action: 'preview', session_id: 'session-a' })).json()).proposal;
+    f.session.rationale_text = 'Coach replaced the easy session with a different rationale.';
+    const applied = await f.send({ action: 'apply', session_id: 'session-a',
+      confirm: 'APPLY_REVIEWED_REDUCTION', snapshot: p.snapshot,
+      proposed_duration_minutes: p.proposed_duration_minutes });
+    expect(applied.status).toBe(409);
+    expect(f.calls.updates).toBe(0);
+    expect(f.session.rationale_text).toContain('Coach replaced');
+  });
+
+  it('rejects further modifications after an existing approved adjustment', async () => {
+    const f=fixture();
+    f.session.approved_adjustment_snapshot='previous-independent-approval';
+    const result=await f.send({ action: 'preview', session_id:'session-a' });
+    expect(result.status).toBe(409);
+    expect(f.calls.updates).toBe(0);
   });
 
   it('does not falsely acknowledge failed or unverified writes', async () => {
