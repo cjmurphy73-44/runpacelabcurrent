@@ -51,10 +51,9 @@ export function usePlannedActualReconciliation(athleteId, activePlanId, onSchedu
       void onScheduleChanged?.(athleteId);
       await load();
       if (isPro && ['partial', 'excess', 'skipped'].includes(data.status)) {
-        void functionGateway.invoke('autoReplanOnDeviation', { session_id: sessionId }).then(
-          result => setLastAdjustment(result?.data?.summary || 'Review your plan for any saved adjustments.'),
-          () => setLastAdjustment('The coach adjustment could not be confirmed. Review your saved plan.'),
-        );
+        // Never auto-call an endpoint that can modify prescribed sessions.
+        // The athlete can request an explicit preview from the Training Calendar.
+        setLastAdjustment('Your workout was recorded. Review upcoming sessions to request an optional plan change.');
       }
     } catch (err) {
       setError(err?.response?.data?.error || 'Could not confirm the update. Refresh and retry the same selection.');
