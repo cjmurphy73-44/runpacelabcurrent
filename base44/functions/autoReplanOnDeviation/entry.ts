@@ -24,6 +24,16 @@ Deno.serve(async (req: Request) => {
     const user = await base44.auth.me().catch(() => null);
     if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
 
+    // Sprint 4: autonomous LLM-driven plan writes are disabled by default.
+    // The athlete must use the owner-scoped preview and explicit approval API.
+    // This also blocks unnecessary LLM spend when automatic writes are off.
+    if (Deno.env.get('ATHLETE_AUTO_REPLAN_WRITES_ENABLED') !== 'true') {
+      return Response.json({
+        state: 'approval_required',
+        reason: 'Automatic plan rewrites are disabled. Preview a single-session change for athlete approval.',
+      }, { status: 409, headers: { 'Cache-Control': 'private, no-store' } });
+    }
+
     const { session_id } = (await req.json().catch(() => null)) ?? {};
     if (!isRecordId(session_id)) return Response.json({ error: 'session_id is required' }, { status: 400 });
 
