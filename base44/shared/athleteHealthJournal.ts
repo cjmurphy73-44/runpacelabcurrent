@@ -60,7 +60,10 @@ export async function handleAthleteHealthJournal(base44: any, req: Request, enab
   if (req.method !== 'POST') return reply({ error: 'Method not allowed' }, 405);
   const user = await base44.auth.me().catch(() => null);
   if (!user?.id) return reply({ error: 'Unauthorized' }, 401);
-  if (!enabled) return reply({ available: false, error: 'Optional health journal has not been enabled for this environment.' }, 503);
+  // Disabling collection must never strand previously recorded sensitive data.
+  // Existing owner-only access, export, deletion and consent withdrawal remain
+  // available; no opt-in or new writes can occur while the feature is off.
+  const disabledAccess = new Set(['status', 'list', 'export', 'delete_day', 'erase_all']);
 
   let input: any;
   try {
@@ -70,6 +73,9 @@ export async function handleAthleteHealthJournal(base44: any, req: Request, enab
   }
   if (!input || typeof input !== 'object' || Array.isArray(input)) return reply({ error: 'Invalid request' }, 400);
   if (!['status', 'enable', 'list', 'export', 'save', 'delete_day', 'erase_all'].includes(input.action)) return reply({ error: 'Unknown action' }, 400);
+  if (!enabled && !disabledAccess.has(input.action)) {
+    return reply({ available: false, error: 'New private-journal collection is disabled.' }, 503);
+  }
 
   const athlete = await getOwnedAthlete(base44, user.id);
   if (!athlete?.id || athlete.created_by_id !== user.id) return reply({ error: 'Athlete not found' }, 404);
@@ -81,7 +87,22 @@ export async function handleAthleteHealthJournal(base44: any, req: Request, enab
     if (!Array.isArray(existing) || existing.some((r: any) => r.athlete_id !== athlete.id) ||
         existing.length > 1) throw new Error('Unexpected consent state');
     const consent = existing[0] ?? null;
-    if (input.action === 'status') return reply({ available: true, enabled: consent?.enabled === true, coach_access: false, ai_access: false });
+    if (input.action === 'status') {
+      if (!enabled) {
+        // Find surviving journal data even if a prior interrupted deletion
+        // removed consent first. Do not reveal details or contents in status.
+        const remaining = await entries.filter({ athlete_id: athlete.id }, '-date', 1);
+        if (!Array.isArray(remaining) ||
+            remaining.some((r: any) => r.athlete_id !== athlete.id)) {
+          throw new Error('Unexpected journal owner');
+        }
+        return reply({ available: false, enabled: false,
+          can_manage_existing: Boolean(consent || remaining.length),
+          coach_access: false, ai_access: false });
+      }
+      return reply({ available: true, enabled: consent?.enabled === true,
+        coach_access: false, ai_access: false });
+    }
 
     if (input.action === 'enable') {
       if (input.acknowledged !== true) return reply({ error: 'Explicit privacy consent required' }, 400);
@@ -106,6 +127,13 @@ export async function handleAthleteHealthJournal(base44: any, req: Request, enab
         if (page.length < 100) break;
         if (batch === 99) throw new Error('Too many journal rows');
       }
+      // The delete API may acknowledge a request without a durable write.
+      // Verify active storage is empty before revoking consent or reporting
+      // success; a partially deleted journal must remain recoverable to its owner.
+      const remaining = await entries.filter({ athlete_id: athlete.id }, '-date', 1);
+      if (!Array.isArray(remaining) || remaining.length !== 0) {
+        throw new Error('Journal deletion could not be verified');
+      }
       if (consent?.id) await consents.delete(consent.id);
       // Base44 entity.delete removes records from active queries, but retains
       // recoverable trash and may retain version-history/backups. Do not claim
@@ -114,7 +142,11 @@ export async function handleAthleteHealthJournal(base44: any, req: Request, enab
       return reply({ enabled: false, removed_from_active_journal: true,
         permanent_erasure_verified: false });
     }
-    if (consent?.enabled !== true) return reply({ error: 'Opt in before using the private journal' }, 403);
+    if (consent?.enabled !== true && enabled) {
+      return reply({ error: 'Opt in before using the private journal' }, 403);
+    }
+    // When collection is disabled, the permitted actions from disabledAccess
+    // can retrieve or remove existing rows without renewing consent.
 
     if (input.action === 'export') {
       // Explicit owner-only export. Keep the complete journal separate from
