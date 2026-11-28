@@ -1,74 +1,107 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { base44 } from '@/api/base44Client';
 import { Button } from '@/components/ui/button';
+import { useCoachInjurySignal } from '@/hooks/useCoachInjurySignal';
 
-export default function PlanAdjustmentApproval({ planId, onApplied, disabled = false }) {
+export default function PlanAdjustmentApproval({ planId, athleteId, onApplied }) {
+  const [sessions, setSessions] = useState([]);
+  const [selected, setSelected] = useState('');
   const [proposal, setProposal] = useState(null);
-  const [state, setState] = useState('');
-  const [busy, setBusy] = useState(false);
+  const [message, setMessage] = useState('');
   const [error, setError] = useState('');
+  const [busy, setBusy] = useState(false);
+  const guidance = useCoachInjurySignal(athleteId);
+  const blocked = guidance.loading || Boolean(guidance.error) ||
+    guidance.level === 'hold';
+  useEffect(() => {
+    let active = true;
+    base44.entities.TrainingPlanSession.filter({
+      athlete_id: athleteId, training_plan_id: planId,
+    }, 'date', 40).then(rows => {
+      if (!active) return;
+      const today = new Date().toISOString().slice(0, 10);
+      const upcoming = (Array.isArray(rows) ? rows : [])
+        .filter(s => s.status === 'pending' && !s.completed_workout_id &&
+          s.date >= today && s.athlete_id === athleteId && s.training_plan_id === planId)
+        .sort((a, b) => a.date.localeCompare(b.date));
+      setSessions(upcoming);
+      setSelected(upcoming[0]?.id || '');
+    }).catch(() => {
+      if (active) setError('Your upcoming sessions could not be loaded.');
+    });
+    return () => { active = false; };
+  }, [planId, athleteId]);
   const preview = async () => {
-    setBusy(true); setError(''); setProposal(null);
+    if (!selected || blocked) return;
+    setBusy(true); setError(''); setMessage(''); setProposal(null);
     try {
-      const result = await base44.functions.invoke('approvedPlanAdjustment', { action: 'preview' });
-      const data = result?.data;
-      if (data?.state === 'proposal' && data.plan_id === planId) setProposal(data);
-      else setState(data?.reason || 'No adjustment is supported by the available data.');
-    } catch { setError('Training evidence could not be reviewed. No changes were made.'); }
+      const result = await base44.functions.invoke('athletePlanReview', {
+        action: 'preview', session_id: selected,
+      });
+      const body = result.data;
+      if (body?.state === 'review_available' && body.proposal?.session_id === selected)
+        setProposal(body.proposal);
+      else setMessage(body?.explanation || 'There is not enough reliable data to suggest a change.');
+    } catch { setError('Could not verify your current training data. No changes were made.'); }
     finally { setBusy(false); }
   };
   const approve = async () => {
-    if (!proposal || disabled) return;
+    if (!proposal || blocked) return;
     setBusy(true); setError('');
     try {
-      const result = await base44.functions.invoke('approvedPlanAdjustment', {
-        action: 'apply', approved: true,
-        plan_id: proposal.plan_id, session_id: proposal.session_id,
-        original_duration_minutes: proposal.original_duration_minutes,
+      const result = await base44.functions.invoke('athletePlanReview', {
+        action: 'apply', session_id: proposal.session_id,
+        confirm: 'APPLY_REVIEWED_REDUCTION',
+        snapshot: proposal.snapshot,
         proposed_duration_minutes: proposal.proposed_duration_minutes,
-        intensity_zone: proposal.intensity_zone,
       });
-      if (!['applied', 'already_applied'].includes(result?.data?.state))
-        throw new Error('Adjustment was not confirmed.');
-      setState(result.data.state === 'applied'
-        ? 'Your approved session duration has been updated.'
-        : 'This change was already applied.');
+      if (result.data?.applied !== true) throw new Error('Unverified');
       setProposal(null);
+      setMessage(result.data.already_applied ? 'Already applied.' :
+        'Your approved session duration is updated.');
       onApplied?.();
-    } catch { setProposal(null); setError('Your plan may have changed. Nothing new was confirmed; review again.'); }
-    finally { setBusy(false); }
+    } catch {
+      setProposal(null);
+      setError('The plan or evidence may have changed. Review again before confirming.');
+    } finally { setBusy(false); }
   };
-  return <section aria-label="Athlete-approved plan adjustments"
-    className="space-y-3 rounded-lg border border-border p-4">
-    <h2 className="font-heading font-semibold">Review a training adjustment</h2>
+  return <section aria-label="Athlete-approved training adjustments"
+    className="space-y-3 rounded-lg border p-4">
+    <h2 className="font-heading text-base font-semibold">Review a training adjustment</h2>
     <p className="text-sm text-muted-foreground">
-      Your recorded training history may support an optional small schedule change.
-      Nothing changes until you approve it. This does not assess injury or medical readiness.
+      Review an optional evidence-based reduction. Nothing changes until you approve.
+      This is not an injury assessment or training clearance.
     </p>
-    <Button variant="outline" onClick={preview} disabled={busy || disabled}>
-      {busy ? 'Reviewing evidence…' : 'Review training evidence'}
+    {sessions.length > 0 && <label className="block space-y-2 text-sm">
+      <span>Upcoming session</span>
+      <select className="w-full rounded-md border bg-background p-2" value={selected}
+        disabled={busy || blocked}
+        onChange={e => { setSelected(e.target.value); setProposal(null); setMessage(''); }}>
+        {sessions.map(s => <option key={s.id} value={s.id}>
+          {s.date} · {s.sport} · {s.prescribed_duration_minutes} minutes
+        </option>)}
+      </select>
+    </label>}
+    <Button variant="outline" onClick={preview} disabled={!selected || busy || blocked}>
+      {busy ? 'Checking your training…' : 'Review saved training evidence'}
     </Button>
     {proposal && <div className="space-y-3" role="group" aria-label="Proposed change">
-      <p className="text-sm">{proposal.explanation}</p>
-      <p className="font-medium text-sm">
-        {proposal.sport} on {proposal.session_date}: {proposal.original_duration_minutes}
-        {' → '}{proposal.proposed_duration_minutes} minutes.
-        Intensity stays {proposal.intensity_zone || 'unchanged'}.
-      </p>
-      <p className="text-xs text-muted-foreground">
-        {proposal.evidence?.recent_workouts} recorded workouts this week,
-        {' '}{proposal.evidence?.prior_workouts} in the preceding week.
-        Missing data may change the comparison.
-      </p>
+      <p className="text-sm">{proposal.rationale}</p>
+      <p className="text-sm font-medium">{proposal.date} · {proposal.sport}:
+        {' '}{proposal.old_duration_minutes} → {proposal.proposed_duration_minutes} minutes.
+        Intensity stays {proposal.intensity_zone || 'unchanged'}.</p>
       <div className="flex flex-wrap gap-2">
-        <Button disabled={busy || disabled} onClick={approve}>Approve this change</Button>
-        <Button variant="outline" disabled={busy} onClick={() => setProposal(null)}>Keep original plan</Button>
+        <Button onClick={approve} disabled={busy || blocked}>Approve this change</Button>
+        <Button variant="outline" disabled={busy} onClick={() => setProposal(null)}>
+          Keep original plan
+        </Button>
       </div>
     </div>}
-    {state && <p role="status" className="text-sm text-muted-foreground">{state}</p>}
-    {error && <p role="alert" className="text-sm text-destructive">{error}</p>}
-    {disabled && <p role="status" className="text-xs text-muted-foreground">
-      Training adjustments are unavailable while the coaching hold is active.
+    {blocked && <p role="status" className="text-sm text-muted-foreground">
+      Review is unavailable while your coaching guidance is loading, unavailable,
+      or an active hold is present.
     </p>}
+    {message && <p role="status" className="text-sm text-muted-foreground">{message}</p>}
+    {error && <p role="alert" className="text-sm text-destructive">{error}</p>}
   </section>;
 }
