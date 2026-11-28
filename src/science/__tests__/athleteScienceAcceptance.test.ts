@@ -32,9 +32,11 @@ describe('multi-sport athlete science golden acceptance fixtures', () => {
     }));
     const result = buildCombinedAthleteUnderstanding(rows, recovery, today);
     if (result.state !== 'observational_only') throw new Error('Valid history was unavailable');
+    // AthleteEvidence reports the latest 28 calendar days; matched efforts
+    // independently compare recent and older windows over 56 days.
     expect(result).toMatchObject({
       state: 'observational_only', history: {
-        load_by_unit: { trimp: { sessions: 6 }, tss: { sessions: 9 } },
+        load_by_unit: { trimp: { sessions: 3 }, tss: { sessions: 5 } },
       },
       matched_efforts: {
         running: { state: 'descriptive_only', relative_change_percent: 5,
