@@ -199,6 +199,7 @@ export default function TrainingPlan() {
             Historical plan only — running sessions and progression targets are paused while the coach hold remains active. Week targets are not instructions to resume running or guarantees of recovery.
           </p>
         )}
+        {!isDraft && <AthletePlanApprovalCard athleteId={athlete.id} planId={plan.id} holdActive={holdActive} />}
         <TrainingPlanTimeline plan={plan} holdActive={holdActive} />
         <TrainingPlanWeeklyBreakdown weeklyPlans={plan.weekly_plans || []} />
         <TrainingPlanExtras plan={plan} />
