@@ -76,10 +76,17 @@ export function compareMatchedEffort(
     Math.abs(x.hr - anchorHr) <= 5 && Math.abs(x.minutes - anchorDuration) <= Math.max(5, anchorDuration * 0.2);
   const matchedOlder = older.filter(matches);
   const matchedRecent = recent.filter(matches);
-  if (matchedOlder.length < 3 || matchedRecent.length < 3) return {
+  // Three workouts on one day are not three independent observations of
+  // adaptation. Require repeatability across dates in both time windows.
+  const olderDates = new Set(matchedOlder.map(r => r.date)).size;
+  const recentDates = new Set(matchedRecent.map(r => r.date)).size;
+  if (matchedOlder.length < 3 || matchedRecent.length < 3 ||
+      olderDates < 3 || recentDates < 3) return {
     state: 'insufficient_comparable_sessions' as const, sport, metric,
     older_candidates: matchedOlder.length, recent_candidates: matchedRecent.length,
-    required_per_window: 3, matching: 'within_5_bpm_and_20_percent_duration',
+    older_distinct_days: olderDates, recent_distinct_days: recentDates,
+    required_per_window: 3, required_distinct_days_per_window: 3,
+    matching: 'within_5_bpm_and_20_percent_duration',
   };
   const olderMedian = median(matchedOlder.map(r => r.metric));
   const recentMedian = median(matchedRecent.map(r => r.metric));
@@ -88,13 +95,16 @@ export function compareMatchedEffort(
     reference_day: referenceDay,
     matching: { average_hr_bpm: rounded(anchorHr), duration_minutes: rounded(anchorDuration),
       hr_tolerance_bpm: 5, duration_tolerance_percent: 20 },
-    older: { sessions: matchedOlder.length, median_metric: rounded(olderMedian), age_days: '28_to_56' },
-    recent: { sessions: matchedRecent.length, median_metric: rounded(recentMedian), age_days: '0_to_21' },
+    older: { sessions: matchedOlder.length, distinct_days: olderDates,
+      median_metric: rounded(olderMedian), age_days: '28_to_56' },
+    recent: { sessions: matchedRecent.length, distinct_days: recentDates,
+      median_metric: rounded(recentMedian), age_days: '0_to_21' },
     relative_change_percent: rounded((recentMedian / olderMedian - 1) * 100),
     uncertainty: [
       'Association only; this does not establish adaptation or causal improvement.',
       'Terrain, environmental conditions, sensor error, session structure and fatigue were not controlled.',
-      'Uses available verified-stream-associated workouts; incomplete provider history can bias the comparison.',
+      'Uses workouts labelled with stream-based load, but that label alone does not verify comparable sensor coverage.',
+      'Repeated observations on distinct dates are required; incomplete provider history can still bias comparisons.',
     ],
   };
 }
