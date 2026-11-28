@@ -31,6 +31,7 @@ describe('multi-sport athlete science golden acceptance fixtures', () => {
       resting_hr: 53, sleep_duration_hours: 7.5,
     }));
     const result = buildCombinedAthleteUnderstanding(rows, recovery, today);
+    if (result.state !== 'observational_only') throw new Error('Valid history was unavailable');
     expect(result).toMatchObject({
       state: 'observational_only', history: {
         load_by_unit: { trimp: { sessions: 6 }, tss: { sessions: 9 } },
@@ -80,6 +81,7 @@ describe('multi-sport athlete science golden acceptance fixtures', () => {
         { load_source: 'summary', distance_km: 12 })),
     ];
     const result = buildCombinedAthleteUnderstanding(rows, [], today);
+    if (result.state !== 'observational_only') throw new Error('Valid history was unavailable');
     expect(result.matched_efforts.running.state).toBe('insufficient_comparable_sessions');
     expect(result.history.recovery.hrv.state).toBe('missing_recent_measurement');
     expect(result.calendar_load_response.sport_load_models[0].data_status)
@@ -89,6 +91,7 @@ describe('multi-sport athlete science golden acceptance fixtures', () => {
   it('duplicate provider identities cannot inflate reported load or independent dates', () => {
     const row = workout('same-id', 0, 'running');
     const result = buildCombinedAthleteUnderstanding([row, { ...row }], [], today);
+    if (result.state !== 'observational_only') throw new Error('Valid history was unavailable');
     expect(result.history.recent_week).toMatchObject({ workouts: 1, minutes: 40 });
     expect(result.history.load_by_unit.trimp).toMatchObject({ sessions: 1, total: 60 });
     expect(result.matched_efforts.running.state).toBe('insufficient_comparable_sessions');
