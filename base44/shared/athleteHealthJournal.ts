@@ -107,7 +107,12 @@ export async function handleAthleteHealthJournal(base44: any, req: Request, enab
         if (batch === 99) throw new Error('Too many journal rows');
       }
       if (consent?.id) await consents.delete(consent.id);
-      return reply({ enabled: false, erased: true });
+      // Base44 entity.delete removes records from active queries, but retains
+      // recoverable trash and may retain version-history/backups. Do not claim
+      // immediate permanent erasure until a separate documented purge process
+      // and retention schedule are verified.
+      return reply({ enabled: false, removed_from_active_journal: true,
+        permanent_erasure_verified: false });
     }
     if (consent?.enabled !== true) return reply({ error: 'Opt in before using the private journal' }, 403);
 
