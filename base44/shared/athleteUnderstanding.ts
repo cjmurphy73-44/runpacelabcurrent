@@ -20,9 +20,12 @@ function reply(payload: unknown, status = 200) {
 }
 
 async function readScoped(entity: any, athleteId: string, fields: string[], maxRows: number) {
+  // Only the recent 90-day window is relevant to these comparisons. Avoid
+  // loading years of older activities and failing for experienced athletes.
+  const earliestDate = new Date(Date.now() - 90 * 86_400_000).toISOString().slice(0, 10);
   const rows: any[] = [];
   for (let offset = 0; offset < maxRows; offset += PAGE_SIZE) {
-    const page = await entity.filter({ athlete_id: athleteId }, '-date', PAGE_SIZE, offset,
+    const page = await entity.filter({ athlete_id: athleteId, date: { $gte: earliestDate } }, '-date', PAGE_SIZE, offset,
       ['athlete_id', ...fields.filter(f => f !== 'athlete_id')]);
     if (!Array.isArray(page) || page.length > PAGE_SIZE) throw new Error('History page unavailable');
     if (page.some(row => row?.athlete_id !== athleteId)) throw new Error('Foreign athlete row');
@@ -38,7 +41,7 @@ export function buildCombinedAthleteUnderstanding(
 ) {
   const evidence = evidenceAwareAthleteContext(workouts, recovery, referenceDate);
   if (evidence.state !== 'available') {
-    return { state: 'unavailable', reason: evidence.reason ?? 'invalid_history' };
+    return { state: 'unavailable', reason: 'invalid_history_or_date' };
   }
   const calendar = summarizeCalendarResponse(workouts, referenceDate);
   const running = compareMatchedEffort(workouts, referenceDate, 'running');
