@@ -9,7 +9,7 @@ function dateBefore(days: number) {
 function workout(id: string, age: number, sport: string, more: Record<string, unknown> = {}) {
   return {
     id, athlete_id: 'athlete-test', date: dateBefore(age), sport, duration_minutes: 40,
-    avg_hr: 145, distance_km: 8, load_source: 'stream', session_trimp: 60, ...more,
+    avg_hr: 145, distance_km: 8, load_source: 'stream', load_coverage_pct: 95, session_trimp: 60, ...more,
   };
 }
 
