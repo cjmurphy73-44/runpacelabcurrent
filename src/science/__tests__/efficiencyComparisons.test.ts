@@ -37,6 +37,32 @@ describe('matched-effort descriptive comparisons', () => {
       metric: 'average_power_watts', relative_change_percent: 5 });
   });
 
+  it('requires three distinct observation dates in each window, not clustered workouts', () => {
+    const rows = [
+      run('old-a', 40, 6), run('old-b', 40, 6), run('old-c', 40, 6),
+      run('new-a', 10, 6.4), run('new-b', 10, 6.4), run('new-c', 10, 6.4),
+    ];
+    expect(compareMatchedEffort(rows, reference, 'running')).toMatchObject({
+      state: 'insufficient_comparable_sessions',
+      older_candidates: 3, recent_candidates: 3,
+      older_distinct_days: 1, recent_distinct_days: 1,
+      required_distinct_days_per_window: 3,
+    });
+  });
+
+  it('reports independent dates when repeatable trends have sufficient evidence', () => {
+    const rows = [
+      run('old-a', 50, 6), run('old-b', 45, 6), run('old-c', 32, 6),
+      run('new-a', 20, 6.3), run('new-b', 15, 6.3), run('new-c', 5, 6.3),
+    ];
+    expect(compareMatchedEffort(rows, reference, 'running')).toMatchObject({
+      state: 'descriptive_only',
+      older: { sessions: 3, distinct_days: 3 },
+      recent: { sessions: 3, distinct_days: 3 },
+      relative_change_percent: 5,
+    });
+  });
+
   it('requires separately observed earlier and later sessions', () => {
     expect(compareMatchedEffort([run('a', 40, 6), run('b', 5, 6)], reference, 'running'))
       .toMatchObject({ state: 'insufficient_comparable_sessions', required_per_window: 3 });
