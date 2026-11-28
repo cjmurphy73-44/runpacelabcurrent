@@ -20,7 +20,7 @@ const history = [
 function fixture(opts: { anonymous?: boolean; foreign?: boolean; done?: boolean;
   stale?: boolean; insufficient?: boolean; failWrite?: boolean;
   unverifiedWrite?: boolean } = {}) {
-  const session = { id: 'session-a', athlete_id: 'athlete-a', training_plan_id: 'plan-a',
+  const session: any = { id: 'session-a', athlete_id: 'athlete-a', training_plan_id: 'plan-a',
     date: date(1), sport: 'running', prescribed_duration_minutes: 50,
     prescribed_intensity_zone: 'Z2', status: opts.done ? 'completed' : 'pending',
     completed_workout_id: opts.done ? 'completed-w' : null,
