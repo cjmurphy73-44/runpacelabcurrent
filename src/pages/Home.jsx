@@ -13,6 +13,7 @@ import RecoveryLab from "@/components/dashboard/RecoveryLab";
 import DataCommandCenter from "@/components/dashboard/DataCommandCenter";
 import CoachAdvice from "@/components/dashboard/CoachAdvice";
 import BaselineHistoryMatrix from "@/components/dashboard/BaselineHistoryMatrix";
+import AthleteScienceInsights from "@/components/dashboard/AthleteScienceInsights";
 import ReadinessScoreCard from "@/components/dashboard/ReadinessScoreCard";
 import AutonomicStressCard from "@/components/dashboard/AutonomicStressCard";
 import SleepEnergyCard from "@/components/dashboard/SleepEnergyCard";
@@ -348,6 +349,7 @@ export default function Home() {
                         <WidgetBoundary name="Fitness stats"><FitnessStats athlete={athlete} /></WidgetBoundary>
                       </div>
                       <WidgetBoundary name="Baseline history"><BaselineHistoryMatrix athleteId={athlete.id} /></WidgetBoundary>
+                      <WidgetBoundary name="Athlete science"><AthleteScienceInsights /></WidgetBoundary>
                     </div>
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                       <WidgetBoundary name="Weekly summary"><WeeklySummary /></WidgetBoundary>
