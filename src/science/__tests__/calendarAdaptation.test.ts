@@ -21,8 +21,8 @@ describe('calendar-correct observational adaptation', () => {
     });
     expect(got.timeline.find(d => d.date === offset(49))?.day_evidence).toBe('unobserved');
     expect(got.data_status).toBe('partial_observation_window');
-    expect(got.model_status).toBe('illustrative_model');
-    expect(got.latest.ctl).not.toBeNull();
+    expect(got.model_status).toBe('insufficient_window');
+    expect(got.latest.ctl).toBeNull();
   });
 
   it('decays on calendar gaps rather than advancing only when there was a workout', () => {
@@ -71,6 +71,17 @@ describe('calendar-correct observational adaptation', () => {
     expect(got.timeline.find(d => d.date === offset(2))?.day_evidence).toBe('athlete_confirmed_rest');
   });
 
+  it('only exposes modelled CTL after at least seven observed workout days', () => {
+    const rows = Array.from({ length: 7 }, (_, i) => session(String(i), i, 'running'));
+    const got = modelCalendarLoad(rows, reference, { unit: 'trimp', sport: 'running' });
+    expect(got.status).toBe('available');
+    if (got.status === 'available') {
+      expect(got.model_status).toBe('illustrative_model');
+      expect(got.latest.ctl).not.toBeNull();
+      expect(got.data_status).toBe('partial_observation_window');
+    }
+  });
+
   it('never treats populated history as proof of complete provider coverage', () => {
     const got = modelCalendarLoad([session('run', 1, 'running')], reference, {
       unit: 'trimp', sport: 'running', verifiedCoverageStart: offset(40),
@@ -79,7 +90,7 @@ describe('calendar-correct observational adaptation', () => {
     if (got.status !== 'available') return;
     expect(got.data_status).toBe('partial_observation_window');
     const confirmed = modelCalendarLoad([session('run', 1, 'running')], reference, {
-      unit: 'trimp', sport: 'running', verifiedCoverageStart: offset(100),
+      unit: 'trimp', sport: 'running', verifiedCoverageStart: offset(100), verifiedCoverageEnd: reference,
     });
     expect(confirmed.status).toBe('available');
     if (confirmed.status === 'available') expect(confirmed.data_status).toBe('complete_connector_window');
