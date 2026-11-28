@@ -62,6 +62,11 @@ export default function AthleteScienceInsights() {
           <div><span className="block text-muted-foreground">TSS</span>
             <strong>{load?.tss?.sessions ?? 0} sessions</strong></div>
         </div>
+        {data.coach_evidence?.state === "observational_only" && <div className="space-y-2" aria-label="Evidence for individual coaching">
+          <h4 className="text-sm font-semibold">What your training evidence says</h4>
+          {data.coach_evidence.findings.map((finding, i) => <p key={finding.source + i} className="text-sm text-foreground">{finding.text}</p>)}
+          <p className="text-xs text-muted-foreground">These observations do not automatically change your plan or establish injury risk.</p>
+        </div>}
         <div className="space-y-2">
           <MatchedEffort sport="Running" data={data.matched_efforts?.running} />
           <MatchedEffort sport="Cycling" data={data.matched_efforts?.cycling} />
