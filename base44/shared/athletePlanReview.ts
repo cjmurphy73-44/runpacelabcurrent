@@ -13,7 +13,7 @@ import { evidenceAwareAthleteContext } from './athleteEvidence.ts';
 const headers = { 'Cache-Control': 'private, no-store' };
 const respond = (body: unknown, status = 200) => Response.json(body, { status, headers });
 const LIMIT = 120;
-const APPROVAL_MARKER = 'Athlete-approved plan review v2';
+const APPROVAL_MARKER = 'Athlete-approved plan review v2'; // compatibility with previously applied reviews
 const DAY_MS = 86_400_000;
 const dateString = () => new Date().toISOString().slice(0, 10);
 
@@ -67,9 +67,10 @@ export function buildPlanReview(
   const proposedMinutes = duration - reduction;
   // Non-secret fingerprint to enforce that confirmation follows exactly the
   // same session snapshot. Ownership and all values are validated server-side.
-  const snapshot = [session.id, date, session.sport, duration,
-    session.prescribed_intensity_zone ?? '', recent.minutes,
-    prior?.minutes ?? '', recent.workouts, prior?.workouts ?? '', 'v2'].join(':');
+  const snapshot = [session.id, session.training_plan_id ?? '', date, session.sport, duration,
+    session.prescribed_intensity_zone ?? '', session.updated_date ?? '',
+    session.rationale_text ?? '', recent.minutes,
+    prior?.minutes ?? '', recent.workouts, prior?.workouts ?? '', 'v3'].join(':');
   return {
     state: 'review_available' as const, context,
     proposal: {
@@ -115,12 +116,18 @@ export async function handleAthletePlanReview(base44: any, req: Request) {
     }
     // Replayed approvals must never update the schedule twice.
     if (input.action === 'apply' && input.confirm === 'APPLY_REVIEWED_REDUCTION' &&
-        typeof input.snapshot === 'string' && input.snapshot.length <= 400 &&
+        typeof input.snapshot === 'string' && input.snapshot.length <= 2048 &&
         Number.isInteger(input.proposed_duration_minutes) &&
         session.prescribed_duration_minutes === input.proposed_duration_minutes &&
-        session.rationale_text === APPROVAL_MARKER + ':' + input.snapshot) {
+        (session.approved_adjustment_snapshot === input.snapshot ||
+         session.rationale_text === APPROVAL_MARKER + ':' + input.snapshot)) {
       return respond({ applied: true, already_applied: true,
         session_id: session.id, duration_minutes: session.prescribed_duration_minutes });
+    }
+    if (session.approved_adjustment_snapshot ||
+        (typeof session.rationale_text === 'string' &&
+         session.rationale_text.startsWith(APPROVAL_MARKER + ':'))) {
+      return respond({ error: 'This session has already been adjusted; review the current plan.' }, 409);
     }
     const earliest = new Date(Date.now() - 90 * DAY_MS).toISOString().slice(0, 10);
     const [workouts, recovery] = await Promise.all([
@@ -150,20 +157,29 @@ export async function handleAthletePlanReview(base44: any, req: Request) {
         current.date !== session.date ||
         current.sport !== session.sport ||
         current.prescribed_duration_minutes !== session.prescribed_duration_minutes ||
-        (current.prescribed_intensity_zone ?? '') !== (session.prescribed_intensity_zone ?? '')) {
+        (current.prescribed_intensity_zone ?? '') !== (session.prescribed_intensity_zone ?? '') ||
+        (current.updated_date ?? '') !== (session.updated_date ?? '') ||
+        (current.rationale_text ?? '') !== (session.rationale_text ?? '') ||
+        current.approved_adjustment_snapshot) {
       return respond({ error: 'Session changed. Review it again.' }, 409);
     }
     // Only the reviewed duration changes; leave zones and medical signals alone.
     await e.TrainingPlanSession.update(current.id, {
       prescribed_duration_minutes: review.proposal.proposed_duration_minutes,
-      // Status stays pending so the accepted session remains on the calendar.
-      rationale_text: APPROVAL_MARKER + ':' + review.proposal.snapshot,
+      // Keep status pending and retain the original session rationale.
+      // Record approval provenance separately, not inside rationale_text.
+      approved_adjustment_snapshot: review.proposal.snapshot,
+      approved_adjustment_previous_duration_minutes: session.prescribed_duration_minutes,
+      approved_adjustment_at: new Date().toISOString(),
     });
     const after = await e.TrainingPlanSession.get(current.id);
     if (!after || after.athlete_id !== athlete.id ||
         after.status !== 'pending' ||
         after.prescribed_duration_minutes !== review.proposal.proposed_duration_minutes ||
-        after.rationale_text !== APPROVAL_MARKER + ':' + review.proposal.snapshot) {
+        after.approved_adjustment_snapshot !== review.proposal.snapshot ||
+        after.approved_adjustment_previous_duration_minutes !== session.prescribed_duration_minutes ||
+        (after.rationale_text ?? '') !== (session.rationale_text ?? '') ||
+        !Number.isFinite(Date.parse(after.approved_adjustment_at ?? ''))) {
       return respond({ error: 'Plan update could not be verified. Refresh before retrying.' }, 503);
     }
     return respond({

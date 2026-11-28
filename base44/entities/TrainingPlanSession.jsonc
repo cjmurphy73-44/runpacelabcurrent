@@ -74,7 +74,7 @@
     },
     "structured_steps": {
       "type": "array",
-      "description": "Structured step breakdown (warmup / intervals / cooldown) used by the workout exporter to build a watch-loadable .fit/structured-text workout. Optional \u2014 when absent the exporter synthesises a single main block from prescribed_duration_minutes + prescribed_intensity_zone.",
+      "description": "Structured step breakdown (warmup / intervals / cooldown) used by the workout exporter to build a watch-loadable .fit/structured-text workout. Optional — when absent the exporter synthesises a single main block from prescribed_duration_minutes + prescribed_intensity_zone.",
       "items": {
         "type": "object",
         "properties": {
@@ -137,12 +137,47 @@
         "modified"
       ],
       "default": "pending",
-      "description": "completion outcome: completed (within \u00b15%), partial (<95% of prescribed), excess (>105% of prescribed), skipped (overdue + not performed), modified (auto-replanned by the adaptive re-planning engine)"
+      "description": "completion outcome: completed (within ±5%), partial (<95% of prescribed), excess (>105% of prescribed), skipped (overdue + not performed), modified (auto-replanned by the adaptive re-planning engine)"
     },
     "description": {
       "type": "string",
       "maxLength": 1000,
       "description": "Optional freeform description (up to 1000 characters) that makes this record text-searchable for AI-assisted discovery."
+    },
+    "approved_adjustment_snapshot": {
+      "type": "string",
+      "description": "Immutable fingerprint of the athlete-reviewed proposal. Set only by the authenticated plan review server.",
+      "rls": {
+        "write": {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      }
+    },
+    "approved_adjustment_previous_duration_minutes": {
+      "type": "number",
+      "minimum": 0,
+      "description": "Prescribed duration before one athlete-approved reduction; audit provenance.",
+      "rls": {
+        "write": {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      }
+    },
+    "approved_adjustment_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "UTC timestamp of the athlete-approved change; not an automatic prescription.",
+      "rls": {
+        "write": {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      }
     }
   },
   "required": [
