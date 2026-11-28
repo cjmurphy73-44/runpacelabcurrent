@@ -73,11 +73,11 @@ export default function PrivateHealthJournal() {
       if (action === 'enable') await call({ action, acknowledged: true });
       if (action === 'save') await call({ action, entry });
       if (action === 'erase_all') {
-        if (!window.confirm('Permanently erase every entry in your private health journal?')) return;
+        if (!window.confirm('Remove entries from your active health journal and opt out? Base44 may retain deleted copies under its retention policy.')) return;
         await call({ action, confirm: 'DELETE' });
       }
       await refresh();
-      setMessage(action === 'save' ? 'Entry saved privately.' : action === 'erase_all' ? 'Journal erased.' : 'Journal enabled.');
+      setMessage(action === 'save' ? 'Entry saved privately.' : action === 'erase_all' ? 'Entries removed from the active journal and consent withdrawn. Retained copies may remain under platform retention rules.' : 'Journal enabled.');
     } catch {
       setMessage('Could not complete the request. Your previous entries were not intentionally changed.');
     } finally { setBusy(false); }
@@ -135,7 +135,7 @@ export default function PrivateHealthJournal() {
             <div className="flex flex-wrap gap-3">
               <Button disabled={busy} onClick={() => run('save')}>Save private entry</Button>
               <Button variant="outline" disabled={busy} onClick={exportJournal}>Export my journal</Button>
-              <Button variant="outline" disabled={busy} onClick={() => run('erase_all')}>Erase journal and opt out</Button>
+              <Button variant="outline" disabled={busy} onClick={() => run('erase_all')}>Remove journal entries and opt out</Button>
             </div>
             {rows.length > 0 && <div className="space-y-2">
               <h3 className="text-sm font-semibold">Recent entries</h3>
