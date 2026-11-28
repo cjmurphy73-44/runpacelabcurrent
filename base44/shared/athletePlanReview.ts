@@ -28,7 +28,9 @@ export function buildPlanReview(
   const date = session.date;
   const context = {
     recent_workouts: evidence.recent_week.workouts,
+    recent_minutes: evidence.recent_week.minutes,
     previous_week: evidence.previous_week?.workouts ?? null,
+    previous_week_minutes: evidence.previous_week?.minutes ?? null,
     observed_days_28d: recordedDays,
     unobserved_days_28d: evidence.session_coverage.days_without_saved_workouts,
     hrv_state: evidence.recovery.hrv.state,
@@ -46,6 +48,15 @@ export function buildPlanReview(
       explanation: 'Not enough comparable saved training to suggest a plan change. No session was modified.',
     };
   }
+  // Explain the athlete's actual workload comparison, including absent
+  // earlier-week data. These observations must not imply diagnosed fatigue.
+  const priorMinutes = evidence.previous_week?.minutes;
+  const weekNarrative = priorMinutes && priorMinutes > 0
+    ? `Saved workouts total ${evidence.recent_week.minutes} minutes this week versus ${priorMinutes} minutes the previous week.`
+    : `Saved workouts total ${evidence.recent_week.minutes} minutes this week; an earlier-week comparison is unavailable.`;
+  const recoveryNarrative = evidence.recovery.hrv.state === 'descriptive_only'
+    ? `Latest recorded HRV is ${evidence.recovery.hrv.direction.replaceAll('_', ' ')}.`
+    : 'There is no sufficient personal HRV baseline for a comparison.';
   const reduction = Math.max(1, Math.min(15, Math.round(duration * 0.1)));
   const proposedMinutes = duration - reduction;
   // Non-secret fingerprint to enforce that confirmation follows exactly the
@@ -58,7 +69,7 @@ export function buildPlanReview(
       old_duration_minutes: duration, proposed_duration_minutes: proposedMinutes,
       intensity_zone: session.prescribed_intensity_zone ?? '',
       snapshot,
-      rationale: `Optional conservative reduction of ${reduction} minutes for the athlete to consider; ${recordedDays} of 28 calendar days have saved workouts. Blank days are unknown, not confirmed rest. This is not a diagnosis or a required training change.`,
+      rationale: `${weekNarrative} ${recoveryNarrative} ${recordedDays} of 28 calendar days have saved workouts. Optional conservative reduction of ${reduction} minutes for your review; blank days are unknown, not confirmed rest. No medical diagnosis or mandatory training change is implied.`,
     },
     explanation: 'An optional, athlete-controlled reduction is available. Training and recovery measurements are descriptive, not medical clearance.',
   };
