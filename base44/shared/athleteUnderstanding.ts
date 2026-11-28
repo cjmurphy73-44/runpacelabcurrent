@@ -20,7 +20,7 @@ function reply(payload: unknown, status = 200) {
   return Response.json(payload, { status, headers: NO_STORE });
 }
 
-export async function readScoped(entity: any, athleteId: string, fields: string[], maxRows: number) {
+async function readScoped(entity: any, athleteId: string, fields: string[], maxRows: number) {
   // Only the recent 90-day window is relevant to these comparisons. Avoid
   // loading years of older activities and failing for experienced athletes.
   const earliestDate = new Date(Date.now() - 90 * 86_400_000).toISOString().slice(0, 10);
