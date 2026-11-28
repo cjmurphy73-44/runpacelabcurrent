@@ -55,6 +55,7 @@ export function modelCalendarLoad(
     historyTruncated?: boolean;
     /** Explicit earliest date for complete connector coverage (if independently verified). */
     verifiedCoverageStart?: string | null;
+    verifiedCoverageEnd?: string | null;
     days?: number;
   },
 ) {
@@ -118,15 +119,19 @@ export function modelCalendarLoad(
       model_ctl: round(ctl), model_atl: round(atl), model_tsb: round(ctl - atl),
     });
   }
-  const coverage = validDay(options.verifiedCoverageStart);
-  const allDaysCovered = coverage !== null && coverage <= start && options.historyTruncated !== true;
+  const coverageStart = validDay(options.verifiedCoverageStart);
+  const coverageEnd = validDay(options.verifiedCoverageEnd);
+  const allDaysCovered = coverageStart !== null && coverageStart <= start &&
+    coverageEnd !== null && coverageEnd >= reference && options.historyTruncated !== true;
   const dataStatus = selected.size === 0 ? 'no_measured_load'
     : allDaysCovered ? 'complete_connector_window'
       : 'partial_observation_window';
   // All series are modelled; only an independently verified comprehensive
   // recording window is considered complete. A populated workout history alone
   // is not evidence that no other workouts took place on a blank date.
-  const mature = selected.size > 0 && days >= CTL_TAU;
+  // One imported workout cannot establish an individual load response. Even
+  // seven distinct observed workout days only makes this an illustration.
+  const mature = observed >= 7 && days >= CTL_TAU;
   const last = timeline[timeline.length - 1];
   const prior = timeline.length >= 8 ? timeline[timeline.length - 8] : null;
   return {
@@ -164,7 +169,8 @@ export function modelCalendarLoad(
 
 /** Small, safe coaching payload: one method per sport; no personal data or writes. */
 export function summarizeCalendarResponse(sessions: readonly RecordedLoadSession[], referenceDate: string,
-  options: { historyTruncated?: boolean; confirmedRestDates?: readonly string[]; verifiedCoverageStart?: string | null } = {},
+  options: { historyTruncated?: boolean; confirmedRestDates?: readonly string[];
+    verifiedCoverageStart?: string | null; verifiedCoverageEnd?: string | null } = {},
 ) {
   const eligibleSports = new Set<string>();
   for (const row of sessions ?? []) {
