@@ -7,11 +7,11 @@ function dateAgo(n: number) {
 }
 const run = (id: string, age: number, distance: number, extras: Record<string, unknown> = {}) => ({
   id, date: dateAgo(age), sport: 'running', duration_minutes: 30,
-  distance_km: distance, avg_hr: 150, load_source: 'stream', ...extras,
+  distance_km: distance, avg_hr: 150, load_source: 'stream', load_coverage_pct: 96, ...extras,
 });
 const ride = (id: string, age: number, power: number, extras: Record<string, unknown> = {}) => ({
   id, date: dateAgo(age), sport: 'cycling', duration_minutes: 60,
-  avg_power: power, avg_hr: 140, load_source: 'stream', ...extras,
+  avg_power: power, avg_hr: 140, load_source: 'stream', load_coverage_pct: 95, ...extras,
 });
 
 describe('matched-effort descriptive comparisons', () => {
@@ -63,9 +63,39 @@ describe('matched-effort descriptive comparisons', () => {
     });
   });
 
+  it('does not present cycling-power improvements with sparse HR telemetry', () => {
+    const baseline = [
+      ride('old-1', 50, 180), ride('old-2', 42, 180), ride('old-3', 30, 180),
+    ];
+    const recent = [
+      ride('new-1', 20, 190), ride('new-2', 13, 190), ride('new-3', 5, 190),
+    ];
+    expect(compareMatchedEffort([...baseline, ...recent], reference, 'cycling').state)
+      .toBe('descriptive_only');
+    expect(compareMatchedEffort([...baseline, ...recent.slice(0, 2),
+      { ...recent[2], load_coverage_pct: 20 }], reference, 'cycling').state)
+      .toBe('insufficient_comparable_sessions');
+  });
+
   it('requires separately observed earlier and later sessions', () => {
     expect(compareMatchedEffort([run('a', 40, 6), run('b', 5, 6)], reference, 'running'))
       .toMatchObject({ state: 'insufficient_comparable_sessions', required_per_window: 3 });
+  });
+
+  it('rejects partial, impossible and unknown HR stream coverage even with a stream label', () => {
+    const older = [run('o1', 50, 6), run('o2', 42, 6), run('o3', 32, 6)];
+    const recent = [run('n1', 20, 6.3), run('n2', 12, 6.3), run('n3', 5, 6.3)];
+    expect(compareMatchedEffort([...older, ...recent], reference, 'running'))
+      .toMatchObject({ state: 'descriptive_only', relative_change_percent: 5 });
+    for (const coverage of [null, undefined, 0, 79.9, 101, -5]) {
+      const unverified = { ...recent[0], load_coverage_pct: coverage };
+      const result = compareMatchedEffort([...older, unverified, ...recent.slice(1)],
+        reference, 'running');
+      expect(result.state).toBe('insufficient_comparable_sessions');
+    }
+    const valid = compareMatchedEffort([...older, { ...recent[0], load_coverage_pct: 80 },
+      ...recent.slice(1)], reference, 'running');
+    expect(valid.state).toBe('descriptive_only');
   });
 
   it('excludes summary-only sessions and duplicated provider retries', () => {
