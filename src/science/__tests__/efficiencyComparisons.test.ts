@@ -63,6 +63,20 @@ describe('matched-effort descriptive comparisons', () => {
     });
   });
 
+  it('does not present cycling-power improvements with sparse HR telemetry', () => {
+    const baseline = [
+      ride('old-1', 50, 180), ride('old-2', 42, 180), ride('old-3', 30, 180),
+    ];
+    const recent = [
+      ride('new-1', 20, 190), ride('new-2', 13, 190), ride('new-3', 5, 190),
+    ];
+    expect(compareMatchedEffort([...baseline, ...recent], reference, 'cycling').state)
+      .toBe('descriptive_only');
+    expect(compareMatchedEffort([...baseline, ...recent.slice(0, 2),
+      { ...recent[2], load_coverage_pct: 20 }], reference, 'cycling').state)
+      .toBe('insufficient_comparable_sessions');
+  });
+
   it('requires separately observed earlier and later sessions', () => {
     expect(compareMatchedEffort([run('a', 40, 6), run('b', 5, 6)], reference, 'running'))
       .toMatchObject({ state: 'insufficient_comparable_sessions', required_per_window: 3 });
