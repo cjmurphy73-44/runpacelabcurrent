@@ -2,6 +2,7 @@ import { getOwnedAthlete } from './ownership.ts';
 import { evidenceAwareAthleteContext } from './athleteEvidence.ts';
 import { summarizeCalendarResponse } from './calendarAdaptation.ts';
 import { compareMatchedEffort } from './efficiencyComparisons.ts';
+import { coachEvidenceBrief } from './coachEvidenceBrief.ts';
 
 // Owner-only read API. Never retrieve the menstrual journal or include its
 // existence, contents, or consent state in any analysis or AI prompt.
@@ -47,7 +48,7 @@ export function buildCombinedAthleteUnderstanding(
   const calendar = summarizeCalendarResponse(workouts, referenceDate);
   const running = compareMatchedEffort(workouts, referenceDate, 'running');
   const cycling = compareMatchedEffort(workouts, referenceDate, 'cycling');
-  return {
+  const report = {
     state: 'observational_only',
     schema_version: 1,
     reference_date: referenceDate,
@@ -63,6 +64,7 @@ export function buildCombinedAthleteUnderstanding(
       'Weather, terrain, fatigue, pauses and sensor configuration may differ between sessions.',
     ],
   };
+  return { ...report, coach_evidence: coachEvidenceBrief(report) };
 }
 
 export async function handleAthleteUnderstanding(base44: any, req: Request) {
