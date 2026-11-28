@@ -98,6 +98,7 @@ describe('private journal stateful HTTP lifecycle', () => {
     expect(e.diaryRows).toHaveLength(0);
     expect((await e.send('user-a', { action: 'erase_all', confirm: 'DELETE' })).status).toBe(200);
     expect(e.consentRows).toHaveLength(0);
+    expect(await (await e.send('user-a', { action: 'status' })).json()).toMatchObject({ enabled: false });
     expect(e.calls.healthWrites).toBe(2);
   });
 
