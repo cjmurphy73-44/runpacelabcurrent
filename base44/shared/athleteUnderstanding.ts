@@ -12,7 +12,8 @@ const PAGE_SIZE = 250;
 const HEALTH_FIELDS = ['date', 'hrv', 'resting_hr', 'sleep_duration_hours'];
 const WORKOUT_FIELDS = [
   'id', 'athlete_id', 'date', 'sport', 'duration_seconds', 'duration_minutes',
-  'distance_km', 'avg_hr', 'avg_power', 'session_trimp', 'session_tss', 'load_source',
+  'distance_km', 'avg_hr', 'avg_power', 'session_trimp', 'session_tss',
+  'load_source', 'load_coverage_pct',
 ];
 
 function reply(payload: unknown, status = 200) {
