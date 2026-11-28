@@ -172,12 +172,27 @@ export function summarizeCalendarResponse(sessions: readonly RecordedLoadSession
   options: { historyTruncated?: boolean; confirmedRestDates?: readonly string[];
     verifiedCoverageStart?: string | null; verifiedCoverageEnd?: string | null } = {},
 ) {
+  const reference = validDay(referenceDate);
+  if (reference === null || !Array.isArray(sessions)) {
+    return {
+      state: 'unavailable' as const, reference_date: referenceDate,
+      reason: 'invalid_input' as const,
+      model_count: 0, sport_load_models: [],
+      limits: 'No physiological inference is available without a valid reference date and workout history.',
+    };
+  }
+  const earliest = reference - 83 * DAY_MS;
   const eligibleSports = new Set<string>();
-  for (const row of sessions ?? []) {
-    if (row && (finitePositive(row.session_trimp) || finitePositive(row.session_tss))) {
+  for (const row of sessions) {
+    if (!row || typeof row.id !== 'string' || !row.id) continue;
+    const date = validDay(row.date);
+    if (date === null || date < earliest || date > reference) continue;
+    if (finitePositive(row.session_trimp) || finitePositive(row.session_tss)) {
       eligibleSports.add(effectiveSport(row.sport));
     }
   }
+  // Consider only disciplines with a usable activity INSIDE the same model
+  // window. Old or future activities must not displace recent sports.
   const samples = [...eligibleSports].sort().slice(0, 23);
   const models = samples.flatMap(sport => (['trimp', 'tss'] as const).map(unit =>
     modelCalendarLoad(sessions, referenceDate, { ...options, sport, unit, days: 84 })))
