@@ -121,9 +121,10 @@ describe('calendar-correct observational adaptation', () => {
   });
 
   it('does not produce false injury probabilities or sensitive reproductive context', () => {
-    const got = summarizeCalendarResponse([{
+    const sensitiveFixture = {
       ...session('run', 1, 'running'), period_started: true, pregnancy_status: 'private',
-    }], reference);
+    };
+    const got = summarizeCalendarResponse([sensitiveFixture], reference);
     expect(JSON.stringify(got)).not.toContain('period_started');
     expect(JSON.stringify(got)).not.toContain('pregnancy_status');
     expect(JSON.stringify(got)).not.toContain('injury_probability');
