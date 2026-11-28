@@ -13,6 +13,10 @@
 //   calculated_estimate , our equations produced the value (normalized load,
 //                          zone estimate from average HR).
 
+import { evidenceAwareAthleteContext } from './athleteEvidence.ts';
+import { summarizeCalendarResponse } from './calendarAdaptation.ts';
+import { compareMatchedEffort } from './efficiencyComparisons.ts';
+
 const ACWR_SPIKE_THRESHOLD = 1.5;
 const HIGH_RAMP_RATE_POINTS = 7;
 const OVERREACHING_TSB_FLOOR = -30;
@@ -202,14 +206,36 @@ export async function buildAthleteStateSummary(base44, workout) {
   if (!workout) return null;
   const athleteId = workout.athlete_id;
 
+  // Existing adaptation model is retained for backwards compatibility.
+  // The independent evidence block labels missing days and unit/provenance gaps;
+  // it is an observational input to coaching, not another readiness score.
+  let historyUnavailable = false;
   const sessions = athleteId
     ? await base44.asServiceRole.entities.WorkoutSession.filter(
-      { athlete_id: athleteId, date: { $lte: workout.date } }, '-date', 500, 0, ['date', 'session_trimp', 'session_tss'],
-    ).catch(() => [])
+      { athlete_id: athleteId, date: { $lte: workout.date } }, '-date', 500, 0,
+      ['id', 'date', 'sport', 'duration_seconds', 'duration_minutes',
+        'session_trimp', 'session_tss', 'load_source', 'avg_hr', 'avg_power', 'distance_km'],
+    ).catch(() => { historyUnavailable = true; return []; })
     : [];
   const history = sessions && sessions.length ? sessions : [workout];
+  let recoveryUnavailable = false;
+  const recovery = athleteId
+    ? await base44.asServiceRole.entities.DailyMetrics.filter(
+      { athlete_id: athleteId, date: { $lte: workout.date } }, '-date', 90, 0,
+      ['date', 'hrv', 'resting_hr', 'sleep_duration_hours'],
+    ).catch(() => { recoveryUnavailable = true; return []; })
+    : [];
+  const evidence = evidenceAwareAthleteContext(history, recovery, workout.date, {
+    historyTruncated: sessions.length === 500 || historyUnavailable,
+    recoveryUnavailable,
+  });
 
   const adaptation = assessAdaptation(history);
+  const calendarResponse = summarizeCalendarResponse(history, workout.date, {
+    historyTruncated: sessions.length === 500 || historyUnavailable,
+    // No verified provider-coverage contract exists yet; do not claim that
+    // blank calendar days prove no training.
+  });
   const load = sessionLoadDescriptor(workout);
   // Only a stream-derived distribution reaches the AI context. A stale or estimated
   // one is zeroed here so no summary-only session can influence synthesis.
@@ -265,6 +291,13 @@ export async function buildAthleteStateSummary(base44, workout) {
     },
     load_state: adaptation.load_state,
     adaptation_flags: flags,
+    // Evidence-aware monitoring remains descriptive. Missing imports do not
+    // prove rest or justify automatic injury-risk classification.
+    observational_context: evidence,
+    calendar_load_response: calendarResponse,
+    // Match only same-sport sessions with comparable HR and duration.
+    // Environmental confounding remains, so the output is descriptive only.
+    matched_effort_comparison: compareMatchedEffort(history, workout.date, workout.sport),
     provenance: {
       session_load: 'calculated_estimate',
       calories: workout.calories_source === 'device' ? 'measured_device' : 'calculated_estimate',
