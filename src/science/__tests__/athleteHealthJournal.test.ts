@@ -124,6 +124,26 @@ describe('private athlete menstrual journal', () => {
     expect(journal.upsert).not.toHaveBeenCalled();
   });
 
+  it('never exports sensitive rows before explicit consent', async () => {
+    const { base44, journal } = fixture();
+    const result = await handleAthleteHealthJournal(base44, request({ action: 'export' }), true);
+    expect(result.status).toBe(403);
+    expect(journal.filter).not.toHaveBeenCalled();
+  });
+
+  it('erases owned entries before deleting the consent record', async () => {
+    const { base44, journal, consents } = fixture({ consented: true });
+    journal.filter.mockResolvedValueOnce([
+      { id: 'entry-a', athlete_id: 'athlete-1', date: '2026-01-20' },
+    ] as any);
+    const result = await handleAthleteHealthJournal(base44,
+      request({ action: 'erase_all', confirm: 'DELETE' }), true);
+    expect(result.status).toBe(200);
+    expect(await result.json()).toMatchObject({ enabled: false, erased: true });
+    expect(journal.delete).toHaveBeenCalledWith('entry-a');
+    expect(consents.delete).toHaveBeenCalledWith('consent-1');
+  });
+
   it('never allows silent deletion without explicit confirmation', async () => {
     const { base44, journal, consents } = fixture({ consented: true });
     expect((await handleAthleteHealthJournal(base44, request({ action: 'erase_all' }), true)).status).toBe(400);
