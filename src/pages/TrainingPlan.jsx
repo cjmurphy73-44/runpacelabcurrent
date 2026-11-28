@@ -5,14 +5,13 @@ import { Button } from "@/components/ui/button";
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 import { Sparkles, ShieldAlert } from "lucide-react";
 import HelpLink from "@/components/guide/HelpLink";
-import { useCoachInjurySignal } from "@/hooks/useCoachInjurySignal";
-import CoachHoldCard from "@/components/dashboard/CoachHoldCard";
+import CoachSignalNotice from "@/components/dashboard/CoachSignalNotice";
 import OnboardingFlow from "@/components/dashboard/OnboardingFlow";
 import TrainingPlanGenerator from "@/components/trainingplan/TrainingPlanGenerator";
 import TrainingPlanTimeline from "@/components/trainingplan/TrainingPlanTimeline";
 import TrainingPlanWeeklyBreakdown from "@/components/trainingplan/TrainingPlanWeeklyBreakdown";
 import TrainingPlanExtras from "@/components/trainingplan/TrainingPlanExtras";
-import { planCommitBlockReason } from "@/lib/planCommitGate";
+import PlanAdjustmentApproval from "@/components/trainingplan/PlanAdjustmentApproval";
 
 export default function TrainingPlan() {
   const [loading, setLoading] = useState(true);
@@ -22,8 +21,6 @@ export default function TrainingPlan() {
   const [committing, setCommitting] = useState(false);
   const [loadError, setLoadError] = useState(false);
   const [commitError, setCommitError] = useState(null);
-  const [retirementIncomplete, setRetirementIncomplete] = useState(false);
-  const injury = useCoachInjurySignal(athlete?.id);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -61,15 +58,11 @@ export default function TrainingPlan() {
 
   const handleCommit = async () => {
     if (!plan?.id) return;
-    const blocked = planCommitBlockReason(injury);
-    if (blocked) { setCommitError(blocked); return; }
     setCommitting(true);
     setCommitError(null);
     try {
       const res = await base44.functions.invoke("commitTrainingPlan", { plan_id: plan.id });
-      if (!res.data?.training_plan) throw new Error("Plan activation was not confirmed.");
-      setPlan(res.data.training_plan);
-      setRetirementIncomplete(res.data.previous_schedule_retired === false);
+      if (res.data?.training_plan) setPlan(res.data.training_plan);
     } catch (e) {
       console.error("Commit failed", e);
       setCommitError(e?.message || "Couldn't commit the plan. Please try again.");
@@ -133,8 +126,6 @@ export default function TrainingPlan() {
   }
 
   const isDraft = plan?.status === "draft";
-  const holdActive = injury.level === "hold";
-  const commitBlockReason = planCommitBlockReason(injury);
 
   return (
     <div className="space-y-6">
@@ -146,13 +137,10 @@ export default function TrainingPlan() {
             <span>This plan is a draft, nothing has been added to your calendar yet. Review the macrocycle below, then confirm to commit it.</span>
             <div className="flex gap-2 shrink-0">
               <Button variant="outline" size="sm" onClick={() => setShowGenerator(true)}>Discard & Regenerate</Button>
-              <Button size="sm" onClick={handleCommit} disabled={committing || Boolean(commitBlockReason)}>
+              <Button size="sm" onClick={handleCommit} disabled={committing}>
                 {committing ? "Committing..." : "Confirm & Commit to Calendar"}
               </Button>
             </div>
-            {commitBlockReason && (
-              <p role="status" className="text-xs text-muted-foreground w-full mt-2">{commitBlockReason}</p>
-            )}
             {commitError && (
               <p className="text-xs text-destructive w-full mt-2">{commitError}</p>
             )}
@@ -163,45 +151,11 @@ export default function TrainingPlan() {
           <Button variant="outline" size="sm" onClick={() => setShowGenerator(true)}>Generate New Plan</Button>
         </div>
       )}
-      {retirementIncomplete && (
-        <Alert>
-          <AlertTitle>Your new plan is active</AlertTitle>
-          <AlertDescription>Some previous sessions may still appear in your calendar.</AlertDescription>
-        </Alert>
-      )}
-      <section aria-labelledby="current-coaching-status" className="space-y-2">
-        <h2
-          id="current-coaching-status"
-          className="text-xs font-heading font-semibold uppercase tracking-wide text-muted-foreground"
-        >
-          Current coaching status
-        </h2>
-        <CoachHoldCard injury={injury} swappedLabel="While the hold is on, running sessions become rest, easy cross-training or easy strength." />
-      </section>
-
-      <section aria-labelledby="plan-context" className="space-y-3">
-        <div className="space-y-1">
-          <h2
-            id="plan-context"
-            className="text-xs font-heading font-semibold uppercase tracking-wide text-muted-foreground"
-          >
-            Plan context — recorded when generated
-          </h2>
-          <p className="text-xs text-muted-foreground">
-            The summary and sessions below reflect your physiology and coach notes at the time this
-            plan was written. They are not a live medical clearance; your current coaching status
-            above is what applies today.
-          </p>
-        </div>
-        {holdActive && (
-          <p role="status" className="rounded-md border border-warning/30 bg-warning/10 p-3 text-sm font-medium">
-            Historical plan only — running sessions and progression targets are paused while the coach hold remains active. Week targets are not instructions to resume running or guarantees of recovery.
-          </p>
-        )}
-        <TrainingPlanTimeline plan={plan} holdActive={holdActive} />
-        <TrainingPlanWeeklyBreakdown weeklyPlans={plan.weekly_plans || []} />
-        <TrainingPlanExtras plan={plan} />
-      </section>
+      <CoachSignalNotice athleteId={athlete?.id} />
+      {!isDraft && <PlanAdjustmentApproval planId={plan.id} athleteId={athlete.id} onApplied={load} />}
+      <TrainingPlanTimeline plan={plan} />
+      <TrainingPlanWeeklyBreakdown weeklyPlans={plan.weekly_plans || []} />
+      <TrainingPlanExtras plan={plan} />
       <div><HelpLink section="plans" label="How training plans work" /></div>
     </div>
   );

@@ -143,9 +143,18 @@ describe.each(functions)('%s authorization', (name, payload) => {
   it.each([
     ['owner', owner, null],
     ['approved coach', coach, authorized],
-  ])('allows the %s', async (_role, user, grant) => {
+  ])('enforces the current %s permission contract', async (_role, user, grant) => {
     const base44 = fixture(user, grant);
-    expect((await invoke(name, base44, payload)).status).toBe(200);
+    const response = await invoke(name, base44, payload);
+    if (name === 'requestMicroadjustment') {
+      // The legacy route is deliberately preview-only and must never grant
+      // coach approval or apply an adjustment without an explicit session.
+      expect(response.status).toBe(user.id === owner.id ? 409 : 404);
+      expect(base44.asServiceRole.entities.TrainingPlanSession.bulkUpdate).not.toHaveBeenCalled();
+      expect(base44.integrations.Core.InvokeLLM).not.toHaveBeenCalled();
+    } else {
+      expect(response.status).toBe(200);
+    }
   });
 
   it.each([
