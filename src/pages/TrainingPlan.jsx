@@ -12,6 +12,7 @@ import TrainingPlanGenerator from "@/components/trainingplan/TrainingPlanGenerat
 import TrainingPlanTimeline from "@/components/trainingplan/TrainingPlanTimeline";
 import TrainingPlanWeeklyBreakdown from "@/components/trainingplan/TrainingPlanWeeklyBreakdown";
 import TrainingPlanExtras from "@/components/trainingplan/TrainingPlanExtras";
+import PlanAdjustmentApproval from "@/components/trainingplan/PlanAdjustmentApproval";
 import { planCommitBlockReason } from "@/lib/planCommitGate";
 
 export default function TrainingPlan() {
@@ -163,6 +164,7 @@ export default function TrainingPlan() {
           <Button variant="outline" size="sm" onClick={() => setShowGenerator(true)}>Generate New Plan</Button>
         </div>
       )}
+      {!isDraft && <PlanAdjustmentApproval planId={plan.id} disabled={holdActive} onApplied={load} />}
       {retirementIncomplete && (
         <Alert>
           <AlertTitle>Your new plan is active</AlertTitle>
